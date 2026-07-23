@@ -1,0 +1,2173 @@
+openapi: 3.1.0
+info:
+  title: Connectors
+servers:
+- url: https://{subdomain}.csod.com/{callback URL}
+paths:
+  /course-asset-connector-course-list:
+    get:
+      summary: Course List
+      tags:
+      - Course Asset Connector
+      responses:
+        '200':
+          description: 'Your response to the "course-list" query must be a JSON object
+            with an array of course objects that contain course metadata.
+
+
+            If any metadata for a course has been modified, all the fields in the
+            metadata for each course should be included in the JSON object (and not
+            just the fields that changed). Cornerstone compares the received data
+            with stored data and then modifies the stored data accordingly.
+
+
+            Metadata fields labeled "Required for Content Anytime Providers" are OPTIONAL
+            for non-Content Anytime Providers but highly recommended, as they improve
+            the user experience.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course-Asset-Connector-Course-List'
+              examples:
+                Get Course List:
+                  value:
+                  - ID: 00000000-0000-0000-0000-000000000001
+                    Title: Example Course
+                    DownloadPackageURL: https://ExampleProvider.com/download/example-course.zip
+                    IsActive: true
+                    Description: This is text describing the example course.
+                    Thumbnail: https://ExampleProvider.com/example-course/image.png
+                    Version: '1.0'
+                    Languages:
+                    - en-US
+                    - es-ES
+                    - fr-FR
+                    LastModifiedUTC: '2017-11-23T08:38:54.7573396+00:00'
+                    PackageLastModifiedUTC: '2017-11-23T08:38:54.7573396+00:00'
+                    Duration: 00:30:00
+                    Subjects:
+                    - Personal Development
+                    Keywords: example, illustration, definition
+                    IsMobile: true
+                    MaxProficiency: 5.0
+                    Proficiency: 3.4
+                    AccreditationBody: ISO (International Organization for Standardization)
+                    CertificationPoints: 14.7
+                    CertificationPointUnitOfMeasure: hours
+                    PublicationDate: '2017-12-26T08:38:54.7573396+00:00'
+                    Localization:
+                    - Title: example course
+                      Description: description
+                      AccreditationBody: ISO
+                      CertificationPointUnitOfMeasure: hours
+                      Language: en-US
+                      Keywords: example, content
+                    - Title: curso de ejemplo
+                      Description: "descripci\xF3n"
+                      Language: es-ES
+                      Keywords: "ejemplo, espa\xF1ol"
+                    - Title: exemple de cours
+                      Description: "description du cours \xE0 \xE9crire en fran\xE7\
+                        ais"
+                      Language: fr-FR
+                      Keywords: "fran\xE7ais, contenu"
+                    Modalities:
+                    - Watch
+                    - Read
+                    SeriesCollection: 2020BusinessExpert,SSExpert2_Codecademy,SkillsoftEssentialsPlus
+                  - <Data of Course 2>: null
+                  - '...'
+        '304':
+          description: If Cornerstone includes the If-Modified-Since header in the
+            request and if no courses were modified or added in your system since
+            that datetime, you must respond with an HTTP 304 (Not Modified).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              examples: {}
+      operationId: course-asset-connector-get-course-list
+      description: 'The Course List is a JSON object containing the list of newly
+        created and updated courses. You must setup an endpoint that allows Cornerstone
+        to GET the list of new/updated courses from your system.
+
+
+        The path mentioned here is only an example. You can set up a URL path of your
+        choice. Once you have it set up, you will need to communicate the URL to Cornerstone''s
+        Content Services Team.
+
+        For any Sync Failures Providers will be [notified by email](https://csod.dev/guides/connectors/content/#connector-types) '
+      parameters:
+      - schema:
+          type: string
+          format: date-time
+          example: Fri, 16 May 2015 05:50:06 GMT
+        in: header
+        name: If-Modified-Since
+        description: Custom header parameter. Datetime in ddd, dd MMM yyy HH:mm:ss
+          GMT format. If this field is included in the request from Cornerstone, your
+          response must only include the updated/newly created courses since the value
+          included in this header. If this field is empty (empty string or null value),
+          or is not included in the header, your response must include the full list
+          of courses from your system, <b>including those that are inactive or have
+          been removed</b>.
+  /aicc-connector-course-list:
+    get:
+      summary: Course List
+      tags:
+      - AICC Connector
+      responses:
+        '200':
+          description: 'Your response to the "course-list" query must be a JSON object
+            with an array of course objects that contain course metadata.
+
+
+            If any metadata for a course has been modified, all the fields in the
+            metadata for each course should be included in the JSON object (and not
+            just the fields that changed). Cornerstone compares the received data
+            with stored data and then modifies the stored data accordingly.
+
+
+            Metadata fields labeled "Required for Content Anytime Providers" are OPTIONAL
+            for non-Content Anytime Providers but highly recommended, as they improve
+            the user experience.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AICC-Course-List'
+              examples:
+                Get Course List:
+                  value:
+                    courses:
+                    - id: 00000000-0000-0000-0000-000000000001
+                      state: Active
+                      aicc_structure:
+                        course_description:
+                          course:
+                            course_creator: creator
+                            course_id: 463daf05-a34a-3105-be14-ab650f0a3994
+                            course_system: course system
+                            course_title: course title
+                            level: '1'
+                            version: '3.0'
+                            max_fields_cst: 0
+                            total_aus: 1
+                            total_blocks: 1
+                          course_behavior:
+                            max_normal: 5
+                          course_description: Course description. Supports HTML tags.
+                            Descriptions with over 5000 characters will result in
+                            an HTML tag removal and might later be cut to 5000 characters.
+                        descriptor:
+                        - system_id: XXXX
+                          developer_id: articulate_lesson_id
+                          title: Course Title
+                          description: Course Description
+                        assignable_unit:
+                        - system_id: XXXX
+                          type: presentation
+                          max_score: '100'
+                          file_name: https://domain.com/path.aspx
+                          command_line: launch.exe
+                          core_vendor: SomeVendor
+                          web_launch: index.html
+                        course_structure:
+                        - block: root
+                          member:
+                          - xxxx
+                          - yyyy
+                      metadata:
+                        is_mobile: true
+                        last_modified_utc: '2023-01-01T12:00:00Z'
+                        accreditation_body: ISO
+                        certification_points: 30
+                        certification_point_unit_of_measure: hours
+                        proficiency: 2.5
+                        max_proficiency: 5.0
+                        languages:
+                        - en-US
+                      version: '3.0'
+                      languages:
+                      - en-US
+                      - es-ES
+                      - fr-FR
+                      duration: 00:30:00
+                      subjects:
+                      - Personal Development
+                      keywords: example, content
+                      localization:
+                      - title: example course
+                        description: description
+                        accreditation_body: ISO
+                        certification_point_unit_of_measure: hours
+                        language: en-US
+                        keywords: example, content
+                      - title: curso de ejemplo
+                        description: "descripci\xF3n"
+                        language: es-ES
+                        keywords: "ejemplo, espa\xF1ol"
+                      - title: exemple de cours
+                        description: "description du cours \xE0 \xE9crire en fran\xE7\
+                          ais"
+                        language: fr-FR
+                        keywords: "fran\xE7ais, contenu"
+                      modalities:
+                      - Watch
+                      - Read
+                      seriesCollection: 2020BusinessExpert,SSExpert2_Codecademy,SkillsoftEssentialsPlus
+                    - <Data of Course 2>: null
+                    - '...'
+        '304':
+          description: If Cornerstone includes the If-Modified-Since header in the
+            request and if no courses were modified or added in your system since
+            that datetime, you must respond with an HTTP 304 (Not Modified).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              examples: {}
+      operationId: aicc-connector-get-course-list
+      description: 'The Course List is a JSON object containing the list of newly
+        created and updated courses. You must setup an endpoint that allows Cornerstone
+        to GET the list of new/updated courses from your system.
+
+
+        The path mentioned here is only an example. You can set up a URL path of your
+        choice. Once you have it set up, you will need to communicate the URL to Cornerstone''s
+        Content Services Team.
+
+        For any Sync Failures Providers will be [notified by email](https://csod.dev/guides/connectors/content/#connector-types) '
+      parameters:
+      - schema:
+          type: string
+          format: date-time
+          example: Fri, 16 May 2015 05:50:06 GMT
+        in: header
+        name: If-Modified-Since
+        description: Custom header parameter. Datetime in ddd, dd MMM yyy HH:mm:ss
+          GMT format. If this field is included in the request from Cornerstone, your
+          response must only include the updated/newly created courses since the value
+          included in this header. If this field is empty (empty string or null value),
+          or is not included in the header, your response must include the full list
+          of courses from your system, <b>including those that are inactive or have
+          been removed</b>.
+  /online-content-connector-course-list:
+    get:
+      summary: Course List
+      tags:
+      - Online Content Connector
+      responses:
+        '200':
+          description: 'Your response to the "course-list" query must be a JSON object
+            with an array of course objects that contain course metadata.
+
+
+            If any metadata for a course has been modified, all the fields in the
+            metadata for each course should be included in the JSON object (and not
+            just the fields that changed). Cornerstone compares the received data
+            with stored data and then modifies the stored data accordingly.
+
+
+            Metadata fields labeled "Required for Content Anytime Providers" are OPTIONAL
+            for non-Content Anytime Providers but highly recommended, as they improve
+            the user experience.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Online-Content-Connector-Course-List'
+              examples:
+                Get Course List:
+                  value:
+                  - ID: 00000000-0000-0000-0000-000000000001
+                    Title: Example Course
+                    URL: https://www.example.com
+                    IsActive: true
+                    Description: This is text describing the example course.
+                    Thumbnail: https://ExampleProvider.com/example-course/image.png
+                    Version: '1.0'
+                    Owners:
+                    - Name: Course Owner Name 1
+                    - Name: Course Owner Name 2
+                    Instructors:
+                    - Title: Instructor's title
+                      FirstName: Instructor's first name
+                      MiddleName: Instructor's middle name
+                      LastName: Instructor's last name
+                      Organization: Organization's name
+                    LastModifiedUTC: '2017-11-23T08:38:54.7573396+00:00'
+                    Languages:
+                    - en-US
+                    - es-ES
+                    - fr-FR
+                    Duration: 00:30:00
+                    MasteryScore: 85
+                    Subjects:
+                    - Personal Development
+                    Keywords: example, illustration, definition
+                    IsMobile: true
+                    MaxProficiency: 5.0
+                    Proficiency: 3.4
+                    AccreditationBody: ISO (International Organization for Standardization)
+                    CertificationPoints: 14.7
+                    CertificationPointUnitOfMeasure: hours
+                    PublicationDate: '2017-12-26T08:38:54.7573396+00:00'
+                    Localization:
+                    - Title: example course
+                      Description: description
+                      AccreditationBody: ISO
+                      CertificationPointUnitOfMeasure: hours
+                      Language: en-US
+                      Keywords: example, content
+                    - Title: curso de ejemplo
+                      Description: "descripci\xF3n"
+                      Language: es-ES
+                      Keywords: "ejemplo, espa\xF1ol"
+                    - Title: exemple de cours
+                      Description: "description du cours \xE0 \xE9crire en fran\xE7\
+                        ais"
+                      Language: fr-FR
+                      Keywords: "fran\xE7ais, contenu"
+                    Modalities:
+                    - Watch
+                    - Read
+                    SeriesCollection: 2020BusinessExpert,SSExpert2_Codecademy,SkillsoftEssentialsPlus
+                  - <Data of Course 2>: null
+                  - '...'
+        '304':
+          description: If Cornerstone includes the If-Modified-Since header in the
+            request and if no courses were modified or added in your system since
+            that datetime, you must respond with an HTTP 304 (Not Modified).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              examples: {}
+      operationId: online-course-connector-get-course-list
+      description: 'The Course List is a JSON object containing the list of newly
+        created and updated courses. You must setup an endpoint that allows Cornerstone
+        to GET the list of new/updated courses from your system.
+
+
+        The path mentioned here is only an example. You can set up a URL path of your
+        choice. Once you have it set up, you will need to communicate the URL to Cornerstone''s
+        Content Services Team.
+
+        For any Sync Failures Providers will be [notified by email](https://csod.dev/guides/connectors/content/#connector-types)'
+      parameters:
+      - schema:
+          type: string
+          format: date-time
+          example: Fri, 16 May 2015 05:50:06 GMT
+        in: header
+        name: If-Modified-Since
+        description: Custom header parameter. Datetime in ddd, dd MMM yyy HH:mm:ss
+          GMT format. If this field is included in the request from Cornerstone, your
+          response must only include the updated/newly created courses since the value
+          included in this header. If this field is empty (empty string or null value),
+          or is not included in the header, response must include the full list of
+          courses from your system, <b>including those that are inactive or have been
+          removed</b>.
+  /lti-connector-course-list:
+    get:
+      summary: Course List
+      tags:
+      - LTI Connector
+      responses:
+        '200':
+          description: 'Your response to the "course-list" query must be a JSON object
+            with an array of course objects that contain course metadata.
+
+
+            If any metadata for a course has been modified, all the fields in the
+            metadata for each course should be included in the JSON object (and not
+            just the fields that changed). Cornerstone compares the received data
+            with stored data and then modifies the stored data accordingly.
+
+
+            Metadata fields labeled "Required for Content Anytime Providers" are OPTIONAL
+            for non-Content Anytime Providers but highly recommended, as they improve
+            the user experience.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LTI-Connector-Course-List'
+              examples:
+                Get Course List:
+                  value:
+                  - ID: 00000000-0000-0000-0000-000000000001
+                    Title: Example Course
+                    URL: https://www.example.com
+                    IsActive: true
+                    Description: This is text describing the example course.
+                    Thumbnail: https://ExampleProvider.com/example-course/image.png
+                    Languages:
+                    - en-US
+                    - es-ES
+                    - fr-FR
+                    LastModifiedUTC: '2017-11-23T08:38:54.7573396+00:00'
+                    PackageLastModifiedUTC: '2017-11-23T08:38:54.7573396+00:00'
+                    Duration: 00:30:00
+                    Subjects:
+                    - Personal Development
+                    Keywords: example, illustration, definition
+                    Version: '1.0'
+                    IsMobile: true
+                    MasteryScore: 30
+                    MaxScore: 100
+                    MaxProficiency: 5.0
+                    Proficiency: 3.4
+                    AccreditationBody: ISO (International Organization for Standardization)
+                    CertificationPoints: 14.7
+                    CertificationPointUnitOfMeasure: hours
+                    PublicationDate: '2017-12-26T08:38:54.7573396+00:00'
+                    Custom:
+                      key1: value1
+                      key2: value2
+                    Localization:
+                    - Title: example course
+                      Description: description
+                      AccreditationBody: ISO
+                      CertificationPointUnitOfMeasure: hours
+                      Language: en-US
+                      Keywords: example, content
+                    - Title: curso de ejemplo
+                      Description: "descripci\xF3n"
+                      Language: es-ES
+                      Keywords: "ejemplo, espa\xF1ol"
+                    - Title: exemple de cours
+                      Description: "description du cours \xE0 \xE9crire en fran\xE7\
+                        ais"
+                      Language: fr-FR
+                      Keywords: "fran\xE7ais, contenu"
+                    Modalities:
+                    - Watch
+                    - Read
+                    SeriesCollection: 2020BusinessExpert,SSExpert2_Codecademy,SkillsoftEssentialsPlus
+                  - <Data of Course 2>: null
+                  - '...'
+        '304':
+          description: If Cornerstone includes the If-Modified-Since header in the
+            request and if no courses were modified or added in your system since
+            that datetime, you must respond with an HTTP 304 (Not Modified).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              examples: {}
+      operationId: online-course-connector-get-course-list
+      description: 'The Course List is a JSON object containing the list of newly
+        created and updated courses. You must setup an endpoint that allows Cornerstone
+        to GET the list of new/updated courses from your system.
+
+
+        The path mentioned here is only an example. You can set up a URL path of your
+        choice. Once you have it set up, you will need to communicate the URL to Cornerstone''s
+        Content Services Team.
+
+        For any Sync Failures Providers will be [notified by email](https://csod.dev/guides/connectors/content/#connector-types)'
+      parameters:
+      - schema:
+          type: string
+          format: date-time
+          example: Fri, 16 May 2015 05:50:06 GMT
+        in: header
+        name: If-Modified-Since
+        description: Custom header parameter. Datetime in ddd, dd MMM yyy HH:mm:ss
+          GMT format. If this field is included in the request from Cornerstone, your
+          response must only include the updated/newly created courses since the value
+          included in this header. If this field is empty (empty string or null value),
+          or is not included in the header, response must include the full list of
+          courses from your system, <b>including those that are inactive or have been
+          removed</b>.
+  /progress:
+    post:
+      tags:
+      - Online Content Connector
+      summary: User Progress API
+      operationId: online-course-connector-post-user-progress
+      description: "The User Progress API enables content partners to report the end-users'\
+        \ progress data to the Cornerstone LMS. With this API, it is possible to track\
+        \ bookmarking and provide the user status and score for each Online Content\
+        \ LO.                        \n\n</br><b>Authentication</b></br>\nUser Progress\
+        \ API supports basic authentication using a session token that is valid for\
+        \ 120 minutes, and an authorization header. The User Progress API also supports\
+        \ <a href=\"https://help.csod.com/help/csod_0/Content/Edge/Integration_Center/API_Management_Page/API_Authentication.htm\"\
+        >OAuth 2.0</a>"
+      responses:
+        '200':
+          description: A "full success" response (HTTP 200) includes a data array
+            with the list of user IDs, GUIDs, course IDs and success statuses. Use
+            this information to validate that your POST request went through, and
+            that all records were processed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              examples:
+                Full Success:
+                  value:
+                    status: Success
+                    timestamp: '2019-05-02T13:59:26.6541369Z'
+                    data:
+                    - ID: ID7c0085c1-c9a3-448b-b1e5-766f2822222
+                      userId: 1
+                      userGuid: '2BCA8706-E070-4BFD-B8BE-0972234354AB '
+                      courseId: ID7c0085c1-c9a3-448b-b1e5-766f2822222_0_990
+                      completionDate: '2018-09-17T14:51:01.798Z'
+                      status: Success
+                      errorMessage: null
+                      errorType: N/A
+        '207':
+          description: A "partial success" response (HTTP 207) includes a data array
+            with the list of user IDs, GUIDs, course IDs and statuses. Use this information
+            to validate that your POST request went through, which records were processed
+            successfully, and which records failed (with explanations for the failures).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              examples:
+                Partial Success:
+                  value:
+                    status: Multi-Status
+                    timestamp: '2019-05-02T13:59:26.6541369Z'
+                    data:
+                    - ID: ID7c0085c1-c9a3-448b-b1e5-766f2822222
+                      userId: 1
+                      userGuid: 2BCA8706-E070-4BFD-B8BE-0972234354AB
+                      courseId: ID7c0085c1-c9a3-448b-b1e5-766f2822222_0_990
+                      completionDate: '2018-09-17T14:51:01.798Z'
+                      status: Success
+                      errorMessage: null
+                      errorType: N/A
+                    - ID: ID7c0085c1-c9a3-448b-b1e5-766f2822223
+                      userId: 1
+                      userGuid: 2BCA8706-E070-4BFD-B8BE-0972234354AC
+                      courseId: ID7c0085c1-c9a3-448b-b1e5-766f2822223_0_991
+                      completionDate: '2018-09-17T14:51:01.798Z'
+                      status: Failed
+                      errorMessage: User 2BCA8706-E070-4BFD-B8BE-0972234354AC does
+                        not Exist
+                      errorType: UserDoesNotExist
+        '400':
+          description: 'An "all failed" response (HTTP 400) indicates that no records
+            were processed successfully. The response body will contain details about
+            the error(s).
+
+
+            If a field in your request payload fails validation, you will see an HTTP
+            400 error. The response body will contain details about the error.
+
+
+            Types of Progress Errors in Response (values for errorType)
+
+            N/A: Progress recorded successfully.
+
+            UnspecifiedError: Internal error unrelated to the cases below.
+
+            UserDoesNotExist: The user does not exist in the portal.
+
+            CourseDoesNotExist: The course does not exist in the portal.
+
+            CourseNotOnUserTranscript: The user is not registered in the course.
+
+            CourseStatusNotSupported: The course exists in the portal''s course catalog,
+            however it is in one of the following unsupported statuses: Disapproved,
+            Deleted, Tentative, Unknown
+
+
+            Please review user progress API response and connect with DLTechnicalContentConsultants@csod.com
+            in case of 4xxs'
+          content:
+            application/json:
+              schema:
+                type: object
+              examples:
+                Validation Error:
+                  value:
+                    status: ValidationError
+                    timestamp: '2019-05-02T14:02:10.4722094Z'
+                    correlationId: 3eec1b71-b3ce-4a38-a476-7ae080738408
+                    error:
+                      code: InvalidData
+                      message: null
+                      fields:
+                      - field: progresses[0].bookmark
+                        errors:
+                        - errorCode: 10
+                          message: 'Invalid character after parsing property name.
+                            Expected '':'' but got: ". Path ''[0].bookmark'', line
+                            12, position 2.'
+                All Failed:
+                  value:
+                    status: Failed
+                    timestamp: '2019-05-02T13:59:26.6541370Z'
+                    data:
+                    - ID: ID7c0085c1-c9a3-448b-b1e5-766f2822222
+                      userId: 1
+                      userGuid: 2BCA8706-E070-4BFD-B8BE-0972234354AC
+                      courseId: ID7c0085c1-c9a3-448b-b1e5-766f2822222_0_991
+                      completionDate: '2018-09-17T14:51:01.798Z'
+                      status: Failed
+                      errorMessage: User 2BCA8706-E070-4BFD-B8BE-0972234354AC does
+                        not Exist
+                      errorType: UserDoesNotExist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userGuid:
+                  type: string
+                  description: 'Unique identifier of the user. This can accept the
+                    following:
+
+                    - User''s GUID in the Cornerstone LMS. This was included as a
+                    query parameter in the launch URL from Cornerstone. This is the
+                    preferred identifier because Cornerstone enforces that no two
+                    users share the same GUID.
+
+                    - User''s ref in the Cornerstone LMS. This is a client-defined
+                    user identifier. If multiple active users have the same ref, the
+                    progress record will be associated with one of them.
+
+                    - User''s email in the Cornerstone LMS. multiple active users
+                    have the same email address, the progress record will be associated
+                    with one of them.'
+                courseId:
+                  type: string
+                  description: When sending progress to CSX (CSOD) - Course ID. When
+                    sending progress to SBX (Saba) - GCID.
+                status:
+                  type: string
+                  description: Indicates user's progress status.
+                  enum:
+                  - InProgress
+                  - Completed
+                userScore:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: User's score in percentage.
+                totalTime:
+                  type: string
+                  format: time
+                  description: 'Total time spent by the user on the course. Valid
+                    formats are H:MM:SS, HH:MM:SS, HHH:MM:SS, and HHHH:MM:SS. '
+                timesAccessed:
+                  type: integer
+                  description: Number of times accessed (total).
+                  minimum: 1
+                completionDate:
+                  type: string
+                  format: date-time
+                  description: Date/time when the user completed the course. Cornerstone
+                    stores this only when status = Completed.
+                lastTimeAccessed:
+                  type: string
+                  format: date-time
+                  description: Date/time when the user last accessed the course.
+                successStatus:
+                  type: string
+                  description: Indicates if the user passed the course.
+                  enum:
+                  - Pass
+                  - Fail
+                bookmark:
+                  type: string
+                  description: The location the user has reached so far in the content
+                    file.
+                  maxLength: 2500
+                suspendData:
+                  type: string
+                  description: Additional user experience data.
+                  maxLength: 4800
+                progress:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Course progress in percentage.
+                registrationDate:
+                  type: string
+                  description: Date/time when the user registered.
+                  format: date-time
+              required:
+              - userGuid
+              - courseId
+              - status
+            examples:
+              Example:
+                value:
+                - userGuid: 2BCA8706-E070-4BFD-B8BE-0972234354AB
+                  courseId: ID7c0085c1-c9a3-448b-b1e5-766f2822222_0_990
+                  status: Completed
+                  userScore: 100
+                  totalTime: 00:09:12
+                  timesAccessed: 1
+                  completionDate: '2018-09-17T14:51:01.798Z'
+                  lastTimeAccessed: '2018-09-17T14:51:01.798Z'
+                  successStatus: Pass
+                  bookmark: string
+                  suspendData: string
+                  progress: 100
+                  registrationDate: '2018-09-28T09:48:31.173Z'
+      parameters:
+      - schema:
+          type: string
+        in: header
+        name: Authorization
+        required: true
+        description: 'Send the base64 encoded result of {username}:{password} in a
+          "Basic" Authorization header. '
+      - schema:
+          type: string
+        in: query
+        name: sessionToken
+        description: The course URL's sessionToken. Cornerstone provides this within
+          the Launch URL parameters.
+        required: true
+  /token:
+    post:
+      summary: Obtain OAuth 2.0 Access Token
+      description: 'This endpoint issues an access token using the OAuth 2.0 Client
+        Credentials flow.
+
+        '
+      tags:
+      - VILT Connector
+      operationId: GetToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+              - grant_type
+              - client_id
+              - client_secret
+              properties:
+                grant_type:
+                  type: string
+                  enum:
+                  - client_credentials
+                  description: The grant type. For client credentials, set to "client_credentials".
+                client_id:
+                  type: string
+                  description: The OAuth client identifier.
+                client_secret:
+                  type: string
+                  description: The OAuth client secret.
+      responses:
+        '200':
+          description: Access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: The OAuth 2.0 access token
+                  token_type:
+                    type: string
+                    description: Type of the token issued (usually "Bearer")
+                  expires_in:
+                    type: integer
+                    description: Token expiry in seconds
+        '400':
+          description: Bad request (invalid credentials or parameters)
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
+  /instructor:
+    post:
+      summary: Add Instructor
+      description: This endpoint and operation is used to add a user as a host or
+        instructor in the virtual meeting provider's system.
+      tags:
+      - VILT Connector
+      operationId: AddInstructor
+      parameters:
+      - in: header
+        name: CorrelationId
+        schema:
+          type: string
+        description: Unique identifier for each request sent by Cornerstone. Used
+          for debugging purposes. You can include this value in the response body.
+      - in: header
+        name: debug
+        schema:
+          type: boolean
+        description: Default value is 'false'. Cornerstone will only set this parameter
+          to 'true' to aid in debugging any issues with the virtual meeting provider
+          or partner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddInstructorRequest'
+      responses:
+        '200':
+          description: Returns a response indicating whether the request was successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorSuccessResponse'
+        default:
+          description: Returns a response indicating whether the error code and error
+            description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorErrorResponse'
+    put:
+      summary: Update Instructor
+      description: This endpoint and operation is used to update a user who is identified
+        as a host or instructor in the virtual meeting provider's system.
+      tags:
+      - VILT Connector
+      operationId: UpdateInstructor
+      parameters:
+      - in: header
+        name: CorrelationId
+        schema:
+          type: string
+        description: Unique identifier for each request sent by Cornerstone. Used
+          for debugging purposes. You can include this value in the response body.
+      - in: header
+        name: debug
+        schema:
+          type: boolean
+        description: Default value is 'false'. Cornerstone will only set this parameter
+          to 'true' to aid in debugging any issues with the virtual meeting provider
+          or partner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInstructorRequest'
+      responses:
+        '200':
+          description: Returns a response indicating whether the request was successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorSuccessResponse'
+        default:
+          description: Returns a response indicating whether the error code and error
+            description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorErrorResponse'
+  /session:
+    post:
+      summary: Create Session
+      description: This endpoint and operation is used to create a new virtual meeting
+        session in the provider's system.
+      tags:
+      - VILT Connector
+      operationId: CreateSession
+      parameters:
+      - in: header
+        name: CorrelationId
+        schema:
+          type: string
+        description: Unique identifier for each request sent by Cornerstone. Used
+          for debugging purposes. You can include this value in the response body.
+      - in: header
+        name: debug
+        schema:
+          type: boolean
+        description: Default value is 'false'. Cornerstone will only set this parameter
+          to 'true' to aid in debugging any issues with the virtual meeting provider
+          or partner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+      responses:
+        '200':
+          description: Returns a response indicating whether the request was successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorSuccessResponse'
+        default:
+          description: Returns a response indicating whether the error code and error
+            description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorErrorResponse'
+  /session/{SessionId}:
+    put:
+      summary: Update Session
+      description: This endpoint and operation is used to update an existing virtual
+        meeting session in the provider's system.
+      tags:
+      - VILT Connector
+      operationId: UpdateSession
+      parameters:
+      - in: header
+        name: CorrelationId
+        schema:
+          type: string
+        description: Unique identifier for each request sent by Cornerstone. Used
+          for debugging purposes. You can include this value in the response body.
+      - in: header
+        name: debug
+        schema:
+          type: boolean
+        description: Default value is 'false'. Cornerstone will only set this parameter
+          to 'true' to aid in debugging any issues with the virtual meeting provider
+          or partner.
+      - in: path
+        name: SessionId
+        required: true
+        schema:
+          type: string
+        description: The SessionId originally sent in the Create Session request is
+          sent as a URI parameter in the Update Session request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+      responses:
+        '200':
+          description: Returns a response indicating whether the request was successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorSuccessResponse'
+        default:
+          description: Returns a response indicating whether the error code and error
+            description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorErrorResponse'
+    delete:
+      summary: Cancel Session
+      description: This endpoint and operation is used to delete a virtual meeting.
+      tags:
+      - VILT Connector
+      operationId: CancelSession
+      parameters:
+      - in: header
+        name: CorrelationId
+        schema:
+          type: string
+        description: Unique identifier for each request sent by Cornerstone. Used
+          for debugging purposes. You can include this value in the response body.
+      - in: header
+        name: debug
+        schema:
+          type: boolean
+        description: Default value is 'false'. Cornerstone will only set this parameter
+          to 'true' to aid in debugging any issues with the virtual meeting provider
+          or partner.
+      - in: path
+        name: SessionId
+        required: true
+        schema:
+          type: string
+        description: The SessionId originally sent in the Create Session request is
+          sent as a URI parameter in the Cancel Session request.
+      - in: query
+        name: LoId
+        required: false
+        schema:
+          type: string
+        description: The LoId originally sent in the Create Session request is sent
+          as a URI query parameter in the Cancel Session request.
+      responses:
+        '200':
+          description: Returns a success response for the deleted meeting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorSuccessResponse'
+        default:
+          description: Returns a response indicating whether the error code and error
+            description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorErrorResponse'
+  /session/{SessionId}/user/{base64EncodedEmail}/url:
+    get:
+      summary: Launch Session
+      description: This endpoint and operation is used to get the virtual meeting's
+        launch URL from the provider's system.
+      tags:
+      - VILT Connector
+      operationId: LaunchSession
+      parameters:
+      - in: header
+        name: debug
+        schema:
+          type: boolean
+        description: Default value is 'false'. Cornerstone will only set this parameter
+          to 'true' to aid in debugging any issues with the virtual meeting provider
+          or partner.
+      - in: path
+        name: SessionId
+        required: true
+        schema:
+          type: string
+        description: The SessionId originally sent in the Create Session request is
+          sent as a URI parameter in the Update Session request.
+      - in: path
+        name: base64EncodedEmail
+        required: true
+        schema:
+          type: string
+        description: The email address of the user requesting the launch URL is included
+          in the URI as a base64 encoded value. If your system generates unique meeting
+          launch URLs based on the user's role (instructor vs. attendee), on receiving
+          the request from Cornerstone, you must decode the email to identify the
+          user in your system.
+      - in: query
+        name: FirstName
+        required: false
+        schema:
+          type: string
+        description: The first name of the user requesting the launch URL is included
+          in the URI as a base64 encoded value.
+      - in: query
+        name: LastName
+        required: false
+        schema:
+          type: string
+        description: The last name of the user requesting the launch URL is included
+          in the URI as a base64 encoded value.
+      - in: query
+        name: LoId
+        required: false
+        schema:
+          type: string
+        description: The LoId originally sent in the Create Session request is sent
+          as a URI query parameter in the Cancel Session request.
+      responses:
+        '200':
+          description: Returns a response with the launch URL for the virtual meeting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorLaunchSessionSuccessResponse'
+        default:
+          description: Returns a response indicating whether the error code and error
+            description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorErrorResponse'
+  /session/{SessionId}/attendees:
+    get:
+      summary: Get Attendees
+      description: This endpoint and operation is used to get the list of attendees
+        for a virtual meeting session.
+      tags:
+      - VILT Connector
+      operationId: GetAttendees
+      parameters:
+      - in: header
+        name: debug
+        schema:
+          type: boolean
+        description: Default value is 'false'. Cornerstone will only set this parameter
+          to 'true' to aid in debugging any issues with the virtual meeting provider
+          or partner.
+      - in: path
+        name: SessionId
+        required: true
+        schema:
+          type: string
+        description: The SessionId originally sent in the Create Session request is
+          sent as a URI parameter in the Update Session request.
+      - in: query
+        name: LoId
+        required: false
+        schema:
+          type: string
+        description: The LoId originally sent in the Create Session request is sent
+          as a URI query parameter in the Cancel Session request.
+      responses:
+        '200':
+          description: Returns a response with the list of attendees for the virtual
+            meeting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorGetAttendanceSuccessResponse'
+        default:
+          description: Returns a response indicating whether the error code and error
+            description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorErrorResponse'
+  /session/{SessionId}/extendedoptions:
+    get:
+      summary: Get Extended Options
+      description: This endpoint and operation is used to get extended options for
+        a virtual meeting session.
+      tags:
+      - VILT Connector
+      operationId: GetExtendedOptions
+      parameters:
+      - in: header
+        name: debug
+        schema:
+          type: boolean
+        description: Default value is 'false'. Cornerstone will only set this parameter
+          to 'true' to aid in debugging any issues with the virtual meeting provider
+          or partner.
+      - in: path
+        name: SessionId
+        required: true
+        schema:
+          type: string
+        description: The SessionId originally sent in the Create Session request is
+          sent as a URI parameter.
+      responses:
+        '200':
+          description: Returns a response with the list of extended options for the
+            virtual meeting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorGetExtendedOptionsSuccessResponse'
+        default:
+          description: Returns a response indicating whether the error code and error
+            description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViltConnectorErrorResponse'
+components:
+  schemas:
+    AICC-Course-List:
+      title: AICC Course List
+      type: object
+      description: ''
+      examples: []
+      properties:
+        id:
+          type: string
+          description: 'Represents a unique identifier (short ID) of the course. Cannot
+            be modified once it has been sent to Cornerstone. It is used by Cornerstone
+            LMS to identify already stored courses.
+
+            IDs with the following characters are not allowed: . | \ / < > " % & and
+            whitespace.'
+          maxLength: 50
+        state:
+          type: string
+          description: "Represents different lifecycle states of the course. Used\
+            \ by Cornerstone LMS to control the visibility of a course to end-users\
+            \ or to apply its own lifecycle rules. Currently, the state may contain\
+            \ one of the following values:\n    active represents an active course.\
+            \ CSOD's LMS will handle this course as being ready to be used by end-users.\n\
+            \    inactive represents an inactive course. CSOD's LMS will handle this\
+            \ course as being not ready to be used by end-users and should hide the\
+            \ course until it becomes active again.\n    delete represents a course\
+            \ which was deleted within the resource server. CSOD's LMS will handle\
+            \ this course as being not ready to be used by end-users and will either\
+            \ hide or delete the course."
+          enum:
+          - active
+          - inactive
+          - delete
+        aicc_structure:
+          $ref: '#/components/schemas/AICC-Structure'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        version:
+          type: string
+          maxLength: 50
+          description: Course version
+        languages:
+          type: array
+          description: Array of strings containing the RFC 1766 available language
+            tags for the course. These determine where the course will show in search
+            results, when filtered by language. The first valid available language
+            in the array will be the course's default language. If none of the languages
+            are valid and available, the record will be rejected. See supported language
+            codes for the list of valid values. Required for Content Anytime Providers.
+          items:
+            type: string
+        duration:
+          type: string
+          description: Course duration in hh:mm:ss. Required for Content Anytime Providers.
+          format: time
+        subjects:
+          type: array
+          description: Array of strings. Courses may be mapped to subjects provided
+            by Cornerstone. For subscription providers, see the [Subject Taxonomy](https://csod.dev/guides/connectors/content/basic-concepts.html#subject-taxonomy)
+            for a list of valid subjects. A single course may be mapped to multiple
+            subjects. Required for subscription Providers.
+          items:
+            type: string
+        keywords:
+          type: string
+          maxLength: 1000
+          description: Words or phrases associated with the course. Allows users to
+            search using keywords in Cornerstone. Keywords and phrases must be separated
+            by commas. Required for Content Anytime Providers.
+        localization:
+          type: array
+          description: Array of translation objects for the course Title, Description,
+            and Keywords. See localization for further details. Required for Content
+            Anytime Providers.
+          items:
+            $ref: '#/components/schemas/Localization'
+        modalities:
+          type: array
+          description: Array of strings. Courses may be mapped to modalities (e.g.
+            "Watch", "Read") provided by Cornerstone. See [modalities](https://csod.dev/guides/connectors/content/basic-concepts.html#modalities)
+            for a list of valid modalities. A single course may be mapped to multiple
+            modalities.
+          items:
+            type: string
+        seriesCollection:
+          type: string
+          maxLength: 1000
+          description: 'The placeholder for the catalog information for the courses.
+            CSOD adds the courses in different subscriptions and this value will help
+            the curation to add the courses in relevant subscriptions. For example
+            - "SeriesCollection": "2020BusinessExpert,SSExpert2_Codecademy,SkillsoftEssentialsPlus"
+            This particular course will go in the Business Expert and Essentials Plus
+            catalog from Skillsoft.'
+      required:
+      - id
+      - state
+      - aicc_structure
+      - metadata
+    Course-Asset-Connector-Course-List:
+      title: Course Asset Connector Course List
+      type: object
+      description: ''
+      examples: []
+      properties:
+        ID:
+          type: string
+          description: 'Unique course ID
+
+            IDs with the following characters are not allowed: . | \ / < > " % & and
+            whitespace.'
+          maxLength: 50
+        Title:
+          type: string
+          maxLength: 500
+          description: Course title
+        DownloadPackageURL:
+          type: string
+          description: The URL from which a zip file, containing the course's assets,
+            can be downloaded by Cornerstone. The zip file should be protected with
+            the same authentication protocol used for the endpoint (either OAuth 2.0
+            or Basic Access Authentication) and should not exceed 5GB.
+        IsActive:
+          type: boolean
+          format: email
+          description: True if course is active and available. Should be false for
+            retired courses that are no longer available.
+        Description:
+          type: string
+          description: Course description. Supports HTML tags. Descriptions with over
+            5000 characters will result in an HTML tag removal and might later be
+            cut to 5000 characters.
+        Proficiency:
+          type: double>=0.1
+          description: Difficulty level of the course. Supports up to one decimal.
+        MaxProficiency:
+          type: double>=0.1
+          description: <span style="color:red;">Required when entering a value for
+            the Proficiency field. </span><br/> Max Difficulty level of courses. Used
+            to normalize the Proficiency field. Supports up to one decimal.
+        AccreditationBody:
+          type: string
+          description: The organization that provides the formal recognition for the
+            course's credits.
+        CertificationPoints:
+          type: double>=0.1
+          description: Number of credits received by the user when finishing the course.
+        CertificationPointUnitOfMeasure:
+          type: string
+          description: Credit point unit name.
+        Thumbnail:
+          type: string
+          description: "URL of the course thumbnail image. Thumbnail recommended size\
+            \ is 120KB for quick loading. Recommended image dimensions: Aspect ratio\
+            \ of 2:1, and image size of 660x336. The minimum recommended size is 220x112.\
+            \ Supported image types: bmp, gif, jpg, jpeg, and png. Required for Content\
+            \ Anytime Providers. Please ensure that URI contain only basic ASCII characters\
+            \ (0\u2014127), including standard letters, digits, and common symbol"
+          maxLength: 1000
+          format: uri
+        Version:
+          type: string
+          maxLength: 50
+          description: Course version
+        Languages:
+          type: array
+          description: Array of strings containing the RFC 1766 available language
+            tags for the course. These determine where the course will show in search
+            results, when filtered by language. The first valid available language
+            in the array will be the course's default language. If none of the languages
+            are valid and available, the record will be rejected. See supported language
+            codes for the list of valid values. Required for Content Anytime Providers.
+          items:
+            type: string
+        LastModifiedUTC:
+          type: string
+          description: Datetime in YYYY-MM-DDTHH:MM:SS.mmmmmmmZZ:ZZ format. Time of
+            the last modification made to a course in UTC.
+          format: date-time
+        PackageLastModifiedUTC:
+          type: string
+          format: date-time
+          description: Datetime in YYYY-MM-DDTHH:MM:SS.mmmmmmmZZ:ZZ format. Time of
+            the last modification made to the course asset file in UTC. Recommended
+            to include in the response.
+        Duration:
+          type: string
+          description: Course duration in hh:mm:ss. Required for Content Anytime Providers.
+          format: time
+        Subjects:
+          type: array
+          description: Array of strings. Courses may be mapped to subjects provided
+            by Cornerstone. For subscription providers, see the [Subject Taxonomy](https://csod.dev/guides/connectors/content/basic-concepts.html#subject-taxonomy)
+            for a list of valid subjects. A single course may be mapped to multiple
+            subjects. Required for subscription Providers.
+          items:
+            type: string
+        Keywords:
+          type: string
+          maxLength: 1000
+          description: Words or phrases associated with the course. Allows users to
+            search using keywords in Cornerstone. Keywords and phrases must be separated
+            by commas. Required for Content Anytime Providers.
+        IsMobile:
+          type: boolean
+          description: True if course is mobile compatible. Should be false if course
+            is not mobile compatible.
+        Localization:
+          type: array
+          description: Array of translation objects for the course Title, Description,
+            Keywords, Accreditation Body, and Certification Point Unit Of Measure.
+            See localization for further details. Required for Content Anytime Providers.
+          items:
+            $ref: '#/components/schemas/Localization'
+        Modalities:
+          type: array
+          description: Array of strings. Courses may be mapped to modalities (e.g.
+            "Watch", "Read") provided by Cornerstone. See [modalities](https://csod.dev/guides/connectors/content/basic-concepts.html#modalities)
+            for a list of valid modalities. A single course may be mapped to multiple
+            modalities.
+          items:
+            type: string
+        SeriesCollection:
+          type: string
+          maxLength: 1000
+          description: 'The placeholder for the catalog information for the courses.
+            CSOD adds the courses in different subscriptions and this value will help
+            the curation to add the courses in relevant subscriptions. For example
+            - "SeriesCollection": "2020BusinessExpert,SSExpert2_Codecademy,SkillsoftEssentialsPlus"
+            This particular course will go in the Business Expert and Essentials Plus
+            catalog from Skillsoft.'
+      required:
+      - ID
+      - Title
+      - DownloadPackageURL
+      - IsActive
+      - Description
+      - LastModifiedUTC
+      - IsMobile
+    Online-Content-Connector-Course-List:
+      title: Online Content Connector Course List
+      type: object
+      description: ''
+      examples: []
+      properties:
+        ID:
+          type: string
+          description: 'Unique course ID
+
+            IDs with the following characters are not allowed: . | \ / < > " % & and
+            whitespace.'
+          maxLength: 50
+        Title:
+          type: string
+          maxLength: 500
+          description: Course title
+        URL:
+          type: string
+          description: Course URL. Cornerstone uses the course URL to redirect users
+            to the content partner's course. If you have an SSO setup with Cornerstone,
+            include the correctly formatted path, including the base URL in this field.
+          maxLength: 1000
+          format: uri
+        IsActive:
+          type: boolean
+          format: email
+          description: True if course is active and available. Should be false for
+            retired courses that are no longer available.
+        Description:
+          type: string
+          description: Course description. Supports HTML tags. Descriptions with over
+            5000 characters will result in an HTML tag removal and might later be
+            cut to 5000 characters.
+        Proficiency:
+          type: double>=0.1
+          description: Difficulty level of the course. Supports up to one decimal.
+        MaxProficiency:
+          type: double>=0.1
+          description: <span style="color:red;">Required when entering a value for
+            the Proficiency field. </span><br/> Max Difficulty level of courses. Used
+            to normalize the Proficiency field. Supports up to one decimal.
+        AccreditationBody:
+          type: string
+          description: The organization that provides the formal recognition for the
+            course's credits.
+        CertificationPoints:
+          type: double>=0.1
+          description: Number of credits received by the user when finishing the course.
+        CertificationPointUnitOfMeasure:
+          type: string
+          description: Credit point unit name.
+        Thumbnail:
+          type: string
+          description: "URL of the course thumbnail image. Thumbnail recommended size\
+            \ is 120KB for quick loading. Recommended image dimensions: Aspect ratio\
+            \ of 2:1, and image size of 660x336. The minimum recommended size is 220x112.\
+            \ Supported image types: bmp, gif, jpg, jpeg, and png. Required for Content\
+            \ Anytime Providers. Please ensure that URI contain only basic ASCII characters\
+            \ (0\u2014127), including standard letters, digits, and common symbol"
+          maxLength: 1000
+          format: uri
+        Version:
+          type: string
+          maxLength: 50
+          description: Course version
+        Owners:
+          type: array
+          description: Array of owner names. List of people or organizations that
+            are course owners. Useful when content providers are acting as content
+            aggregators, with the content owned by another provider.
+          items:
+            type: object
+            properties:
+              Name:
+                type: string
+                maxLength: 400
+                description: Name of the course owner.
+            required:
+            - Name
+        Instructors:
+          type: array
+          description: Array of instructor objects. List of course instructors.
+          items:
+            type: object
+            properties:
+              Title:
+                type: string
+                maxLength: 200
+                description: The instructor's title.
+              FirstName:
+                type: string
+                maxLength: 200
+                description: The instructor's first name.
+              MiddleName:
+                type: string
+                description: The instructor's middle name.
+                maxLength: 200
+              LastName:
+                type: string
+                description: The instructor's last name.
+                maxLength: 200
+              Organization:
+                type: string
+                maxLength: 200
+                description: Name of the organization that the instructor belongs
+                  to.
+            required:
+            - FirstName
+            - LastName
+        LastModifiedUTC:
+          type: string
+          description: Datetime in YYYY-MM-DDTHH:MM:SS.mmmZZ:ZZ format. Time of the
+            last modification made to a course in UTC.
+          format: date-time
+        Languages:
+          type: array
+          format: date-time
+          description: Array of strings containing the RFC 1766 available language
+            tags for the course. These determine where the course will show in search
+            results, when filtered by language. The first valid available language
+            in the array will be the course's default language. If none of the languages
+            are valid and available, the record will be rejected. See supported language
+            codes for the list of valid values. Required for Content Anytime Providers.
+          items:
+            type: string
+        Duration:
+          type: string
+          description: Course duration in hh:mm:ss. Required for Content Anytime Providers.
+          format: time
+        MasteryScore:
+          description: The minimal score required to pass a course.
+          type: integer
+        Subjects:
+          type: array
+          description: Array of strings. Courses may be mapped to subjects provided
+            by Cornerstone. For subscription providers, see the [Subject Taxonomy](https://csod.dev/guides/connectors/content/basic-concepts.html#subject-taxonomy)
+            for a list of valid subjects. A single course may be mapped to multiple
+            subjects. Required for subscription Providers.
+          items:
+            type: string
+        Keywords:
+          type: string
+          maxLength: 1000
+          description: Words or phrases associated with the course. Allows users to
+            search using keywords in Cornerstone. Keywords and phrases must be separated
+            by commas. Required for Content Anytime Providers.
+        IsMobile:
+          type: boolean
+          description: True if course is mobile compatible. Should be false if course
+            is not mobile compatible.
+        PublicationDate:
+          type: string
+          description: Datetime in YYYY-MM-DDTHH:MM:SS.mmmZ format. The date when
+            the course was published.
+        Localization:
+          type: array
+          description: Array of translation objects for the course Title, Description,
+            Keywords, Accreditation Body, and Certification Point Unit Of Measure.
+            See localization for further details. Required for Content Anytime Providers.
+          items:
+            $ref: '#/components/schemas/Localization'
+        Modalities:
+          type: array
+          description: Array of strings. Courses may be mapped to modalities (e.g.
+            "Watch", "Read") provided by Cornerstone. See [modalities](https://csod.dev/guides/connectors/content/basic-concepts.html#modalities)
+            for a list of valid modalities. A single course may be mapped to multiple
+            modalities.
+          items:
+            type: string
+        SeriesCollection:
+          type: string
+          maxLength: 1000
+          description: 'The placeholder for the catalog information for the courses.
+            CSOD adds the courses in different subscriptions and this value will help
+            the curation to add the courses in relevant subscriptions. For example
+            - "SeriesCollection": "2020BusinessExpert,SSExpert2_Codecademy,SkillsoftEssentialsPlus"
+            This particular course will go in the Business Expert and Essentials Plus
+            catalog from Skillsoft.'
+      required:
+      - ID
+      - Title
+      - URL
+      - IsActive
+      - Description
+      - LastModifiedUTC
+      - IsMobile
+      - Languages
+    LTI-Connector-Course-List:
+      title: Online Content Connector Course List
+      type: object
+      description: ''
+      examples: []
+      properties:
+        ID:
+          type: string
+          description: 'Unique course ID
+
+            IDs with the following characters are not allowed: . | \ / < > " % & and
+            whitespace.'
+          maxLength: 50
+        Title:
+          type: string
+          maxLength: 500
+          description: Course title
+        URL:
+          type: string
+          description: Course URL. Cornerstone uses the course URL to redirect users
+            to the content partner's course. If you have an SSO setup with Cornerstone,
+            include the correctly formatted path, including the base URL in this field.
+          maxLength: 1000
+          format: uri
+        IsActive:
+          type: boolean
+          format: email
+          description: True if course is active and available. Should be false for
+            retired courses that are no longer available.
+        Description:
+          type: string
+          description: Course description. Supports HTML tags. Descriptions with over
+            5000 characters will result in an HTML tag removal and might later be
+            cut to 5000 characters.
+        Proficiency:
+          type: double>=0.1
+          description: Difficulty level of the course. Supports up to one decimal.
+        MaxProficiency:
+          type: double>=0.1
+          description: <span style="color:red;">Required when entering a value for
+            the Proficiency field. </span><br/> Max Difficulty level of courses. Used
+            to normalize the Proficiency field. Supports up to one decimal.
+        AccreditationBody:
+          type: string
+          description: The organization that provides the formal recognition for the
+            course's credits.
+        CertificationPoints:
+          type: double>=0.1
+          description: Number of credits received by the user when finishing the course.
+        CertificationPointUnitOfMeasure:
+          type: string
+          description: Credit point unit name.
+        Thumbnail:
+          type: string
+          description: "URL of the course thumbnail image. Thumbnail recommended size\
+            \ is 120KB for quick loading. Recommended image dimensions: Aspect ratio\
+            \ of 2:1, and image size of 660x336. The minimum recommended size is 220x112.\
+            \ Supported image types: bmp, gif, jpg, jpeg, and png. Required for Content\
+            \ Anytime Providers. Please ensure that URI contain only basic ASCII characters\
+            \ (0\u2014127), including standard letters, digits, and common symbol"
+          maxLength: 1000
+          format: uri
+        Version:
+          type: string
+          maxLength: 50
+          description: Course version
+        Languages:
+          type: array
+          format: date-time
+          description: Array of strings containing the RFC 1766 available language
+            tags for the course. These determine where the course will show in search
+            results, when filtered by language. The first valid available language
+            in the array will be the course's default language. If none of the languages
+            are valid and available, the record will be rejected. See supported language
+            codes for the list of valid values. Required for Content Anytime Providers.
+          items:
+            type: string
+        Duration:
+          type: string
+          description: Course duration in hh:mm:ss. Required for Content Anytime Providers.
+          format: time
+        MasteryScore:
+          description: The minimal score required to pass a course.
+          type: integer
+        MaxScore:
+          description: Positive value indicating the maximum score possible for this
+            activity.
+          type: integer
+        Subjects:
+          type: array
+          description: Array of strings. Courses may be mapped to subjects provided
+            by Cornerstone. For subscription providers, see the [Subject Taxonomy](https://csod.dev/guides/connectors/content/basic-concepts.html#subject-taxonomy)
+            for a list of valid subjects. A single course may be mapped to multiple
+            subjects. Required for subscription Providers.
+          items:
+            type: string
+        Keywords:
+          type: string
+          maxLength: 1000
+          description: Words or phrases associated with the course. Allows users to
+            search using keywords in Cornerstone. Keywords and phrases must be separated
+            by commas. Required for Content Anytime Providers.
+        IsMobile:
+          type: boolean
+          description: True if course is mobile compatible. Should be false if course
+            is not mobile compatible.
+        Localization:
+          type: array
+          description: Array of translation objects for the course Title, Description,
+            Keywords, Accreditation Body, and Certification Point Unit Of Measure.
+            See localization for further details. Required for Content Anytime Providers.
+          items:
+            $ref: '#/components/schemas/Localization'
+        Modalities:
+          type: array
+          description: Array of strings. Courses may be mapped to modalities (e.g.
+            "Watch", "Read") provided by Cornerstone. See [modalities](https://csod.dev/guides/connectors/content/basic-concepts.html#modalities)
+            for a list of valid modalities. A single course may be mapped to multiple
+            modalities.
+          items:
+            type: string
+        SeriesCollection:
+          type: string
+          maxLength: 1000
+          description: 'The placeholder for the catalog information for the courses.
+            CSOD adds the courses in different subscriptions and this value will help
+            the curation to add the courses in relevant subscriptions. For example
+            - "SeriesCollection": "2020BusinessExpert,SSExpert2_Codecademy,SkillsoftEssentialsPlus"
+            This particular course will go in the Business Expert and Essentials Plus
+            catalog from Skillsoft.'
+        Custom:
+          type: Key-Value Collection
+          description: A map of key/value custom parameters. Map values must be strings.
+          items:
+            type: key-value pairs
+      required:
+      - ID
+      - Title
+      - URL
+      - IsActive
+      - Description
+      - LastModifiedUTC
+      - Languages
+      - IsMobile
+    Localization:
+      title: Localization
+      type: object
+      properties:
+        Language:
+          type: string
+          description: Language code. See supported language codes for a list of valid
+            values.
+        Title:
+          type: string
+          description: Translated course title.
+        AccreditationBody:
+          type: string
+          description: The organization that provides the formal recognition for the
+            course's credits.
+        CertificationPointUnitOfMeasure:
+          type: string
+          description: Credit point unit name.
+        Description:
+          type: string
+          description: Translated course description. Supports HTML tags. Descriptions
+            with over 5000 characters will result in an HTML tag removal and might
+            later be cut to 5000 characters.
+        Keywords:
+          type: string
+          description: Translated keywords. Required for Content Anytime Providers.
+      required:
+      - Language
+      - Title
+      - Description
+    Progress:
+      title: Progress
+      type: object
+      properties:
+        id:
+          type: string
+    AICC-Structure:
+      title: AICC-Structure
+      type: object
+      properties:
+        course_description:
+          type: object
+          description: Contains information that applies to the course as a whole.
+            Some of this data is designed to help in processing the more detailed
+            information on other data elements in the course and how they are ordered.
+            Refer to the AICC specification for a list of fields in this object and
+            associated descriptions.  Supports HTML tags. Descriptions with over 5000
+            characters will result in an HTML tag removal and might later be cut to
+            5000 characters.
+        descriptor:
+          type: array
+          description: Array of Course Elements. A Course Element is an Assignable
+            Unit, a Block, or an Objective. Has information about individual Course
+            Elements and indicates how those Course Elements are organized and how
+            they relate to one another. Refer to the AICC specification for a list
+            of fields in this object and associated descriptions.
+          items: {}
+        assignable_unit:
+          type: array
+          description: Array of assignable unit objects. Refer to the AICC specification
+            for a list of fields in this object and associated descriptions.
+          items: {}
+        course_structure:
+          type: object
+          description: Array of assignable unit groups. Refer to the AICC specification
+            for a description of the course structure.
+      required:
+      - course_description
+      - descriptor
+      - assignable_unit
+      - course_structure
+    Metadata:
+      title: Metadata
+      type: object
+      description: Additional metadata not covered by the AICC specification.
+      properties:
+        languages:
+          type: array
+          description: Array of strings containing the RFC 1766 available language
+            tags for the course. These determine where the course will show in search
+            results, when filtered by language. The first valid available language
+            in the array will be the course's default language. If none of the languages
+            are valid and available, the record will be rejected. See supported language
+            codes for the list of valid values. Required for Content Anytime Providers.
+          items:
+            type: string
+        is_mobile:
+          type: boolean
+          description: True if course is mobile compatible and is designed with responsive
+            properties. Should be false if course is not mobile compatible.
+        duration:
+          type: string
+          description: Course duration in hh:mm:ss. This field is displayed in Cornerstone
+            LMS and enables admins and learners to filter courses by their duration.
+            Required for Content Anytime Providers.
+        format: time
+        accreditation_body:
+          type: string
+          description: The organization that provides the formal recognition for the
+            course's credits.
+        certification_points:
+          type: double>=0.1
+          description: Number of credits received by the user when finishing the course.
+        certification_point_unit_of_measure:
+          type: string
+          description: Credit point unit name.
+        proficiency:
+          type: double>=0.1
+          description: Difficulty level of the course. Supports up to one decimal.
+        max_proficiency:
+          type: double>=0.1
+          description: <span style="color:red;">Required when entering a value for
+            the Proficiency field. </span><br/> Max Difficulty level of courses. Used
+            to normalize the Proficiency field. Supports up to one decimal.
+        image:
+          type: string
+          description: "URL of the course thumbnail image. Thumbnail recommended size\
+            \ is 120KB for quick loading. Recommended image dimensions: Aspect ratio\
+            \ of 2:1, and image size of 660x336. The minimum recommended size is 220x112.\
+            \ Supported image types: bmp, gif, jpg, jpeg, and png. Required for Content\
+            \ Anytime Providers. Please ensure that URI contain only basic ASCII characters\
+            \ (0\u2014127), including standard letters, digits, and common symbol"
+          maxLength: 2000
+          format: uri
+        subjects:
+          type: array
+          description: Array of strings. Courses may be mapped to subjects provided
+            by Cornerstone. For subscription providers, see the [Subject Taxonomy](https://csod.dev/guides/connectors/content/basic-concepts.html#subject-taxonomy)
+            for a list of valid subjects. A single course may be mapped to multiple
+            subjects. Required for subscription Providers.
+          items:
+            type: string
+        modalities:
+          type: string
+          description: Array of strings. Courses may be mapped to modalities (e.g.
+            "Watch", "Read") provided by Cornerstone. See [modalities](https://csod.dev/guides/connectors/content/basic-concepts.html#modalities)
+            for a list of valid modalities. A single course may be mapped to multiple
+            modalities.
+        last_modified_utc:
+          type: string
+          format: date-time
+          description: Datetime in YYYY-MM-DDTHH:MM:SS.mmmZZ:ZZ format. Time of the
+            last modification made to a course in UTC.
+        keywords:
+          type: string
+          description: Words or phrases associated with the course. Allows users to
+            search using keywords in Cornerstone. Keywords and phrases can be separated
+            by commas. Required for Content Anytime Providers.
+          maxLength: 1000
+        Localization:
+          type: array
+          description: Array of translation objects for the course Title, Description,
+            Keywords, Accreditation Body, and Certification Point Unit Of Measure.
+            See localization for further details. Required for Content Anytime Providers.
+          items:
+            $ref: '#/components/schemas/Localization'
+      required:
+      - is_mobile
+      - last_modified_utc
+    AddInstructorRequest:
+      type: object
+      required:
+      - Email
+      - FirstName
+      - LastName
+      properties:
+        Email:
+          type: string
+          description: Instructor's email address
+        FirstName:
+          type: string
+          description: Instructor's first name
+        LastName:
+          type: string
+          description: Instructor's last name
+    UpdateInstructorRequest:
+      type: object
+      required:
+      - OldEmail
+      - NewEmail
+      - FirstName
+      - LastName
+      properties:
+        OldEmail:
+          type: string
+          description: Current email address of the instructor in the virtual meeting
+            provider's system.
+        NewEmail:
+          type: string
+          description: New email address of the instructor in the virtual meeting
+            provider's system.
+        FirstName:
+          type: string
+          description: Instructor's first name
+        LastName:
+          type: string
+          description: Instructor's last name
+        IsActive:
+          type: boolean
+          description: Indicates if the instructor's record is active.
+    SessionRequest:
+      type: object
+      required:
+      - CreatorEmail
+      - Title
+      - DateBegin
+      - DateEnd
+      - TimeZone
+      - InstructorEmails
+      - SessionId
+      - LoId
+      properties:
+        CreatorEmail:
+          type: string
+          description: Email address of the person creating the session.
+        Title:
+          type: string
+          description: Title of the session. Maximum length = 50 characters.
+        Description:
+          type: string
+          description: Description of the session. Maximum length = 100 characters.
+        DateBegin:
+          type: string
+          description: Start date and time of the session in UTC. Format is YYYY-MM-DDTHH:MM:SS.
+        DateEnd:
+          type: string
+          description: End date and time of the session in UTC. Format is YYYY-MM-DDTHH:MM:SS.
+        TimeZone:
+          $ref: '#/components/schemas/TimeZone'
+        InstructorEmails:
+          type: array
+          items:
+            type: string
+            description: List of email ids of all the instructors assigned for the
+              session.
+        ExtendedOptions:
+          $ref: '#/components/schemas/ExtendedOptions'
+        SessionId:
+          type: string
+          description: Unique ID for the session generated by Cornerstone. This ID
+            is referenced in subsequent workflows by Cornerstone must be saved in
+            the virtual meeting provider's system.
+        LoId:
+          type: string
+          description: Super set for the session generated by Cornerstone.
+    TimeZone:
+      type: object
+      required:
+      - UTCOffset
+      properties:
+        UTCOffset:
+          type: string
+          description: Offset value from UTC.
+      example:
+        UTCOffset: (UTC-08:00) Pacific Time (US & Canada)
+    ExtendedOptions:
+      type: array
+      items:
+        type: object
+        required:
+        - Type
+        - Id
+        - ParentId
+        - Name
+        properties:
+          Type:
+            type: string
+            description: Type of control. Valid values are checkbox, label, radiobutton,
+              textbox
+          Id:
+            type: string
+            description: Valid value to uniquely identify control
+          ParentId:
+            type: string
+            description: Should be empty for root and rest should have value of Id
+          Name:
+            type: string
+            description: Text to display on UI
+          Description:
+            type: string
+            description: More description about the control to show on UI
+          Placeholder:
+            type: string
+            description: Placeholder text to be displayed. Valid only for textbox
+              control.
+          Value:
+            type: string
+            description: Default value to be shown. Valid only for textbox control.
+          IsNameVisible:
+            type: boolean
+            description: This is to control the visibility of name on UI
+          IsMultiline:
+            type: boolean
+            description: User to render Textbox control as muitiline (Textarea)
+          IsChecked:
+            type: boolean
+            description: Checkbox or Radiobutton are checked or not
+          ChildExtendedOption:
+            type: array
+            items:
+              $ref: '#/components/schemas/ExtendedOptions'
+    ViltConnectorSuccessResponse:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          description: Only accepted value is 'Success' for HTTP 200 responses.
+        correlationId:
+          type: string
+          description: Ideally should match the unique identifier included in the
+            request from Cornerstone. Useful for debugging purposes.
+        timestamp:
+          type: string
+          description: Date and time of the response in UTC. Format expected is YYYY-MM-DDTHH:mm:ss.SSS+00:00.
+    ViltConnectorErrorResponse:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          description: Indicates whether the request was successful. Accepted values
+            are PartialSuccess, ValidationError, and SystemError
+        correlationId:
+          type: string
+          description: Ideally should match the unique identifier included in the
+            request from Cornerstone. Useful for debugging purposes.
+        timestamp:
+          type: string
+          description: Date and time of the response in UTC. Format expected is YYYY-MM-DDTHH:mm:ss.SSS+00:00.
+        error:
+          $ref: '#/components/schemas/ViltConnectorError'
+    ViltConnectorLaunchSessionSuccessResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          description: Only accepted value is 'Success' for HTTP 200 responses.
+        correlationId:
+          type: string
+          description: Ideally should match the unique identifier included in the
+            request from Cornerstone. Useful for debugging purposes.
+        timestamp:
+          type: string
+          description: Date and time of the response in UTC. Format expected is YYYY-MM-DDTHH:mm:ss.SSS+00:00.
+        data:
+          $ref: '#/components/schemas/ViltConnectorLaunchSessionData'
+    ViltConnectorLaunchSessionData:
+      type: object
+      required:
+      - joinUrl
+      properties:
+        joinUrl:
+          type: string
+          description: URL a user or instructor uses to launch the virtual meeting
+            session
+    ViltConnectorGetAttendanceSuccessResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          description: Only accepted value is 'Success' for HTTP 200 responses.
+        correlationId:
+          type: string
+          description: Ideally should match the unique identifier included in the
+            request from Cornerstone. Useful for debugging purposes.
+        timestamp:
+          type: string
+          description: Date and time of the response in UTC. Format expected is YYYY-MM-DDTHH:mm:ss.SSS+00:00.
+        data:
+          $ref: '#/components/schemas/ViltConnectorGetAttendanceData'
+    ViltConnectorGetAttendanceData:
+      type: object
+      required:
+      - attendees
+      properties:
+        attendees:
+          type: array
+          items:
+            type: object
+            properties:
+              email:
+                type: string
+                description: Email address of the attendee.
+    ViltConnectorGetExtendedOptionsSuccessResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          description: Only accepted value is 'Success' for HTTP 200 responses.
+        correlationId:
+          type: string
+          description: Ideally should match the unique identifier included in the
+            request from Cornerstone. Useful for debugging purposes.
+        timestamp:
+          type: string
+          description: Date and time of the response in UTC. Format expected is YYYY-MM-DDTHH:mm:ss.SSS+00:00.
+        data:
+          $ref: '#/components/schemas/ViltConnectorGetExtendedOptionsData'
+    ViltConnectorGetExtendedOptionsData:
+      type: object
+      required:
+      - extendedOptions
+      properties:
+        extendedOptions:
+          $ref: '#/components/schemas/ExtendedOptions'
+    ViltConnectorError:
+      type: object
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: integer
+          description: Error code. Accepted values include 400 (InvalidData), 401
+            (Unauthorized), 403 (Forbidden), 404 (ResourceNotFound), and 500 (SystemError).
+        message:
+          type: string
+          description: Descriptive message explaining the error. This message is displayed
+            in the Cornerstone UI to the end user.
+  securitySchemes:
+    bearerAuth:
+      description: '[Authentication Page](https://csod.dev/guides/connectors/content/authentication.html)'
+      type: http
+      scheme: bearer
+security:
+- bearerAuth: []

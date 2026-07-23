@@ -1,0 +1,5998 @@
+openapi: 3.0.1
+info:
+  contact:
+    name: Cornerstone, Inc.
+  license:
+    name: Cornerstone, Inc.
+    url: https://www.cornerstoneondemand.com/
+  title: Core and HR APIs
+  version: EA/GA
+  description: "As a part of our foundational API package, use the Cornerstone Core\
+    \ and HR APIs to programatically control user data, included employee information,\
+    \ OU information, and approvals.  \n\nTo understand the different use cases, see\
+    \ our [Core and HR Guides](https://csod.dev/guides/core-hr/). \n\n### Throttling\n\
+    \nThe throttling limit across all Foundational APIs is 417 requests per minute,\
+    \ 25,000 requests per hour and 600,000 requests per day. Note that certain Foundational\
+    \ APIs, such as the Proxy Enrollment API, have distinct throttling limit which\
+    \ we call out in the specific API's documentation.\n\nOur Employee and OU APIs\
+    \ have their own throttling limits, available in the [Throttling](https://csod.dev/guides/core-hr/employee-ou/throttling.html)\
+    \ section of our Core/HR Guides. \n"
+servers:
+- description: Stage
+  url: https://[corpname]-stg.csod.com/services/api/
+- url: https://[corpname]-pil.csod.com/services/api/
+  description: Pilot
+- url: https://[corpname].csod.com/services/api/
+  description: Production
+components:
+  schemas:
+    ApprovalActionItem:
+      properties:
+        Action:
+          description: One of the valid Approval Action
+          type: string
+        Comment:
+          description: Approval Comment
+          type: string
+        Id:
+          description: Unique Input Item Id for Approval
+          type: string
+        Type:
+          description: One of the valid Approval Type
+          type: string
+      type: object
+    ApprovalActionItemRequestModel:
+      properties:
+        data:
+          properties:
+            record:
+              items:
+                $ref: '#/components/schemas/ApprovalActionItem'
+              type: array
+          type: object
+      type: object
+    ApprovalActionResponse:
+      description: Approval Action Response
+      properties:
+        ApprovalResponse:
+          description: Approval Response
+          items:
+            $ref: '#/components/schemas/ApprovalActionResponseItem'
+          type: array
+      type: object
+    ApprovalActionResponseItem:
+      description: Approval Action Response Item
+      properties:
+        Id:
+          description: Approval Item Id
+          type: string
+        Message:
+          description: Post Action Message
+          type: string
+        Status:
+          description: Post Action Status, return either Success or Fail
+          type: string
+        Type:
+          description: Approval Type
+          type: string
+      type: object
+    ApprovalActionResponseModel:
+      allOf:
+      - $ref: '#/components/schemas/CsodApiPostResponse_approvalservice'
+      - properties:
+          data:
+            items:
+              $ref: '#/components/schemas/ApprovalActionResponse'
+            type: array
+        type: object
+    ApprovalResponseData:
+      description: Approval Response Data
+      properties:
+        ApprovalType:
+          description: Approval Type
+          type: string
+        DateSubmitted:
+          description: Date Submitted, UTC Format
+          type: string
+        Details:
+          oneOf:
+          - $ref: '#/components/schemas/DevelopmentPlanItem'
+          - $ref: '#/components/schemas/FormItem'
+          - $ref: '#/components/schemas/GoalItem'
+          - $ref: '#/components/schemas/OfferLetterItem'
+          - $ref: '#/components/schemas/RequisitionApprovalItem'
+          - $ref: '#/components/schemas/RequisitionRequestItem'
+          - $ref: '#/components/schemas/TrainingFormItem'
+        Id:
+          description: Unique Item Id for each Approval Item
+          type: string
+        Title:
+          description: Approval Item Title
+          type: string
+      type: object
+    ApprovalResponseDataModel:
+      allOf:
+      - $ref: '#/components/schemas/CsodApiGetResponse_approvalservice'
+      - properties:
+          data:
+            items:
+              $ref: '#/components/schemas/ApprovalResponseData'
+            type: array
+        type: object
+    Certification:
+      properties:
+        Details:
+          items:
+            $ref: '#/components/schemas/CertificationDetail'
+          type: array
+        Totalrecords:
+          format: int32
+          type: number
+      type: object
+    CertificationDetail:
+      properties:
+        CertID:
+          description: Cert ID for the Certification
+          type: string
+        CertificationTitle:
+          description: Title for the Certification
+          type: string
+        ID:
+          description: Id for the Certification
+          type: string
+        Score:
+          description: Score for the Certification
+          type: string
+        Version:
+          description: Version for the Certification
+          type: string
+      type: object
+    CsodApiGetResponse_approvalservice:
+      description: Response Template for all GET Operations Default Response Status
+        if not set will be 200 - OK Default TimeStamp if not set will be the current
+        server time in PST Response Data list and Total Count should be set by the
+        service implementation
+      properties:
+        Status:
+          format: int32
+          type: number
+        TimeStamp:
+          type: string
+        TotalRecords:
+          format: int32
+          type: number
+        Validations:
+          items:
+            properties:
+              Code:
+                type: string
+              Message:
+                type: string
+            type: object
+          type: array
+      type: object
+      xml:
+        name: cornerstoneApi
+        namespace: http://www.w3.org/2001/XMLSchema-instance
+        prefix: i
+    CsodApiGetResponse_elasticsearch:
+      description: Response Template for all GET Operations Default Response Status
+        if not set will be 200 - OK Default TimeStamp if not set will be the current
+        server time in PST Response Data list and Total Count should be set by the
+        service implementation
+      properties:
+        Status:
+          format: int32
+          type: number
+        TimeStamp:
+          type: string
+        TotalRecords:
+          format: int32
+          type: number
+        Validations:
+          items:
+            properties:
+              Code:
+                type: string
+              Message:
+                type: string
+            type: object
+          type: array
+      type: object
+      xml:
+        name: cornerstoneApi
+        namespace: http://www.w3.org/2001/XMLSchema-instance
+        prefix: i
+    CsodApiGetResponse_ouservice:
+      description: Response Template for all GET Operations Default Response Status
+        if not set will be 200 - OK Default TimeStamp if not set will be the current
+        server time in PST Response Data list and Total Count should be set by the
+        service implementation
+      properties:
+        Status:
+          format: int32
+          type: number
+        TimeStamp:
+          type: string
+        TotalRecords:
+          format: int32
+          type: number
+        Validations:
+          items:
+            properties:
+              Code:
+                type: string
+              Message:
+                type: string
+            type: object
+          type: array
+      type: object
+      xml:
+        name: cornerstoneApi
+        namespace: http://www.w3.org/2001/XMLSchema-instance
+        prefix: i
+    CsodApiPostResponse_approvalservice:
+      description: Response Template for all POST/INSERT Operations Default Response
+        Status if not set will be 201 - OK Default TimeStamp if not set will be the
+        current server time in PST Response Data list and Total inserted record count
+        should be set by the service implementation
+      properties:
+        Validations:
+          items:
+            properties:
+              Code:
+                type: string
+              Message:
+                type: string
+            type: object
+          type: array
+        createdRecords:
+          format: int32
+          type: number
+        status:
+          format: int32
+          type: number
+        timeStamp:
+          type: string
+      type: object
+    DevelopmentPlanItem:
+      properties:
+        Action:
+          type: string
+        Category:
+          type: string
+        Description:
+          type: string
+        Progress:
+          type: string
+        Status:
+          type: string
+        SubmittedBy:
+          type: string
+      type: object
+    Field:
+      properties:
+        Name:
+          type: string
+        Type:
+          type: string
+        Value:
+          type: string
+      type: object
+    FilterItem:
+      properties:
+        Value:
+          type: string
+      type: object
+    FormItem:
+      properties:
+        Action:
+          type: string
+        Status:
+          type: string
+        SubmittedBy:
+          type: string
+      type: object
+    GoalCategory:
+      properties:
+        Title:
+          type: string
+      type: object
+    GoalComment:
+      properties:
+        Comment:
+          type: string
+      type: object
+    GoalItem:
+      properties:
+        Action:
+          type: string
+        AllowAlign:
+          type: string
+        Categories:
+          items:
+            $ref: '#/components/schemas/GoalCategory'
+          type: array
+        Comments:
+          items:
+            $ref: '#/components/schemas/GoalComment'
+          type: array
+        Description:
+          type: string
+        GoalDueDate:
+          type: string
+        GoalProgress:
+          type: string
+        GoalStartDate:
+          type: string
+        GoalWeight:
+          type: string
+        Perspective:
+          type: string
+        RelatedGoal:
+          type: string
+        Status:
+          type: string
+        SubmittedBy:
+          type: string
+        SuccessDescriptor:
+          items:
+            $ref: '#/components/schemas/SuccessDescriptor'
+          type: array
+        Targets:
+          items:
+            $ref: '#/components/schemas/GoalTarget'
+          type: array
+        Tasks:
+          items:
+            $ref: '#/components/schemas/GoalTask'
+          type: array
+      type: object
+    GoalTarget:
+      properties:
+        ActualValue:
+          type: string
+        Description:
+          type: string
+        DueDate:
+          type: string
+        StartDate:
+          type: string
+        StartValue:
+          type: string
+        Stretch:
+          type: string
+        TargetValue:
+          type: string
+        Threshold:
+          type: string
+        Type:
+          type: string
+        Weight:
+          type: string
+      type: object
+    GoalTask:
+      properties:
+        Description:
+          type: string
+        DueDate:
+          type: string
+        Progress:
+          type: string
+        StartDate:
+          type: string
+        Weight:
+          type: string
+      type: object
+    GroupCriteria:
+      properties:
+        Filter:
+          items:
+            $ref: '#/components/schemas/FilterItem'
+          type: array
+      type: object
+    Location:
+      properties:
+        City:
+          description: City of Location
+          type: string
+        Contact:
+          description: Contact of Location
+          type: string
+        CountryCode:
+          description: Country Code of Location.
+          type: string
+        Email:
+          description: Email of Location
+          type: string
+        FacilityType:
+          description: Location Type.
+          type: string
+        Fax:
+          description: Fax of Location
+          type: string
+        Line1:
+          description: Address Line1 of Location
+          type: string
+        Line2:
+          description: Address Line2 of Location
+          type: string
+        Phone:
+          description: Phone of Location
+          type: string
+        PostalCode:
+          description: PostalCode of Location
+          type: string
+        Province:
+          description: Province of Location
+          type: string
+        State:
+          description: State of Location
+          type: string
+        TimeZone:
+          description: TimeZone of Location
+          type: string
+        Zip:
+          description: Zip of Location
+          type: string
+      type: object
+    OfferLetterItem:
+      properties:
+        Action:
+          type: string
+        Bonus:
+          type: string
+        Candidate:
+          type: string
+        Compensation:
+          type: string
+        Currency:
+          type: string
+        Division:
+          type: string
+        HiringManager:
+          type: string
+        Location:
+          type: string
+        NextLevelHiringManager:
+          type: string
+        Notes:
+          type: string
+        PayCycle:
+          type: string
+        PrimaryOwner:
+          type: string
+        Salary:
+          type: string
+        Source:
+          type: string
+        StartDate:
+          type: string
+        Status:
+          type: string
+        WageType:
+          type: string
+      type: object
+    Ou:
+      properties:
+        Active:
+          description: Active/Inactive Org Unit.
+          type: string
+        AllowReconcile:
+          description: True/False. Allow reconcile check or not.
+          type: string
+        ApprovalRequired:
+          description: Location Approval Required,True/False.
+          type: string
+        Custom:
+          items:
+            $ref: '#/components/schemas/Field'
+          type: array
+        DefaultLanguage:
+          type: string
+        Description:
+          description: Description of Org Unit
+          type: string
+        EffectiveDate:
+          description: Self Reg Ou Effective Date
+          type: string
+        ExpirationDate:
+          description: Self Reg Ou Expiration Date
+          type: string
+        GroupCriteria:
+          $ref: '#/components/schemas/GroupCriteria'
+        Location:
+          $ref: '#/components/schemas/Location'
+        MailStop:
+          description: Mailstop.
+          type: string
+        Name:
+          description: Title/Name of Org Unit
+          type: string
+        Occupancy:
+          description: Location Occupancy.
+          type: string
+        OnSite:
+          description: Location On Site, Yes/No.
+          type: string
+        OuId:
+          description: Ref Id of Org Unit
+          type: string
+        Owner:
+          description: Owner of Org Unit
+          type: string
+        Parent:
+          description: Title/Name of Parent Org Unit
+          type: string
+        ParentId:
+          description: Ref of Parent Org Unit
+          type: string
+        Type:
+          type: string
+        UserInactivationDate:
+          type: string
+      type: object
+    OuModel:
+      allOf:
+      - $ref: '#/components/schemas/CsodApiGetResponse_ouservice'
+      - properties:
+          Data:
+            items:
+              $ref: '#/components/schemas/Ou'
+            type: array
+        required:
+        - Data
+        type: object
+    PeerItem:
+      properties:
+        Action:
+          type: string
+        PeerGroup:
+          type: string
+        Status:
+          type: string
+        SubmittedBy:
+          type: string
+      type: object
+    People:
+      properties:
+        Details:
+          items:
+            $ref: '#/components/schemas/PeopleDetail'
+          type: array
+        Totalrecords:
+          format: int32
+          type: number
+      type: object
+    PeopleDetail:
+      properties:
+        Division:
+          description: Division of the User
+          type: string
+        DivisionID:
+          description: DivisionId of the User
+          type: string
+        Email:
+          description: Email of the User
+          type: string
+        FirstName:
+          description: First name of the User
+          type: string
+        LastName:
+          description: Last name of the User
+          type: string
+        Location:
+          description: Location of the User
+          type: string
+        LocationID:
+          description: Location Id of the User
+          type: string
+        Phone:
+          description: Phone of the User
+          type: string
+        Position:
+          description: Position of the User
+          type: string
+        PositionID:
+          description: PositionId of the User
+          type: string
+        Summary:
+          description: Summary of the User
+          type: string
+        UserID:
+          description: User ID of the User
+          type: string
+      type: object
+    RequisitionApprovalItem:
+      properties:
+        Action:
+          type: string
+        AllowApply:
+          type: string
+        ApplicantReviewers:
+          items:
+            type: string
+          type: array
+        Comment:
+          type: string
+        Compensation:
+          type: string
+        ContactPhone:
+          type: string
+        CostCenter:
+          type: string
+        Currency:
+          type: string
+        DescriptionExternal:
+          type: string
+        DescriptionInternal:
+          type: string
+        EeoCategory:
+          type: string
+        EmploymentStatus:
+          type: string
+        EmploymentType:
+          type: string
+        Grade:
+          type: string
+        HiringManager:
+          type: string
+        IdealQualifications:
+          type: string
+        Interviewers:
+          items:
+            type: string
+          type: array
+        Keywords:
+          type: string
+        MinimumQualifications:
+          type: string
+        Ongoing:
+          type: string
+        Opening:
+          type: string
+        Owners:
+          items:
+            type: string
+          type: array
+        PrimaryLocation:
+          type: string
+        PrimaryOwner:
+          type: string
+        Priority:
+          type: string
+        Ref:
+          type: string
+        ReferralBonus:
+          type: string
+        RequisitionStatus:
+          type: string
+        SalaryRangeHigh:
+          type: string
+        SalaryRangeLow:
+          type: string
+        Status:
+          type: string
+        TargetHireDate:
+          type: string
+        Template:
+          type: string
+      type: object
+    RequisitionRequestItem:
+      properties:
+        Action:
+          type: string
+        ApplicantReviewers:
+          items:
+            type: string
+          type: array
+        Compensation:
+          type: string
+        ContactPhone:
+          type: string
+        CostCenter:
+          type: string
+        Currency:
+          type: string
+        DescriptionExternal:
+          type: string
+        DescriptionInternal:
+          type: string
+        Division:
+          type: string
+        EmploymentStatus:
+          type: string
+        EmploymentType:
+          type: string
+        Grade:
+          type: string
+        HiringManager:
+          type: string
+        IdealQualifications:
+          type: string
+        Interviewers:
+          items:
+            type: string
+          type: array
+        Location:
+          type: string
+        MinimumQualifications:
+          type: string
+        Ongoing:
+          type: string
+        Opening:
+          type: string
+        Owners:
+          items:
+            type: string
+          type: array
+        Priority:
+          type: string
+        ReferralBonus:
+          type: string
+        SalaryRangeHigh:
+          type: string
+        SalaryRangeLow:
+          type: string
+        Status:
+          type: string
+        SubmittedBy:
+          type: string
+        TargetHireDate:
+          type: string
+        Template:
+          type: string
+      type: object
+    SearchResults:
+      properties:
+        Certification:
+          $ref: '#/components/schemas/Certification'
+        People:
+          $ref: '#/components/schemas/People'
+        Training:
+          $ref: '#/components/schemas/Training'
+      type: object
+    SearchResultsModel:
+      allOf:
+      - $ref: '#/components/schemas/CsodApiGetResponse_elasticsearch'
+      - properties:
+          Data:
+            items:
+              $ref: '#/components/schemas/SearchResults'
+            type: array
+        type: object
+    SuccessDescriptor:
+      properties:
+        Description:
+          type: string
+        Title:
+          type: string
+      type: object
+    Training:
+      properties:
+        Details:
+          items:
+            $ref: '#/components/schemas/TrainingDetail'
+          type: array
+        Totalrecords:
+          format: int32
+          type: number
+      type: object
+    TrainingDetail:
+      properties:
+        Description:
+          description: Description of the Training
+          type: string
+        LOID:
+          description: LOID of the Training
+          type: string
+        MobileEnabled:
+          description: Is the training mobile-enabled or not?
+          type: string
+        Price:
+          description: Price is not available currently
+          format: decimal(9,2)
+          type: number
+        Provider:
+          description: Provider of the Training
+          type: string
+        Rating:
+          description: Rating of the Training
+          type: string
+        TrainingTitle:
+          description: Title of the Training
+          type: string
+        TrainingType:
+          description: Type of the Training
+          type: string
+      type: object
+    TrainingFormItem:
+      properties:
+        Action:
+          type: string
+        Status:
+          type: string
+        SubmittedBy:
+          type: string
+        TaskTitle:
+          type: string
+      type: object
+    CostCenterDetails:
+      additionalProperties: false
+      properties:
+        approverId:
+          format: int32
+          nullable: true
+          type: integer
+      type: object
+    CreateAddressModel:
+      properties:
+        city:
+          description: Employee's city.
+          type: string
+        country:
+          description: Employee's country.
+          type: string
+        line1:
+          description: Employee's address line 1.
+          type: string
+        line2:
+          description: Employee's address line 2.
+          type: string
+        state:
+          description: Employee's state or province.
+          type: string
+        zipCode:
+          description: Employee's ZIP or Postal Code.
+          type: string
+      type: object
+    CreateCost_CenterOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        costcenterDetails:
+          $ref: '#/components/schemas/CostCenterDetails'
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 16
+          format: int32
+          type: integer
+      type: object
+    CreateCustomFieldModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer custom field ID
+          format: int32
+          type: integer
+        value:
+          properties: {}
+          type: object
+      type: object
+    CreateCustom_OU_Type1OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 524291
+          format: int32
+          type: integer
+      type: object
+    CreateCustom_OU_Type_1OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 524296
+          format: int32
+          type: integer
+      type: object
+    CreateCustom_OU_Type_2OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 524297
+          format: int32
+          type: integer
+      type: object
+    CreateDivisionOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField31'
+            - $ref: '#/components/schemas/OuCustomField32'
+            - $ref: '#/components/schemas/OuCustomField45'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 2
+          format: int32
+          type: integer
+      type: object
+    CreateEmployeeModel:
+      properties:
+        address:
+          $ref: '#/components/schemas/CreateAddressModel'
+        approverId:
+          description: Cornerstone-generated integer identifier of Employee's trainings
+            approver.
+          format: int32
+          type: integer
+        customFields:
+          description: Array of Employee's custom field ID/value pairs
+          items:
+            $ref: '#/components/schemas/CreateCustomFieldModel'
+          type: array
+        externalId:
+          description: Externally provided user identifier, previously called userId.
+          type: string
+        fax:
+          description: Employee's fax phone.
+          type: string
+        firstName:
+          description: Employee's first name.
+          type: string
+        homePhone:
+          description: Employee's home phone.
+          type: string
+        lastName:
+          description: Employee's last name.
+          type: string
+        managerId:
+          description: Cornerstone-generated integer identifier of Employee's manager.
+          format: int32
+          type: integer
+        middleName:
+          description: Employee's middle name.
+          type: string
+        mobilePhone:
+          description: Employee's mobile phone.
+          type: string
+        ous:
+          description: Array of OU's that user belongs to.
+          items:
+            $ref: '#/components/schemas/CreateOuModel'
+          type: array
+        personalEmail:
+          description: Employee's personal email.
+          type: string
+        prefix:
+          description: Employee's name prefix.
+          type: string
+        primaryEmail:
+          description: Employee's primary email, used as identifier in some places
+            in system.
+          type: string
+        relations:
+          description: Array of relationships and relation type pairs of Employee.
+          items:
+            $ref: '#/components/schemas/CreateRelationModel'
+          type: array
+        settings:
+          $ref: '#/components/schemas/CreateSettingsModel'
+        suffix:
+          description: Employee's name suffix.
+          type: string
+        userName:
+          description: Employee username, used primarily for system login.
+          type: string
+        workPhone:
+          description: Employee's work phone.
+          type: string
+        localSystemId:
+          description: "Optional field for managing an identifier from an external\
+            \ HRIS or Payroll system, allowing organizations to store and reference\
+            \ their local system\u2019s ID alongside Cornerstone User IDs."
+          type: string
+        workerStatus:
+          $ref: '#/components/schemas/CreateWorkerStatusModel'
+      type: object
+    CreateGradeOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 8
+          format: int32
+          type: integer
+      type: object
+    CreateKRonos_Custom_OU-_UKOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 524295
+          format: int32
+          type: integer
+      type: object
+    CreateLocationOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField35'
+            - $ref: '#/components/schemas/OuCustomField37'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        locationDetails:
+          $ref: '#/components/schemas/LocationDetails'
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 32
+          format: int32
+          type: integer
+      type: object
+    CreateOuModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer OU ID.
+          format: int32
+          type: integer
+        typeId:
+          description: Cornerstone-generated integer OU type ID, indicating the type
+            of OU selected, (e.g., 2 for division)
+          format: int32
+          type: integer
+      type: object
+    CreateOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        costcenterDetails:
+          $ref: '#/components/schemas/CostCenterDetails'
+        customFields:
+          items:
+            $ref: '#/components/schemas/OuCustomField'
+          nullable: true
+          type: array
+        description:
+          nullable: true
+          type: string
+        externalId:
+          nullable: true
+          type: string
+        locationDetails:
+          $ref: '#/components/schemas/LocationDetails'
+        name:
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          nullable: true
+          type: integer
+        positionDetails:
+          $ref: '#/components/schemas/PositionDetails'
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          format: int32
+          type: integer
+      type: object
+    CreateOuResponse:
+      additionalProperties: false
+      properties:
+        id:
+          format: int32
+          type: integer
+        links:
+          $ref: '#/components/schemas/ResourceLink'
+      type: object
+    CreatePositionOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField17'
+            - $ref: '#/components/schemas/OuCustomField18'
+            - $ref: '#/components/schemas/OuCustomField19'
+            - $ref: '#/components/schemas/OuCustomField20'
+            - $ref: '#/components/schemas/OuCustomField33'
+            - $ref: '#/components/schemas/OuCustomField34'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        positionDetails:
+          $ref: '#/components/schemas/PositionDetails'
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 4
+          format: int32
+          type: integer
+      type: object
+    CreateRelationModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer relation ID.
+          format: int32
+          type: integer
+        typeId:
+          format: int32
+          type: integer
+      type: object
+    CreateSettingsModel:
+      properties:
+        displayLanguage:
+          description: Culture ID (e.g., en-US) indicating localization setting for
+            employee.
+          type: string
+        timeZone:
+          description: 'Timezone value used for the employee. Allowed values: See
+            [Timezone Reference](https://csod.dev/guides/getting-started/timezones.html)
+            for complete list of supported codes.'
+          type: string
+        trainingApprovals:
+          description: Indicates user training approval
+          format: int32
+          type: integer
+      type: object
+    CreateWorkday_User_TypeOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reconcilable:
+          nullable: true
+          type: boolean
+        typeId:
+          enum:
+          - 524294
+          format: int32
+          type: integer
+      type: object
+    CreateWorkerStatusModel:
+      properties:
+        absent:
+          description: Employee's absent status.
+          type: boolean
+        active:
+          description: Indicates employee status within the Cornerstone system.
+          type: boolean
+        lastHireDate:
+          description: Date of latest hire.
+          type: string
+        originalHireDate:
+          description: Date of original hire
+          type: string
+      type: object
+    CustomField:
+      additionalProperties: false
+      properties:
+        id:
+          format: int32
+          type: integer
+        name:
+          nullable: true
+          type: string
+        options:
+          items:
+            $ref: '#/components/schemas/CustomFieldOption'
+          nullable: true
+          type: array
+        required:
+          type: boolean
+        type:
+          nullable: true
+          type: string
+      type: object
+    CustomFieldLocalization:
+      additionalProperties: false
+      properties:
+        id:
+          format: int32
+          type: integer
+        values:
+          items:
+            $ref: '#/components/schemas/LanguageValuePair'
+          nullable: true
+          type: array
+      type: object
+    CustomFieldOption:
+      additionalProperties: false
+      properties:
+        id:
+          format: int32
+          type: integer
+        isDefault:
+          type: boolean
+        title:
+          nullable: true
+          type: string
+      type: object
+    EmployeeMetaData:
+      properties:
+        createdDate:
+          description: Date employee was created in the Cornerstone system.
+          format: date-time
+          type: string
+        modifiedDate:
+          description: Last time the employee was effectively modified. Note, this
+            is different than a last-touched time, as it can be pre-dated or post-dated
+            and should not be used for deltas.
+          format: date-time
+          type: string
+      type: object
+    EmployeeMetaModel:
+      properties:
+        createdDate:
+          description: Date employee was created in the Cornerstone system.
+          format: date-time
+          type: string
+        modifiedDate:
+          description: Last time the employee was effectively modified. Note, this
+            is different than a last-touched time, as it can be pre-dated or post-dated
+            and should not be used for deltas.
+          format: date-time
+          type: string
+      type: object
+    EmployeeResponseModel:
+      properties:
+        id:
+          description: Internal Cornerstone-generated integer ID
+          format: int32
+          type: integer
+        links:
+          $ref: '#/components/schemas/Uri'
+        message:
+          type: string
+      type: object
+    ErrorResponse:
+      additionalProperties: false
+      properties:
+        error:
+          $ref: '#/components/schemas/ValidationError'
+        errorId:
+          nullable: true
+          type: string
+        timestamp:
+          nullable: true
+          type: string
+      type: object
+    FacilityType:
+      additionalProperties: false
+      properties:
+        id:
+          format: int32
+          type: integer
+        name:
+          nullable: true
+          type: string
+      type: object
+    FieldError:
+      additionalProperties: false
+      properties:
+        code:
+          nullable: true
+          type: string
+        message:
+          nullable: true
+          type: string
+      type: object
+    FieldErrors:
+      additionalProperties: false
+      properties:
+        errors:
+          $ref: '#/components/schemas/FieldError'
+        field:
+          nullable: true
+          type: string
+      type: object
+    GetCustomFieldModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer identifier used for identification
+            in the OU. When creating, updating, or fetching an OU, only the id/value
+            pair will be returned.
+          format: int32
+          type: integer
+        name:
+          description: Localized string name of the customField, e.g., "Nickname".
+          type: string
+        options:
+          description: Array of valid custom field enumerated values. When creating
+            or updating an employee, only the id is supplied.
+          items:
+            $ref: '#/components/schemas/GetCustomFieldOption'
+          type: array
+        required:
+          description: (Only for Cornerstone CHR Clients) Flag indicating if custom
+            field is required.
+          type: boolean
+        type:
+          description: Type of custom field
+          enum:
+          - ShortTextBox
+          - ScrollingTextBox
+          - Dropdown
+          - NumericField
+          - RadioButton
+          - DateField
+          - Checkbox
+          - Hierarchy
+          - MultiCheckbox
+          - BranchedDropdown
+          type: string
+      type: object
+    GetCustomFieldOption:
+      properties:
+        id:
+          description: Cornerstone-generated integer identifier used to indicate which
+            customField object is selected.
+          format: int32
+          type: integer
+        title:
+          description: Localized value of multi-choice option.
+          type: string
+      type: object
+    GetCustomRelationModel:
+      properties:
+        id:
+          description: Cornerstone-generated identifier used to indicate which custom
+            relationship is selected.
+          format: int32
+          type: integer
+        name:
+          description: Localized custom relation name.
+          type: string
+      type: object
+    GetEmploymentCategoryModel:
+      properties:
+        id:
+          description: Cornerstone-generated identifier used to indicate which employment
+            category is selected.
+          format: int32
+          type: integer
+        name:
+          description: Localized employment category name.
+          type: string
+        subcategories:
+          description: Array of subcategory id/value pairs.
+          items:
+            $ref: '#/components/schemas/GetEmploymentSubCategoryModel'
+          type: array
+      type: object
+    GetEmploymentStatusModel:
+      properties:
+        id:
+          description: Cornerstone-generated identifier used to indicate which employment
+            status is selected.
+          format: int32
+          type: integer
+        name:
+          description: Localized employment status name.
+          type: string
+      type: object
+    GetEmploymentSubCategoryModel:
+      properties:
+        id:
+          description: Cornerstone-generated identifier used to indicate which subcategoryis
+            selected.
+          format: int32
+          type: integer
+        name:
+          description: Localized subcategory name.
+          type: string
+      type: object
+    GetLeaveReasonModel:
+      properties:
+        id:
+          description: Cornerstone-generated identifier used to indicate which leave
+            reason is selected.
+          format: int32
+          type: integer
+        name:
+          description: Localized leave reason name.
+          type: string
+      type: object
+    GetTerminationReasonModel:
+      properties:
+        id:
+          description: Cornerstone-generated identifier used to indicate which termination
+            reason is selected.
+          format: int32
+          type: integer
+        isVoluntary:
+          description: Flag indicating whether a termination was initiated by employee
+            (true) or by employer (false).
+          type: boolean
+        name:
+          description: Localized termination reason name.
+          type: string
+      type: object
+    LanguageValuePair:
+      additionalProperties: false
+      properties:
+        languageId:
+          enum:
+          - en-US
+          - en-GB
+          - fr-CA
+          - de-DE
+          - ru-RU
+          - ja-JP
+          - zh-CN
+          - zh-SG
+          - zh-HK
+          - it-IT
+          - pl-PL
+          - pt-BR
+          - fr-FR
+          - es-MX
+          - es-ES
+          - pt-PT
+          - th-TH
+          - nl-NL
+          - tr-TR
+          - ro-RO
+          nullable: true
+          type: string
+        value:
+          nullable: true
+          type: string
+      type: object
+    LocationDetails:
+      additionalProperties: false
+      properties:
+        addressLine1:
+          nullable: true
+          type: string
+        addressLine2:
+          nullable: true
+          type: string
+        approvalRequired:
+          nullable: true
+          type: boolean
+        city:
+          nullable: true
+          type: string
+        contact:
+          nullable: true
+          type: string
+        country:
+          enum:
+          - ABW
+          - AFG
+          - AGO
+          - AIA
+          - ALA
+          - ALB
+          - AND
+          - ANT
+          - ARE
+          - ARG
+          - ARM
+          - ASM
+          - ATA
+          - ATF
+          - ATG
+          - AUS
+          - AUT
+          - AZE
+          - BDI
+          - BEL
+          - BEN
+          - BES
+          - BFA
+          - BGD
+          - BGR
+          - BHR
+          - BHS
+          - BIH
+          - BLM
+          - BLR
+          - BLZ
+          - BMU
+          - BOL
+          - BRA
+          - BRB
+          - BRN
+          - BTN
+          - BVT
+          - BWA
+          - CAF
+          - CAN
+          - CCK
+          - CHE
+          - CHL
+          - CHN
+          - CIV
+          - CMR
+          - COD
+          - COG
+          - COK
+          - COL
+          - COM
+          - CPV
+          - CRI
+          - CUB
+          - CUW
+          - CXR
+          - CYM
+          - CYP
+          - CZE
+          - DEU
+          - DJI
+          - DMA
+          - DNK
+          - DOM
+          - DZA
+          - ECU
+          - EGY
+          - ERI
+          - ESH
+          - ESP
+          - EST
+          - ETH
+          - FIN
+          - FJI
+          - FLK
+          - FRA
+          - FRO
+          - FSM
+          - GAB
+          - GBR
+          - GEO
+          - GGY
+          - GHA
+          - GIB
+          - GIN
+          - GLP
+          - GMB
+          - GNB
+          - GNQ
+          - GRC
+          - GRD
+          - GRL
+          - GTM
+          - GUF
+          - GUM
+          - GUY
+          - HKG
+          - HMD
+          - HND
+          - HRV
+          - HTI
+          - HUN
+          - IDN
+          - IMN
+          - IND
+          - IOT
+          - IRL
+          - IRN
+          - IRQ
+          - ISL
+          - ISR
+          - ITA
+          - JAM
+          - JEY
+          - JOR
+          - JPN
+          - KAZ
+          - KEN
+          - KGZ
+          - KHM
+          - KIR
+          - KNA
+          - KOR
+          - KWT
+          - LAO
+          - LBN
+          - LBR
+          - LBY
+          - LCA
+          - LIE
+          - LKA
+          - LSO
+          - LTU
+          - LUX
+          - LVA
+          - MAC
+          - MAF
+          - MAR
+          - MCO
+          - MDA
+          - MDG
+          - MDV
+          - MEX
+          - MHL
+          - MKD
+          - MLI
+          - MLT
+          - MMR
+          - MNE
+          - MNG
+          - MNP
+          - MOZ
+          - MRT
+          - MSR
+          - MTQ
+          - MUS
+          - MWI
+          - MYS
+          - MYT
+          - NAM
+          - NCL
+          - NER
+          - NFK
+          - NGA
+          - NIC
+          - NIU
+          - NLD
+          - NOR
+          - NPL
+          - NRU
+          - NZL
+          - OMN
+          - PAK
+          - PAN
+          - PCN
+          - PER
+          - PHL
+          - PLW
+          - PNG
+          - POL
+          - PRI
+          - PRK
+          - PRT
+          - PRY
+          - PSE
+          - PYF
+          - QAT
+          - REU
+          - ROU
+          - RUS
+          - RWA
+          - SAU
+          - SDN
+          - SEN
+          - SGP
+          - SGS
+          - SHN
+          - SJM
+          - SLB
+          - SLE
+          - SLV
+          - SMR
+          - SOM
+          - SPM
+          - SRB
+          - SSD
+          - STP
+          - SUR
+          - SVK
+          - SVN
+          - SWE
+          - SWZ
+          - SXM
+          - SYC
+          - SYR
+          - TCA
+          - TCD
+          - TGO
+          - THA
+          - TJK
+          - TKL
+          - TKM
+          - TLS
+          - TON
+          - TTO
+          - TUN
+          - TUR
+          - TUV
+          - TWN
+          - TZA
+          - UGA
+          - UKR
+          - UMI
+          - URY
+          - USA
+          - UZB
+          - VAT
+          - VCT
+          - VEN
+          - VGB
+          - VIR
+          - VNM
+          - VUT
+          - WLF
+          - WSM
+          - XKX
+          - YEM
+          - ZAF
+          - ZMB
+          - ZWE
+          nullable: true
+          type: string
+        email:
+          nullable: true
+          type: string
+        facilityType:
+          description: 1 - Region, 2 - City, 4 - Building, 8 - Floor, 16 - Room, 32
+            - Seat/desk, 64 -  Not specified
+          enum:
+          - 1
+          - 2
+          - 4
+          - 8
+          - 16
+          - 32
+          - 64
+          format: int32
+          nullable: true
+          type: integer
+        fax:
+          nullable: true
+          type: string
+        occupancy:
+          format: int32
+          nullable: true
+          type: integer
+        onSite:
+          nullable: true
+          type: boolean
+        phone:
+          nullable: true
+          type: string
+        postalCode:
+          nullable: true
+          type: string
+        state:
+          nullable: true
+          type: string
+        timeZone:
+          description: 'Allowed values: [See Timezone Reference](https://csod.dev/guides/getting-started/timezones.html)
+            for complete list of supported codes.'
+          nullable: true
+          type: string
+      type: object
+    OuCustomField:
+      additionalProperties: false
+      properties:
+        id:
+          format: int32
+          type: integer
+        value:
+          nullable: true
+          type: string
+      type: object
+    OuCustomField17:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 17
+          format: int32
+          type: integer
+        value:
+          enum:
+          - 'Yes'
+          - 'No'
+          maxLength: 3
+          nullable: true
+          type: string
+      title: Web services testing (checkbox)
+      type: object
+    OuCustomField18:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 18
+          format: int32
+          type: integer
+        value:
+          description: 7 - Drop down value 1, 8 - Drop down value 2
+          enum:
+          - '7'
+          - '8'
+          maxLength: 11
+          nullable: true
+          type: string
+      title: Web services testing (dropdown)
+      type: object
+    OuCustomField19:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 19
+          format: int32
+          type: integer
+        value:
+          maxLength: 100
+          nullable: true
+          type: string
+      title: Web services testing (text box)
+      type: object
+    OuCustomField20:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 20
+          format: int32
+          type: integer
+        value:
+          description: 9 - Radio button value 1, 10 - Radio button value 2
+          enum:
+          - '9'
+          - '10'
+          maxLength: 11
+          nullable: true
+          type: string
+      title: Web services testing (radio button)
+      type: object
+    OuCustomField31:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 31
+          format: int32
+          type: integer
+        value:
+          maxLength: 100
+          nullable: true
+          type: string
+      title: Division Text
+      type: object
+    OuCustomField32:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 32
+          format: int32
+          type: integer
+        value:
+          maxLength: 2000
+          nullable: true
+          type: string
+      title: Division Scroll
+      type: object
+    OuCustomField33:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 33
+          format: int32
+          type: integer
+        value:
+          maxLength: 100
+          nullable: true
+          type: string
+      title: Position Text
+      type: object
+    OuCustomField34:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 34
+          format: int32
+          type: integer
+        value:
+          maxLength: 2000
+          nullable: true
+          type: string
+      title: Position Scroll
+      type: object
+    OuCustomField35:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 35
+          format: int32
+          type: integer
+        value:
+          maxLength: 100
+          nullable: true
+          type: string
+      title: Location Text
+      type: object
+    OuCustomField37:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 37
+          format: int32
+          type: integer
+        value:
+          maxLength: 2000
+          nullable: true
+          type: string
+      title: Location Scroll
+      type: object
+    OuCustomField45:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - 45
+          format: int32
+          type: integer
+        value:
+          maxLength: 10
+          nullable: true
+          type: string
+      title: Div_Date
+      type: object
+    OuLocalizationsResponse:
+      additionalProperties: false
+      properties:
+        customFields:
+          items:
+            $ref: '#/components/schemas/CustomFieldLocalization'
+          nullable: true
+          type: array
+        description:
+          items:
+            $ref: '#/components/schemas/LanguageValuePair'
+          nullable: true
+          type: array
+        name:
+          items:
+            $ref: '#/components/schemas/LanguageValuePair'
+          nullable: true
+          type: array
+      type: object
+    OuLocalizationsResponseSingleItemResponse:
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/OuLocalizationsResponse'
+        timestamp:
+          nullable: true
+          type: string
+      type: object
+    OuResponse:
+      additionalProperties: false
+      properties:
+        active:
+          type: boolean
+        costcenterDetails:
+          $ref: '#/components/schemas/CostCenterDetails'
+        description:
+          nullable: true
+          type: string
+        externalId:
+          nullable: true
+          type: string
+        id:
+          format: int32
+          type: integer
+        locationDetails:
+          $ref: '#/components/schemas/LocationDetails'
+        name:
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          nullable: true
+          type: integer
+        positionDetails:
+          $ref: '#/components/schemas/PositionDetails'
+        reconcilable:
+          type: boolean
+        typeId:
+          format: int32
+          type: integer
+      type: object
+    OuResponseMultipleItemResponse:
+      additionalProperties: false
+      properties:
+        count:
+          format: int32
+          type: integer
+        data:
+          items:
+            $ref: '#/components/schemas/OuResponse'
+          nullable: true
+          type: array
+        nextPageToken:
+          nullable: true
+          type: string
+        pageNumber:
+          format: int32
+          type: integer
+        timestamp:
+          nullable: true
+          type: string
+      type: object
+    OrganizationalUnitsDetails:
+      additionalProperties: false
+      properties:
+        required:
+          type: boolean
+      type: object
+    OrganizationalUnitsLocationDetails:
+      additionalProperties: false
+      properties:
+        facilityTypes:
+          items:
+            $ref: '#/components/schemas/FacilityType'
+          nullable: true
+          type: array
+      type: object
+    OrganizationalUnitsResponse:
+      additionalProperties: false
+      properties:
+        description:
+          nullable: true
+          type: string
+        details:
+          $ref: '#/components/schemas/OrganizationalUnitsDetails'
+        id:
+          format: int32
+          type: integer
+        locationDetails:
+          $ref: '#/components/schemas/OrganizationalUnitsLocationDetails'
+        name:
+          nullable: true
+          type: string
+      type: object
+    OrganizationalUnitsResponseMultipleItemResponse:
+      additionalProperties: false
+      properties:
+        count:
+          format: int32
+          type: integer
+        data:
+          items:
+            $ref: '#/components/schemas/OrganizationalUnitsResponse'
+          nullable: true
+          type: array
+        nextPageToken:
+          nullable: true
+          type: string
+        pageNumber:
+          format: int32
+          type: integer
+        timestamp:
+          nullable: true
+          type: string
+      type: object
+    PatchCost_CenterOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        costcenterDetails:
+          $ref: '#/components/schemas/CostCenterDetails'
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchCustom_OU_Type1OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchCustom_OU_Type_1OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchCustom_OU_Type_2OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchDivisionOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField31'
+            - $ref: '#/components/schemas/OuCustomField32'
+            - $ref: '#/components/schemas/OuCustomField45'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchGradeOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchKRonos_Custom_OU-_UKOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchLocationOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField35'
+            - $ref: '#/components/schemas/OuCustomField37'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        locationDetails:
+          $ref: '#/components/schemas/LocationDetails'
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchOuLocalizationsRequest:
+      additionalProperties: false
+      properties:
+        customFields:
+          items:
+            $ref: '#/components/schemas/CustomFieldLocalization'
+          nullable: true
+          type: array
+        description:
+          items:
+            $ref: '#/components/schemas/LanguageValuePair'
+          nullable: true
+          type: array
+        name:
+          items:
+            $ref: '#/components/schemas/LanguageValuePair'
+          nullable: true
+          type: array
+        reasonForChange:
+          nullable: true
+          type: string
+      type: object
+    PatchOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        costcenterDetails:
+          $ref: '#/components/schemas/CostCenterDetails'
+        customFields:
+          items:
+            $ref: '#/components/schemas/OuCustomField'
+          nullable: true
+          type: array
+        description:
+          nullable: true
+          type: string
+        externalId:
+          nullable: true
+          type: string
+        locationDetails:
+          $ref: '#/components/schemas/LocationDetails'
+        name:
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          nullable: true
+          type: integer
+        positionDetails:
+          $ref: '#/components/schemas/PositionDetails'
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchPositionOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField17'
+            - $ref: '#/components/schemas/OuCustomField18'
+            - $ref: '#/components/schemas/OuCustomField19'
+            - $ref: '#/components/schemas/OuCustomField20'
+            - $ref: '#/components/schemas/OuCustomField33'
+            - $ref: '#/components/schemas/OuCustomField34'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        positionDetails:
+          $ref: '#/components/schemas/PositionDetails'
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PatchWorkday_User_TypeOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    PositionDetails:
+      additionalProperties: false
+      properties:
+        successionOwnerId:
+          format: int32
+          nullable: true
+          type: integer
+      type: object
+    ReadAddressModel:
+      properties:
+        city:
+          description: Employee's city.
+          type: string
+        country:
+          description: Employee's country.
+          type: string
+        line1:
+          description: Employee's address line 1.
+          type: string
+        line2:
+          description: 'Employee''s address line 2. '
+          type: string
+        state:
+          description: Employee's state or province.
+          type: string
+        zipCode:
+          description: Employee's ZIP or Postal Code.
+          type: string
+      type: object
+    ReadCustomFieldModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer custom field ID
+          format: int32
+          type: integer
+        value:
+          properties: {}
+          type: object
+      type: object
+    ReadEmployeeActivationPeriodModel:
+      properties:
+        activeFrom:
+          description: Start of employee active period.
+          type: string
+        activeTo:
+          description: End of employee active period.
+          type: string
+      type: object
+    ReadEmployeeEffectiveDateStatusModel:
+      properties:
+        effectiveDate:
+          description: Date that update is or was effective.
+          type: string
+        status:
+          description: Status of update
+          enum:
+          - Active
+          - Canceled
+          - Scheduled
+          - Failed
+          type: string
+      type: object
+    ReadEmployeeEmploymentStatusModel:
+      properties:
+        categoryId:
+          description: Cornerstone-generated employment category ID.
+          format: int32
+          type: integer
+        employmentStatusId:
+          description: Cornerstone-generated employment status ID.
+          format: int32
+          type: integer
+        isRehiredEmployee:
+          description: Flag indicating if employee has been rehired.
+          type: boolean
+        leaveStatusId:
+          description: Cornerstone-generated leave status ID.
+          format: int32
+          type: integer
+        subCategoryId:
+          description: Cornerstone-generated employment subcategory ID.
+          format: int32
+          type: integer
+        terminationStatus:
+          $ref: '#/components/schemas/ReadTerminationReasonModel'
+      type: object
+    ReadEmployeeGroup:
+      properties:
+        id:
+          description: ID value of employee's group.
+          format: int32
+          type: integer
+      type: object
+    ReadEmployeeLiteModel:
+      properties:
+        address:
+          $ref: '#/components/schemas/ReadAddressModel'
+        approverId:
+          description: Cornerstone-generated integer identifier of Employee's trainings
+            approver.
+          format: int32
+          type: integer
+        employeeMetaData:
+          $ref: '#/components/schemas/EmployeeMetaModel'
+        externalId:
+          description: Externally provided user identifier, previously called userId.
+          type: string
+        fax:
+          description: Employee's fax phone.
+          type: string
+        firstName:
+          description: Employee's first name.
+          type: string
+        guid:
+          description: Unique GUID assigned to user.
+          type: string
+        homePhone:
+          description: Employee's home phone.
+          type: string
+        id:
+          description: Cornerstone-generated integer employee ID, used as primary
+            identifier in the API.
+          format: int32
+          type: integer
+        lastName:
+          description: Employee's last name.
+          type: string
+        managerId:
+          description: Cornerstone-generated integer identifier of Employee's manager.
+          format: int32
+          type: integer
+        middleName:
+          description: Employee's middle name.
+          type: string
+        mobilePhone:
+          description: Employee's mobile phone.
+          type: string
+        personalEmail:
+          description: Employee's personal email.
+          type: string
+        prefix:
+          description: Employee's name prefix.
+          type: string
+        primaryEmail:
+          description: Employee's primary email, used as identifier in some places
+            in system.
+          type: string
+        settings:
+          $ref: '#/components/schemas/ReadSettingsModel'
+        suffix:
+          description: Employee's name suffix.
+          type: string
+        userName:
+          description: Employee username, used primarily for system login.
+          type: string
+        workPhone:
+          description: Employee's work phone.
+          type: string
+        workerStatus:
+          $ref: '#/components/schemas/ReadWorkerStatusModel'
+      type: object
+    ReadEmployeeIdentifierModel:
+      properties:
+        localSystemId:
+          description: "Optional field for managing an identifier from an external\
+            \ HRIS or Payroll system, allowing organizations to store and reference\
+            \ their local system\u2019s ID alongside Cornerstone User IDs."
+          type: string
+        id:
+          description: Cornerstone-generated integer employee ID, used as primary
+            identifier in the API.
+          format: int32
+          type: integer
+        externalId:
+          description: Externally provided user identifier, previously called userId.
+          type: string
+        guid:
+          description: Unique GUID assigned to user.
+          type: string
+        username:
+          description: Employee username, used primarily for system login.
+          type: string
+      type: object
+    ReadEmployeeModel:
+      properties:
+        address:
+          $ref: '#/components/schemas/ReadAddressModel'
+        approverId:
+          description: Cornerstone-generated integer identifier of Employee's trainings
+            approver.
+          format: int32
+          type: integer
+        customFields:
+          description: Array of Employee's custom field ID/value pairs
+          items:
+            $ref: '#/components/schemas/ReadCustomFieldModel'
+          type: array
+        employeeMetaData:
+          $ref: '#/components/schemas/EmployeeMetaModel'
+        externalId:
+          description: Externally provided user identifier, previously called userId.
+          type: string
+        fax:
+          description: Employee's fax phone.
+          type: string
+        firstName:
+          description: Employee's first name.
+          type: string
+        guid:
+          description: Unique GUID assigned to user.
+          type: string
+        homePhone:
+          description: Employee's home phone.
+          type: string
+        id:
+          description: Cornerstone-generated integer employee ID, used as primary
+            identifier in the API.
+          format: int32
+          type: integer
+        lastName:
+          description: Employee's last name.
+          type: string
+        managerId:
+          description: Cornerstone-generated integer identifier of Employee's manager.
+          format: int32
+          type: integer
+        middleName:
+          description: Employee's middle name.
+          type: string
+        mobilePhone:
+          description: Employee's mobile phone.
+          type: string
+        ous:
+          description: Array of OU's that user belongs to.
+          items:
+            $ref: '#/components/schemas/ReadOuModel'
+          type: array
+        personalEmail:
+          description: Employee's personal email.
+          type: string
+        prefix:
+          description: Employee's name prefix.
+          type: string
+        primaryEmail:
+          description: Employee's primary email, used as identifier in some places
+            in system.
+          type: string
+        relations:
+          description: Array of relationships and relation type pairs of Employee.
+          items:
+            $ref: '#/components/schemas/ReadRelationModel'
+          type: array
+        settings:
+          $ref: '#/components/schemas/ReadSettingsModel'
+        suffix:
+          description: Employee's name suffix.
+          type: string
+        userName:
+          description: Employee username, used primarily for system login.
+          type: string
+        workPhone:
+          description: Employee's work phone.
+          type: string
+        workerStatus:
+          $ref: '#/components/schemas/ReadWorkerStatusModel'
+      type: object
+    ReadOuModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer OU ID.
+          format: int32
+          type: integer
+        typeId:
+          description: Cornerstone-generated integer OU type ID, indicating the type
+            of OU selected, (e.g., 2 for division)
+          format: int32
+          type: integer
+      type: object
+    ReadReasonForChangeModel:
+      properties:
+        id:
+          description: Cornerstone-generated identifier used to indicate which reason
+            for change is selected.
+          format: int32
+          type: integer
+        name:
+          description: Localized reason for change.
+          type: string
+      type: object
+    ReadRelationModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer relation ID.
+          format: int32
+          type: integer
+        typeId:
+          format: int32
+          type: integer
+      type: object
+    ReadSettingsModel:
+      properties:
+        displayLanguage:
+          description: Culture ID (e.g., en-US) indicating localization setting for
+            employee.
+          type: string
+        timeZone:
+          description: Timezone string used for employee
+          type: string
+        trainingApprovals:
+          description: Indicates user training approval
+          format: int32
+          type: integer
+      type: object
+    ReadTerminationReasonModel:
+      properties:
+        eligibleForRehire:
+          description: Flag set to indicate of employee is eligble to be rehired.
+          type: boolean
+        terminationDate:
+          description: Date employee was terminated.
+          type: string
+        terminationReasonId:
+          description: Cornerstone-generated termination reason ID.
+          format: int32
+          type: integer
+      type: object
+    ReadWorkerStatusModel:
+      properties:
+        absent:
+          description: Employee's absent status.
+          type: boolean
+        active:
+          description: Indicates employee status within the Cornerstone system.
+          type: boolean
+        lastHireDate:
+          description: Date of latest hire.
+          type: string
+        originalHireDate:
+          description: Date of original hire
+          type: string
+      type: object
+    ResourceLink:
+      additionalProperties: false
+      properties:
+        href:
+          nullable: true
+          type: string
+      type: object
+    SingleOuResponse:
+      additionalProperties: false
+      properties:
+        active:
+          type: boolean
+        costcenterDetails:
+          $ref: '#/components/schemas/CostCenterDetails'
+        customFields:
+          items:
+            $ref: '#/components/schemas/OuCustomField'
+          nullable: true
+          type: array
+        description:
+          nullable: true
+          type: string
+        externalId:
+          nullable: true
+          type: string
+        id:
+          format: int32
+          type: integer
+        locationDetails:
+          $ref: '#/components/schemas/LocationDetails'
+        name:
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          nullable: true
+          type: integer
+        positionDetails:
+          $ref: '#/components/schemas/PositionDetails'
+        reconcilable:
+          type: boolean
+        typeId:
+          format: int32
+          type: integer
+      type: object
+    SingleOuResponseSingleItemResponse:
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/SingleOuResponse'
+        timestamp:
+          nullable: true
+          type: string
+      type: object
+    SingleOrganizationalUnitsResponse:
+      additionalProperties: false
+      properties:
+        customFields:
+          items:
+            $ref: '#/components/schemas/CustomField'
+          nullable: true
+          type: array
+        description:
+          nullable: true
+          type: string
+        details:
+          $ref: '#/components/schemas/OrganizationalUnitsDetails'
+        id:
+          format: int32
+          type: integer
+        locationDetails:
+          $ref: '#/components/schemas/OrganizationalUnitsLocationDetails'
+        name:
+          nullable: true
+          type: string
+      type: object
+    SingleOrganizationalUnitsResponseSingleItemResponse:
+      additionalProperties: false
+      properties:
+        data:
+          $ref: '#/components/schemas/SingleOrganizationalUnitsResponse'
+        timestamp:
+          nullable: true
+          type: string
+      type: object
+    UpdateAddressModel:
+      properties:
+        city:
+          description: Employee's city.
+          type: string
+        country:
+          description: Employee's country.
+          type: string
+        line1:
+          description: Employee's address line 1.
+          type: string
+        line2:
+          description: Employee's address line 2.
+          type: string
+        state:
+          description: Employee's state or province.
+          type: string
+        zipCode:
+          description: Employee's ZIP or Postal Code.
+          type: string
+      type: object
+    UpdateCost_CenterOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        costcenterDetails:
+          $ref: '#/components/schemas/CostCenterDetails'
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateCustomFieldModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer custom field ID
+          format: int32
+          type: integer
+        value:
+          properties: {}
+          type: object
+      type: object
+    UpdateCustom_OU_Type1OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateCustom_OU_Type_1OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateCustom_OU_Type_2OuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateDivisionOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField31'
+            - $ref: '#/components/schemas/OuCustomField32'
+            - $ref: '#/components/schemas/OuCustomField45'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateEmployeeActivationPeriodModel:
+      properties:
+        activeFrom:
+          description: Start of employee active period.
+          type: string
+        activeTo:
+          description: End of employee active period.
+          type: string
+      type: object
+    UpdateEmployeeEmploymentStatusModel:
+      properties:
+        categoryId:
+          description: Cornerstone-generated employment category ID.
+          format: int32
+          type: integer
+        employmentStatusId:
+          description: Cornerstone-generated employment status ID.
+          format: int32
+          type: integer
+        isRehiredEmployee:
+          description: Flag indicating if employee has been rehired.
+          type: boolean
+        leaveStatusId:
+          description: Cornerstone-generated leave status ID.
+          format: int32
+          type: integer
+        reasonForChangeId:
+          description: Cornerstone-generated reason for change ID.
+          format: int32
+          type: integer
+        subCategoryId:
+          description: Cornerstone-generated employment subcategory ID.
+          format: int32
+          type: integer
+        terminationStatus:
+          $ref: '#/components/schemas/UpdateTerminationReasonModel'
+      type: object
+    UpdateEmployeeModel:
+      properties:
+        address:
+          $ref: '#/components/schemas/UpdateAddressModel'
+        approverId:
+          description: Cornerstone-generated integer identifier of Employee's trainings
+            approver.
+          format: int32
+          type: integer
+        customFields:
+          description: Array of Employee's custom field ID/value pairs
+          items:
+            $ref: '#/components/schemas/UpdateCustomFieldModel'
+          type: array
+        externalId:
+          description: Externally provided user identifier, previously called userId.
+          type: string
+        fax:
+          description: Employee's fax phone.
+          type: string
+        firstName:
+          description: Employee's first name.
+          type: string
+        guid:
+          description: Unique GUID assigned to user.
+          type: string
+        homePhone:
+          description: Employee's home phone.
+          type: string
+        lastName:
+          description: Employee's last name.
+          type: string
+        managerId:
+          description: Cornerstone-generated integer identifier of Employee's manager.
+          format: int32
+          type: integer
+        middleName:
+          description: Employee's middle name.
+          type: string
+        mobilePhone:
+          description: Employee's mobile phone.
+          type: string
+        ous:
+          description: Array of OU's that user belongs to.
+          items:
+            $ref: '#/components/schemas/UpdateOuModel'
+          type: array
+        personalEmail:
+          description: Employee's personal email.
+          type: string
+        prefix:
+          description: Employee's name prefix.
+          type: string
+        primaryEmail:
+          description: Employee's primary email, used as identifier in some places
+            in system.
+          type: string
+        reasonForChangeId:
+          description: Cornerstone-generated reason for change ID.
+          format: int32
+          type: integer
+        relations:
+          description: Array of relationships and relation type pairs of Employee.
+          items:
+            $ref: '#/components/schemas/UpdateRelationModel'
+          type: array
+        settings:
+          $ref: '#/components/schemas/UpdateSettingsModel'
+        suffix:
+          description: Employee's name suffix.
+          type: string
+        userName:
+          description: Employee username, used primarily for system login.
+          type: string
+        workPhone:
+          description: Employee's work phone.
+          type: string
+        workerStatus:
+          $ref: '#/components/schemas/UpdateWorkerStatusModel'
+      type: object
+    UpdateEmployeeModelNew:
+      properties:
+        address:
+          $ref: '#/components/schemas/UpdateAddressModel'
+        approverId:
+          description: Cornerstone-generated integer identifier of Employee's trainings
+            approver.
+          format: int32
+          type: integer
+        customFields:
+          description: Array of Employee's custom field ID/value pairs
+          items:
+            $ref: '#/components/schemas/UpdateCustomFieldModel'
+          type: array
+        externalId:
+          description: Externally provided user identifier, previously called userId.
+          type: string
+        fax:
+          description: Employee's fax phone.
+          type: string
+        firstName:
+          description: Employee's first name.
+          type: string
+        guid:
+          description: Unique GUID assigned to user.
+          type: string
+        homePhone:
+          description: Employee's home phone.
+          type: string
+        lastName:
+          description: Employee's last name.
+          type: string
+        managerId:
+          description: Cornerstone-generated integer identifier of Employee's manager.
+          format: int32
+          type: integer
+        middleName:
+          description: Employee's middle name.
+          type: string
+        mobilePhone:
+          description: Employee's mobile phone.
+          type: string
+        ous:
+          description: Array of OU's that user belongs to.
+          items:
+            $ref: '#/components/schemas/UpdateOuModel'
+          type: array
+        personalEmail:
+          description: Employee's personal email.
+          type: string
+        prefix:
+          description: Employee's name prefix.
+          type: string
+        primaryEmail:
+          description: Employee's primary email, used as identifier in some places
+            in system.
+          type: string
+        reasonForChangeId:
+          description: Cornerstone-generated reason for change ID.
+          format: int32
+          type: integer
+        relations:
+          description: Array of relationships and relation type pairs of Employee.
+          items:
+            $ref: '#/components/schemas/UpdateRelationModel'
+          type: array
+        settings:
+          $ref: '#/components/schemas/UpdateSettingsModel'
+        suffix:
+          description: Employee's name suffix.
+          type: string
+        userName:
+          description: Employee username, used primarily for system login.
+          type: string
+        workPhone:
+          description: Employee's work phone.
+          type: string
+        localSystemId:
+          description: "Optional field for managing an identifier from an external\
+            \ HRIS or Payroll system, allowing organizations to store and reference\
+            \ their local system\u2019s ID alongside Cornerstone User IDs."
+          type: string
+        workerStatus:
+          $ref: '#/components/schemas/UpdateWorkerStatusModel'
+      type: object
+    UpdateEmployeeUserIdOrUserNameModel:
+      properties:
+        externalId:
+          type: string
+        reasonForChangeId:
+          format: int32
+          type: integer
+        userName:
+          type: string
+        localSystemId:
+          type: string
+      type: object
+    UpdateGradeOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateKRonos_Custom_OU-_UKOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateLocationOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField35'
+            - $ref: '#/components/schemas/OuCustomField37'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        locationDetails:
+          $ref: '#/components/schemas/LocationDetails'
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateOuLocalizationsRequest:
+      additionalProperties: false
+      properties:
+        customFields:
+          items:
+            $ref: '#/components/schemas/CustomFieldLocalization'
+          nullable: true
+          type: array
+        description:
+          items:
+            $ref: '#/components/schemas/LanguageValuePair'
+          nullable: true
+          type: array
+        name:
+          items:
+            $ref: '#/components/schemas/LanguageValuePair'
+          nullable: true
+          type: array
+        reasonForChange:
+          nullable: true
+          type: string
+      type: object
+    UpdateOuModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer OU ID.
+          format: int32
+          type: integer
+        typeId:
+          description: Cornerstone-generated integer OU type ID, indicating the type
+            of OU selected, (e.g., 2 for division)
+          format: int32
+          type: integer
+      type: object
+    UpdateOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        costcenterDetails:
+          $ref: '#/components/schemas/CostCenterDetails'
+        customFields:
+          items:
+            $ref: '#/components/schemas/OuCustomField'
+          nullable: true
+          type: array
+        description:
+          nullable: true
+          type: string
+        externalId:
+          nullable: true
+          type: string
+        locationDetails:
+          $ref: '#/components/schemas/LocationDetails'
+        name:
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          nullable: true
+          type: integer
+        positionDetails:
+          $ref: '#/components/schemas/PositionDetails'
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdatePositionOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/OuCustomField17'
+            - $ref: '#/components/schemas/OuCustomField18'
+            - $ref: '#/components/schemas/OuCustomField19'
+            - $ref: '#/components/schemas/OuCustomField20'
+            - $ref: '#/components/schemas/OuCustomField33'
+            - $ref: '#/components/schemas/OuCustomField34'
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        positionDetails:
+          $ref: '#/components/schemas/PositionDetails'
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateRelationModel:
+      properties:
+        id:
+          description: Cornerstone-generated integer relation ID.
+          format: int32
+          type: integer
+        typeId:
+          format: int32
+          type: integer
+      type: object
+    UpdateSettingsModel:
+      properties:
+        displayLanguage:
+          description: Culture ID (e.g., en-US) indicating localization setting for
+            employee.
+          type: string
+        timeZone:
+          description: 'Timezone value used for the employee. Allowed values: See
+            [Timezone Reference](https://csod.dev/guides/getting-started/timezones.html)
+            for complete list of supported codes.'
+          type: string
+        trainingApprovals:
+          description: Indicates user training approval
+          format: int32
+          type: integer
+      type: object
+    UpdateTerminationReasonModel:
+      properties:
+        eligibleForRehire:
+          description: Flag set to indicate of employee is eligble to be rehired.
+          type: boolean
+        terminationDate:
+          description: Date employee was terminated.
+          type: string
+        terminationReasonId:
+          description: Cornerstone-generated termination reason ID.
+          format: int32
+          type: integer
+      type: object
+    UpdateWorkday_User_TypeOuRequest:
+      additionalProperties: false
+      properties:
+        active:
+          nullable: true
+          type: boolean
+        customFields:
+          items: {}
+          nullable: true
+          type: array
+        description:
+          maxLength: 4000
+          nullable: true
+          type: string
+        externalId:
+          maxLength: 100
+          nullable: true
+          type: string
+        name:
+          maxLength: 1000
+          nullable: true
+          type: string
+        ownerId:
+          format: int32
+          minimum: 1
+          nullable: true
+          type: integer
+        parentId:
+          format: int32
+          minimum: 2
+          nullable: true
+          type: integer
+        reasonForChange:
+          nullable: true
+          type: string
+        reconcilable:
+          nullable: true
+          type: boolean
+      type: object
+    UpdateWorkerStatusModel:
+      properties:
+        absent:
+          description: Employee's absent status.
+          type: boolean
+        active:
+          description: Indicates employee status within the Cornerstone system.
+          type: boolean
+        lastHireDate:
+          description: Date of latest hire.
+          type: string
+        originalHireDate:
+          description: Date of original hire
+          type: string
+      type: object
+    UpdatePasswordModel:
+      properties:
+        password:
+          description: Password to be updated.
+          type: string
+      type: object
+    Uri:
+      properties:
+        href:
+          description: Link to employee
+          type: string
+      type: object
+    ValidationError:
+      additionalProperties: false
+      properties:
+        code:
+          nullable: true
+          type: string
+        fields:
+          items:
+            $ref: '#/components/schemas/FieldErrors'
+          nullable: true
+          type: array
+        message:
+          nullable: true
+          type: string
+      type: object
+  securitySchemes:
+    bearerAuth:
+      description: '[Authentication Page](https://csod.dev/guides/connectors/content/authentication.html)'
+      type: http
+      scheme: bearer
+paths:
+  /x/organizations/v1/specifications:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+            text/json:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+          description: Success
+          x-title: OK
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to get a portal-specific Open API v3 specification
+        for OUs. Used only for OU data, contextualized with custom values from the
+        portal.
+
+
+        *Permission Required*: `OU Hierarchy - Manage`'
+      summary: Get Custom OUs Specification
+  /x/organizations/v1/ous:
+    get:
+      parameters:
+      - in: query
+        name: pageSize
+        schema:
+          format: int32
+          nullable: true
+          type: integer
+        description: Indicates how many records should be retrieved for each page.
+      - in: query
+        name: id
+        schema:
+          nullable: true
+          type: string
+        description: Comma seperated Integer IDs of OUs to fetch, used to retrieve
+          a specific OU or set of OUs. Note, this takes precedence over all other
+          criteria when specified.
+      - in: query
+        name: externalId
+        schema:
+          items:
+            type: string
+          nullable: true
+          type: array
+        description: Array of customer provided IDs of OUs to fetch, used to retrieve
+          a specific OU or set of OUs.
+      - in: query
+        name: typeId
+        schema:
+          nullable: true
+          type: string
+        description: Comma seperated Integer IDs of OU types to return.
+      - in: query
+        name: name
+        schema:
+          nullable: true
+          type: string
+        description: Allows searching by OU name, partial or full. May return more
+          than one result.
+      - in: query
+        name: includeInactive
+        schema:
+          type: boolean
+        description: Flag to return OUs that have been marked inactive.
+      - in: query
+        name: nextPageToken
+        schema:
+          nullable: true
+          type: string
+        description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+      - in: query
+        name: includeSubordinates
+        schema:
+          type: boolean
+        description: "Returns all subordinate OU\u2019s within the specified Organization\
+          \ Unit hierarchy."
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OuResponseMultipleItemResponse'
+          description: The result of a query that returns a result set of 1 or more
+            records
+          x-title: OK
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query performs an invalid operation due to
+            malformed syntax
+          x-errorCode:
+          - INVALID_ID
+          - INVALID_RESOURCE
+          x-title: NOT FOUND
+      summary: Get OUs with given filters
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to get organizational units (OUs). Organizational
+        Units (OUs) form the administrative foundation of Cornerstone. You can think
+        of OUs as distinct information containers that capture, store and categorize
+        all client data within the system.
+
+
+        To learn more about OUs, please see [this](https://help.csod.com/help/csod_0/Content/System_Configuration/Organizational_Units/Organizational_Units_Overview.htm)
+        help article.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)
+
+
+        The API respects any constraints placed on these permissions. The permission
+        and any constraints must be placed on the user associated with your OAuth
+        2.0 application.'
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/CreateDivisionOuRequest'
+              - $ref: '#/components/schemas/CreatePositionOuRequest'
+              - $ref: '#/components/schemas/CreateGradeOuRequest'
+              - $ref: '#/components/schemas/CreateCost_CenterOuRequest'
+              - $ref: '#/components/schemas/CreateLocationOuRequest'
+              - $ref: '#/components/schemas/CreateCustom_OU_Type1OuRequest'
+              - $ref: '#/components/schemas/CreateWorkday_User_TypeOuRequest'
+              - $ref: '#/components/schemas/CreateKRonos_Custom_OU-_UKOuRequest'
+              - $ref: '#/components/schemas/CreateCustom_OU_Type_1OuRequest'
+              - $ref: '#/components/schemas/CreateCustom_OU_Type_2OuRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOuResponse'
+          description: The result of a query that creates a single resource
+          x-title: CREATED
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query performs an invalid operation due to
+            malformed syntax
+          x-errorCode:
+          - INVALID_INPUT
+          x-title: BAD REQUEST
+      summary: Create a new OU
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to create organizational units (OUs).
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)
+
+
+        The API respects any constraints placed on these permissions. The permission
+        and any constraints must be placed on the user associated with your OAuth
+        2.0 application.'
+  /x/organizations/v1/ous/{ouId}:
+    get:
+      parameters:
+      - in: path
+        name: ouId
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleOuResponseSingleItemResponse'
+          description: The result of a singleton query by identifier
+          x-title: OK
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query that requests an invalid resource by
+            identifier or path
+          x-errorCode:
+          - INVALID_ID
+          - INVALID_RESOURCE
+          x-title: NOT FOUND
+      summary: Get OU by unique identifier
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to get OU for a given ouId. The path parameter
+        ouId is the Cornerstone-generated integer ID of the OU.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)
+
+
+        The API respects any constraints placed on these permissions. The permission
+        and any constraints must be placed on the user associated with your OAuth
+        2.0 application.'
+    patch:
+      parameters:
+      - in: path
+        name: ouId
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/PatchDivisionOuRequest'
+              - $ref: '#/components/schemas/PatchPositionOuRequest'
+              - $ref: '#/components/schemas/PatchGradeOuRequest'
+              - $ref: '#/components/schemas/PatchCost_CenterOuRequest'
+              - $ref: '#/components/schemas/PatchLocationOuRequest'
+              - $ref: '#/components/schemas/PatchCustom_OU_Type1OuRequest'
+              - $ref: '#/components/schemas/PatchWorkday_User_TypeOuRequest'
+              - $ref: '#/components/schemas/PatchKRonos_Custom_OU-_UKOuRequest'
+              - $ref: '#/components/schemas/PatchCustom_OU_Type_1OuRequest'
+              - $ref: '#/components/schemas/PatchCustom_OU_Type_2OuRequest'
+      responses:
+        '204':
+          description: The result of a query that performs a partial update on a single
+            resource
+          x-title: NO CONTENT
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query performs an invalid operation due to
+            malformed syntax
+          x-errorCode:
+          - INVALID_INPUT
+          x-title: BAD REQUEST
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query that requests an invalid resource by
+            identifier or path
+          x-errorCode:
+          - INVALID_ID
+          - INVALID_RESOURCE
+          x-title: NOT FOUND
+      summary: Partially update an ou
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to update an OU. Since this is a `PATCH` request,
+        you can send a partial payload with just the fields you want to update.
+
+
+        The path parameter `ouId` is the Cornerstone-generated integer ID of the OU.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)
+
+
+        The API respects any constraints placed on these permissions. The permission
+        and any constraints must be placed on the user associated with your OAuth
+        2.0 application.'
+    put:
+      parameters:
+      - in: path
+        name: ouId
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/UpdateDivisionOuRequest'
+              - $ref: '#/components/schemas/UpdatePositionOuRequest'
+              - $ref: '#/components/schemas/UpdateGradeOuRequest'
+              - $ref: '#/components/schemas/UpdateCost_CenterOuRequest'
+              - $ref: '#/components/schemas/UpdateLocationOuRequest'
+              - $ref: '#/components/schemas/UpdateCustom_OU_Type1OuRequest'
+              - $ref: '#/components/schemas/UpdateWorkday_User_TypeOuRequest'
+              - $ref: '#/components/schemas/UpdateKRonos_Custom_OU-_UKOuRequest'
+              - $ref: '#/components/schemas/UpdateCustom_OU_Type_1OuRequest'
+              - $ref: '#/components/schemas/UpdateCustom_OU_Type_2OuRequest'
+      responses:
+        '204':
+          description: The result of a query that creates a single resource
+          x-title: NO CONTENT
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query performs an invalid operation due to
+            malformed syntax
+          x-errorCode:
+          - INVALID_INPUT
+          x-title: BAD REQUEST
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query that requests an invalid resource by
+            identifier or path
+          x-errorCode:
+          - INVALID_ID
+          - INVALID_RESOURCE
+          x-title: NOT FOUND
+      summary: Fully update a given OU
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to update an OU. Since this is a `PUT` request,
+        you will need to send the entire payload. Values for any fields that aren''t
+        included in the payload will be deleted.
+
+
+        The path parameter `ouId` is the Cornerstone-generated integer ID of the OU.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)
+
+
+        The API respects any constraints placed on these permissions. The permission
+        and any constraints must be placed on the user associated with your OAuth
+        2.0 application.'
+  /x/organizations/v1/ous/{ouId}/localizations:
+    get:
+      parameters:
+      - in: path
+        name: ouId
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - in: query
+        name: languageId
+        schema:
+          nullable: true
+          type: string
+        description: Culture value (e.g., en-US) of localized language.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OuLocalizationsResponseSingleItemResponse'
+          description: Success
+          x-title: OK
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to get the localized fields of an OU by the
+        `ouId` and optionally, the `languageId`.
+
+
+        The path parameter `ouId` is the Cornerstone generated integer ID of the OU.
+        For a list of valid values you can send in the languageId query parameter,
+        please refer to the [Localization](https://csod.dev/guides/getting-started/localization.html)
+        section of the Getting Started guide.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)
+
+
+        The API respects any constraints placed on these permissions. The permission
+        and any constraints must be placed on the user associated with your OAuth
+        2.0 application.'
+      summary: Get OU Localizations
+    patch:
+      parameters:
+      - in: path
+        name: ouId
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchOuLocalizationsRequest'
+      responses:
+        '204':
+          description: Success
+          x-title: NO CONTENT
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to update the localized fields of an OU. Since
+        this is a `PATCH` request, you can send a partial payload with just the fields
+        you want to update.
+
+
+        The path parameter `ouId` is the Cornerstone generated integer ID of the OU.
+        For a list of valid values you can send in the languageId query parameter,
+        please refer to the [Localization](https://csod.dev/guides/getting-started/localization.html)
+        section of the Getting Started guide.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)
+
+
+        The API respects any constraints placed on these permissions. The permission
+        and any constraints must be placed on the user associated with your OAuth
+        2.0 application.'
+      summary: Partially update OU localizations
+    put:
+      parameters:
+      - in: path
+        name: ouId
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOuLocalizationsRequest'
+      responses:
+        '204':
+          description: Success
+          x-title: NO CONTENT
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to update the localized fields of an OU. Since
+        this is a `PUT` request, you will need to send the entire payload. Values
+        for any fields that aren''t included in the payload will be deleted.
+
+
+        The path parameter `ouId` is the Cornerstone generated integer ID of the OU.
+        For a list of valid values you can send in the languageId query parameter,
+        please refer to the [Localization](https://csod.dev/guides/getting-started/localization.html)
+        section of the Getting Started guide.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)
+
+
+        The API respects any constraints placed on these permissions. The permission
+        and any constraints must be placed on the user associated with your OAuth
+        2.0 application.'
+      summary: Fully Update OU localizations
+  /x/organizations/v1/types:
+    get:
+      parameters:
+      - in: query
+        name: pageSize
+        schema:
+          format: int32
+          nullable: true
+          type: integer
+        description: Indicates how many records should be retrieved for each page.
+      - in: query
+        name: nextPageToken
+        schema:
+          nullable: true
+          type: string
+        description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationalUnitsResponseMultipleItemResponse'
+          description: The result of a query that returns a result set of 1 or more
+            records
+          x-title: OK
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query that requests an invalid resource by
+            identifier or path
+          x-errorCode:
+          - INVALID_ID
+          - INVALID_RESOURCE
+          x-title: NOT FOUND
+      summary: Get list of all OU types
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to get a list of standard and custom OU types
+        configured in a portal.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)'
+  /x/organizations/v1/types/{id}:
+    get:
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleOrganizationalUnitsResponseSingleItemResponse'
+          description: The result of a singleton query by identifier
+          x-title: OK
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: The result of a query that requests an invalid resource by
+            identifier or path
+          x-errorCode:
+          - INVALID_ID
+          - INVALID_RESOURCE
+          x-title: NOT FOUND
+      summary: Get details of given OU type
+      tags:
+      - Organizational Units
+      description: 'Use this endpoint to get details on a given OU type. You can retrieve
+        the OU Type `id` to pass in the path parameter of this API by using the ''All
+        OU Types'' endpoint.
+
+
+        *Permissions Required:*
+
+
+        - `OU Hierarchy - Manage`
+
+        - `View Grades` (only needed if you want to access the Grade OU)'
+  /x/users/v2/employees:
+    get:
+      operationId: EmployeesV2_GetEmployees
+      parameters:
+      - description: Comma separated, cornerstone-generated integer employee Ids.
+          Used to get further details or update employee.
+        in: query
+        name: ids
+        schema:
+          type: string
+      - description: Employee username, used primarily for system login.
+        in: query
+        name: userName
+        schema:
+          type: string
+      - description: Externally provided user identifier, previously called userId.
+        in: query
+        name: externalId
+        schema:
+          type: string
+      - description: Unique GUID assigned to user.
+        in: query
+        name: guid
+        schema:
+          type: string
+      - description: Employee's last name.
+        in: query
+        name: lastName
+        schema:
+          type: string
+      - description: Employee's first name.
+        in: query
+        name: firstName
+        schema:
+          type: string
+      - description: "Last time the employee was effectively modified. Note, this\
+          \ is different than a last-touched time, as it can be pre-dated or post-dated\
+          \ and should not be used for deltas. \n\nExpected input : date in YYYY-MM-DD\
+          \ format.\n\nWhen used as a query parameter, the response returns records\
+          \ where modifiedDate matches the given date or later."
+        in: query
+        name: modifiedDate
+        schema:
+          type: string
+      - description: 'Date the employee was created in the Cornerstone system.
+
+
+          Expected input: date in YYYY-MM-DD format.
+
+
+          When used as a query parameter, the response returns records where createdDate
+          matches the given date or later.'
+        in: query
+        name: createdDate
+        schema:
+          type: string
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Parameter to filter by employee status.
+        in: query
+        name: status
+        schema:
+          default: Active
+          enum:
+          - All
+          - Active
+          - InActive
+          - PendingApproval
+          type: string
+      - description: Returns all employees in the list of specified active Organization
+          Units.
+        in: query
+        name: ous
+        schema:
+          type: string
+      - description: Returns all employees in the list of specified Organization Units,
+          including inactive OU's, when ous are passed in query string
+        in: query
+        name: includeInactiveOu
+        schema:
+          default: false
+          type: boolean
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeLiteModel'
+          description: OK
+      summary: Employees
+      tags:
+      - Employees
+      description: 'Use this endpoint to fetch employee records in bulk. All query
+        parameters are optional. If you don''t provide any query parameters, the API
+        will respond with all employee records in your portal.
+
+
+        Note that the response does not include custom fields and group information
+        for users. To retrieve custom fields, use the `/services/api/x/users/v2/employees/employees/{id}`
+        endpoint. To retrieve groups, use the `/services/api/x/users/v2/employees/{id}/groups`
+        endpoint.
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`'
+    post:
+      operationId: EmployeesV2_CreateEmployee
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEmployeeModel'
+        description: Create Employee Data
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeResponseModel'
+          description: Created
+      summary: Employees
+      tags:
+      - Employees
+      x-codegen-request-body-name: employee
+      description: 'You can use this endpoint to create new employee records in Cornerstone.
+        You can only create one record per request.
+
+
+        *Permission Required*: `Employee API - Edit`'
+  /x/users/v2/employees/identifiers:
+    get:
+      operationId: EmployeesV2_GetEmployeesIdentifiers
+      parameters:
+      - description: Comma separated, cornerstone-generated integer employee Ids.
+          Used to get further details or update employee.
+        in: query
+        name: ids
+        schema:
+          type: string
+      - description: Employee username, used primarily for system login.
+        in: query
+        name: userName
+        schema:
+          type: string
+      - description: Externally provided user identifier, previously called userId.
+        in: query
+        name: externalId
+        schema:
+          type: string
+      - description: Unique GUID assigned to user.
+        in: query
+        name: guid
+        schema:
+          type: string
+      - description: Employee's last name.
+        in: query
+        name: lastName
+        schema:
+          type: string
+      - description: Employee's first name.
+        in: query
+        name: firstName
+        schema:
+          type: string
+      - description: "Last time the employee was effectively modified. Note, this\
+          \ is different than a last-touched time, as it can be pre-dated or post-dated\
+          \ and should not be used for deltas. \n\nExpected input : date in YYYY-MM-DD\
+          \ format.\n\nWhen used as a query parameter, the response returns records\
+          \ where modifiedDate matches the given date or later."
+        in: query
+        name: modifiedDate
+        schema:
+          type: string
+      - description: 'Date the employee was created in the Cornerstone system.
+
+
+          Expected input: date in YYYY-MM-DD format.
+
+
+          When used as a query parameter, the response returns records where createdDate
+          matches the given date or later.'
+        in: query
+        name: createdDate
+        schema:
+          type: string
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Parameter to filter by employee status.
+        in: query
+        name: status
+        schema:
+          default: Active
+          enum:
+          - All
+          - Active
+          - InActive
+          - PendingApproval
+          type: string
+      - description: Returns all employees in the list of specified active Organization
+          Units.
+        in: query
+        name: ous
+        schema:
+          type: string
+      - description: Returns all employees in the list of specified Organization Units,
+          including inactive OU's, when ous are passed in query string
+        in: query
+        name: includeInactiveOu
+        schema:
+          default: false
+          type: boolean
+      - description: "Optional field for managing an identifier from an external HRIS\
+          \ or Payroll system, allowing organizations to store and reference their\
+          \ local system\u2019s ID alongside Cornerstone User IDs."
+        in: query
+        name: localSystemId
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeIdentifierModel'
+          description: OK
+      summary: Employees Identifiers
+      tags:
+      - Employees
+      description: 'Use this endpoint to fetch identifiers for employee records in
+        bulk. All query parameters are optional. If you don''t provide any query parameters,
+        the API will respond with all employee identifiers records in your portal.
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`'
+  /x/users/v2/employees/custom-fields:
+    get:
+      operationId: EmployeesV2_GetCustomFields
+      parameters:
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      - description: Cornerstone-generated integer identifier for the custom field.
+        in: query
+        name: ids
+        schema:
+          type: string
+      - description: Localized string name of the customField, e.g., "Nickname".
+        in: query
+        name: name
+        schema:
+          type: string
+      - description: Localized culture ID (e.g., en-US)
+        in: query
+        name: languageId
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCustomFieldModel'
+          description: OK
+      summary: Custom Fields
+      tags:
+      - Employee Metadata
+      description: 'Get all custom fields metadata based on Availability.
+
+
+        To learn more about user record custom fields in Cornerstone, please see [this
+        help article](https://help.csod.com/help/csod_0/Content/Custom_Field_Administration/Custom_Field_Admin_User_Record.htm).
+
+
+        The API only returns the custom fields that are available to the user associated
+        with your OAuth 2.0 application. ''Availablity'' is a feature in Cornerstone
+        by which administrators can define which users have the ability to view and
+        access the custom field.
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`
+
+        '
+  /x/users/v2/employees/custom-relations:
+    get:
+      operationId: EmployeesV2_GetCustomRelations
+      parameters:
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCustomRelationModel'
+          description: OK
+      summary: Custom Employee Relationships
+      tags:
+      - Employee Metadata
+      description: 'Get All custom employee relationships configured in a portal.
+        If you are not familiar with the concept of ''Employee Relationships'' in
+        Cornerstone, please read through [this help article](https://help.csod.com/help/csod_0/Content/Performance/Employee_Relationships/Employee_Relationships_Overview.htm).
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`'
+  /x/users/v2/employees/employment-categories:
+    get:
+      operationId: EmployeesV2_GetEmploymentCategories
+      parameters:
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetEmploymentCategoryModel'
+          description: OK
+      summary: Employment Categories
+      tags:
+      - Employee Metadata
+      description: 'Get all user types and subtypes configured in a portal. User types
+        enable organizations with Cornerstone HR to designate different types of workers
+        within their organization. All user types are pre-defined with default names
+        and categories so that specific functionality can be associated with user
+        types within the system. Additional user types cannot be created. Although
+        the system uses pre-defined user types, administrators can configure the user
+        type names to match their organization''s terminology.
+
+
+        To learn more about user types and subtypes, please see [this help article](https://help.csod.com/help/csod_0/Content/Preferences/System_Preferences/User_Preferences/User_Preferences_-_User_Types.htm).
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`'
+  /x/users/v2/employees/employment-status:
+    get:
+      operationId: EmployeesV2_GetEmploymentStatus
+      parameters:
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetEmploymentStatusModel'
+          description: OK
+      summary: Employment Statuses
+      tags:
+      - Employee Metadata
+      description: 'Get user status metadata. User statuses enable organizations with
+        Cornerstone HR to track an employee through different employment life-cycle
+        statuses. All user statuses are pre-defined with default names and categories
+        so that specific functionality can be associated with user statuses within
+        the system. Additional user statuses cannot be created. Although the system
+        uses pre-defined user statuses, administrators can configure the user status
+        names to match their organization''s terminology.
+
+
+        User statuses can only be selected for a user when their user type is set
+        to Employee, Temporary, Intern, or Contractor.
+
+
+        To learn more about user statuses, please see [this help article](https://help.csod.com/help/csod_0/Content/Preferences/System_Preferences/User_Preferences/User_Preferences_-_User_Statuses.htm).
+
+        '
+  /x/users/v2/employees/leave-reasons:
+    get:
+      operationId: EmployeesV2_GetLeaveReasons
+      parameters:
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetLeaveReasonModel'
+          description: OK
+      summary: Leave Reasons
+      tags:
+      - Employee Metadata
+      description: 'Get all leave reasons metadata. On leave types enable organizations
+        with Cornerstone HR to track when employees are excused from work or duty
+        and the reason for their leave. All leave types are pre-defined with default
+        names and categories so that specific functionality can be associated with
+        on leave types within the system. Although the system uses pre-defined on
+        leave types, administrators can configure the on leave type names to match
+        their organization''s terminology.
+
+
+        Leave types can only be selected for a user when their user status is set
+        to On Leave.
+
+
+        To learn more about leave reasons and leave types, please see [this help article](https://help.csod.com/help/csod_0/Content/Preferences/System_Preferences/User_Preferences/User_Preferences_-_On_Leave_Types.htm).
+
+        '
+  /x/users/v2/employees/reasons-for-change:
+    get:
+      operationId: EmployeesV2_GetReasonsForChange
+      parameters:
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ReadReasonForChangeModel'
+                type: array
+          description: OK
+      summary: Reasons for Change
+      tags:
+      - Employee Metadata
+      description: 'Get a list of ''reasons for change'' configured in a portal. Reasons
+        for change enable organizations with Cornerstone HR to track the reasons that
+        can be selected when modifications are made to employee data. These are intended
+        to provide an explanation as to why a change was made. Reasons for change
+        are pre-defined with default names and types so that specific functionality
+        can be associated with reasons within the system. Although the system uses
+        pre-defined reasons for change, administrators can configure the reasons for
+        change names to match their organization''s terminology.
+
+
+        The Reason for Change functionality is only available if User Preferences
+        and Effective Dating are enabled for the portal.
+
+
+        To learn more about Reason for Change, please see [this help article](https://help.csod.com/help/csod_0/Content/Preferences/System_Preferences/User_Preferences/User_Preferences_-_Reasons_for_Change.htm).
+
+        '
+  /x/users/v2/employees/termination-reasons:
+    get:
+      operationId: EmployeesV2_GetTerminationReason
+      parameters:
+      - description: Indicates how many records should be retrieved for each page.
+        in: query
+        name: pageSize
+        schema:
+          format: int32
+          type: integer
+      - description: Token used to fetch the next page of data. This is returned in
+          the API response and will request the next page using the same parameters
+          as the page it was retrieved from. Note, the params used in the original
+          request must also be present when using the token.
+        in: query
+        name: nextPageToken
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTerminationReasonModel'
+          description: OK
+      summary: Termination Reasons
+      tags:
+      - Employee Metadata
+      description: "Get all termination reasons metadata. Termination reasons enable\
+        \ organizations with Cornerstone HR to track the reasons why employees are\
+        \ terminated, including whether the employee left the organization voluntarily\
+        \ or involuntarily. Termination reasons are pre-defined with default names\
+        \ and categories so that specific functionality can be associated with termination\
+        \ reasons within the system. Although the system uses pre-defined termination\
+        \ reasons, administrators can configure the termination reason names to match\
+        \ their organization's terminology. \n\nTo learn more about termination reasons,\
+        \ please see [this help article](https://help.csod.com/help/csod_0/Content/Preferences/System_Preferences/User_Preferences/User_Preferences_-_Termination_Reasons.htm)."
+  /x/users/v2/employees/{guid}:
+    patch:
+      operationId: EmployeesV2_UpdatePartialEmployeeByGuid
+      parameters:
+      - description: Employee Id(Cornerstone Internal Integer Id) or Employee GUID
+        in: path
+        name: guid
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmployeeUserIdOrUserNameModel'
+        description: Employee data (Only user id and user name) that need to be updated
+        required: true
+      responses:
+        '204':
+          content: {}
+          description: NoContent
+      summary: Update using GUID
+      tags:
+      - Employees
+      x-codegen-request-body-name: employee
+      description: Manage employee record data properties, by using their GUID as
+        the unique identifier.
+  /x/users/v2/employees/{id}/:
+    get:
+      operationId: EmployeesV2_GetEmployee
+      parameters:
+      - description: Valid User id, Cornerstone Internal Integer Id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeModel'
+          description: OK
+      summary: Employee
+      tags:
+      - Employees
+      description: "This endpoint allows you to get and update a single employee record\
+        \ containing the bulk of the information about the employee using a unique\
+        \ identifier. \n\nNote that this API does not allow you to fetch or update\
+        \ an employee's user type and employment status, including termination and\
+        \ rehire information. To fetch or update these details, please use the 'Employee\
+        \ Employment Status' endpoint (`/services/api/x/users/v2/employees/{id}/employment-status`).\n\
+        \n*Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`"
+    patch:
+      operationId: EmployeesV2_UpdatePartialEmployee
+      parameters:
+      - description: Employee Id(Cornerstone Internal Integer Id) or Employee GUID
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmployeeModelNew'
+        description: Employee data that need to be update
+        required: true
+      responses:
+        '204':
+          content: {}
+          description: NoContent
+      summary: Employee
+      tags:
+      - Employees
+      x-codegen-request-body-name: employee
+      description: 'This endpoint allows you to update the core employee record.
+
+
+        *Permission Required*: `Employee API - Edit`'
+  /x/users/v2/employees/{id}/identifiers:
+    get:
+      operationId: EmployeesV2_GetEmployeeIdentifier
+      parameters:
+      - description: Valid User id, Cornerstone Internal Integer Id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeIdentifierModel'
+          description: OK
+      summary: Employee Identifiers
+      tags:
+      - Employees
+      description: "This endpoint allows you to get identifier information for a single\
+        \ employee record using a unique identifier \n\n*Permission Required*: `Employee\
+        \ API - View` or `Employee API - View - Constrainable`"
+  /x/users/v2/employees/{id}/activation-period:
+    get:
+      operationId: EmployeesV2_GetEmployeeActivationPeriod
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeActivationPeriodModel'
+          description: OK
+      summary: Activation Period
+      tags:
+      - Employees
+      description: 'Use this endpoint to get the activation period for an employee.
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`'
+    patch:
+      operationId: EmployeesV2_UpdateEmployeeActivationPeriod
+      parameters:
+      - description: employee id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmployeeActivationPeriodModel'
+        description: activation period payload from body
+        required: true
+      responses:
+        '204':
+          content: {}
+          description: NoContent
+      summary: Activation Period
+      tags:
+      - Employees
+      x-codegen-request-body-name: updateEmployeeActivationPeriod
+      description: Use this endpoint to update the activation period for an employee.
+  /x/users/v2/employees/{id}/effective-date/status:
+    get:
+      operationId: EmployeesV2_GetEmployeeEffectiveDateStatus
+      parameters:
+      - description: Valid User id, Cornerstone Internal Integer Id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeEffectiveDateStatusModel'
+          description: OK
+      summary: Effective Date Status
+      description: 'If your Cornerstone portal has the ''Effective Dating'' feature
+        turned on, you can use this endpoint to fetch the effective dates for a given
+        user. Once you have the dates, you can then use the ''Employee As Of'' endpoint
+        (/services/api/x/users/v2/employees/{id}/effective-date/{asOfDate}) to fetch
+        the detailed employee record for each one of the effective dates.
+
+
+        To learn more about the ''Effective Dating'' feature, read [this help article.](https://help.csod.com/help/csod_0/Content/Link/Effective_Dating/Effective_Dating.htm)
+
+
+        The `id` path parameter is the cornerstone-generated integer employee Id.
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`
+
+        '
+      tags:
+      - Employee CHR
+  /x/users/v2/employees/{id}/employment-status:
+    get:
+      operationId: EmployeesV2_GetEmployeeEmploymentStatus
+      parameters:
+      - description: Cornerstone Internal User Id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeEmploymentStatusModel'
+          description: OK
+      summary: Employment Status
+      description: 'Use this endpoint to retrieve the user type and employment status
+        information for a single employee.
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`
+
+        '
+      tags:
+      - Employee CHR
+    patch:
+      operationId: EmployeesV2_UpdateEmployeeEmploymentStatus
+      parameters:
+      - description: Employee id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmployeeEmploymentStatusModel'
+        description: Employee employment status payload/model
+        required: true
+      responses:
+        '204':
+          content: {}
+          description: NoContent
+      summary: Employment Status
+      tags:
+      - Employee CHR
+      x-codegen-request-body-name: updateEmployeeEmploymentStatus
+      description: 'Use this endpoint to update the user type and employment status
+        information for a single employee record. Use the Employee Metadata endpoints
+        to fetch the valid values for `categoryId`, `subCategoryId`, `employmentStatusId`,
+        `leaveStatusId`, `terminationReasonId` and `reasonForChangeId`.
+
+
+        *Permission Required*: `Employee API - Edit`'
+  /x/users/v2/employees/{id}/effective-date/{asOfDate}:
+    get:
+      operationId: EmployeesV2_GetEdEmployee
+      parameters:
+      - description: User id integer value, Cornerstone Internal User Id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - description: Effective Date, Format YYYY-MM-DD
+        in: path
+        name: asOfDate
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeModel'
+          description: OK
+      summary: Effective Date Status
+      tags:
+      - Employee CHR
+      description: 'Use this endpoint to fetch and update an employee''s user type
+        and employment status, including termination and rehire information ''as of''
+        of a given date. Before using this endpoint, you may want to fetch the list
+        of effective dates for a user with the ''Effective Date Status'' endpoint
+        (`/services/api/x/users/v2/employees/{id}/effective-date/status`). Once you
+        have the dates, you can then use this endpoint to fetch or update the user
+        type and employment status for an employee record for each one of the effective
+        dates.
+
+
+        To learn more about the ''Effective Dating'' feature, read this help article.
+
+
+        The value for the `asOfDate` path parameter must be in YYYY-MM-DD format.
+        The `id` path parameter is the cornerstone-generated integer employee Id.
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`'
+    patch:
+      operationId: EmployeesV2_UpdatePartialEdEmployee
+      parameters:
+      - description: Employee Id(Cornerstone Internal Integer Id) or Employee GUID
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - description: Effective Date
+        in: path
+        name: asOfDate
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmployeeModel'
+        description: Employee data that need to be update
+        required: true
+      responses:
+        '204':
+          content: {}
+          description: NoContent
+      summary: Effective Date Status
+      tags:
+      - Employee CHR
+      x-codegen-request-body-name: employee
+      description: 'Use this endpoint to update the user type and employment status
+        information for a single employee record ''as of'' a given date. Use the Employee
+        Metadata endpoints to fetch the valid values for `categoryId`, `subCategoryId`,
+        `employmentStatusId`, `leaveStatusId`, `terminationReasonId` and `reasonForChangeId`.
+
+
+        *Permission Required*: `Employee API - Edit`'
+  /x/users/v2/employees/{id}/employment-status/effective-date/{asOfDate}:
+    get:
+      operationId: EmployeesV2_GetEdEmployeeEmploymentStatus
+      parameters:
+      - description: Cornerstone Internal User Id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - description: Effective Date, Format YYYY-MM-DD
+        in: path
+        name: asOfDate
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadEmployeeEmploymentStatusModel'
+          description: OK
+      summary: Employment Status As Of
+      tags:
+      - Employee Metadata
+      description: 'Use this endpoint to retrieve the user type and employment status
+        information for a single employee.
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`'
+    patch:
+      operationId: EmployeesV2_UpdateEdEmployeeEmploymentStatus
+      parameters:
+      - description: Employee id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - description: Employee id
+        in: path
+        name: asOfDate
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmployeeEmploymentStatusModel'
+        description: Employee employment status payload/model
+        required: true
+      responses:
+        '204':
+          content: {}
+          description: NoContent
+      summary: Employment Status As Of
+      tags:
+      - Employee Metadata
+      x-codegen-request-body-name: updateEmployeeEmploymentStatus
+      description: 'Use this endpoint to update the user type and employment status
+        information for a single employee record. Use the Employee Metadata endpoints
+        to fetch the valid values for `categoryId`, `subCategoryId`, `employmentStatusId`,
+        `leaveStatusId`, `terminationReasonId` and `reasonForChangeId`.
+
+
+        *Permission Required*: `Employee API - Edit`'
+  /x/users/v2/employees/{id}/groups:
+    get:
+      operationId: EmployeesV2_GetEmployeeGroups
+      parameters:
+      - description: User id integer value, Cornerstone Internal User Id
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ReadEmployeeGroup'
+                type: array
+          description: OK
+      summary: Employee Groups
+      tags:
+      - Employees
+      description: 'Use this endpoint to fetch the groups an employee is present in.
+        To learn more about ''Groups'' in Cornerstone, please read [this help article](https://help.csod.com/help/csod_0/Content/System_Configuration/Organizational_Units/Add_Group.htm).
+
+
+        *Permission Required*: `Employee API - View` or `Employee API - View - Constrainable`      '
+  /Employee/{userName}/approvals:
+    get:
+      description: 'Use this endpoint to fetch all pending approval items for the
+        supported approval types for a given user. Note that the user included in
+        the request must have the required permissions to fetch approval data using
+        this API.
+
+
+        *OAuth 2.0 Scope*: `approval:read`
+
+
+        *Permission Required*: `Request Items - View`; `Manage Employee Relationships`
+
+        '
+      parameters:
+      - description: An unique active username value to get pending approval items.
+        in: path
+        name: userName
+        required: true
+        schema:
+          type: string
+      - description: An unique item id from pending approvals for user.
+        in: query
+        name: id
+        schema:
+          type: string
+      - description: An unique item id from pending approvals for user.
+        in: query
+        name: type
+        schema:
+          enum:
+          - None
+          - FormApproval
+          - OfferLetter
+          - PeerApproval
+          - GoalApproval
+          - RequisitionApproval
+          - RequisitionRequest
+          - TrainingFormApproval
+          type: string
+      - description: Valid date in MM/DD/YYYY or MM-DD-YYYY format.
+        in: query
+        name: datesubmitted
+        schema:
+          type: string
+      - description: Positive integer number. Default is 1. The page reuslt will have
+          pending approvals from provided pagenumber. For e.g. If user want to pull
+          records from page 2 out of 10 pages. Then they will pass 2 in this parameters
+          like pagenumber=2
+        in: query
+        name: pagenumber
+        schema:
+          type: string
+      - description: Positive integer number. Default is 25. The parameter will decide
+          number of records to be display per page. For e.g. If user want to see 20
+          records per page then pagesize parameter value needs to be pass as 20 like
+          pagesize=20
+        in: query
+        name: pagesize
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponseDataModel'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponseDataModel'
+          description: OK
+      summary: GetPendingApprovals
+      tags:
+      - ApprovalService
+    post:
+      description: 'Use this endpoint to approve or deny a pending approval item.
+
+
+        *OAuth 2.0 Scope*: `approval:create`
+
+        '
+      parameters:
+      - description: Unique active username value for which pending approvals will
+          be approve/deny as per action provided.
+        in: path
+        name: userName
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalActionItemRequestModel'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/ApprovalActionItemRequestModel'
+        required: false
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalActionResponseModel'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ApprovalActionResponseModel'
+          description: OK
+      summary: ApprovalRequestAction
+      tags:
+      - ApprovalService
+  /Core/GlobalSearch:
+    get:
+      description: 'Use this API to search for people, training, and certifications
+        in Cornerstone.
+
+
+        - The API considers the LO Availability of the user associated with the OAuth
+        2.0 application.
+
+
+        It supports the following types of searches:
+
+
+        - People: Search for employees
+
+        - Training: Search for learning objects
+
+        - Certification: Search for certifications
+
+        - Everything: Search all three entities (People/Training/Certification) above
+        in a single query
+
+
+        *OAuth 2.0 Scope*: `globalsearch:read`
+
+        '
+      parameters:
+      - description: SearchText - Search results matching this field are retrieved
+        in: query
+        name: SearchText
+        required: true
+        schema:
+          type: string
+      - description: UserId - UserId of the user
+        in: query
+        name: UserId
+        schema:
+          type: string
+      - description: FirstName - First name of the user
+        in: query
+        name: FirstName
+        schema:
+          type: string
+      - description: LastName - Last name of the user
+        in: query
+        name: LastName
+        schema:
+          type: string
+      - description: Email - Email Id of the user
+        in: query
+        name: Email
+        schema:
+          type: string
+      - description: "Manager - The query parameter Manager field accepts Manager\u2019\
+          s full/partial name"
+        in: query
+        name: Manager
+        schema:
+          type: string
+      - description: Interest - Interest of the user
+        in: query
+        name: Interest
+        schema:
+          type: string
+      - description: Language - Language of the user
+        in: query
+        name: Language
+        schema:
+          type: string
+      - description: Division - Division of the user
+        in: query
+        name: Division
+        schema:
+          type: string
+      - description: Location - Location of the user
+        in: query
+        name: Location
+        schema:
+          type: string
+      - description: Position - Position of the user
+        in: query
+        name: Position
+        schema:
+          type: string
+      - description: Type of Search
+        in: query
+        name: Type
+        schema:
+          enum:
+          - People
+          - Training
+          - Certification
+          type: string
+      - description: Page Number of the result set.
+        in: query
+        name: PageNumber
+        schema:
+          default: 1
+          format: int32
+          type: number
+      - description: No of records in a result set.
+        in: query
+        name: PageSize
+        schema:
+          default: 100
+          format: int32
+          maximum: 100
+          type: number
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResultsModel'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/SearchResultsModel'
+          description: OK
+      summary: Global Search
+      tags:
+      - Global Search
+  /OrgUnits/OU:
+    get:
+      description: 'Use this endpoint to retrieve OU details.
+
+
+        *OAuth 2.0 Scope*: `ou:read`
+
+        '
+      parameters:
+      - description: Title
+        in: query
+        name: Title
+        schema:
+          type: string
+      - description: OuId
+        in: query
+        name: OuId
+        schema:
+          type: string
+      - description: User can specify which type of OU will be retrived
+        in: query
+        name: Organizational Units
+        required: true
+        schema:
+          type: string
+      - description: True/False, To pull Inactive OUs.If nothing specified it will
+          take only active OUs by default.
+        in: query
+        name: IncludeInactive
+        schema:
+          type: string
+      - description: Positive integer number. Default is 1. Indicates the page number
+          of the result set. Number of records fetched in each page is 20. In order
+          to fetch additional records, increment the value sent in this parameter.
+          For example, to fetch records 21 - 40, send PageNumber = 2.
+        in: query
+        name: PageNumber
+        schema:
+          format: int32
+          type: number
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OuModel'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/OuModel'
+          description: OK
+      summary: GetOus
+      tags:
+      - Legacy
+  /x/authentication/v1/users/{userId}/password:
+    put:
+      description: "Use this endpoint to update the password for a user.    \n"
+      operationId: PasswordV2_UpdatePasswordById
+      parameters:
+      - description: Valid User id, Cornerstone Internal Integer Id
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePasswordModel'
+        description: userId whose password will be updated.
+        required: true
+      responses:
+        '204':
+          content: {}
+          description: NoContent
+      summary: Password Management
+      tags:
+      - Employees
+security:
+- bearerAuth: []

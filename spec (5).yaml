@@ -1,0 +1,2768 @@
+openapi: 3.0.1
+info:
+  contact:
+    name: Cornerstone, Inc.
+  license:
+    name: Cornerstone, Inc.
+    url: https://www.cornerstoneondemand.com/
+  title: Webhook Event Payloads
+components:
+  schemas:
+    TrainingItem:
+      properties:
+        data:
+          properties:
+            targetUserId:
+              description: CSOD-generated integer identifier for whom the event is
+                executed for
+              format: int32
+              type: number
+            targetUserRef:
+              description: User ID (seen on the CSOD UI) for whom the event is executed
+                for
+              type: string
+            targetUserFirstName:
+              description: User First Name for whom the event is executed for
+              type: string
+            targetUserLastName:
+              description: User Last Name for whom the event is executed for
+              type: string
+            targetUsername:
+              description: User Name for whom the event is executed for
+              type: string
+            targetUserDivisionRef:
+              description: Division OU ID for whom the event is executed for
+              type: string
+            targetUserLocationRef:
+              description: Location OU ID for whom the event is executed for
+              type: string
+            createdByUserId:
+              description: CSOD-generated integer identifier for the user administering
+                the event
+              format: int32
+              type: number
+            createdByUserRef:
+              description: User ID for the user administering the event
+              type: string
+            trainingId:
+              description: Learning Object Id
+              type: string
+            trainingRef:
+              description: Learning Object Ref
+              type: string
+            trainingTitle:
+              description: Learning Object localized title
+              type: string
+            providerId:
+              description: Provider Id
+              type: string
+            eventId:
+              description: Event Id
+              type: string
+            eventDateTimestamp:
+              description: Date when the event was created
+              format: date-time
+              type: string
+            trainingActionDateTimestamp:
+              description: Date for training action
+              format: date-time
+              type: string
+            targetUserGuid:
+              description: User Guid for whom the event is executed for
+              type: string
+            trainingRegistrationNumber:
+              description: Learning Object registration number for the target user
+              format: int32
+              type: number
+            isStandaloneOnTranscript:
+              description: Flag indicating whether training exists as a standalone
+                item on a user's transcript
+              type: boolean
+            transcriptUrl:
+              description: Universal profile transcript link for target user
+              type: string
+            dueDateTimestamp:
+              description: Date for training minimum due date
+              format: date-time
+              type: string
+            trainingType:
+              description: Learning Object training type code
+              type: string
+            subjects:
+              description: Subjects assigned to the LO
+              type: object
+              properties:
+                values:
+                  type: array
+                  items:
+                    type: string
+              example:
+                values:
+                - Math
+                - Science
+          type: object
+      type: object
+    TrainingEvents:
+      title: Available Events
+      enum:
+      - TrainingAssigned
+      - TrainingCompleted
+      - TrainingRemoved
+      - TrainingRestored
+      - TrainingArchived
+      - TrainingUnarchived
+      - TrainingRegistered
+      - TrainingApproved
+      - TrainingDenied
+      - TrainingStarted
+      - TrainingWithdrawn
+      - TrainingCancelled
+      - TrainingExempt
+      - TrainingExemptionRequested
+      - TrainingExemptionApproved
+      - TrainingExemptionDenied
+      type: string
+      example: TrainingAssigned
+    TrainingEventItem:
+      properties:
+        headers:
+          properties:
+            corpName:
+              type: string
+            cloudCorpId:
+              type: string
+            actorId:
+              format: int32
+              type: number
+            cultureId:
+              format: int32
+              type: number
+            correlationId:
+              type: string
+            cultureName:
+              type: string
+            messageId:
+              type: string
+            tags:
+              type: string
+          type: object
+      type: object
+    TrainingAssignedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          trainingAssigned:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingAssigned
+        type: object
+    TrainingAssignedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingAssignedItem'
+        type: object
+    TrainingAssignedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingAssignedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingCompletedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingCompleted
+          trainingCompleted:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingCompletedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingCompletedItem'
+        type: object
+    TrainingCompletedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingCompletedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingRemovedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingRemoved
+          trainingRemoved:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingRemovedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingRemovedItem'
+        type: object
+    TrainingRemovedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingRemovedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingRestoredItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingRestored
+          trainingRestored:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingRestoredCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingRestoredItem'
+        type: object
+    TrainingRestoredRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingRestoredCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingArchivedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingArchived
+          trainingArchived:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingArchivedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingArchivedItem'
+        type: object
+    TrainingArchivedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingArchivedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingUnarchivedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingUnarchived
+          trainingUnarchived:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingUnarchivedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingUnarchivedItem'
+        type: object
+    TrainingUnarchivedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingUnarchivedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingRegisteredItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingRegistered
+          trainingRegistered:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingRegisteredCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingRegisteredItem'
+        type: object
+    TrainingRegisteredRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingRegisteredCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingApprovedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingApproved
+          trainingApproved:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingApprovedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingApprovedItem'
+        type: object
+    TrainingApprovedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingApprovedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingDeniedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingDenied
+          trainingDenied:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingDeniedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingDeniedItem'
+        type: object
+    TrainingDeniedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingDeniedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingStartedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingStarted
+          trainingStarted:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingStartedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingStartedItem'
+        type: object
+    TrainingStartedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingStartedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingWithdrawnItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingWithdrawn
+          trainingWithdrawn:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingWithdrawnCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingWithdrawnItem'
+        type: object
+    TrainingWithdrawnRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingWithdrawnCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingCancelledItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingCancelled
+          trainingCancelled:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingCancelledCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingCancelledItem'
+        type: object
+    TrainingCancelledRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingCancelledCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingExemptItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingExempt
+          trainingExempt:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingExemptCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingExemptItem'
+        type: object
+    TrainingExemptRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingExemptCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingExemptionRequestedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingExemptionRequested
+          trainingExemptionRequested:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingExemptionRequestedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingExemptionRequestedItem'
+        type: object
+    TrainingExemptionRequestedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingExemptionRequestedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingExemptionApprovedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingExemptionApproved
+          trainingExemptionApproved:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingExemptionApprovedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingExemptionApprovedItem'
+        type: object
+    TrainingExemptionApprovedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingExemptionApprovedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    TrainingExemptionDeniedItem:
+      allOf:
+      - $ref: '#/components/schemas/TrainingEventItem'
+      - properties:
+          lmsEventsCase:
+            allOf:
+            - $ref: '#/components/schemas/TrainingEvents'
+            - default: TrainingExemptionDenied
+          trainingExemptionDenied:
+            $ref: '#/components/schemas/TrainingItem'
+            type: object
+        type: object
+    TrainingExemptionDeniedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/TrainingExemptionDeniedItem'
+        type: object
+    TrainingExemptionDeniedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/TrainingExemptionDeniedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    CallbackRecord:
+      properties:
+        offset:
+          format: int32
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+        correlationId:
+          type: string
+        lag:
+          type: number
+      type: object
+    CallbackRequest:
+      properties:
+        subscriptionId:
+          type: string
+        sessionId:
+          type: string
+        attemptNumber:
+          format: int32
+          type: number
+      type: object
+    AlertsEventItem:
+      properties:
+        subscriptionId:
+          type: string
+        explanation:
+          type: string
+        beginTimestamp:
+          type: string
+          format: date-time
+        alertTimestamp:
+          type: string
+          format: date-time
+        alertSessionIds:
+          description: Sessions that are to be alerted for offence
+          items:
+            type: string
+          type: array
+        webhookName:
+          description: Webhook name
+          type: string
+      type: object
+    AlertsEventNoHeartbeatItem:
+      allOf:
+      - $ref: '#/components/schemas/AlertsEventItem'
+      - properties:
+          noHeartbeat:
+            properties:
+              skippedHeartbeatCount:
+                format: int32
+                type: number
+            type: object
+          alertEventsCase:
+            type: string
+            default: NoHeartbeat
+        type: object
+    AlertEventNoHeartBeatCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/AlertsEventNoHeartbeatItem'
+        type: object
+    AlertsEventNoHeartbeatRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/AlertEventNoHeartBeatCallbackRecord'
+            type: array
+        type: object
+      type: object
+    AlertsEventReducedCapacityItem:
+      allOf:
+      - $ref: '#/components/schemas/AlertsEventItem'
+      - properties:
+          reducedCapacity:
+            properties:
+              actualSessionCount:
+                format: int32
+                type: number
+              expectedSessionCount:
+                format: int32
+                type: number
+              sessionFailureReasons:
+                items:
+                  type: string
+                type: array
+            type: object
+          alertEventsCase:
+            type: string
+            default: ReducedCapacity
+        type: object
+    AlertEventReducedCapacityCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/AlertsEventReducedCapacityItem'
+        type: object
+    AlertsEventReducedCapacityRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/AlertEventReducedCapacityCallbackRecord'
+            type: array
+        type: object
+    AlertsEventFailedItem:
+      allOf:
+      - $ref: '#/components/schemas/AlertsEventItem'
+      - properties:
+          failed:
+            properties:
+              sessionFailureReasons:
+                items:
+                  type: string
+                type: array
+            type: object
+          alertEventsCase:
+            type: string
+            default: Failed
+        type: object
+    AlertEventFailedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/AlertsEventFailedItem'
+        type: object
+    AlertsEventFailedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/AlertEventFailedCallbackRecord'
+            type: array
+        type: object
+    AlertsEventLaggingItem:
+      properties:
+        actualRecordLag:
+          format: double
+          type: number
+        thresholdRecordLag:
+          format: double
+          type: number
+        responseTime:
+          format: double
+          type: number
+      type: object
+    AlertsEventLaggingOver10SecondsItem:
+      allOf:
+      - $ref: '#/components/schemas/AlertsEventItem'
+      - properties:
+          laggingOver10Seconds:
+            $ref: '#/components/schemas/AlertsEventLaggingItem'
+          alertEventsCase:
+            type: string
+            default: LaggingOver10Seconds
+        type: object
+    AlertEventLaggingOver10SecondsCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/AlertsEventLaggingOver10SecondsItem'
+        type: object
+    AlertsEventLaggingOver10SecondsRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/AlertEventLaggingOver10SecondsCallbackRecord'
+            type: array
+        type: object
+    AlertsEventLaggingOver10MinutesItem:
+      allOf:
+      - $ref: '#/components/schemas/AlertsEventItem'
+      - properties:
+          laggingOver10Minutes:
+            $ref: '#/components/schemas/AlertsEventLaggingItem'
+          alertEventsCase:
+            type: string
+            default: LaggingOver10Minutes
+        type: object
+    AlertEventLaggingOver10MinutesCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/AlertsEventLaggingOver10MinutesItem'
+        type: object
+    AlertsEventLaggingOver10MinutesRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/AlertEventLaggingOver10MinutesCallbackRecord'
+            type: array
+        type: object
+    AlertsEventLaggingOver1HourItem:
+      allOf:
+      - $ref: '#/components/schemas/AlertsEventItem'
+      - properties:
+          laggingOver1Hour:
+            $ref: '#/components/schemas/AlertsEventLaggingItem'
+          alertEventsCase:
+            type: string
+            default: LaggingOver1Hour
+        type: object
+    AlertEventLaggingOver1HourCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/AlertsEventLaggingOver1HourItem'
+        type: object
+    AlertsEventLaggingOver1HourRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/AlertEventLaggingOver1HourCallbackRecord'
+            type: array
+        type: object
+    AlertsEventLaggingOver1DayItem:
+      allOf:
+      - $ref: '#/components/schemas/AlertsEventItem'
+      - properties:
+          laggingOver1Day:
+            $ref: '#/components/schemas/AlertsEventLaggingItem'
+          alertEventsCase:
+            type: string
+            default: LaggingOver1Day
+        type: object
+    AlertEventLaggingOver1DayCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/AlertsEventLaggingOver1DayItem'
+        type: object
+    AlertsEventLaggingOver1DayRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/AlertEventLaggingOver1DayCallbackRecord'
+            type: array
+        type: object
+    StatusCallbackResponseItem:
+      properties:
+        statusCode:
+          format: int32
+          type: number
+        statusDetails:
+          type: string
+        body:
+          type: string
+        durationSeconds:
+          format: int32
+          type: number
+      type: object
+    StatusEventItem:
+      properties:
+        session:
+          properties:
+            subscriptionId:
+              type: string
+            sessionId:
+              type: string
+            callbackUrl:
+              type: string
+            subscriptionRequest:
+              properties:
+                url:
+                  type: string
+                body:
+                  type: string
+              type: object
+            versionTag:
+              type: string
+            subscriptionTags:
+              type: string
+            startedDt:
+              type: string
+              format: date-time
+            serialNumber:
+              format: int32
+              type: number
+            bundleCount:
+              format: int32
+              type: number
+            recordCount:
+              format: int32
+              type: number
+            errorCount:
+              format: int32
+              type: number
+            heartbeatCount:
+              format: int32
+              type: number
+            averageRecordLag:
+              format: int32
+              type: number
+            subscriberUrn:
+              type: string
+          type: object
+        recordDt:
+          type: string
+          format: date-time
+      type: object
+    StatusEventStartingItem:
+      allOf:
+      - $ref: '#/components/schemas/StatusEventItem'
+      - properties:
+          starting:
+            type: object
+          statusEventsCase:
+            type: string
+            default: Starting
+        type: object
+    StatusEventStartingCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/StatusEventStartingItem'
+        type: object
+    StatusEventStartingRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/StatusEventStartingCallbackRecord'
+            type: array
+        type: object
+      type: object
+    StatusEventRunningItem:
+      allOf:
+      - $ref: '#/components/schemas/StatusEventItem'
+      - properties:
+          statusEventsCase:
+            type: string
+            default: Running
+          running:
+            properties:
+              response:
+                $ref: '#/components/schemas/StatusCallbackResponseItem'
+        type: object
+    StatusEventRunningCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/StatusEventRunningItem'
+        type: object
+    StatusEventRunningRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/StatusEventRunningCallbackRecord'
+            type: array
+        type: object
+      type: object
+    StatusEventStoppedItem:
+      allOf:
+      - $ref: '#/components/schemas/StatusEventItem'
+      - properties:
+          statusEventsCase:
+            type: string
+            default: Stopped
+          stopped:
+            type: object
+        type: object
+    StatusEventStoppedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/StatusEventStoppedItem'
+        type: object
+    StatusEventStoppedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/StatusEventStoppedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    StatusEventFailingItem:
+      allOf:
+      - $ref: '#/components/schemas/StatusEventItem'
+      - properties:
+          statusEventsCase:
+            type: string
+            default: Failing
+          failing:
+            properties:
+              attempt:
+                format: int32
+                type: number
+              explanation:
+                type: string
+              response:
+                $ref: '#/components/schemas/StatusCallbackResponseItem'
+            type: object
+        type: object
+    StatusEventFailingCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/StatusEventFailingItem'
+        type: object
+    StatusEventFailingRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/StatusEventFailingCallbackRecord'
+            type: array
+        type: object
+      type: object
+    StatusEventFailedItem:
+      allOf:
+      - $ref: '#/components/schemas/StatusEventItem'
+      - properties:
+          statusEventsCase:
+            type: string
+            default: Failed
+          failed:
+            properties:
+              attempt:
+                format: int32
+                type: number
+              explanation:
+                type: string
+              response:
+                $ref: '#/components/schemas/StatusCallbackResponseItem'
+            type: object
+        type: object
+    StatusEventFailedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/StatusEventFailedItem'
+        type: object
+    StatusEventFailedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/StatusEventFailedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    CreateEmployeeCoreDataItem:
+      properties:
+        userId:
+          description: Internal CSOD user ID
+          format: int32
+          type: number
+        mgrUserId:
+          description: Cornerstone-generated integer identifier of Employee's manager
+          format: int32
+          type: number
+        approverUserId:
+          description: Cornerstone-generated integer identifier of Employee's trainings
+            approver
+          format: int32
+          type: number
+        userName:
+          description: Employee's username
+          type: string
+        ref:
+          description: Employee's user ID
+          type: string
+        localSystemId:
+          description: Local system ID
+          type: string
+        guid:
+          description: User GUID
+          type: string
+        source:
+          description: Source
+          type: string
+        isAnonymized:
+          description: Flag indicating if employee's data is anonymized
+          type: boolean
+        requiredApprovals:
+          description: Number of required approvals
+          format: int32
+          type: number
+        allowReconciliation:
+          description: Flag indicating if reconciliation is allowed
+          type: boolean
+        prefix:
+          description: Employee's name prefix
+          type: string
+        firstName:
+          description: Employee's first name
+          type: string
+        middleName:
+          description: Employee's middle name
+          type: string
+        lastName:
+          description: Employee's last name
+          type: string
+        suffix:
+          description: Employee's name suffix
+          type: string
+        emailWork:
+          description: Employee's work email
+          type: string
+        status:
+          description: Indicates employee status within the Cornerstone system
+          format: int32
+          type: number
+        userTypeId:
+          description: User type ID
+          format: int32
+          type: number
+        absent:
+          description: Employee's absent status
+          type: boolean
+        displayLanguage:
+          description: Employee's display language
+          format: int32
+          type: number
+        timezone:
+          description: Employee's timezone
+          format: int32
+          type: number
+        createDate:
+          description: Employee's created date
+          format: date-time
+          type: string
+        modifiedDate:
+          description: Employee's modified date
+          format: date-time
+          type: string
+        lastHireDate:
+          description: Date of latest hire
+          format: date-time
+          type: string
+        originalHireDate:
+          description: Date of original hire
+          format: date-time
+          type: string
+        userCategory:
+          description: Employee's user category
+          format: int32
+          type: number
+        userSubcategory:
+          description: Employee's user subcategory
+          format: int32
+          type: number
+        userEmploymentStatus:
+          description: Employee's user employment status
+          format: int32
+          type: number
+        isRehiredEmployee:
+          description: Flag indicating if employee has been rehired
+          type: boolean
+        leaveReason:
+          description: Employee's leave reason
+          format: int32
+          type: number
+        terminationReason:
+          description: Employee's termination reason
+          format: int32
+          type: number
+        eligibleForRehire:
+          description: Flag set to indicate of employee is eligble to be rehired
+          type: boolean
+        terminationDate:
+          description: Date employee was terminated.
+          format: date-time
+          type: string
+        signature:
+          description: Employee's signature
+          type: string
+        photo:
+          description: Employee's photo
+          type: string
+        phoneWork:
+          description: Employee's work phone
+          type: string
+        phoneHome:
+          description: Employee's home phone
+          type: string
+        phoneMobile:
+          description: Employee's mobile phone
+          type: string
+        phoneFax:
+          description: Employee's fax phone
+          type: string
+        emailPersonal:
+          description: Employee's personal email
+          type: string
+        country:
+          description: Employee's country
+          type: string
+        line1:
+          description: Employee's address line 1
+          type: string
+        line2:
+          description: Employee's address line 2
+          type: string
+        municipality:
+          description: Employee's city
+          type: string
+        region:
+          description: Employee's region
+          type: string
+        postalCode:
+          description: Employee's zip or postal code
+          type: string
+        accuracyCode:
+          description: Accuracy code
+          type: string
+        geocodeId:
+          description: Geocode ID
+          format: int32
+          type: number
+        countryCodeAlpha2:
+          description: Country code alpha 2
+          type: string
+      type: object
+    ChangedValueIntItem:
+      properties:
+        oldValue:
+          description: Old value
+          format: int32
+          type: number
+        newValue:
+          description: New value
+          format: int32
+          type: number
+      type: object
+    ChangedValueIntArrayItem:
+      properties:
+        oldValue:
+          description: Old value
+          items:
+            format: int32
+            type: number
+          type: array
+        newValue:
+          description: New value
+          items:
+            format: int32
+            type: number
+          type: array
+      type: object
+    ChangedValueStringItem:
+      properties:
+        oldValue:
+          description: Old value
+          type: string
+        newValue:
+          description: New value
+          type: string
+      type: object
+    ChangedValueBooleanItem:
+      properties:
+        oldValue:
+          description: Old value
+          type: boolean
+        newValue:
+          description: New value
+          type: boolean
+      type: object
+    ChangedValueDateTimeItem:
+      properties:
+        oldValue:
+          description: Old value
+          format: date-time
+          type: string
+        newValue:
+          description: New value
+          format: date-time
+          type: string
+      type: object
+    UpdateEmployeeCoreDataItem:
+      properties:
+        userId:
+          description: Internal CSOD user ID
+          format: int32
+          type: number
+        mgrUserId:
+          description: Cornerstone-generated integer identifier of Employee's manager
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        approverUserId:
+          description: Cornerstone-generated integer identifier of Employee's trainings
+            approver
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        userName:
+          description: Employee's username
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        ref:
+          description: Employee's user ID
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        localSystemId:
+          description: Local system ID
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        source:
+          description: Source
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        isAnonymized:
+          description: Flag indicating if employee's data is anonymized
+          $ref: '#/components/schemas/ChangedValueBooleanItem'
+          type: object
+        requiredApprovals:
+          description: Number of required approvals
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        allowReconciliation:
+          description: Flag indicating if reconciliation is allowed
+          $ref: '#/components/schemas/ChangedValueBooleanItem'
+          type: object
+        prefix:
+          description: Employee's name prefix
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        firstName:
+          description: User first name
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        middleName:
+          description: User middle name
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        lastName:
+          description: User last name
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        suffix:
+          description: Employee's name suffix
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        emailWork:
+          description: Employee's work email
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        status:
+          description: Indicates employee status within the Cornerstone system
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        userTypeId:
+          description: User type ID
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        absent:
+          description: Employee's absent status
+          $ref: '#/components/schemas/ChangedValueBooleanItem'
+          type: object
+        displayLanguage:
+          description: Employee's display language
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        timezone:
+          description: Employee's timezone
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        modifiedDate:
+          description: Employee's modified date
+          $ref: '#/components/schemas/ChangedValueDateTimeItem'
+          type: object
+        lastHireDate:
+          description: Date of latest hire
+          $ref: '#/components/schemas/ChangedValueDateTimeItem'
+          type: object
+        originalHireDate:
+          description: Date of original hire
+          $ref: '#/components/schemas/ChangedValueDateTimeItem'
+          type: object
+        userCategory:
+          description: Employee's user category
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        userSubcategory:
+          description: Employee's user subcategory
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        userEmploymentStatus:
+          description: Employee's user employment status
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        isRehiredEmployee:
+          description: Flag indicating if employee has been rehired
+          $ref: '#/components/schemas/ChangedValueBooleanItem'
+          type: object
+        leaveReason:
+          description: Employee's leave reason
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        terminationReason:
+          description: Employee's termination reason
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        eligibleForRehire:
+          description: Flag set to indicate of employee is eligble to be rehired
+          $ref: '#/components/schemas/ChangedValueBooleanItem'
+          type: object
+        terminationDate:
+          description: Date employee was terminated.
+          $ref: '#/components/schemas/ChangedValueDateTimeItem'
+          type: object
+        signature:
+          description: Employee's signature
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        photo:
+          description: Employee's photo
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        phoneWork:
+          description: Employee's work phone
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        phoneHome:
+          description: Employee's home phone
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        phoneMobile:
+          description: Employee's mobile phone
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        phoneFax:
+          description: Employee's fax phone
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        emailPersonal:
+          description: Employee's personal email
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        country:
+          description: Employee's country
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        line1:
+          description: Employee's address line 1
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        line2:
+          description: Employee's address line 2
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        municipality:
+          description: Employee's city
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        region:
+          description: Employee's region
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        postalCode:
+          description: Employee's zip or postal code
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        accuracyCode:
+          description: Accuracy code
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+        geocodeId:
+          description: Geocode ID
+          $ref: '#/components/schemas/ChangedValueIntItem'
+          type: object
+        countryCodeAlpha2:
+          description: Country code alpha 2
+          $ref: '#/components/schemas/ChangedValueStringItem'
+          type: object
+      type: object
+    CreateDeleteEmployeeOusChangeEventItem:
+      properties:
+        userId:
+          description: User ID
+          format: int32
+          type: number
+        changes:
+          items:
+            properties:
+              userId:
+                description: User ID
+                format: int32
+                type: number
+              organizationalUnitId:
+                description: Organizational unit ID
+                format: int32
+                type: number
+              statusId:
+                description: Status ID
+                format: int32
+                type: number
+              typeId:
+                description: Type ID
+                format: int32
+                type: number
+              actionType:
+                description: Action type
+                format: int32
+                type: number
+            type: object
+          type: array
+      type: object
+    UpdateEmployeeOusChangeEventItem:
+      properties:
+        userId:
+          description: User ID
+          format: int32
+          type: number
+        singleOuChanges:
+          items:
+            properties:
+              userId:
+                description: User ID
+                format: int32
+                type: number
+              typeId:
+                description: Type ID
+                format: int32
+                type: number
+              organizationalUnitId:
+                description: Organizational unit ID
+                $ref: '#/components/schemas/ChangedValueIntItem'
+                type: object
+            type: object
+          type: array
+        multiOuChanges:
+          items:
+            properties:
+              userId:
+                description: User ID
+                format: int32
+                type: number
+              typeId:
+                description: Type ID
+                format: int32
+                type: number
+              organizationalUnitIds:
+                description: Organizational unit ID
+                items:
+                  $ref: '#/components/schemas/ChangedValueIntArrayItem'
+                type: array
+            type: object
+          type: array
+      type: object
+    CreateDeleteEmployeeCustomFieldsChangeEventItem:
+      properties:
+        userId:
+          description: User ID
+          format: int32
+          type: number
+        changes:
+          items:
+            properties:
+              userId:
+                description: User ID
+                format: int32
+                type: number
+              customFieldId:
+                description: Custom field ID
+                format: int32
+                type: number
+              value:
+                description: Custom field value
+                type: string
+            type: object
+          type: array
+      type: object
+    UpdateEmployeeCustomFieldsChangeEventItem:
+      properties:
+        userId:
+          description: User ID
+          format: int32
+          type: number
+        changes:
+          items:
+            properties:
+              userId:
+                description: User ID
+                format: int32
+                type: number
+              customFieldId:
+                description: Custom field ID
+                format: int32
+                type: number
+              value:
+                description: Custom field value
+                $ref: '#/components/schemas/ChangedValueStringItem'
+                type: object
+            type: object
+          type: array
+      type: object
+    EmployeeCreatedEventItem:
+      properties:
+        userId:
+          description: User ID
+          format: int32
+          type: number
+        createEmployeeCoreData:
+          description: Create employee core data
+          $ref: '#/components/schemas/CreateEmployeeCoreDataItem'
+          type: object
+        createEmployeeOus:
+          description: Create employee OUs
+          $ref: '#/components/schemas/CreateDeleteEmployeeOusChangeEventItem'
+          type: object
+        createEmployeeCustomFields:
+          description: Create employee custom fields
+          $ref: '#/components/schemas/CreateDeleteEmployeeCustomFieldsChangeEventItem'
+          type: object
+      type: object
+    EmployeeUpdatedEventItem:
+      properties:
+        userId:
+          description: User ID
+          format: int32
+          type: number
+        updateEmployeeCoreData:
+          description: Update employee core data
+          $ref: '#/components/schemas/UpdateEmployeeCoreDataItem'
+          type: object
+        createEmployeeOus:
+          description: Create employee OUs
+          $ref: '#/components/schemas/CreateDeleteEmployeeOusChangeEventItem'
+          type: object
+        updateEmployeeOus:
+          description: Update employee OUs
+          $ref: '#/components/schemas/UpdateEmployeeOusChangeEventItem'
+          type: object
+        deleteEmployeeOus:
+          description: Delete employee OUs
+          $ref: '#/components/schemas/CreateDeleteEmployeeOusChangeEventItem'
+          type: object
+        createEmployeeCustomFields:
+          description: Create employee custom fields
+          $ref: '#/components/schemas/CreateDeleteEmployeeCustomFieldsChangeEventItem'
+          type: object
+        updateEmployeeCustomFields:
+          description: Update employee custom fields
+          $ref: '#/components/schemas/UpdateEmployeeCustomFieldsChangeEventItem'
+          type: object
+        deleteEmployeeCustomFields:
+          description: Delete employee custom fields
+          $ref: '#/components/schemas/CreateDeleteEmployeeCustomFieldsChangeEventItem'
+          type: object
+      type: object
+    EmployeeEventItem:
+      properties:
+        headers:
+          properties:
+            corpName:
+              description: Corp name
+              type: string
+            cloudCorpId:
+              description: Cloud corp ID
+              type: string
+            actorId:
+              description: Actor ID
+              format: int32
+              type: number
+            cultureId:
+              description: Culture ID
+              format: int32
+              type: number
+            correlationId:
+              description: Correlation ID
+              type: string
+            cultureName:
+              description: Culture name
+              type: string
+            messageId:
+              description: Message ID
+              type: string
+            tags:
+              description: Tags
+              type: string
+          type: object
+      type: object
+    EmployeeCreatedItem:
+      allOf:
+      - $ref: '#/components/schemas/EmployeeEventItem'
+      - properties:
+          employeeCreated:
+            description: Employee created
+            $ref: '#/components/schemas/EmployeeCreatedEventItem'
+            type: object
+          employeeEventsCase:
+            description: Employee events case
+            type: string
+            default: EmployeeCreated
+        type: object
+    EmployeeCreatedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/EmployeeCreatedItem'
+        type: object
+    EmployeeCreatedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/EmployeeCreatedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    EmployeeUpdatedItem:
+      allOf:
+      - $ref: '#/components/schemas/EmployeeEventItem'
+      - properties:
+          employeeUpdated:
+            description: Employee updated
+            $ref: '#/components/schemas/EmployeeUpdatedEventItem'
+            type: object
+          employeeEventsCase:
+            description: Employee events case
+            type: string
+            default: EmployeeUpdated
+        type: object
+    EmployeeUpdatedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/EmployeeUpdatedItem'
+        type: object
+    EmployeeUpdatedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/EmployeeUpdatedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    SkillsEventItem:
+      properties:
+        headers:
+          properties:
+            csxCcId:
+              description: Cloud corp ID
+              type: string
+            edxOrgId:
+              description: Organization ID
+              type: string
+            sbxSite:
+              description: SBX Site
+              type: string
+            type:
+              description: Type
+              type: string
+            ts:
+              description: Epoch time in milliseconds
+              format: int64
+              type: number
+            src:
+              description: Original Source of the events
+              type: string
+            correlationId:
+              description: Correlation ID
+              type: string
+            tags:
+              description: Tags
+              type: string
+          type: object
+      type: object
+    UserSkillEventDataItem:
+      properties:
+        data:
+          properties:
+            userId:
+              description: Unique Id for the CSX user
+              type: string
+            tmsSkillId:
+              description: Unique Id for CSX Skill
+              type: string
+            userSkillType:
+              description: User skill type
+              enum:
+              - Declared
+              - Developing
+              type: string
+            version:
+              description: Profile version
+              format: int64
+              type: number
+            actionDt:
+              description: UTC timestamp
+              format: date-time
+              type: string
+            aspirationalProficiency:
+              description: Populated only for Developing
+              format: int32
+              type: number
+          type: object
+      type: object
+    UserSkillAddedItem:
+      allOf:
+      - $ref: '#/components/schemas/SkillsEventItem'
+      - properties:
+          userSkillAdded:
+            description: User skill added
+            $ref: '#/components/schemas/UserSkillEventDataItem'
+            type: object
+          userSkillsEventsCase:
+            description: User skills events case
+            type: string
+            default: UserSkillAdded
+        type: object
+    UserSkillAddedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/UserSkillAddedItem'
+        type: object
+    UserSkillAddedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/UserSkillAddedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    UserSkillRemovedItem:
+      allOf:
+      - $ref: '#/components/schemas/SkillsEventItem'
+      - properties:
+          userSkillRemoved:
+            description: User skill removed
+            $ref: '#/components/schemas/UserSkillEventDataItem'
+            type: object
+          userSkillsEventsCase:
+            description: User skills events case
+            type: string
+            default: UserSkillRemoved
+        type: object
+    UserSkillRemovedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/UserSkillRemovedItem'
+        type: object
+    UserSkillRemovedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/UserSkillRemovedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    UserRatingsEventDataItem:
+      properties:
+        data:
+          properties:
+            targetUserId:
+              description: Unique Id for the CSX user who received the rating
+              type: string
+            raterUserId:
+              description: Unique Id for the CSX user who gave the rating
+              type: string
+            visibility:
+              description: Visibility
+              enum:
+              - TargetUser
+              - Rater
+              - Manager
+              - Requestor
+              - Public
+              type: string
+            tmsSkillId:
+              description: Unique Id for CSX Skill
+              type: string
+            score:
+              description: Score
+              format: float
+              type: number
+            scorePercentage:
+              description: Score percentage
+              format: int32
+              type: number
+            minScore:
+              description: Minimum score
+              format: int32
+              type: number
+            maxScore:
+              description: Maximum score
+              format: int32
+              type: number
+            actionDt:
+              description: UTC timestamp
+              format: date-time
+              type: string
+          type: object
+      type: object
+    UserRatingSubmittedItem:
+      allOf:
+      - $ref: '#/components/schemas/SkillsEventItem'
+      - properties:
+          userRatingSubmitted:
+            description: User rating submitted
+            $ref: '#/components/schemas/UserRatingsEventDataItem'
+            type: object
+          userRatingsEventsCase:
+            description: User ratings events case
+            type: string
+            default: UserRatingSubmitted
+        type: object
+    UserRatingSubmittedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/UserRatingSubmittedItem'
+        type: object
+    UserRatingSubmittedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/UserRatingSubmittedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    RatingRequestEventDataItem:
+      properties:
+        data:
+          properties:
+            requestId:
+              description: Unique Id of the rating request that's been initiated
+              type: string
+            requestorUserId:
+              description: Unique Id for the CSX user who requested the feedback request
+              type: string
+            raterUserId:
+              description: Unique Id for the CSX user who received the feedback request
+              type: string
+            actionDt:
+              description: UTC timestamp when the rating request was created
+              format: date-time
+              type: string
+            actionType:
+              description: Action type (create request = 1, cancel request = 2)
+              format: int32
+              type: number
+          type: object
+      type: object
+    RatingRequestCreatedItem:
+      allOf:
+      - $ref: '#/components/schemas/SkillsEventItem'
+      - properties:
+          ratingRequestCreated:
+            description: Rating request created
+            $ref: '#/components/schemas/RatingRequestEventDataItem'
+            type: object
+          userRatingsEventsCase:
+            description: User ratings events case
+            type: string
+            default: RatingRequestCreated
+        type: object
+    RatingRequestCreatedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/RatingRequestCreatedItem'
+        type: object
+    RatingRequestCreatedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/RatingRequestCreatedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    SkillsLibraryEventDataItem:
+      properties:
+        data:
+          properties:
+            similarSkillsGraphIds:
+              description: Similar skills graph IDs
+              type: object
+              example:
+                values:
+                - a
+                - b
+            id:
+              description: Unique Id
+              type: string
+            tmsSkillId:
+              description: Unique Id for CSX Skill
+              type: string
+            version:
+              description: Version
+              format: int64
+              type: number
+            name:
+              description: Name
+              type: string
+            description:
+              description: Description
+              type: string
+            type:
+              description: Type
+              type: string
+            externalId:
+              description: External ID
+              type: string
+            createdBy:
+              description: Created by
+              type: string
+            createdDate:
+              description: Created date
+              format: date-time
+              type: string
+            modifiedBy:
+              description: Modified by
+              type: string
+            modifiedDate:
+              description: Modified date
+              format: date-time
+              type: string
+            source:
+              description: Source
+              type: string
+            isDeleted:
+              description: Flag indicating if deleted
+              type: boolean
+            isUsed:
+              description: Flag indicating if used
+              type: boolean
+            localizedName:
+              description: Localized names
+              type: object
+              example:
+                en_us: conflict minerals
+                it-it: minerali di conflitto
+            localizedDescriptions:
+              description: Localized descriptions
+              type: object
+              example:
+                en_us: test desc
+            defaultCulture:
+              description: Default culture
+              type: string
+            status:
+              description: Status
+              enum:
+              - Active
+              - Inactive
+              type: string
+            skillsGraphId:
+              description: Skills graph ID
+              type: string
+          type: object
+      type: object
+    SkillUpsertedItem:
+      allOf:
+      - $ref: '#/components/schemas/SkillsEventItem'
+      - properties:
+          skillUpserted:
+            description: Skill upserted
+            $ref: '#/components/schemas/SkillsLibraryEventDataItem'
+            type: object
+          skillsLibraryEventsCase:
+            description: Skills library events case
+            type: string
+            default: SkillUpserted
+        type: object
+    SkillUpsertedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/SkillUpsertedItem'
+        type: object
+    SkillUpsertedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/SkillUpsertedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    SkillIdSyncEventDataItem:
+      properties:
+        data:
+          properties:
+            id:
+              description: Unique Id
+              type: string
+            tmsSkillId:
+              description: Unique Id for CSX Skill
+              type: string
+          type: object
+      type: object
+    SkillIdSyncItem:
+      allOf:
+      - $ref: '#/components/schemas/SkillsEventItem'
+      - properties:
+          skillIdSync:
+            description: Skill ID sync
+            $ref: '#/components/schemas/SkillIdSyncEventDataItem'
+            type: object
+          skillsLibraryEventsCase:
+            description: Skills library events case
+            type: string
+            default: SkillIdSync
+        type: object
+    SkillIdSyncCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/SkillIdSyncItem'
+        type: object
+    SkillIdSyncRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/SkillIdSyncCallbackRecord'
+            type: array
+        type: object
+      type: object
+    SkillDeletedEventDataItem:
+      properties:
+        data:
+          properties:
+            id:
+              description: Unique Id
+              type: string
+            tmsSkillId:
+              description: Unique Id for CSX Skill
+              type: string
+            snowFlakeId:
+              description: Unique Id for snow flake
+              type: string
+          type: object
+      type: object
+    SkillDeletedItem:
+      allOf:
+      - $ref: '#/components/schemas/SkillsEventItem'
+      - properties:
+          skillDeleted:
+            description: Skill deleted
+            $ref: '#/components/schemas/SkillDeletedEventDataItem'
+            type: object
+          skillsLibraryEventsCase:
+            description: Skills library events case
+            type: string
+            default: SkillDeleted
+        type: object
+    SkillDeletedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/SkillDeletedItem'
+        type: object
+    SkillDeletedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/SkillDeletedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    RecruitingEventItem:
+      properties:
+        headers:
+          properties:
+            corpName:
+              description: Portal name where the event happened
+              type: string
+            cloudCorpId:
+              description: Internal cloud Id for the portal name where the event happened
+              type: string
+            actorId:
+              description: User Id who is administering the event, aka ''Admin User''
+              format: int64
+              type: number
+            cultureId:
+              description: Culture Id for the events
+              format: int32
+              type: number
+            correlationId:
+              description: Unique identifier to track the event flow in the data-pipeline
+              type: string
+            cultureName:
+              description: Culture name for the events
+              type: string
+            messageId:
+              description: Message ID
+              type: string
+            tags:
+              description: Tags
+              type: string
+          type: object
+      type: object
+    RecruitingEventDataItem:
+      properties:
+        data:
+          properties:
+            applicationId:
+              description: Application ID
+              type: string
+            messageText:
+              description: Message text
+              type: string
+            timestamp:
+              description: Timestamp
+              format: date-time
+              type: string
+            candidatePhoneNumber:
+              description: Candidate phone number
+              type: string
+            messageId:
+              description: Message ID
+              type: string
+            from:
+              description: From
+              type: string
+            mode:
+              description: Mode
+              format: int32
+              type: number
+          type: object
+      type: object
+    SendMessageItem:
+      allOf:
+      - $ref: '#/components/schemas/RecruitingEventItem'
+      - properties:
+          sendMessage:
+            description: Send message
+            $ref: '#/components/schemas/RecruitingEventDataItem'
+            type: object
+          recruitingEventsCase:
+            description: Recruiting events case
+            type: string
+            default: SendMessage
+        type: object
+    SendMessageCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/SendMessageItem'
+        type: object
+    SendMessageRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/SendMessageCallbackRecord'
+            type: array
+        type: object
+      type: object
+    CloseConversationEventDataItem:
+      properties:
+        data:
+          properties:
+            applicationId:
+              description: Application ID
+              type: string
+          type: object
+      type: object
+    CloseConversationItem:
+      allOf:
+      - $ref: '#/components/schemas/RecruitingEventItem'
+      - properties:
+          closeConversation:
+            description: Send message
+            $ref: '#/components/schemas/CloseConversationEventDataItem'
+            type: object
+          recruitingEventsCase:
+            description: Recruiting events case
+            type: string
+            default: CloseConversation
+        type: object
+    CloseConversationCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/CloseConversationItem'
+        type: object
+    CloseConversationRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/CloseConversationCallbackRecord'
+            type: array
+        type: object
+      type: object
+    EcommerceEventItem:
+      properties:
+        headers:
+          properties:
+            corpName:
+              description: Portal name where the event happened
+              type: string
+            cloudCorpId:
+              description: Internal cloud Id for the portal name where the event happened
+              type: string
+            actorId:
+              description: User Id who is administering the event, aka ''Admin User''
+              format: int64
+              type: number
+            cultureId:
+              description: Culture Id for the events
+              format: int32
+              type: number
+            correlationId:
+              description: Unique identifier to track the event flow in the data-pipeline
+              type: string
+            cultureName:
+              description: Culture name for the events
+              type: string
+            messageId:
+              description: Message ID
+              type: string
+            tags:
+              description: Tags
+              type: string
+          type: object
+      type: object
+    TransactionCustomFieldDataItem:
+      properties:
+        changes:
+          items:
+            properties:
+              culture:
+                description: Culture
+                type: string
+              customFieldId:
+                description: Custom field ID
+                format: int32
+                type: number
+              customFieldName:
+                description: Custom field name
+                type: string
+              value:
+                description: Custom field value
+                type: string
+            type: object
+          type: array
+      type: object
+    PaymentPendingDataItem:
+      properties:
+        data:
+          properties:
+            userRef:
+              description: User reference
+              type: string
+            userId:
+              description: User ID
+              format: int32
+              type: number
+            userGuid:
+              description: User GUID
+              type: string
+            userFullName:
+              description: User full name
+              type: string
+            userDivisionId:
+              description: User division ID
+              format: int32
+              type: number
+            userDivisionCode:
+              description: User division code
+              type: string
+            userCostCenterId:
+              description: User cost center ID
+              format: int32
+              type: number
+            userCostCenterCode:
+              description: User cost center code
+              type: string
+            transactionUsageTypeId:
+              description: Transaction usage type ID
+              format: int32
+              type: number
+            transactionTotal:
+              description: Transaction total
+              format: int32
+              type: number
+            transactionStatusId:
+              description: Transaction status ID
+              format: int32
+              type: number
+            transactionStatusCode:
+              description: Transaction status code
+              type: string
+            transactionSalesTax:
+              description: Transaction sales tax
+              format: int32
+              type: number
+            transactionReferenceNumber:
+              description: Transaction reference number
+              type: string
+            transactionRef:
+              description: Transaction reference
+              type: string
+            transactionQuantity:
+              description: Transaction quantity
+              format: int32
+              type: number
+            transactionProcessingFee:
+              description: Transaction processing fee
+              format: int32
+              type: number
+            transactionPrice:
+              description: Transaction price
+              format: int32
+              type: number
+            transactionDiscount:
+              description: Transaction discount
+              format: int32
+              type: number
+            transactionDateTime:
+              description: Transaction date time
+              format: date-time
+              type: string
+            transactionCustomFields:
+              $ref: '#/components/schemas/TransactionCustomFieldDataItem'
+              type: object
+            transactionCurrId:
+              description: Transaction currency ID
+              format: int32
+              type: number
+            transactionCurrCode:
+              description: Transaction currency code
+              type: string
+            transactionCouponDiscount:
+              description: Transaction coupon discount
+              format: int32
+              type: number
+            transactionComment:
+              description: Transaction comment
+              type: string
+            transactionCode:
+              description: Transaction code
+              type: string
+            transactionBillingCompanyName:
+              description: Transaction billing company name
+              type: string
+            transactionBillingAddressZip:
+              description: Transaction billing address zip
+              type: string
+            transactionBillingAddressState:
+              description: Transaction billing address state
+              type: string
+            transactionBillingAddressPhoneNumber:
+              description: Transaction billing address phone number
+              type: string
+            transactionBillingAddressLine2:
+              description: Transaction billing address line 2
+              type: string
+            transactionBillingAddressLine1:
+              description: Transaction billing address line 1
+              type: string
+            transactionBillingAddressLastName:
+              description: Transaction billing address last name
+              type: string
+            transactionBillingAddressFirstName:
+              description: Transaction billing address first name
+              type: string
+            transactionBillingAddressCountry:
+              description: Transaction billing address country
+              type: string
+            transactionBillingAddressCity:
+              description: Transaction billing address city
+              type: string
+            transactionBillingAccountId:
+              description: Transaction billing account ID
+              format: int32
+              type: number
+            trainingType:
+              description: Training type
+              type: string
+            trainingTitle:
+              description: Training title
+              type: string
+            trainingStartDate:
+              description: Training start date
+              type: string
+            trainingPurchaseLineItemId:
+              description: Training purchase line item ID
+              format: int32
+              type: number
+            trainingPurchaseId:
+              description: Training purchase ID
+              format: int32
+              type: number
+            trainingProvider:
+              description: Training provider
+              type: string
+            trainingPrice:
+              description: Training price
+              format: int32
+              type: number
+            trainingLoid:
+              description: Training LO ID
+              type: string
+            trainingEndDate:
+              description: Training end date
+              type: string
+          type: object
+      type: object
+    PendingPaymentCreatedItem:
+      allOf:
+      - $ref: '#/components/schemas/EcommerceEventItem'
+      - properties:
+          pendingPaymentCreated:
+            description: Pending payment created
+            $ref: '#/components/schemas/PaymentPendingDataItem'
+            type: object
+          ecommerceEventsCase:
+            description: Ecommerce events case
+            type: string
+            default: PendingPaymentCreated
+        type: object
+    PendingPaymentCreatedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/PendingPaymentCreatedItem'
+        type: object
+    PendingPaymentCreatedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/PendingPaymentCreatedCallbackRecord'
+            type: array
+        type: object
+      type: object
+    PendingPaymentUpdatedItem:
+      allOf:
+      - $ref: '#/components/schemas/EcommerceEventItem'
+      - properties:
+          pendingPaymentUpdated:
+            description: Pending payment updated
+            $ref: '#/components/schemas/PaymentPendingDataItem'
+            type: object
+          ecommerceEventsCase:
+            description: Ecommerce events case
+            type: string
+            default: PendingPaymentUpdated
+        type: object
+    PendingPaymentUpdatedCallbackRecord:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRecord'
+      - properties:
+          value:
+            $ref: '#/components/schemas/PendingPaymentUpdatedItem'
+        type: object
+    PendingPaymentUpdatedRequest:
+      allOf:
+      - $ref: '#/components/schemas/CallbackRequest'
+      - properties:
+          records:
+            items:
+              $ref: '#/components/schemas/PendingPaymentUpdatedCallbackRecord'
+            type: array
+        type: object
+      type: object
+  securitySchemes:
+    bearerAuth:
+      description: '[Authentication Page](https://csod.dev/guides/connectors/content/authentication.html)'
+      type: http
+      scheme: bearer
+webhooks:
+  TrainingEvents:
+    post:
+      description: Post Training Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/TrainingAssignedRequest'
+              - $ref: '#/components/schemas/TrainingCompletedRequest'
+              - $ref: '#/components/schemas/TrainingRemovedRequest'
+              - $ref: '#/components/schemas/TrainingRestoredRequest'
+              - $ref: '#/components/schemas/TrainingArchivedRequest'
+              - $ref: '#/components/schemas/TrainingUnarchivedRequest'
+              - $ref: '#/components/schemas/TrainingRegisteredRequest'
+              - $ref: '#/components/schemas/TrainingApprovedRequest'
+              - $ref: '#/components/schemas/TrainingDeniedRequest'
+              - $ref: '#/components/schemas/TrainingStartedRequest'
+              - $ref: '#/components/schemas/TrainingWithdrawnRequest'
+              - $ref: '#/components/schemas/TrainingCancelledRequest'
+              - $ref: '#/components/schemas/TrainingExemptRequest'
+              - $ref: '#/components/schemas/TrainingExemptionRequestedRequest'
+              - $ref: '#/components/schemas/TrainingExemptionApprovedRequest'
+              - $ref: '#/components/schemas/TrainingExemptionDeniedRequest'
+      summary: Training Events
+      tags: []
+  AlertsEvents:
+    post:
+      description: Post Alerts Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/AlertsEventNoHeartbeatRequest'
+              - $ref: '#/components/schemas/AlertsEventReducedCapacityRequest'
+              - $ref: '#/components/schemas/AlertsEventFailedRequest'
+              - $ref: '#/components/schemas/AlertsEventLaggingOver10SecondsRequest'
+              - $ref: '#/components/schemas/AlertsEventLaggingOver10MinutesRequest'
+              - $ref: '#/components/schemas/AlertsEventLaggingOver1HourRequest'
+              - $ref: '#/components/schemas/AlertsEventLaggingOver1DayRequest'
+      summary: Alerts Events
+      tags: []
+  StatusEvents:
+    post:
+      description: Post Status Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/StatusEventStartingRequest'
+              - $ref: '#/components/schemas/StatusEventRunningRequest'
+              - $ref: '#/components/schemas/StatusEventStoppedRequest'
+              - $ref: '#/components/schemas/StatusEventFailingRequest'
+              - $ref: '#/components/schemas/StatusEventFailedRequest'
+      summary: Status Events
+      tags: []
+  EmployeeEvents:
+    post:
+      description: Post Employee Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/EmployeeCreatedRequest'
+              - $ref: '#/components/schemas/EmployeeUpdatedRequest'
+      summary: Employee Events
+      tags: []
+  UserSkillsEvents:
+    post:
+      description: Post User Skills Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/UserSkillAddedRequest'
+              - $ref: '#/components/schemas/UserSkillRemovedRequest'
+      summary: User Skills Events
+      tags: []
+  UserRatingsEvents:
+    post:
+      description: Post User Ratings Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/UserRatingSubmittedRequest'
+              - $ref: '#/components/schemas/RatingRequestCreatedRequest'
+      summary: User Ratings Events
+      tags: []
+  SkillsLibraryEvents:
+    post:
+      description: Post Skills Library Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/SkillUpsertedRequest'
+              - $ref: '#/components/schemas/SkillIdSyncRequest'
+              - $ref: '#/components/schemas/SkillDeletedRequest'
+      summary: Skills Library Events
+      tags: []
+  RecruitingEvents:
+    post:
+      description: Post Recruiting Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/SendMessageRequest'
+              - $ref: '#/components/schemas/CloseConversationRequest'
+      summary: Recruiting Events
+      tags: []
+  EcommerceEvents:
+    post:
+      description: Post Ecommerce Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/PendingPaymentCreatedRequest'
+              - $ref: '#/components/schemas/PendingPaymentUpdatedRequest'
+      summary: Ecommerce Events
+      tags: []
+security:
+- bearerAuth: []
