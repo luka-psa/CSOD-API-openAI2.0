@@ -14,6 +14,8 @@
   --kriek: #9b1c33;
   --kriek-soft: #f3e3e3;
   --geuze: #a87814;
+  --juicy: #b4500c;
+  --spice: #3f7a35;
   --display: "Gloock", "Georgia", serif;
   --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -21,12 +23,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #191613; --surface: #231f1b; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
-    --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; color-scheme: dark;
+    --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; --juicy: #f29a52; --spice: #8cc274; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #191613; --surface: #231f1b; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
-  --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; color-scheme: dark;
+  --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; --juicy: #f29a52; --spice: #8cc274; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -71,6 +73,13 @@ details:not([open]) .more::after { content: " ▾"; }
 .all li.alt { color: var(--ink); }
 .all .tag { font: 600 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; margin-left: 6px; color: var(--geuze); }
 
+.all .tag.juicy, .chip.juicy { color: var(--juicy); }
+.all .tag.spice, .chip.spice { color: var(--spice); }
+.all li.like { color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; }
+.chip { font: 600 11px var(--mono); letter-spacing: .04em; }
+.key .k3 { background: var(--juicy); }
+.key .k4 { background: var(--spice); }
 .stand.backup { border: 1.5px dashed var(--geuze); }
 .stand.backup .no, .stand.backup .name { color: var(--ink); }
 .stand.mine { border: 2px solid var(--kriek); background: var(--surface); }
@@ -114,7 +123,7 @@ footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var
     <div class="eyebrow">Modeste Bierfestival · De Koninck</div>
     <h1>Sour Tour</h1>
     <div class="facts"><span>Sat 3 &amp; Sun 4 Oct</span><span>11:00–19:00</span><span>€7 entry incl. 1st drink</span><span>€2–3 per tasting</span></div>
-    <div class="key"><span><i class="k1"></i>Your 6 beers</span><span><i class="k2"></i>Backup if sold out</span><span>Tap any stand to see all its beers</span></div>
+    <div class="key"><span><i class="k1"></i>Your 6 beers</span><span><i class="k2"></i>Backup if sold out</span><span><i class="k3"></i>Juicy sour, like Kiss My Neighbour's Wife</span><span><i class="k4"></i>Spiced, like Lost in Spice</span><span>Tap any stand to see all its beers</span></div>
   </header>
 
   <nav class="route" aria-label="Your route">
@@ -142,6 +151,15 @@ const ROUTE = [
   { time: "13:45", stand: "13", beer: "Bezonken Rood", label: "Oud bruin", note: "Water before the last one.", backup: ["14", "Cuvée De Ranke"] },
   { time: "14:30", stand: "11", beer: "Vissers Lambik 1Y (vat Nr.11)", label: "Young lambic from barrel", must: true, note: "Flat, which is normal for young lambic. Strongest of the six.", backup: ["3", "Rieslin sur Senne"] }
 ];
+// Beers in the style of the user's favourites: juicy/hoppy sours (Kiss My Neighbour's Wife) and spiced or herbal beers (Lost in Spice).
+const LIKES = {
+  "12": { "Bien Sur Cranberry": "juicy" },
+  "15": { "DH Sour": "juicy" },
+  "19–20": { "La Foxy Belge": "juicy", "Natte Selder": "spice", "Citrus Hill": "spice" },
+  "21": { "Pascharius Strawberry Mint Sour": "juicy", "Otto Bloodorange Hibiscus Saison": "spice", "Marinus Juniper & Kveik Farmhouse Ale": "spice", "Francesca Tomato Basil Sour": "spice" },
+  "28": { "Emmer Session Sour BA Bordeaux Rood": "juicy", "Emmer Session Sour BA Calvados": "juicy", "Emmer Session Sour BA Loupiac": "juicy", "Emmer Session Sour BA Ginja": "juicy" }
+};
+const LIKE_LABEL = { juicy: "juicy sour", spice: "spiced" };
 const NOTE_AFTER = { "8": "Saucisson d'Olivier · dried sausage tasting boards. Good break stop." };
 
 const KEY = "sour-tour-top6-2026";
@@ -161,8 +179,9 @@ STANDS.forEach(s => {
   li.className = "stand" + (mine.length ? " mine" : backups.length ? " backup" : "");
   li.id = "stand-" + s.stand;
   const beers = s.beers.map(([n, style, abv, src]) => {
-    const isMine = mine.some(r => r.beer === n), isAlt = backups.includes(n);
-    return `<li class="${isMine ? "mine" : isAlt ? "alt" : ""}"><span>${esc(n)}${isMine ? '<span class="tag">yours</span>' : isAlt ? '<span class="tag">backup</span>' : ""} · ${esc(style)}</span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span></li>`;
+    const isMine = mine.some(r => r.beer === n), isAlt = backups.includes(n), like = (LIKES[s.stand] || {})[n];
+    const tags = (isMine ? '<span class="tag">yours</span>' : isAlt ? '<span class="tag">backup</span>' : "") + (like ? `<span class="tag ${like}">${LIKE_LABEL[like]}</span>` : "");
+    return `<li class="${isMine ? "mine" : isAlt ? "alt" : like ? "like" : ""}"><span>${esc(n)}${tags} · ${esc(style)}</span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span></li>`;
   }).join("");
   const picks = mine.map(r => {
     const b = find(r.stand, r.beer);
@@ -177,11 +196,15 @@ STANDS.forEach(s => {
         <span class="rating" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button type="button" data-i="${r.i}" data-r="${n}" aria-label="Rate ${n} of 5">${glass}</button>`).join("")}</span>
       </div></div>`;
   }).join("");
-  li.innerHTML = `<details><summary><span class="no">${s.stand}</span><span class="name">${esc(s.brewery)}</span><span class="more">${s.beers.length} beers</span></summary><ul class="all">${beers}</ul></details>${picks ? `<div class="picks">${picks}</div>` : ""}`;
+  li.innerHTML = `<details><summary><span class="no">${s.stand}</span><span class="name">${esc(s.brewery)}${chips(s.stand)}</span><span class="more">${s.beers.length} beers</span></summary><ul class="all">${beers}</ul></details>${picks ? `<div class="picks">${picks}</div>` : ""}`;
   list.appendChild(li);
   if (NOTE_AFTER[s.stand]) list.insertAdjacentHTML("beforeend", `<li class="stand note"><details><summary><span class="no">·</span><span class="name">${NOTE_AFTER[s.stand]}</span><span></span></summary></details></li>`);
 });
 
+function chips(stand) {
+  const v = Object.values(LIKES[stand] || {}); if (!v.length) return "";
+  return '<span class="chips">' + ["juicy", "spice"].map(k => { const c = v.filter(x => x === k).length; return c ? `<span class="chip ${k}">${c} ${LIKE_LABEL[k]}</span>` : ""; }).join("") + "</span>";
+}
 ROUTE.forEach((r, i) => {
   if (i) hops.insertAdjacentHTML("beforeend", '<span class="arrow" aria-hidden="true">→</span>');
   const h = document.createElement("button");
