@@ -3,8 +3,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: one tasting route. A wooden flight paddle up top (glasses = stops, height = sourness),
-   then numbered stops hung off a vertical cellar line, each with its own tasting log. */
+/* Layout: phone-first checklist. Six beer cards in drinking order; the stand number is the
+   biggest thing on each card so it reads at arm's length in a crowd. */
 :root {
   --bg: #eceee6;
   --surface: #f7f8f3;
@@ -12,341 +12,195 @@
   --muted: #676456;
   --line: #d3d6c8;
   --kriek: #9b1c33;
-  --geuze: #b8861f;
-  --paddle: #b8875a;
-  --paddle-edge: #8f6640;
-  --glass: rgba(42, 34, 25, .28);
+  --geuze: #a87814;
   --display: "Gloock", "Georgia", serif;
   --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #191613; --surface: #221e1a; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
-    --kriek: #e2566d; --geuze: #e2b54e; --paddle: #6e4f33; --paddle-edge: #4c3522;
-    --glass: rgba(239, 231, 218, .3); color-scheme: dark;
+    --bg: #191613; --surface: #231f1b; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
+    --kriek: #e2566d; --geuze: #e2b54e; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #191613; --surface: #221e1a; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
-  --kriek: #e2566d; --geuze: #e2b54e; --paddle: #6e4f33; --paddle-edge: #4c3522;
-  --glass: rgba(239, 231, 218, .3); color-scheme: dark;
+  --bg: #191613; --surface: #231f1b; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
+  --kriek: #e2566d; --geuze: #e2b54e; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
-body {
-  background: var(--bg); color: var(--ink);
-  font: 16px/1.55 var(--body);
-  padding-inline: 16px; padding-block: 0 64px;
-}
-.wrap { max-width: 920px; margin: 0 auto; }
-h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0; }
-.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--kriek); }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); padding-inline: 16px; padding-block: 0 56px; }
+.wrap { max-width: 560px; margin: 0 auto; }
+h1, h2 { font-family: var(--display); font-weight: 400; margin: 0; text-wrap: balance; }
 button { font: inherit; color: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--kriek); outline-offset: 2px; }
 
-/* Hero */
-header { padding-block: 48px 24px; display: grid; gap: 14px; }
-h1 { font-size: clamp(48px, 10vw, 92px); line-height: .92; letter-spacing: -.01em; }
-h1 em { font-style: normal; color: var(--kriek); }
-.lede { max-width: 58ch; color: var(--muted); font-size: 17px; margin: 0; }
-.bench { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
-.bench span.tag { font-family: var(--mono); font-size: 12px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--surface); }
+header { padding-block: 36px 8px; display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--kriek); }
+h1 { font-size: clamp(40px, 11vw, 60px); line-height: .95; }
+.facts { font: 13px var(--mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.first { margin: 6px 0 0; padding: 10px 12px; border-left: 3px solid var(--geuze); background: var(--surface); font-size: 15px; }
 
-/* Paddle */
-.paddle-wrap { margin-block: 12px 8px; overflow-x: auto; padding-bottom: 6px; }
-.paddle { min-width: 560px; position: relative; padding: 0 22px; }
-.glasses { display: grid; grid-template-columns: repeat(8, 1fr); align-items: end; gap: 10px; height: 168px; position: relative; z-index: 1; }
-.glass { background: none; border: 0; padding: 0; display: grid; justify-items: center; align-items: end; height: 100%; }
-.glass .cup {
-  width: 46px; position: relative; display: block;
-  clip-path: polygon(0 0, 100% 0, 86% 100%, 14% 100%);
-  background: var(--glass); transition: transform .2s;
-}
-.glass .cup::before { content: ""; position: absolute; inset: 2px 3px 0; clip-path: polygon(0 0, 100% 0, 86% 100%, 14% 100%); background: var(--bg); }
-.glass .liquid { position: absolute; left: 3px; right: 3px; bottom: 0; clip-path: polygon(0 0, 100% 0, 86% 100%, 14% 100%); transition: height .5s ease; }
-.glass .liquid::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: rgba(255,255,255,.55); }
-.glass:hover .cup { transform: translateY(-4px); }
-.glass.done .liquid { height: 12% !important; }
-.board {
-  height: 26px; margin-top: -4px; border-radius: 6px;
-  background: linear-gradient(var(--paddle), var(--paddle-edge));
-  display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; padding: 0 22px; margin-inline: -22px;
-}
-.board span { font: 600 12px/26px var(--mono); text-align: center; color: #fff8ec; }
-.legend { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font: 12px var(--mono); color: var(--muted); margin-top: 10px; }
+/* Route strip + progress */
+.route { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px; border-bottom: 1px solid var(--line); margin-block: 16px 8px; display: grid; gap: 8px; }
+.hops { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font: 600 14px var(--mono); }
+.hop { border: 1.5px solid var(--line); border-radius: 4px; padding: 3px 8px; background: transparent; font-variant-numeric: tabular-nums; }
+.hop.next { border-color: var(--kriek); color: var(--kriek); }
+.hop.done { background: var(--kriek); border-color: var(--kriek); color: #fff; }
+.arrow { color: var(--muted); font-weight: 400; }
+.count { font: 13px var(--mono); color: var(--muted); }
 
-/* Progress */
-.progress { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding-block: 12px; margin-block: 24px 8px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.progress .count { font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
-.bar { flex: 1 1 160px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
-.bar i { display: block; height: 100%; width: 0; background: var(--kriek); transition: width .4s; }
-.reset { background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
-.reset.armed { border-color: var(--kriek); color: var(--kriek); }
-
-/* Stops */
-.route { list-style: none; margin: 0; padding: 0; position: relative; }
-.route::before { content: ""; position: absolute; left: 19px; top: 24px; bottom: 24px; width: 2px; background: var(--line); }
-.stop { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 18px; padding-block: 28px; scroll-margin-top: 70px; }
-.num { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 600 15px var(--mono); background: var(--surface); border: 2px solid var(--line); position: relative; z-index: 1; }
-.stop.done .num { background: var(--kriek); border-color: var(--kriek); color: #fff; }
-.stop-body { display: grid; gap: 12px; min-width: 0; }
-.stop-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.stop h2 { font-size: clamp(26px, 4vw, 34px); line-height: 1.1; }
-.meta { display: flex; gap: 14px; align-items: center; font: 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.sour { display: inline-flex; gap: 3px; }
-.sour i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--geuze); }
-.sour i.on { background: var(--geuze); }
-.why { margin: 0; max-width: 62ch; }
-.look { margin: 0; color: var(--muted); font-size: 15px; max-width: 62ch; }
-.look b { color: var(--ink); font-weight: 600; }
-.pours { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-.pours li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; align-items: center; background: var(--surface); padding: 9px 12px; }
-.pours li > span:nth-child(2) { min-width: 0; }
-.pours .st { font: 600 13px var(--mono); color: var(--kriek); font-variant-numeric: tabular-nums; }
-.pours .bn { font-weight: 600; display: block; }
-.pours .bn .rare { color: var(--geuze); font-weight: 600; margin-left: 4px; }
-.pours .br { font-size: 13px; color: var(--muted); display: block; }
-.pours .ab { font: 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pours .src { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.pours .src.tap { color: var(--geuze); }
-
-.facts { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 13px var(--mono); color: var(--ink); }
-.facts b { color: var(--kriek); font-weight: 600; }
-.stands-wrap { margin-top: 28px; display: grid; gap: 10px; }
-.stands-wrap h2 { font-size: 22px; }
-.stands-wrap p { margin: 0; color: var(--muted); font-size: 14px; }
-.stands { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
-.stand { border: 1px solid var(--line); border-radius: 4px; padding: 6px 4px; text-align: center; font: 12px/1.2 var(--mono); color: var(--muted); background: transparent; }
-.stand small { display: block; font-size: 10px; margin-top: 2px; }
-.stand.on { border-color: var(--kriek); color: var(--ink); background: var(--surface); }
-.stand.on small { color: var(--kriek); }
-
-.log { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; border-top: 1px dashed var(--line); padding-top: 12px; }
-.tasted { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 6px 12px; font-size: 14px; font-weight: 500; }
+/* Cards */
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 8px; scroll-margin-top: 90px; }
+.card.next { border-color: var(--kriek); box-shadow: 0 0 0 1px var(--kriek); }
+.card.done { opacity: .62; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 13px var(--mono); color: var(--muted); }
+.badge { font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; }
+.badge.must { color: var(--geuze); border: 1px solid var(--geuze); }
+.badge.now { background: var(--kriek); color: #fff; }
+.stand { display: flex; align-items: baseline; gap: 10px; }
+.stand b { font: 600 44px/1 var(--mono); color: var(--kriek); font-variant-numeric: tabular-nums; }
+.stand span { font-size: 15px; color: var(--muted); }
+.card h2 { font-size: 28px; line-height: 1.1; }
+.spec { font: 13px var(--mono); color: var(--muted); }
+.why { margin: 0; }
+.backup { margin: 0; font-size: 14px; color: var(--muted); }
+.backup b { color: var(--ink); font-weight: 600; }
+.log { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.tasted { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 16px; font-weight: 600; }
 .tasted[aria-pressed="true"] { background: var(--kriek); border-color: var(--kriek); color: #fff; }
-.rating { display: inline-flex; gap: 2px; align-items: center; }
-.rating button { background: none; border: 0; padding: 2px; line-height: 0; }
-.rating svg { width: 18px; height: 22px; }
-.rating svg path { fill: none; stroke: var(--muted); stroke-width: 1.4; }
-.rating button.on svg path { fill: var(--geuze); stroke: var(--geuze); }
-.note { flex: 1 1 220px; min-width: 0; font: 14px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; }
+.rating { display: inline-flex; gap: 2px; }
+.rating button { background: none; border: 0; padding: 4px 2px; line-height: 0; }
+.rating svg { width: 20px; height: 24px; }
+.rating path { fill: none; stroke: var(--muted); stroke-width: 1.4; }
+.rating button.on path { fill: var(--geuze); stroke: var(--geuze); }
 
-/* Tips */
-.tips { margin-top: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; border-top: 2px solid var(--ink); padding-top: 24px; }
-.tips h3 { font-size: 20px; margin-bottom: 6px; }
-.tips p { margin: 0; color: var(--muted); font-size: 15px; }
-.words { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.words span { font: 12px var(--mono); padding: 3px 8px; border-radius: 3px; background: var(--ink); color: var(--bg); }
-footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
+.pause { text-align: center; font-size: 14px; color: var(--muted); padding-block: 2px; }
+.pause b { color: var(--ink); font-weight: 600; }
 
-@media (max-width: 520px) {
-  .stop { grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
-  .num { width: 32px; height: 32px; font-size: 13px; }
-  .route::before { left: 15px; }
-}
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+footer { margin-top: 28px; display: grid; gap: 10px; font-size: 13px; color: var(--muted); }
+.reset { justify-self: start; background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
+.reset.armed { border-color: var(--kriek); color: var(--kriek); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Modeste Bierfestival 2026 · Brouwerij De Koninck, Antwerp</div>
-    <h1>The <em>Sour</em> Tour</h1>
-    <p class="lede">Every sour and funky beer in this year's festival booklet, grouped into eight stops from light and lightly tart to oaky and acidic. Each stop lists the stand number to walk to. Pick one or two pours per stop, mark what you tasted and rate it as you go.</p>
-    <div class="facts"><span><b>Sat 3 &amp; Sun 4 Oct</b> 11:00–19:00</span><span><b>€7</b> glass + 1 drink</span><span><b>€2–3</b> per tasting</span><span>Mechelsesteenweg 291</span></div>
-    <div class="bench">Your benchmarks:
-      <span class="tag">Mariage Parfait</span><span class="tag">Flamingo</span><span class="tag">Lost in Spice</span><span class="tag">Kiss My Neighbor's Wife</span>
-    </div>
+    <div class="eyebrow">Modeste Bierfestival · De Koninck</div>
+    <h1>Your 6 sours</h1>
+    <div class="facts"><span>Sat 3 &amp; Sun 4 Oct</span><span>11:00–19:00</span><span>€7 entry incl. 1st drink</span><span>€2–3 per tasting</span></div>
+    <p class="first"><b>On arrival:</b> walk past stands 3 and 11 first and check that the geuzes and taps are still pouring. Then start at stand 13.</p>
   </header>
 
-  <div class="paddle-wrap" aria-label="Tasting paddle">
-    <div class="paddle">
-      <div class="glasses" id="glasses"></div>
-      <div class="board" id="board"></div>
-    </div>
-  </div>
-  <div class="legend"><span>Glass height = sourness</span><span>Tasted glasses drain</span><span>Left → right = drinking order</span></div>
+  <nav class="route" aria-label="Stand route">
+    <div class="hops" id="hops"></div>
+    <div class="count" id="count"></div>
+  </nav>
 
-  <section class="stands-wrap">
-    <h2>Which stands to visit</h2>
-    <p>Highlighted stands pour something on the route; the small number shows which stops. Go to stands 3 and 11 first: they're the two lambic blenders, and small-batch bottles can run out.</p>
-    <div class="stands" id="stands"></div>
-  </section>
+  <ol class="list" id="list"></ol>
 
-  <div class="progress">
-    <span class="count" id="count">0 / 8 tasted</span>
-    <div class="bar"><i id="bar"></i></div>
-    <button class="reset" id="reset" type="button">Reset log</button>
-  </div>
-
-  <ol class="route" id="route"></ol>
-
-  <section class="tips">
-    <div>
-      <h3>Words to scan for</h3>
-      <p>On a festival board, these usually mean sour or funky.</p>
-      <div class="words"><span>Oude</span><span>Lambiek</span><span>Geuze</span><span>Kriek</span><span>Foeder</span><span>Brett</span><span>Mixed ferm</span><span>Wild</span><span>Gose</span><span>Berliner</span><span>Oud Bruin</span></div>
-    </div>
-    <div>
-      <h3>Pace yourself</h3>
-      <p>Water is €2 at the food-token stand next to the tombola. Saucisson d'Olivier (between stands 8 and 9) sells tasting boards of dried sausage, which is a good palate reset between stops.</p>
-    </div>
-    <div>
-      <h3>Ask off-menu</h3>
-      <p>Ask at stands 3, 11, 13 and 18 whether they have anything sour that isn't in the booklet. Small brewers often bring a bottle of a barrel project.</p>
-    </div>
-  </section>
-
-  <footer>Beer list and stand numbers come from the official Modeste Bierfestival 2026 booklet (Antwerps Biercollege); stands can sell out or swap beers during the day. Your log stays in this browser only.</footer>
+  <footer>
+    <span>Beers and stand numbers come from the official 2026 festival booklet. Times are a suggested pace. Your ticks stay on this phone only.</span>
+    <button class="reset" id="reset" type="button">Reset ticks</button>
+  </footer>
 </div>
 
 <script>
-// p: [stand, brewery, beer, abv, "tap"|"bottle", rare?]
-const STOPS = [
-  { name: "Berliner Weisse & session sours", abv: "3–5%", sour: 2, color: "#efe2a0", h: .55,
-    why: "Light, lemony and low in alcohol. A gentle start that wakes up your palate.",
-    look: "<b>Pick:</b> Babylon Berlin or DH Sour on tap. Paenhuys has the same session sour aged in four different barrels, which makes a fun side-by-side.",
-    p: [["15","KETTU","DH Sour","4.5%","tap"],["15","KETTU","Aurora","4.5%","bottle"],
-        ["13","Vleesmeester","Babylon Berlin","4%","tap"],["13","Vleesmeester","Bloody Nancy","4%","bottle"],
-        ["7","Galea / Dame Jeanne","La Mia Luce (Lichtenhainer)","5.3%","bottle"],
-        ["28","'t Paenhuys / Beersteward","Emmer Session Sour BA (Bordeaux, Calvados, Ginja or Loupiac)","4%","bottle"]] },
-  { name: "Gose, herbs & spice", abv: "3–6%", sour: 2, color: "#e6d48a", h: .6,
-    why: "Salty, herbal and spiced sours, for the spiced side of your list.",
-    look: "<b>Pick:</b> the Natte Selder göse, then the Tomato Basil Sour if you're curious.",
-    p: [["19–20","Gistgeest / Cabardouche","Natte Selder (Göse)","5%","bottle"],["19–20","Gistgeest / Cabardouche","Citrus Hill (Göse)","6%","bottle"],
-        ["21","Hophemel / Skøllmann","Francesca Tomato Basil Sour","3%","bottle"],
-        ["21","Hophemel / Skøllmann","Otto Bloodorange Hibiscus Saison","6.2%","bottle"]] },
-  { name: "Fruited sours", abv: "3–7%", sour: 3, color: "#d0507a", h: .68,
-    why: "Juicy and bright. The last easy step before the lambics.",
-    look: "<b>Pick:</b> Bien Sur Cranberry. It's the strongest of the three and the closest to a kriek.",
-    p: [["12","De Dochter van de Korenaar","Bien Sur Cranberry","7%","tap"],
-        ["19–20","Gistgeest / Cabardouche","La Foxy Belge","6.2%","tap"],
-        ["21","Hophemel / Skøllmann","Pascharius Strawberry Mint Sour","3%","tap"]] },
-  { name: "Oude Geuze", abv: "6–7%", sour: 4, color: "#e0a93a", h: .8,
-    why: "Your home base. Two lambic blenders are pouring their own geuze. These are the closest things to Mariage Parfait at the festival.",
-    look: "<b>Pick:</b> both, side by side if you can. Visit these stands early.",
-    p: [["11","GCB – Geuzestekerij Vissers","Vissers Geuze B1","6.9%","bottle",1],
-        ["3","Boerenerf","Cuvée Heritage 2025","6.3%","bottle",1]] },
-  { name: "Kriek & fruit lambic", abv: "6–8%", sour: 4, color: "#9c1630", h: .8,
-    why: "Lambic aged on fruit. Boerenerf has two of them on tap, which is rare.",
-    look: "<b>Pick:</b> Kriek Vanille on tap, then the Montepulciano grape lambic from Vissers. Liefmans Kriek Brut is the easy fallback if a stand runs out.",
-    p: [["3","Boerenerf","Kriek Vanille","6.7%","tap",1],["3","Boerenerf","Kwee (fruit lambic)","7%","tap",1],
-        ["11","GCB – Geuzestekerij Vissers","Ceci N'est Pas Une Kriek","7.3%","bottle"],
-        ["11","GCB – Geuzestekerij Vissers","Montepulciano Lambik 2025","7.6%","bottle",1],
-        ["23–25","Duvel Moortgat","Liefmans Kriek Brut","6%","bottle"]] },
-  { name: "Wild & farmhouse", abv: "5.5–7%", sour: 3, color: "#d49a4a", h: .72,
-    why: "Dry, funky and less acidic. This stop gives your palate a short break before the oak-aged stops.",
-    look: "<b>Pick:</b> Cuvée De Ranke, a Belgian sour classic. Have a Blaugies saison if you want something dry and refreshing.",
-    p: [["14","De Ranke","Cuvée De Ranke","7%","bottle"],["14","De Ranke","Terroir Unique 2026 (grape ale)","6.5%","bottle"],
-        ["6","Brasserie De Blaugies","Saison d'Epeautre","6%","tap"],["6","Brasserie De Blaugies","Vermentoise","6%","tap"],
-        ["21","Hophemel / Skøllmann","Marinus Juniper & Kveik Farmhouse","5.6%","tap"]] },
-  { name: "Oud Bruin", abv: "6–8%", sour: 4, color: "#7a2a1c", h: .9,
-    why: "Brown sours with cherry, balsamic and wine notes. Two small breweries each bring three versions.",
-    look: "<b>Pick:</b> one of the Vleesmeester Bezonken beers on tap and the Oak Leaf from 't Verzet. Goudenband is the classic benchmark.",
-    p: [["13","Vleesmeester","Bezonken Rood","6.5%","tap"],["13","Vleesmeester","Bezonken Mispel","6.5%","tap"],["13","Vleesmeester","Bezonken Pudding","7%","tap"],
-        ["18","'t Verzet","Oud Bruin","6%","bottle"],["18","'t Verzet","Oud Bruin Oak Leaf","6%","bottle"],
-        ["23–25","Duvel Moortgat","Liefmans Goudenband","8%","bottle"]] },
-  { name: "Finale: straight from the barrel", abv: "7–8.5%", sour: 5, color: "#c98a1e", h: 1,
-    why: "Finish on the strongest and rarest lambics: Vissers' young lambic poured from barrel no. 11, plus Boerenerf's lambic made with Riesling grapes.",
-    look: "<b>Note:</b> young unblended lambic is flat, with no bubbles. That's normal and it's the point.",
-    p: [["11","GCB – Geuzestekerij Vissers","Lambik 1Y (barrel no. 11)","8.5%","tap",1],
-        ["3","Boerenerf","Rieslin sur Senne","8.2%","bottle",1],
-        ["11","GCB – Geuzestekerij Vissers","Cuvée Petrus B2 (lambic)","7.5%","bottle"],
-        ["18","'t Verzet","Oud Bruin MEGABLEND","7%","bottle"]] }
+const BEERS = [
+  { time: "11:00", stand: "13", brewery: "Vleesmeester", beer: "Babylon Berlin", spec: "Berliner Weisse · 4% · on tap",
+    why: "Light and tart. Warms up your palate. Use your free first drink here.",
+    backup: "Bien Sur Cranberry at stand 12" },
+  { time: "11:30", stand: "3", brewery: "Boerenerf", beer: "Cuvée Heritage 2025", spec: "Geuze · 6.3% · bottle", must: true,
+    why: "Geuze from a small lambic blender. Remember how it tastes, because the next one is a direct comparison.",
+    backup: "Rieslin sur Senne, same stand" },
+  { time: "12:00", stand: "11", brewery: "Geuzestekerij Vissers", beer: "Vissers Geuze B1", spec: "Geuze · 6.9% · bottle", must: true,
+    why: "The highlight of the festival for a geuze fan. Compare it with the Boerenerf.",
+    backup: "Cuvée Petrus B2, same stand" },
+  { pause: "Water (€2 at the food-token stand) and a sausage board at Saucisson d'Olivier, between stands 8 and 9." },
+  { time: "13:00", stand: "3", brewery: "Boerenerf", beer: "Kriek Vanille", spec: "Kriek lambic · 6.7% · on tap", must: true,
+    why: "Kriek on tap from a lambic producer is rare. Tart cherry with a soft vanilla edge.",
+    backup: "Montepulciano Lambik 2025 at stand 11" },
+  { time: "13:45", stand: "13", brewery: "Vleesmeester", beer: "Bezonken Rood", spec: "Oud bruin · 6.5% · on tap",
+    why: "Flanders-style brown sour with oak and red fruit. A different kind of sour before the finale.",
+    backup: "Cuvée De Ranke at stand 14" },
+  { pause: "Water again. The last beer is the strongest." },
+  { time: "14:30", stand: "11", brewery: "Geuzestekerij Vissers", beer: "Lambik 1Y (barrel no. 11)", spec: "Young lambic · 8.5% · on tap", must: true,
+    why: "Poured straight from the barrel. It's flat, which is normal for young lambic. The strongest of the six, so it goes last.",
+    backup: "Rieslin sur Senne at stand 3" }
 ];
-const STANDS = ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19–20","21","22","23–25","26","27","28","29"];
-const BREWERS = {"1":"La Bonace","2":"4KNT","3":"Boerenerf","4":"Scheldebrouwerij","5":"Leplan-Vermeersch","6":"De Blaugies","7":"Galea / Dame Jeanne","8":"Blacksmith's Meadery","9":"Cidernations","10":"Clockwork Bee Meads","11":"GCB Vissers","12":"Dochter van de Korenaar","13":"Vleesmeester","14":"De Ranke","15":"KETTU","16":"Antwerpse Brouw Compagnie","17":"Crow Mountain","18":"'t Verzet","19–20":"Cabardouche / Gistgeest / Special Belge","21":"Hophemel / Skøllmann","22":"Uncharted","23–25":"Duvel Moortgat","26":"Leste","27":"Het Anker / Huyghe","28":"'t Paenhuys","29":"Leysen"};
+const STEPS = BEERS.filter(b => !b.pause);
 
-const KEY = "sour-tour-modeste-2026";
-let state = { tasted: {}, rating: {}, notes: {} };
+const KEY = "sour-tour-top6-2026";
+let state = { tasted: {}, rating: {} };
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
 
-const glassSVG = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1h14l-2.2 19H4.2z"/></svg>';
-const $ = s => document.querySelector(s);
-const glasses = $("#glasses"), board = $("#board"), route = $("#route");
+const glass = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1h14l-2.2 19H4.2z"/></svg>';
+const list = document.getElementById("list"), hops = document.getElementById("hops");
 
-STOPS.forEach((s, i) => {
-  const g = document.createElement("button");
-  g.className = "glass"; g.type = "button"; g.id = "glass-" + i;
-  g.setAttribute("aria-label", `Stop ${i + 1}: ${s.name}`);
-  const hpx = Math.round(70 + s.h * 90);
-  g.innerHTML = `<span class="cup" style="height:${hpx}px"><span class="liquid" style="height:82%;background:${s.color}"></span></span>`;
-  g.onclick = () => document.getElementById("stop-" + i).scrollIntoView({ behavior: "smooth", block: "start" });
-  glasses.appendChild(g);
-  board.insertAdjacentHTML("beforeend", `<span>${i + 1}</span>`);
-
+let n = 0;
+BEERS.forEach(b => {
+  if (b.pause) { list.insertAdjacentHTML("beforeend", `<li class="pause"><b>Break:</b> ${b.pause}</li>`); return; }
+  const i = n++;
   const li = document.createElement("li");
-  li.className = "stop"; li.id = "stop-" + i;
-  const dots = [1,2,3,4,5].map(n => `<i class="${n <= s.sour ? "on" : ""}"></i>`).join("");
-  const picks = s.p.map(([st, br, bn, ab, src, rare]) => `<li><span class="st">#${st}</span><span><span class="bn">${bn}${rare ? '<span class="rare" title="Rare pour: go early">★</span>' : ""}</span><span class="br">${br}</span></span><span class="ab">${ab}<span class="src ${src}">${src === "tap" ? "on tap" : "bottle"}</span></span></li>`).join("");
-  const stars = [1,2,3,4,5].map(n => `<button type="button" data-r="${n}" aria-label="Rate ${n} of 5">${glassSVG}</button>`).join("");
+  li.className = "card"; li.id = "beer-" + i;
   li.innerHTML = `
-    <div class="num">${i + 1}</div>
-    <div class="stop-body">
-      <div class="stop-head">
-        <h2>${s.name}</h2>
-        <div class="meta"><span>${s.abv} ABV</span><span class="sour" title="Sourness ${s.sour} of 5" aria-label="Sourness ${s.sour} of 5">${dots}</span></div>
-      </div>
-      <p class="why">${s.why}</p>
-      <p class="look">${s.look}</p>
-      <ul class="pours">${picks}</ul>
-      <div class="log">
-        <button type="button" class="tasted" id="tasted-${i}" aria-pressed="false">Tasted</button>
-        <span class="rating" role="group" aria-label="Your rating">${stars}</span>
-        <input class="note" id="note-${i}" type="text" placeholder="What did you drink? Notes…" aria-label="Notes for ${s.name}">
-      </div>
+    <div class="top"><span>Beer ${i + 1} of 6 · around ${b.time}</span><span class="badges"></span></div>
+    <div class="stand"><b>${b.stand}</b><span>stand · ${b.brewery}</span></div>
+    <h2>${b.beer}</h2>
+    <div class="spec">${b.spec}</div>
+    <p class="why">${b.why}</p>
+    <p class="backup"><b>Sold out?</b> ${b.backup}</p>
+    <div class="log">
+      <button type="button" class="tasted" id="tasted-${i}" aria-pressed="false">Tasted</button>
+      <span class="rating" role="group" aria-label="Your rating">${[1,2,3,4,5].map(r => `<button type="button" data-r="${r}" aria-label="Rate ${r} of 5">${glass}</button>`).join("")}</span>
     </div>`;
-  route.appendChild(li);
-
-  const tb = li.querySelector(".tasted");
-  tb.onclick = () => { state.tasted[i] = !state.tasted[i]; save(); paint(); };
-  li.querySelectorAll(".rating button").forEach(b => b.onclick = () => {
-    const r = +b.dataset.r; state.rating[i] = state.rating[i] === r ? 0 : r;
-    if (r) state.tasted[i] = true; save(); paint();
+  list.appendChild(li);
+  li.querySelector(".tasted").onclick = () => { state.tasted[i] = !state.tasted[i]; save(); paint(); };
+  li.querySelectorAll(".rating button").forEach(btn => btn.onclick = () => {
+    const r = +btn.dataset.r; state.rating[i] = state.rating[i] === r ? 0 : r;
+    if (state.rating[i]) state.tasted[i] = true; save(); paint();
   });
-  const note = li.querySelector(".note");
-  note.value = state.notes[i] || "";
-  note.oninput = () => { state.notes[i] = note.value; save(); };
-});
 
-const standStops = {};
-STOPS.forEach((s, i) => s.p.forEach(([st]) => { (standStops[st] = standStops[st] || new Set()).add(i + 1); }));
-STANDS.forEach(st => {
-  const on = standStops[st];
-  const el = document.createElement(on ? "button" : "span");
-  el.className = "stand" + (on ? " on" : "");
-  el.title = BREWERS[st] + (on ? "" : " (not on the sour route)");
-  el.innerHTML = st + (on ? `<small>stop ${[...on].join(",")}</small>` : "");
-  if (on) { el.type = "button"; el.onclick = () => document.getElementById("stop-" + ([...on][0] - 1)).scrollIntoView({ behavior: "smooth", block: "start" }); }
-  document.getElementById("stands").appendChild(el);
+  if (i) hops.insertAdjacentHTML("beforeend", '<span class="arrow" aria-hidden="true">→</span>');
+  const h = document.createElement("button");
+  h.type = "button"; h.className = "hop"; h.id = "hop-" + i; h.textContent = b.stand;
+  h.setAttribute("aria-label", `Beer ${i + 1}: stand ${b.stand}, ${b.beer}`);
+  h.onclick = () => li.scrollIntoView({ behavior: "smooth", block: "start" });
+  hops.appendChild(h);
 });
 
 function paint() {
-  let n = 0;
-  STOPS.forEach((s, i) => {
-    const done = !!state.tasted[i]; if (done) n++;
-    document.getElementById("stop-" + i).classList.toggle("done", done);
-    document.getElementById("glass-" + i).classList.toggle("done", done);
+  const next = STEPS.findIndex((_, i) => !state.tasted[i]);
+  let done = 0;
+  STEPS.forEach((b, i) => {
+    const t = !!state.tasted[i]; if (t) done++;
+    const card = document.getElementById("beer-" + i);
+    card.classList.toggle("done", t);
+    card.classList.toggle("next", i === next);
+    card.querySelector(".badges").innerHTML = (i === next ? '<span class="badge now">Next</span> ' : "") + (b.must ? '<span class="badge must">Must</span>' : "");
     const tb = document.getElementById("tasted-" + i);
-    tb.setAttribute("aria-pressed", done); tb.textContent = done ? "✓ Tasted" : "Tasted";
-    document.querySelectorAll(`#stop-${i} .rating button`).forEach(b => b.classList.toggle("on", +b.dataset.r <= (state.rating[i] || 0)));
+    tb.setAttribute("aria-pressed", t); tb.textContent = t ? "✓ Tasted" : "Tasted";
+    card.querySelectorAll(".rating button").forEach(btn => btn.classList.toggle("on", +btn.dataset.r <= (state.rating[i] || 0)));
+    const hop = document.getElementById("hop-" + i);
+    hop.classList.toggle("done", t); hop.classList.toggle("next", i === next);
   });
-  $("#count").textContent = `${n} / ${STOPS.length} tasted`;
-  $("#bar").style.width = (n / STOPS.length * 100) + "%";
+  document.getElementById("count").textContent = next === -1
+    ? "All 6 done. Proost!"
+    : `${done} of 6 tasted · next: stand ${STEPS[next].stand}, ${STEPS[next].beer}`;
 }
 paint();
 
-const reset = $("#reset"); let armed = null;
+const reset = document.getElementById("reset"); let armed = null;
 reset.onclick = () => {
   if (!armed) {
     reset.classList.add("armed"); reset.textContent = "Tap again to clear";
-    armed = setTimeout(() => { armed = null; reset.classList.remove("armed"); reset.textContent = "Reset log"; }, 3000);
+    armed = setTimeout(() => { armed = null; reset.classList.remove("armed"); reset.textContent = "Reset ticks"; }, 3000);
     return;
   }
   clearTimeout(armed); armed = null;
-  state = { tasted: {}, rating: {}, notes: {} }; save();
-  document.querySelectorAll(".note").forEach(el => el.value = "");
-  reset.classList.remove("armed"); reset.textContent = "Reset log"; paint();
+  state = { tasted: {}, rating: {} }; save();
+  reset.classList.remove("armed"); reset.textContent = "Reset ticks"; paint();
 };
 </script>
