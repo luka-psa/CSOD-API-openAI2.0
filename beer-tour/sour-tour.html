@@ -1,0 +1,294 @@
+<title>Sour Tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one tasting route. A wooden flight paddle up top (glasses = stops, height = sourness),
+   then numbered stops hung off a vertical cellar line, each with its own tasting log. */
+:root {
+  --bg: #eceee6;
+  --surface: #f7f8f3;
+  --ink: #2a2219;
+  --muted: #676456;
+  --line: #d3d6c8;
+  --kriek: #9b1c33;
+  --geuze: #b8861f;
+  --paddle: #b8875a;
+  --paddle-edge: #8f6640;
+  --glass: rgba(42, 34, 25, .28);
+  --display: "Gloock", "Georgia", serif;
+  --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #191613; --surface: #221e1a; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
+    --kriek: #e2566d; --geuze: #e2b54e; --paddle: #6e4f33; --paddle-edge: #4c3522;
+    --glass: rgba(239, 231, 218, .3); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #191613; --surface: #221e1a; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
+  --kriek: #e2566d; --geuze: #e2b54e; --paddle: #6e4f33; --paddle-edge: #4c3522;
+  --glass: rgba(239, 231, 218, .3); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.55 var(--body);
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.wrap { max-width: 920px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--kriek); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--kriek); outline-offset: 2px; }
+
+/* Hero */
+header { padding-block: 48px 24px; display: grid; gap: 14px; }
+h1 { font-size: clamp(48px, 10vw, 92px); line-height: .92; letter-spacing: -.01em; }
+h1 em { font-style: normal; color: var(--kriek); }
+.lede { max-width: 58ch; color: var(--muted); font-size: 17px; margin: 0; }
+.bench { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
+.bench span.tag { font-family: var(--mono); font-size: 12px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--surface); }
+
+/* Paddle */
+.paddle-wrap { margin-block: 12px 8px; overflow-x: auto; padding-bottom: 6px; }
+.paddle { min-width: 560px; position: relative; padding: 0 22px; }
+.glasses { display: grid; grid-template-columns: repeat(8, 1fr); align-items: end; gap: 10px; height: 168px; position: relative; z-index: 1; }
+.glass { background: none; border: 0; padding: 0; display: grid; justify-items: center; align-items: end; height: 100%; }
+.glass .cup {
+  width: 46px; position: relative; display: block;
+  clip-path: polygon(0 0, 100% 0, 86% 100%, 14% 100%);
+  background: var(--glass); transition: transform .2s;
+}
+.glass .cup::before { content: ""; position: absolute; inset: 2px 3px 0; clip-path: polygon(0 0, 100% 0, 86% 100%, 14% 100%); background: var(--bg); }
+.glass .liquid { position: absolute; left: 3px; right: 3px; bottom: 0; clip-path: polygon(0 0, 100% 0, 86% 100%, 14% 100%); transition: height .5s ease; }
+.glass .liquid::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: rgba(255,255,255,.55); }
+.glass:hover .cup { transform: translateY(-4px); }
+.glass.done .liquid { height: 12% !important; }
+.board {
+  height: 26px; margin-top: -4px; border-radius: 6px;
+  background: linear-gradient(var(--paddle), var(--paddle-edge));
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; padding: 0 22px; margin-inline: -22px;
+}
+.board span { font: 600 12px/26px var(--mono); text-align: center; color: #fff8ec; }
+.legend { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font: 12px var(--mono); color: var(--muted); margin-top: 10px; }
+
+/* Progress */
+.progress { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding-block: 12px; margin-block: 24px 8px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.progress .count { font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
+.bar { flex: 1 1 160px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--kriek); transition: width .4s; }
+.reset { background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
+.reset.armed { border-color: var(--kriek); color: var(--kriek); }
+
+/* Stops */
+.route { list-style: none; margin: 0; padding: 0; position: relative; }
+.route::before { content: ""; position: absolute; left: 19px; top: 24px; bottom: 24px; width: 2px; background: var(--line); }
+.stop { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 18px; padding-block: 28px; scroll-margin-top: 70px; }
+.num { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 600 15px var(--mono); background: var(--surface); border: 2px solid var(--line); position: relative; z-index: 1; }
+.stop.done .num { background: var(--kriek); border-color: var(--kriek); color: #fff; }
+.stop-body { display: grid; gap: 12px; min-width: 0; }
+.stop-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.stop h2 { font-size: clamp(26px, 4vw, 34px); line-height: 1.1; }
+.meta { display: flex; gap: 14px; align-items: center; font: 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.sour { display: inline-flex; gap: 3px; }
+.sour i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--geuze); }
+.sour i.on { background: var(--geuze); }
+.why { margin: 0; max-width: 62ch; }
+.look { margin: 0; color: var(--muted); font-size: 15px; max-width: 62ch; }
+.look b { color: var(--ink); font-weight: 600; }
+.picks { display: flex; flex-wrap: wrap; gap: 6px; }
+.picks span { font-size: 13px; padding: 3px 9px; border-radius: 3px; background: var(--surface); border: 1px solid var(--line); }
+.picks span.star { border-color: var(--geuze); }
+
+.log { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; border-top: 1px dashed var(--line); padding-top: 12px; }
+.tasted { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 6px 12px; font-size: 14px; font-weight: 500; }
+.tasted[aria-pressed="true"] { background: var(--kriek); border-color: var(--kriek); color: #fff; }
+.rating { display: inline-flex; gap: 2px; align-items: center; }
+.rating button { background: none; border: 0; padding: 2px; line-height: 0; }
+.rating svg { width: 18px; height: 22px; }
+.rating svg path { fill: none; stroke: var(--muted); stroke-width: 1.4; }
+.rating button.on svg path { fill: var(--geuze); stroke: var(--geuze); }
+.note { flex: 1 1 220px; min-width: 0; font: 14px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; }
+
+/* Tips */
+.tips { margin-top: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; border-top: 2px solid var(--ink); padding-top: 24px; }
+.tips h3 { font-size: 20px; margin-bottom: 6px; }
+.tips p { margin: 0; color: var(--muted); font-size: 15px; }
+.words { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.words span { font: 12px var(--mono); padding: 3px 8px; border-radius: 3px; background: var(--ink); color: var(--bg); }
+footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
+
+@media (max-width: 520px) {
+  .stop { grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
+  .num { width: 32px; height: 32px; font-size: 13px; }
+  .route::before { left: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Festival flight plan · sour edition</div>
+    <h1>The <em>Sour</em> Tour</h1>
+    <p class="lede">Eight stops for a small beer festival, ordered from light and lightly tart to oaky and acidic, so the first sours don't wear out your palate for the later ones. Tap a glass to jump to its stop. Mark what you tasted and rate it as you go.</p>
+    <div class="bench">Your benchmarks:
+      <span class="tag">Mariage Parfait</span><span class="tag">Flamingo</span><span class="tag">Lost in Spice</span><span class="tag">Kiss My Neighbor's Wife</span>
+    </div>
+  </header>
+
+  <div class="paddle-wrap" aria-label="Tasting paddle">
+    <div class="paddle">
+      <div class="glasses" id="glasses"></div>
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+  <div class="legend"><span>Glass height = sourness</span><span>Tasted glasses drain</span><span>Left → right = drinking order</span></div>
+
+  <div class="progress">
+    <span class="count" id="count">0 / 8 tasted</span>
+    <div class="bar"><i id="bar"></i></div>
+    <button class="reset" id="reset" type="button">Reset log</button>
+  </div>
+
+  <ol class="route" id="route"></ol>
+
+  <section class="tips">
+    <div>
+      <h3>Words to scan for</h3>
+      <p>On a festival board, these usually mean sour or funky.</p>
+      <div class="words"><span>Oude</span><span>Lambiek</span><span>Geuze</span><span>Kriek</span><span>Foeder</span><span>Brett</span><span>Mixed ferm</span><span>Wild</span><span>Gose</span><span>Berliner</span><span>Oud Bruin</span></div>
+    </div>
+    <div>
+      <h3>Pace yourself</h3>
+      <p>Drink water between stops and eat something plain like bread or a pretzel. Acidity adds up fast, and stops 7 and 8 need a fresh palate.</p>
+    </div>
+    <div>
+      <h3>Ask off-menu</h3>
+      <p>Ask every stand "anything sour or funky that's not on the board?" Small brewers often bring a bottle of a barrel project.</p>
+    </div>
+  </section>
+
+  <footer>Your log stays in this browser only. ABV ranges are typical for each style; check the board for each beer's actual strength.</footer>
+</div>
+
+<script>
+const STOPS = [
+  { name: "Berliner Weisse", abv: "3–4%", sour: 2, color: "#efe2a0", h: .55,
+    why: "Light, lemony, low alcohol. A gentle start that wakes up the palate.",
+    look: "<b>Look for:</b> fruited Berliners (raspberry, passion fruit) from local craft brewers.",
+    picks: ["Any local fruited Berliner"] },
+  { name: "Gose", abv: "4–5%", sour: 2, color: "#e8d58a", h: .6,
+    why: "Tart wheat beer brewed with salt and coriander. Good if you liked the spiced sours on your list.",
+    look: "<b>Look for:</b> salt, coriander or herbs on the label. Fruit versions work too.",
+    picks: ["Any gose on tap"] },
+  { name: "Fruited sour", abv: "4–6%", sour: 3, color: "#d0507a", h: .68,
+    why: "Juicy, bright and the most common sour at small festivals. A fun middle step before the lambics.",
+    look: "<b>Look for:</b> fruit that's actually listed (cherry, blackcurrant, guava), not \"fruit flavoured\".",
+    picks: ["Whatever the stands are pouring"] },
+  { name: "Oude Geuze", abv: "5–7%", sour: 4, color: "#e0a93a", h: .8,
+    why: "Your home base. A blend of young and old lambic: dry, funky, citrusy and sparkling.",
+    look: "<b>Look for:</b> \"Oude\" on the label. It means traditional and unsweetened.",
+    picks: ["Boon Oude Geuze", "Oud Beersel", "Lindemans Cuvée René", "Tilquin", "Girardin", "3 Fonteinen ★", "Cantillon ★"] },
+  { name: "Oude Kriek / Framboise", abv: "5–7%", sour: 4, color: "#9c1630", h: .8,
+    why: "Lambic aged on whole cherries or raspberries. Tart fruit and almond notes from the cherry stones.",
+    look: "<b>Look for:</b> \"Oude\" again. Without it, the beer is often sweetened.",
+    picks: ["Boon Oude Kriek", "Oud Beersel Oude Kriek", "Hanssens ★", "De Cam ★"] },
+  { name: "Wild / mixed fermentation", abv: "5–8%", sour: 3, color: "#d49a4a", h: .72,
+    why: "Brett and wild yeast, often aged in oak. Farmhouse funk with less acidity, which gives your palate a short break.",
+    look: "<b>Look for:</b> foeder-aged, Brett saison, mixed ferm. No sours at all? Orval is your fallback.",
+    picks: ["Orval", "Saison Dupont", "Local foeder beers"] },
+  { name: "Flanders Red / Oud Bruin", abv: "5.5–7.5%", sour: 5, color: "#7a2a1c", h: .92,
+    why: "Aged in large oak casks. Tastes of cherry, balsamic and red wine. Rich and sharp.",
+    look: "<b>Look for:</b> \"Grand Cru\" or \"aged\". These are the more acidic, oakier blends.",
+    picks: ["Rodenbach Grand Cru", "Duchesse de Bourgogne", "Vanderghinste Oud Bruin", "Petrus Aged Pale"] },
+  { name: "Finale: the big geuze", abv: "7–8%+", sour: 5, color: "#c98a1e", h: 1,
+    why: "Finish on something like Mariage Parfait: a stronger, older geuze, deep and complex. Save it for last.",
+    look: "<b>Look for:</b> aged or vintage geuze, prestige cuvées, or a barrel project from behind the counter.",
+    picks: ["Boon Mariage Parfait", "Tilquin Stout Rullquin", "Any vintage-dated geuze ★"] }
+];
+
+const KEY = "sour-tour-log-v1";
+let state = { tasted: {}, rating: {}, notes: {} };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+const glassSVG = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1h14l-2.2 19H4.2z"/></svg>';
+const $ = s => document.querySelector(s);
+const glasses = $("#glasses"), board = $("#board"), route = $("#route");
+
+STOPS.forEach((s, i) => {
+  const g = document.createElement("button");
+  g.className = "glass"; g.type = "button"; g.id = "glass-" + i;
+  g.setAttribute("aria-label", `Stop ${i + 1}: ${s.name}`);
+  const hpx = Math.round(70 + s.h * 90);
+  g.innerHTML = `<span class="cup" style="height:${hpx}px"><span class="liquid" style="height:82%;background:${s.color}"></span></span>`;
+  g.onclick = () => document.getElementById("stop-" + i).scrollIntoView({ behavior: "smooth", block: "start" });
+  glasses.appendChild(g);
+  board.insertAdjacentHTML("beforeend", `<span>${i + 1}</span>`);
+
+  const li = document.createElement("li");
+  li.className = "stop"; li.id = "stop-" + i;
+  const dots = [1,2,3,4,5].map(n => `<i class="${n <= s.sour ? "on" : ""}"></i>`).join("");
+  const picks = s.picks.map(p => p.endsWith("★") ? `<span class="star" title="Rare at small festivals: grab it if you see it">${p}</span>` : `<span>${p}</span>`).join("");
+  const stars = [1,2,3,4,5].map(n => `<button type="button" data-r="${n}" aria-label="Rate ${n} of 5">${glassSVG}</button>`).join("");
+  li.innerHTML = `
+    <div class="num">${i + 1}</div>
+    <div class="stop-body">
+      <div class="stop-head">
+        <h2>${s.name}</h2>
+        <div class="meta"><span>${s.abv} ABV</span><span class="sour" title="Sourness ${s.sour} of 5" aria-label="Sourness ${s.sour} of 5">${dots}</span></div>
+      </div>
+      <p class="why">${s.why}</p>
+      <p class="look">${s.look}</p>
+      <div class="picks">${picks}</div>
+      <div class="log">
+        <button type="button" class="tasted" id="tasted-${i}" aria-pressed="false">Tasted</button>
+        <span class="rating" role="group" aria-label="Your rating">${stars}</span>
+        <input class="note" id="note-${i}" type="text" placeholder="What did you drink? Notes…" aria-label="Notes for ${s.name}">
+      </div>
+    </div>`;
+  route.appendChild(li);
+
+  const tb = li.querySelector(".tasted");
+  tb.onclick = () => { state.tasted[i] = !state.tasted[i]; save(); paint(); };
+  li.querySelectorAll(".rating button").forEach(b => b.onclick = () => {
+    const r = +b.dataset.r; state.rating[i] = state.rating[i] === r ? 0 : r;
+    if (r) state.tasted[i] = true; save(); paint();
+  });
+  const note = li.querySelector(".note");
+  note.value = state.notes[i] || "";
+  note.oninput = () => { state.notes[i] = note.value; save(); };
+});
+
+function paint() {
+  let n = 0;
+  STOPS.forEach((s, i) => {
+    const done = !!state.tasted[i]; if (done) n++;
+    document.getElementById("stop-" + i).classList.toggle("done", done);
+    document.getElementById("glass-" + i).classList.toggle("done", done);
+    const tb = document.getElementById("tasted-" + i);
+    tb.setAttribute("aria-pressed", done); tb.textContent = done ? "✓ Tasted" : "Tasted";
+    document.querySelectorAll(`#stop-${i} .rating button`).forEach(b => b.classList.toggle("on", +b.dataset.r <= (state.rating[i] || 0)));
+  });
+  $("#count").textContent = `${n} / ${STOPS.length} tasted`;
+  $("#bar").style.width = (n / STOPS.length * 100) + "%";
+}
+paint();
+
+const reset = $("#reset"); let armed = null;
+reset.onclick = () => {
+  if (!armed) {
+    reset.classList.add("armed"); reset.textContent = "Tap again to clear";
+    armed = setTimeout(() => { armed = null; reset.classList.remove("armed"); reset.textContent = "Reset log"; }, 3000);
+    return;
+  }
+  clearTimeout(armed); armed = null;
+  state = { tasted: {}, rating: {}, notes: {} }; save();
+  document.querySelectorAll(".note").forEach(el => el.value = "");
+  reset.classList.remove("armed"); reset.textContent = "Reset log"; paint();
+};
+</script>
