@@ -16,6 +16,7 @@
   --geuze: #a87814;
   --juicy: #b4500c;
   --spice: #3f7a35;
+  --opt: #7a3f8f;
   --display: "Gloock", "Georgia", serif;
   --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -23,12 +24,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #191613; --surface: #231f1b; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
-    --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; --juicy: #f29a52; --spice: #8cc274; color-scheme: dark;
+    --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; --juicy: #f29a52; --spice: #8cc274; --opt: #c79ad6; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #191613; --surface: #231f1b; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
-  --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; --juicy: #f29a52; --spice: #8cc274; color-scheme: dark;
+  --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; --juicy: #f29a52; --spice: #8cc274; --opt: #c79ad6; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -75,6 +76,8 @@ details:not([open]) .more::after { content: " ▾"; }
 
 .all .tag.juicy, .chip.juicy { color: var(--juicy); }
 .all .tag.spice, .chip.spice { color: var(--spice); }
+.all .tag.opt, .chip.opt { color: var(--opt); }
+.key .k5 { background: var(--opt); }
 .all li.like { color: var(--ink); }
 .chips { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; }
 .chip { font: 600 11px var(--mono); letter-spacing: .04em; }
@@ -123,7 +126,7 @@ footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var
     <div class="eyebrow">Modeste Bierfestival · De Koninck</div>
     <h1>Sour Tour</h1>
     <div class="facts"><span>Sat 3 &amp; Sun 4 Oct</span><span>11:00–19:00</span><span>€7 entry incl. 1st drink</span><span>€2–3 per tasting</span></div>
-    <div class="key"><span><i class="k1"></i>Your 6 beers</span><span><i class="k2"></i>Backup if sold out</span><span><i class="k3"></i>Juicy sour, like Kiss My Neighbour's Wife</span><span><i class="k4"></i>Spiced, like Lost in Spice</span><span>Tap any stand to see all its beers</span></div>
+    <div class="key"><span><i class="k1"></i>Your 6 beers</span><span><i class="k2"></i>Backup if sold out</span><span><i class="k3"></i>Juicy sour, like Kiss My Neighbour's Wife</span><span><i class="k4"></i>Spiced, like Lost in Spice</span><span><i class="k5"></i>Optional: other sour or funky beers</span><span>Tap any stand to see all its beers</span></div>
   </header>
 
   <nav class="route" aria-label="Your route">
@@ -159,7 +162,10 @@ const LIKES = {
   "21": { "Pascharius Strawberry Mint Sour": "juicy", "Otto Bloodorange Hibiscus Saison": "spice", "Marinus Juniper & Kveik Farmhouse Ale": "spice", "Francesca Tomato Basil Sour": "spice" },
   "28": { "Emmer Session Sour BA Bordeaux Rood": "juicy", "Emmer Session Sour BA Calvados": "juicy", "Emmer Session Sour BA Loupiac": "juicy", "Emmer Session Sour BA Ginja": "juicy" }
 };
-const LIKE_LABEL = { juicy: "juicy sour", spice: "spiced" };
+// Other sour, lambic, oud bruin and funky farmhouse beers worth a try if there's room.
+const OPTIONAL = {"3": ["Kwee", "Rieslin sur Senne"], "6": ["Saison d'Epeautre", "Vermentoise", "Moneuse"], "7": ["La Mia Luce"], "11": ["Ceci N’est Pas Une Kriek", "Vissers Montepulciano Lambik 2025", "Vissers Cuvée Petrus B2", "Vissers Cider lambik B2"], "12": ["Beau Monde"], "13": ["Bloody Nancy", "Bezonken Mispel", "Bezonken Pudding"], "14": ["Cuvée De Ranke", "Terroir Unique 2026"], "15": ["Aurora"], "18": ["Doktor Rudi", "Oud Bruin", "Oud Bruin Oak Leaf", "Oud Bruin MEGABLEND"], "19–20": ["Barrel Proof 3", "Alles Kapot"], "21": ["Burning Skoll"], "23–25": ["Liefmans Goudenband", "Liefmans Kriek Brut"]};
+Object.entries(OPTIONAL).forEach(([st, beers]) => beers.forEach(b => { LIKES[st] = LIKES[st] || {}; if (!LIKES[st][b]) LIKES[st][b] = "opt"; }));
+const LIKE_LABEL = { juicy: "juicy sour", spice: "spiced", opt: "optional" };
 const NOTE_AFTER = { "8": "Saucisson d'Olivier · dried sausage tasting boards. Good break stop." };
 
 const KEY = "sour-tour-top6-2026";
@@ -203,7 +209,7 @@ STANDS.forEach(s => {
 
 function chips(stand) {
   const v = Object.values(LIKES[stand] || {}); if (!v.length) return "";
-  return '<span class="chips">' + ["juicy", "spice"].map(k => { const c = v.filter(x => x === k).length; return c ? `<span class="chip ${k}">${c} ${LIKE_LABEL[k]}</span>` : ""; }).join("") + "</span>";
+  return '<span class="chips">' + ["juicy", "spice", "opt"].map(k => { const c = v.filter(x => x === k).length; return c ? `<span class="chip ${k}">${c} ${LIKE_LABEL[k]}</span>` : ""; }).join("") + "</span>";
 }
 ROUTE.forEach((r, i) => {
   if (i) hops.insertAdjacentHTML("beforeend", '<span class="arrow" aria-hidden="true">→</span>');
