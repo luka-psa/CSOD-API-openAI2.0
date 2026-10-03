@@ -111,6 +111,28 @@ details:not([open]) .more::after { content: " ▾"; }
 .rating path { fill: none; stroke: var(--muted); stroke-width: 1.4; }
 .rating button.on path { fill: var(--geuze); stroke: var(--geuze); }
 
+/* Rating any beer */
+.all li { cursor: pointer; border-radius: 4px; padding: 2px 4px; margin-inline: -4px; }
+.all li:hover { background: var(--surface); }
+.all .rate { grid-column: 1 / -1; display: none; align-items: center; gap: 10px; padding-block: 2px 6px; cursor: default; }
+.all li.open .rate { display: flex; }
+.hint { font-size: 12px; color: var(--muted); font-weight: 400; }
+.rv { font: 600 12px var(--mono); color: var(--geuze); margin-left: 6px; white-space: nowrap; }
+
+.myr { margin-block: 4px 18px; display: grid; gap: 8px; }
+.myr h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; }
+.rated { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.rated li { background: var(--surface); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 12px; }
+.rated .rn { min-width: 0; font-weight: 600; }
+.rated .rs { display: block; font: 12px var(--mono); color: var(--muted); font-weight: 400; }
+.rated .empty { grid-column: 1 / -1; color: var(--muted); font-size: 14px; }
+.rated .x { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 2px 6px; }
+.addf { display: flex; flex-wrap: wrap; gap: 6px; }
+.addf input { font: 14px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; min-width: 0; }
+#add-name { flex: 1 1 200px; }
+#add-stand { flex: 0 0 76px; }
+.addf button { border: 1px solid var(--kriek); background: var(--kriek); color: #fff; border-radius: 4px; padding: 7px 14px; font-size: 14px; font-weight: 600; }
+
 footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var(--muted); }
 .reset { justify-self: start; background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
 .reset.armed { border-color: var(--kriek); color: var(--kriek); }
@@ -126,7 +148,7 @@ footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var
     <div class="eyebrow">Modeste Bierfestival · De Koninck</div>
     <h1>Sour Tour</h1>
     <div class="facts"><span>Sat 3 &amp; Sun 4 Oct</span><span>11:00–19:00</span><span>€7 entry incl. 1st drink</span><span>€2–3 per tasting</span></div>
-    <div class="key"><span><i class="k1"></i>Your 6 beers</span><span><i class="k2"></i>Backup if sold out</span><span><i class="k3"></i>Juicy sour, like Kiss My Neighbour's Wife</span><span><i class="k4"></i>Spiced, like Lost in Spice</span><span><i class="k5"></i>Optional: other sour or funky beers</span><span>Tap any stand to see all its beers</span></div>
+    <div class="key"><span><i class="k1"></i>Your 6 beers</span><span><i class="k2"></i>Backup if sold out</span><span><i class="k3"></i>Juicy sour, like Kiss My Neighbour's Wife</span><span><i class="k4"></i>Spiced, like Lost in Spice</span><span><i class="k5"></i>Optional: other sour or funky beers</span><span>Tap a stand to see all its beers, then tap a beer to rate it</span></div>
   </header>
 
   <nav class="route" aria-label="Your route">
@@ -134,11 +156,21 @@ footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var
     <div class="count" id="count"></div>
   </nav>
 
+  <section class="myr" aria-labelledby="myr-h">
+    <h2 id="myr-h">My ratings</h2>
+    <ol class="rated" id="rated"></ol>
+    <form class="addf" id="addf">
+      <input id="add-name" type="text" placeholder="Beer not in the booklet" aria-label="Beer name" autocomplete="off">
+      <input id="add-stand" type="text" placeholder="Stand" aria-label="Stand number" autocomplete="off">
+      <button type="submit">Add</button>
+    </form>
+  </section>
+
   <ol class="stands" id="stands"></ol>
 
   <footer>
-    <span>All stands and beers come from the official 2026 festival booklet. Times are a suggested pace. Your ticks stay on this phone only.</span>
-    <button class="reset" id="reset" type="button">Reset ticks</button>
+    <span>All stands and beers come from the official 2026 festival booklet. Times are a suggested pace. Your ticks and ratings stay on this phone only.</span>
+    <button class="reset" id="reset" type="button">Reset ticks and ratings</button>
   </footer>
 </div>
 
@@ -169,11 +201,25 @@ const LIKE_LABEL = { juicy: "juicy sour", spice: "spiced", opt: "optional" };
 const NOTE_AFTER = { "8": "Saucisson d'Olivier · dried sausage tasting boards. Good break stop." };
 
 const KEY = "sour-tour-top6-2026";
-let state = { tasted: {}, rating: {} };
+// beers: rating per "stand|beer" key; extra: beers not in the booklet (rated under "x|id").
+let state = { tasted: {}, rating: {}, beers: {}, extra: [] };
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+const bkey = (stand, beer) => stand + "|" + beer;
+// Older versions rated route beers by position.
+ROUTE.forEach((r, i) => { const k = bkey(r.stand, r.beer); if (state.rating[i] && !state.beers[k]) state.beers[k] = state.rating[i]; });
+// Beers already tasted and liked at the festival, as told in chat. Applied once; editable on the page.
+if (!state.seeded) {
+  state.beers[bkey("18", "Doktor Rudi")] ??= 4;
+  state.beers[bkey("11", "Vissers Geuze B1")] ??= 4;
+  state.tasted[2] = true;
+  if (!state.extra.some(x => x.id === "limoncello")) state.extra.push({ id: "limoncello", name: "Limoncello beer", stand: "" });
+  state.beers["x|limoncello"] ??= 4;
+  state.seeded = true; save();
+}
 
 const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const rateBtns = k => [1,2,3,4,5].map(n => `<button type="button" class="rb" data-key="${esc(k)}" data-r="${n}" aria-label="Rate ${n} of 5">${glass}</button>`).join("");
 const glass = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1h14l-2.2 19H4.2z"/></svg>';
 const find = (stand, beer) => STANDS.find(s => s.stand === stand).beers.find(b => b[0] === beer);
 const list = document.getElementById("stands"), hops = document.getElementById("hops");
@@ -187,7 +233,8 @@ STANDS.forEach(s => {
   const beers = s.beers.map(([n, style, abv, src]) => {
     const isMine = mine.some(r => r.beer === n), isAlt = backups.includes(n), like = (LIKES[s.stand] || {})[n];
     const tags = (isMine ? '<span class="tag">yours</span>' : isAlt ? '<span class="tag">backup</span>' : "") + (like ? `<span class="tag ${like}">${LIKE_LABEL[like]}</span>` : "");
-    return `<li class="${isMine ? "mine" : isAlt ? "alt" : like ? "like" : ""}"><span>${esc(n)}${tags} · ${esc(style)}</span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span></li>`;
+    const k = bkey(s.stand, n);
+    return `<li class="${isMine ? "mine" : isAlt ? "alt" : like ? "like" : ""}" data-key="${esc(k)}"><span>${esc(n)}${tags} · ${esc(style)}<span class="rv"></span></span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span><span class="rate"><span class="rating" role="group" aria-label="Rate ${esc(n)}">${rateBtns(k)}</span><span class="hint">tap the same glass again to clear</span></span></li>`;
   }).join("");
   const picks = mine.map(r => {
     const b = find(r.stand, r.beer);
@@ -199,7 +246,7 @@ STANDS.forEach(s => {
       <p class="pbackup">Sold out? ${esc(r.backup[1])} at stand ${r.backup[0]}.</p>
       <div class="log">
         <button type="button" class="tasted" data-i="${r.i}" aria-pressed="false">Tasted</button>
-        <span class="rating" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button type="button" data-i="${r.i}" data-r="${n}" aria-label="Rate ${n} of 5">${glass}</button>`).join("")}</span>
+        <span class="rating" role="group" aria-label="Your rating">${rateBtns(bkey(r.stand, r.beer))}</span>
       </div></div>`;
   }).join("");
   li.innerHTML = `<details><summary><span class="no">${s.stand}</span><span class="name">${esc(s.brewery)}${chips(s.stand)}</span><span class="more">${s.beers.length} beers</span></summary><ul class="all">${beers}</ul></details>${picks ? `<div class="picks">${picks}</div>` : ""}`;
@@ -220,15 +267,49 @@ ROUTE.forEach((r, i) => {
   hops.appendChild(h);
 });
 
-list.addEventListener("click", e => {
-  const t = e.target.closest(".tasted"), r = e.target.closest(".rating button");
+function onClick(e) {
+  const t = e.target.closest(".tasted"), rb = e.target.closest(".rb"), x = e.target.closest(".x");
   if (t) { const i = +t.dataset.i; state.tasted[i] = !state.tasted[i]; }
-  else if (r) { const i = +r.dataset.i, n = +r.dataset.r; state.rating[i] = state.rating[i] === n ? 0 : n; if (state.rating[i]) state.tasted[i] = true; }
-  else return;
+  else if (rb) {
+    const k = rb.dataset.key, n = +rb.dataset.r;
+    state.beers[k] = state.beers[k] === n ? 0 : n;
+    const ri = ROUTE.findIndex(r => bkey(r.stand, r.beer) === k);
+    if (ri > -1 && state.beers[k]) state.tasted[ri] = true;
+  }
+  else if (x) { const id = x.dataset.id; state.extra = state.extra.filter(b => b.id !== id); delete state.beers["x|" + id]; }
+  else {
+    const row = e.target.closest(".all li");
+    if (row && !e.target.closest(".rate")) row.classList.toggle("open");
+    return;
+  }
+  save(); paint();
+}
+list.addEventListener("click", onClick);
+document.getElementById("rated").addEventListener("click", onClick);
+
+document.getElementById("addf").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = document.getElementById("add-name").value.trim(); if (!name) return;
+  state.extra.push({ id: "b" + Date.now(), name, stand: document.getElementById("add-stand").value.trim() });
+  document.getElementById("add-name").value = ""; document.getElementById("add-stand").value = "";
   save(); paint();
 });
 
+function paintRated() {
+  const rows = [];
+  STANDS.forEach(s => s.beers.forEach(([n]) => { const r = state.beers[bkey(s.stand, n)]; if (r) rows.push({ k: bkey(s.stand, n), name: n, sub: `stand ${s.stand} · ${s.brewery}`, r }); }));
+  state.extra.forEach(b => rows.push({ k: "x|" + b.id, name: b.name, sub: (b.stand ? `stand ${b.stand} · ` : "") + "not in the booklet", r: state.beers["x|" + b.id] || 0, id: b.id }));
+  rows.sort((a, b) => b.r - a.r);
+  document.getElementById("rated").innerHTML = rows.length ? rows.map(x => `<li>
+      <span class="rn">${esc(x.name)}<span class="rs">${esc(x.sub)}</span></span>
+      <span><span class="rating" role="group" aria-label="Rate ${esc(x.name)}">${rateBtns(x.k)}</span>${x.id ? `<button type="button" class="x" data-id="${esc(x.id)}" aria-label="Remove ${esc(x.name)}">✕</button>` : ""}</span>
+    </li>`).join("") : '<li><span class="empty">Nothing rated yet. Open a stand and tap a beer to rate it.</span></li>';
+}
+
 function paint() {
+  paintRated();
+  document.querySelectorAll(".rb").forEach(b => b.classList.toggle("on", +b.dataset.r <= (state.beers[b.dataset.key] || 0)));
+  document.querySelectorAll(".all li[data-key]").forEach(li => { const r = state.beers[li.dataset.key]; li.querySelector(".rv").textContent = r ? `${r}/5` : ""; });
   const next = ROUTE.findIndex((_, i) => !state.tasted[i]);
   let done = 0;
   ROUTE.forEach((r, i) => {
@@ -238,7 +319,6 @@ function paint() {
     p.querySelector(".badges").innerHTML = (i === next ? '<span class="badge now">Next</span> ' : "") + (r.must ? '<span class="badge must">Must</span>' : "");
     const tb = p.querySelector(".tasted");
     tb.setAttribute("aria-pressed", t); tb.textContent = t ? "✓ Tasted" : "Tasted";
-    p.querySelectorAll(".rating button").forEach(b => b.classList.toggle("on", +b.dataset.r <= (state.rating[i] || 0)));
     const h = document.getElementById("hop-" + i);
     h.classList.toggle("done", t); h.classList.toggle("next", i === next);
   });
@@ -252,11 +332,11 @@ const reset = document.getElementById("reset"); let armed = null;
 reset.onclick = () => {
   if (!armed) {
     reset.classList.add("armed"); reset.textContent = "Tap again to clear";
-    armed = setTimeout(() => { armed = null; reset.classList.remove("armed"); reset.textContent = "Reset ticks"; }, 3000);
+    armed = setTimeout(() => { armed = null; reset.classList.remove("armed"); reset.textContent = "Reset ticks and ratings"; }, 3000);
     return;
   }
   clearTimeout(armed); armed = null;
-  state = { tasted: {}, rating: {} }; save();
-  reset.classList.remove("armed"); reset.textContent = "Reset ticks"; paint();
+  state = { tasted: {}, rating: {}, beers: {}, extra: [], seeded: true }; save();
+  reset.classList.remove("armed"); reset.textContent = "Reset ticks and ratings"; paint();
 };
 </script>
