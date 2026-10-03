@@ -133,6 +133,15 @@ details:not([open]) .more::after { content: " ▾"; }
 #add-stand { flex: 0 0 76px; }
 .addf button { border: 1px solid var(--kriek); background: var(--kriek); color: #fff; border-radius: 4px; padding: 7px 14px; font-size: 14px; font-weight: 600; }
 
+.hop.extra { border-style: dashed; }
+.hop.extra.done { border-style: solid; }
+.xhops { display: contents; }
+.addt { border: 1px solid var(--kriek); color: var(--kriek); background: transparent; border-radius: 4px; padding: 3px 10px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.addt.on { background: var(--kriek); color: #fff; }
+.all li.added { box-shadow: inset 3px 0 0 var(--kriek); }
+.sub { margin: -4px 0 0; font-size: 13px; color: var(--muted); }
+.why-s { color: var(--spice); }
+
 footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var(--muted); }
 .reset { justify-self: start; background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
 .reset.armed { border-color: var(--kriek); color: var(--kriek); }
@@ -155,6 +164,17 @@ footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var
     <div class="hops" id="hops"></div>
     <div class="count" id="count"></div>
   </nav>
+
+  <section class="myr" id="extras-sec" aria-labelledby="ex-h" hidden>
+    <h2 id="ex-h">Added to your tour</h2>
+    <ol class="rated" id="extras"></ol>
+  </section>
+
+  <section class="myr" aria-labelledby="sg-h">
+    <h2 id="sg-h">Suggested for you</h2>
+    <p class="sub">Based on what you rate 4 or 5. Updates every time you rate a beer.</p>
+    <ol class="rated" id="sugg"></ol>
+  </section>
 
   <section class="myr" aria-labelledby="myr-h">
     <h2 id="myr-h">My ratings</h2>
@@ -202,7 +222,7 @@ const NOTE_AFTER = { "8": "Saucisson d'Olivier · dried sausage tasting boards. 
 
 const KEY = "sour-tour-top6-2026";
 // beers: rating per "stand|beer" key; extra: beers not in the booklet (rated under "x|id").
-let state = { tasted: {}, rating: {}, beers: {}, extra: [] };
+let state = { tasted: {}, rating: {}, beers: {}, extra: [], added: [] };
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
 const bkey = (stand, beer) => stand + "|" + beer;
@@ -217,6 +237,22 @@ if (!state.seeded) {
   state.beers["x|limoncello"] ??= 4;
   state.seeded = true; save();
 }
+state.added = state.added || [];
+state.extra.forEach(x => { if (x.id === "limoncello" && !x.fam) x.fam = "fruited"; });
+
+// Sour families, used to suggest beers like the ones rated highly.
+const FAMILY = [
+  [/lambic|gueuze|geuze/i, "lambic"],
+  [/oud bruin|flanders/i, "oudbruin"],
+  [/berliner|lichtenhainer|gose|göse/i, "tart"],
+  [/sour|fruit beer/i, "fruited"],
+  [/saison|farmhouse/i, "farm"]
+];
+const famOf = (name, style) => /on the rocks|0\.0/i.test(name) ? null : (FAMILY.find(([re]) => re.test(style)) || [])[1] || null;
+const ALL = [];
+STANDS.forEach(s => s.beers.forEach(([n, style, abv, src]) => ALL.push({ k: s.stand + "|" + n, stand: s.stand, brewery: s.brewery, name: n, abv, src, fam: famOf(n, style) })));
+const byKey = Object.fromEntries(ALL.map(b => [b.k, b]));
+const ROUTE_KEYS = new Set(ROUTE.map(r => r.stand + "|" + r.beer));
 
 const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const rateBtns = k => [1,2,3,4,5].map(n => `<button type="button" class="rb" data-key="${esc(k)}" data-r="${n}" aria-label="Rate ${n} of 5">${glass}</button>`).join("");
@@ -234,7 +270,7 @@ STANDS.forEach(s => {
     const isMine = mine.some(r => r.beer === n), isAlt = backups.includes(n), like = (LIKES[s.stand] || {})[n];
     const tags = (isMine ? '<span class="tag">yours</span>' : isAlt ? '<span class="tag">backup</span>' : "") + (like ? `<span class="tag ${like}">${LIKE_LABEL[like]}</span>` : "");
     const k = bkey(s.stand, n);
-    return `<li class="${isMine ? "mine" : isAlt ? "alt" : like ? "like" : ""}" data-key="${esc(k)}"><span>${esc(n)}${tags} · ${esc(style)}<span class="rv"></span></span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span><span class="rate"><span class="rating" role="group" aria-label="Rate ${esc(n)}">${rateBtns(k)}</span><span class="hint">tap the same glass again to clear</span></span></li>`;
+    return `<li class="${isMine ? "mine" : isAlt ? "alt" : like ? "like" : ""}" data-key="${esc(k)}"><span>${esc(n)}${tags} · ${esc(style)}<span class="rv"></span></span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span><span class="rate"><span class="rating" role="group" aria-label="Rate ${esc(n)}">${rateBtns(k)}</span>${ROUTE_KEYS.has(k) ? "" : `<button type="button" class="addt" data-key="${esc(k)}">+ Add to tour</button>`}</span></li>`;
   }).join("");
   const picks = mine.map(r => {
     const b = find(r.stand, r.beer);
@@ -266,6 +302,15 @@ ROUTE.forEach((r, i) => {
   h.onclick = () => document.getElementById("pick-" + i).scrollIntoView({ behavior: "smooth", block: "center" });
   hops.appendChild(h);
 });
+hops.insertAdjacentHTML("beforeend", '<span class="xhops" id="xhops"></span>');
+document.getElementById("xhops").addEventListener("click", e => {
+  const h = e.target.closest(".hop"); if (h) jumpTo(h.dataset.key);
+});
+function jumpTo(k) {
+  const row = document.querySelector(`.all li[data-key="${CSS.escape(k)}"]`); if (!row) return;
+  row.closest("details").open = true; row.classList.add("open");
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 function onClick(e) {
   const t = e.target.closest(".tasted"), rb = e.target.closest(".rb"), x = e.target.closest(".x");
@@ -276,6 +321,12 @@ function onClick(e) {
     const ri = ROUTE.findIndex(r => bkey(r.stand, r.beer) === k);
     if (ri > -1 && state.beers[k]) state.tasted[ri] = true;
   }
+  else if (e.target.closest(".addt")) {
+    const k = e.target.closest(".addt").dataset.key;
+    state.added = state.added.includes(k) ? state.added.filter(a => a !== k) : [...state.added, k];
+  }
+  else if (e.target.closest(".jump")) { jumpTo(e.target.closest(".jump").dataset.key); return; }
+  else if (x && x.dataset.rm) { const k = x.dataset.rm; state.added = state.added.filter(a => a !== k); }
   else if (x) { const id = x.dataset.id; state.extra = state.extra.filter(b => b.id !== id); delete state.beers["x|" + id]; }
   else {
     const row = e.target.closest(".all li");
@@ -285,7 +336,7 @@ function onClick(e) {
   save(); paint();
 }
 list.addEventListener("click", onClick);
-document.getElementById("rated").addEventListener("click", onClick);
+["rated", "extras", "sugg"].forEach(id => document.getElementById(id).addEventListener("click", onClick));
 
 document.getElementById("addf").addEventListener("submit", e => {
   e.preventDefault();
@@ -294,6 +345,31 @@ document.getElementById("addf").addEventListener("submit", e => {
   document.getElementById("add-name").value = ""; document.getElementById("add-stand").value = "";
   save(); paint();
 });
+
+function paintExtras() {
+  const sec = document.getElementById("extras-sec");
+  sec.hidden = !state.added.length;
+  document.getElementById("extras").innerHTML = state.added.map(k => { const b = byKey[k]; if (!b) return "";
+    return `<li><span class="rn"><button type="button" class="jump" data-key="${esc(k)}" style="all:unset;cursor:pointer">${esc(b.name)}</button><span class="rs">stand ${b.stand} · ${esc(b.brewery)} · ${b.abv}</span></span>
+      <span><span class="rating" role="group" aria-label="Rate ${esc(b.name)}">${rateBtns(k)}</span><button type="button" class="x addt-x" data-rm="${esc(k)}" aria-label="Remove ${esc(b.name)} from tour">✕</button></span></li>`; }).join("");
+  document.getElementById("xhops").innerHTML = state.added.map(k => { const b = byKey[k]; if (!b) return "";
+    return `<span class="arrow" aria-hidden="true">→</span><button type="button" class="hop extra${state.beers[k] ? " done" : ""}" data-key="${esc(k)}" aria-label="Extra: stand ${b.stand}, ${esc(b.name)}">${b.stand}</button>`; }).join("");
+}
+
+function paintSuggestions() {
+  const fam = {}, best = {};
+  const liked = [...ALL.filter(b => state.beers[b.k]).map(b => ({ fam: b.fam, name: b.name, r: state.beers[b.k] })),
+                 ...state.extra.filter(x => x.fam && state.beers["x|" + x.id]).map(x => ({ fam: x.fam, name: x.name, r: state.beers["x|" + x.id] }))];
+  liked.forEach(l => { if (!l.fam) return; fam[l.fam] = (fam[l.fam] || 0) + (l.r - 3); if (l.r >= 4 && (!best[l.fam] || l.r > best[l.fam].r)) best[l.fam] = l; });
+  const picks = ALL.filter(b => b.fam && fam[b.fam] > 0 && best[b.fam] && !state.beers[b.k] && !ROUTE_KEYS.has(b.k) && !state.added.includes(b.k))
+    .map(b => ({ ...b, score: fam[b.fam] + ((LIKES[b.stand] || {})[b.name] ? .3 : 0) + (b.src === "tap" ? .2 : 0) }))
+    .sort((a, c) => c.score - a.score)
+    .filter(function (b) { this[b.fam] = (this[b.fam] || 0) + 1; return this[b.fam] <= 2; }, {}).slice(0, 5);
+  document.getElementById("sugg").innerHTML = picks.length ? picks.map(b => `<li>
+      <span class="rn"><button type="button" class="jump" data-key="${esc(b.k)}" style="all:unset;cursor:pointer">${esc(b.name)}</button><span class="rs">stand ${b.stand} · ${b.abv}${b.src === "tap" ? " · on tap" : ""} · <span class="why-s">like ${esc(best[b.fam].name)}</span></span></span>
+      <button type="button" class="addt" data-key="${esc(b.k)}">+ Add</button></li>`).join("")
+    : '<li><span class="empty">Rate a sour 4 or 5 and suggestions show up here.</span></li>';
+}
 
 function paintRated() {
   const rows = [];
@@ -307,7 +383,11 @@ function paintRated() {
 }
 
 function paint() {
-  paintRated();
+  paintRated(); paintExtras(); paintSuggestions();
+  document.querySelectorAll(".all li[data-key]").forEach(li => {
+    const on = state.added.includes(li.dataset.key); li.classList.toggle("added", on);
+    const b = li.querySelector(".addt"); if (b) { b.classList.toggle("on", on); b.textContent = on ? "✓ On your tour" : "+ Add to tour"; }
+  });
   document.querySelectorAll(".rb").forEach(b => b.classList.toggle("on", +b.dataset.r <= (state.beers[b.dataset.key] || 0)));
   document.querySelectorAll(".all li[data-key]").forEach(li => { const r = state.beers[li.dataset.key]; li.querySelector(".rv").textContent = r ? `${r}/5` : ""; });
   const next = ROUTE.findIndex((_, i) => !state.tasted[i]);
@@ -322,9 +402,13 @@ function paint() {
     const h = document.getElementById("hop-" + i);
     h.classList.toggle("done", t); h.classList.toggle("next", i === next);
   });
-  document.getElementById("count").textContent = next === -1
-    ? "All 6 done. Proost!"
-    : `${done} of 6 tasted · next: stand ${ROUTE[next].stand}, ${ROUTE[next].beer} (~${ROUTE[next].time})`;
+  const total = 6 + state.added.length;
+  done += state.added.filter(k => state.beers[k]).length;
+  const nextExtra = state.added.find(k => !state.beers[k]);
+  document.getElementById("count").textContent = next > -1
+    ? `${done} of ${total} tasted · next: stand ${ROUTE[next].stand}, ${ROUTE[next].beer} (~${ROUTE[next].time})`
+    : nextExtra ? `${done} of ${total} tasted · next extra: stand ${byKey[nextExtra].stand}, ${byKey[nextExtra].name}`
+    : `All ${total} done. Proost!`;
 }
 paint();
 
@@ -336,7 +420,7 @@ reset.onclick = () => {
     return;
   }
   clearTimeout(armed); armed = null;
-  state = { tasted: {}, rating: {}, beers: {}, extra: [], seeded: true }; save();
+  state = { tasted: {}, rating: {}, beers: {}, extra: [], added: [], seeded: true }; save();
   reset.classList.remove("armed"); reset.textContent = "Reset ticks and ratings"; paint();
 };
 </script>
