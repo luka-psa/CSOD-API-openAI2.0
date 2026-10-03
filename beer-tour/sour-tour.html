@@ -142,6 +142,11 @@ details:not([open]) .more::after { content: " ▾"; }
 .sub { margin: -4px 0 0; font-size: 13px; color: var(--muted); }
 .why-s { color: var(--spice); }
 
+.note { flex: 1 1 100%; min-width: 0; font: 14px var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 9px; }
+.all .rate { flex-wrap: wrap; }
+.rated li .note { grid-column: 1 / -1; background: var(--bg); }
+.pick .note { background: var(--surface); }
+
 footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var(--muted); }
 .reset { justify-self: start; background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
 .reset.armed { border-color: var(--kriek); color: var(--kriek); }
@@ -189,8 +194,8 @@ footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var
   <ol class="stands" id="stands"></ol>
 
   <footer>
-    <span>All stands and beers come from the official 2026 festival booklet. Times are a suggested pace. Your ticks and ratings stay on this phone only.</span>
-    <button class="reset" id="reset" type="button">Reset ticks and ratings</button>
+    <span>All stands and beers come from the official 2026 festival booklet. Times are a suggested pace. Your ticks, ratings and comments stay on this phone only.</span>
+    <button class="reset" id="reset" type="button">Reset everything</button>
   </footer>
 </div>
 
@@ -222,7 +227,7 @@ const NOTE_AFTER = { "8": "Saucisson d'Olivier · dried sausage tasting boards. 
 
 const KEY = "sour-tour-top6-2026";
 // beers: rating per "stand|beer" key; extra: beers not in the booklet (rated under "x|id").
-let state = { tasted: {}, rating: {}, beers: {}, extra: [], added: [] };
+let state = { tasted: {}, rating: {}, beers: {}, extra: [], added: [], notes: {} };
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
 const bkey = (stand, beer) => stand + "|" + beer;
@@ -238,6 +243,7 @@ if (!state.seeded) {
   state.seeded = true; save();
 }
 state.added = state.added || [];
+state.notes = state.notes || {};
 state.extra.forEach(x => { if (x.id === "limoncello" && !x.fam) x.fam = "fruited"; });
 
 // Sour families, used to suggest beers like the ones rated highly.
@@ -256,6 +262,8 @@ const ROUTE_KEYS = new Set(ROUTE.map(r => r.stand + "|" + r.beer));
 
 const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const rateBtns = k => [1,2,3,4,5].map(n => `<button type="button" class="rb" data-key="${esc(k)}" data-r="${n}" aria-label="Rate ${n} of 5">${glass}</button>`).join("");
+let noteSeq = 0;
+const noteInput = (k, name) => `<input class="note" id="note-${++noteSeq}" data-key="${esc(k)}" type="text" placeholder="Comment: what did you think?" aria-label="Comment on ${esc(name)}" autocomplete="off">`;
 const glass = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1h14l-2.2 19H4.2z"/></svg>';
 const find = (stand, beer) => STANDS.find(s => s.stand === stand).beers.find(b => b[0] === beer);
 const list = document.getElementById("stands"), hops = document.getElementById("hops");
@@ -270,7 +278,7 @@ STANDS.forEach(s => {
     const isMine = mine.some(r => r.beer === n), isAlt = backups.includes(n), like = (LIKES[s.stand] || {})[n];
     const tags = (isMine ? '<span class="tag">yours</span>' : isAlt ? '<span class="tag">backup</span>' : "") + (like ? `<span class="tag ${like}">${LIKE_LABEL[like]}</span>` : "");
     const k = bkey(s.stand, n);
-    return `<li class="${isMine ? "mine" : isAlt ? "alt" : like ? "like" : ""}" data-key="${esc(k)}"><span>${esc(n)}${tags} · ${esc(style)}<span class="rv"></span></span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span><span class="rate"><span class="rating" role="group" aria-label="Rate ${esc(n)}">${rateBtns(k)}</span>${ROUTE_KEYS.has(k) ? "" : `<button type="button" class="addt" data-key="${esc(k)}">+ Add to tour</button>`}</span></li>`;
+    return `<li class="${isMine ? "mine" : isAlt ? "alt" : like ? "like" : ""}" data-key="${esc(k)}"><span>${esc(n)}${tags} · ${esc(style)}<span class="rv"></span></span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span><span class="rate"><span class="rating" role="group" aria-label="Rate ${esc(n)}">${rateBtns(k)}</span>${noteInput(k, n)}${ROUTE_KEYS.has(k) ? "" : `<button type="button" class="addt" data-key="${esc(k)}">+ Add to tour</button>`}</span></li>`;
   }).join("");
   const picks = mine.map(r => {
     const b = find(r.stand, r.beer);
@@ -283,6 +291,7 @@ STANDS.forEach(s => {
       <div class="log">
         <button type="button" class="tasted" data-i="${r.i}" aria-pressed="false">Tasted</button>
         <span class="rating" role="group" aria-label="Your rating">${rateBtns(bkey(r.stand, r.beer))}</span>
+        ${noteInput(bkey(r.stand, r.beer), r.beer)}
       </div></div>`;
   }).join("");
   li.innerHTML = `<details><summary><span class="no">${s.stand}</span><span class="name">${esc(s.brewery)}${chips(s.stand)}</span><span class="more">${s.beers.length} beers</span></summary><ul class="all">${beers}</ul></details>${picks ? `<div class="picks">${picks}</div>` : ""}`;
@@ -351,7 +360,7 @@ function paintExtras() {
   sec.hidden = !state.added.length;
   document.getElementById("extras").innerHTML = state.added.map(k => { const b = byKey[k]; if (!b) return "";
     return `<li><span class="rn"><button type="button" class="jump" data-key="${esc(k)}" style="all:unset;cursor:pointer">${esc(b.name)}</button><span class="rs">stand ${b.stand} · ${esc(b.brewery)} · ${b.abv}</span></span>
-      <span><span class="rating" role="group" aria-label="Rate ${esc(b.name)}">${rateBtns(k)}</span><button type="button" class="x addt-x" data-rm="${esc(k)}" aria-label="Remove ${esc(b.name)} from tour">✕</button></span></li>`; }).join("");
+      <span><span class="rating" role="group" aria-label="Rate ${esc(b.name)}">${rateBtns(k)}</span><button type="button" class="x addt-x" data-rm="${esc(k)}" aria-label="Remove ${esc(b.name)} from tour">✕</button></span>${noteInput(k, b.name)}</li>`; }).join("");
   document.getElementById("xhops").innerHTML = state.added.map(k => { const b = byKey[k]; if (!b) return "";
     return `<span class="arrow" aria-hidden="true">→</span><button type="button" class="hop extra${state.beers[k] ? " done" : ""}" data-key="${esc(k)}" aria-label="Extra: stand ${b.stand}, ${esc(b.name)}">${b.stand}</button>`; }).join("");
 }
@@ -371,15 +380,34 @@ function paintSuggestions() {
     : '<li><span class="empty">Rate a sour 4 or 5 and suggestions show up here.</span></li>';
 }
 
+function paintNotes() {
+  document.querySelectorAll(".note").forEach(n => { if (n !== document.activeElement) n.value = state.notes[n.dataset.key] || ""; });
+  document.querySelectorAll(".all li[data-key]").forEach(li => {
+    const k = li.dataset.key, r = state.beers[k];
+    li.querySelector(".rv").textContent = [r ? `${r}/5` : "", state.notes[k] ? "✎" : ""].filter(Boolean).join(" ");
+  });
+}
+document.addEventListener("input", e => {
+  const n = e.target.closest(".note"); if (!n) return;
+  const v = n.value.trim(); if (v) state.notes[n.dataset.key] = n.value; else delete state.notes[n.dataset.key];
+  save(); paintNotes();
+});
+// A new comment on an unrated beer adds it to My ratings once the field is left.
+document.addEventListener("change", e => {
+  const n = e.target.closest(".note"); if (!n) return;
+  if (!document.querySelector(`#rated .note[data-key="${CSS.escape(n.dataset.key)}"]`)) paint();
+});
+
 function paintRated() {
   const rows = [];
-  STANDS.forEach(s => s.beers.forEach(([n]) => { const r = state.beers[bkey(s.stand, n)]; if (r) rows.push({ k: bkey(s.stand, n), name: n, sub: `stand ${s.stand} · ${s.brewery}`, r }); }));
+  STANDS.forEach(s => s.beers.forEach(([n]) => { const r = state.beers[bkey(s.stand, n)] || 0; if (r || state.notes[bkey(s.stand, n)]) rows.push({ k: bkey(s.stand, n), name: n, sub: `stand ${s.stand} · ${s.brewery}`, r }); }));
   state.extra.forEach(b => rows.push({ k: "x|" + b.id, name: b.name, sub: (b.stand ? `stand ${b.stand} · ` : "") + "not in the booklet", r: state.beers["x|" + b.id] || 0, id: b.id }));
   rows.sort((a, b) => b.r - a.r);
   document.getElementById("rated").innerHTML = rows.length ? rows.map(x => `<li>
       <span class="rn">${esc(x.name)}<span class="rs">${esc(x.sub)}</span></span>
       <span><span class="rating" role="group" aria-label="Rate ${esc(x.name)}">${rateBtns(x.k)}</span>${x.id ? `<button type="button" class="x" data-id="${esc(x.id)}" aria-label="Remove ${esc(x.name)}">✕</button>` : ""}</span>
-    </li>`).join("") : '<li><span class="empty">Nothing rated yet. Open a stand and tap a beer to rate it.</span></li>';
+      ${noteInput(x.k, x.name)}
+    </li>`).join("") : '<li><span class="empty">Nothing rated yet. Open a stand and tap a beer to rate it or leave a comment.</span></li>';
 }
 
 function paint() {
@@ -389,7 +417,7 @@ function paint() {
     const b = li.querySelector(".addt"); if (b) { b.classList.toggle("on", on); b.textContent = on ? "✓ On your tour" : "+ Add to tour"; }
   });
   document.querySelectorAll(".rb").forEach(b => b.classList.toggle("on", +b.dataset.r <= (state.beers[b.dataset.key] || 0)));
-  document.querySelectorAll(".all li[data-key]").forEach(li => { const r = state.beers[li.dataset.key]; li.querySelector(".rv").textContent = r ? `${r}/5` : ""; });
+  paintNotes();
   const next = ROUTE.findIndex((_, i) => !state.tasted[i]);
   let done = 0;
   ROUTE.forEach((r, i) => {
@@ -416,11 +444,11 @@ const reset = document.getElementById("reset"); let armed = null;
 reset.onclick = () => {
   if (!armed) {
     reset.classList.add("armed"); reset.textContent = "Tap again to clear";
-    armed = setTimeout(() => { armed = null; reset.classList.remove("armed"); reset.textContent = "Reset ticks and ratings"; }, 3000);
+    armed = setTimeout(() => { armed = null; reset.classList.remove("armed"); reset.textContent = "Reset everything"; }, 3000);
     return;
   }
   clearTimeout(armed); armed = null;
-  state = { tasted: {}, rating: {}, beers: {}, extra: [], added: [], seeded: true }; save();
-  reset.classList.remove("armed"); reset.textContent = "Reset ticks and ratings"; paint();
+  state = { tasted: {}, rating: {}, beers: {}, extra: [], added: [], notes: {}, seeded: true }; save();
+  reset.classList.remove("armed"); reset.textContent = "Reset everything"; paint();
 };
 </script>
