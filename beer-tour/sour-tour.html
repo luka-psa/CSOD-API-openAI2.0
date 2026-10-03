@@ -3,8 +3,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: phone-first checklist. Six beer cards in drinking order; the stand number is the
-   biggest thing on each card so it reads at arm's length in a crowd. */
+/* Layout: the festival floor as a list, stands 1–29 in walking order. Your stands are lit up
+   with your beer inside them; every other stand stays one quiet line you can open. */
 :root {
   --bg: #eceee6;
   --surface: #f7f8f3;
@@ -12,6 +12,7 @@
   --muted: #676456;
   --line: #d3d6c8;
   --kriek: #9b1c33;
+  --kriek-soft: #f3e3e3;
   --geuze: #a87814;
   --display: "Gloock", "Georgia", serif;
   --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -20,29 +21,31 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #191613; --surface: #231f1b; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
-    --kriek: #e2566d; --geuze: #e2b54e; color-scheme: dark;
+    --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #191613; --surface: #231f1b; --ink: #efe7da; --muted: #a39b8c; --line: #3a332b;
-  --kriek: #e2566d; --geuze: #e2b54e; color-scheme: dark;
+  --kriek: #e2566d; --kriek-soft: #3a1e22; --geuze: #e2b54e; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); padding-inline: 16px; padding-block: 0 56px; }
-.wrap { max-width: 560px; margin: 0 auto; }
-h1, h2 { font-family: var(--display); font-weight: 400; margin: 0; text-wrap: balance; }
+.wrap { max-width: 600px; margin: 0 auto; }
+h1 { font-family: var(--display); font-weight: 400; margin: 0; font-size: clamp(40px, 11vw, 60px); line-height: .95; text-wrap: balance; }
 button { font: inherit; color: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--kriek); outline-offset: 2px; }
 
 header { padding-block: 36px 8px; display: grid; gap: 10px; }
 .eyebrow { font: 600 12px/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--kriek); }
-h1 { font-size: clamp(40px, 11vw, 60px); line-height: .95; }
 .facts { font: 13px var(--mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
-.first { margin: 6px 0 0; padding: 10px 12px; border-left: 3px solid var(--geuze); background: var(--surface); font-size: 15px; }
+.key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--muted); align-items: center; }
+.key i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+.key .k1 { background: var(--kriek); }
+.key .k2 { border: 1.5px dashed var(--geuze); }
 
-/* Route strip + progress */
-.route { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px; border-bottom: 1px solid var(--line); margin-block: 16px 8px; display: grid; gap: 8px; }
+/* Sticky route */
+.route { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px; border-bottom: 1px solid var(--line); margin-block: 14px 10px; display: grid; gap: 6px; }
 .hops { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font: 600 14px var(--mono); }
 .hop { border: 1.5px solid var(--line); border-radius: 4px; padding: 3px 8px; background: transparent; font-variant-numeric: tabular-nums; }
 .hop.next { border-color: var(--kriek); color: var(--kriek); }
@@ -50,145 +53,169 @@ h1 { font-size: clamp(40px, 11vw, 60px); line-height: .95; }
 .arrow { color: var(--muted); font-weight: 400; }
 .count { font: 13px var(--mono); color: var(--muted); }
 
-/* Cards */
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 8px; scroll-margin-top: 90px; }
-.card.next { border-color: var(--kriek); box-shadow: 0 0 0 1px var(--kriek); }
-.card.done { opacity: .62; }
-.top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 13px var(--mono); color: var(--muted); }
-.badge { font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; }
+/* Stand list */
+.stands { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stand { border: 1px solid var(--line); border-radius: 6px; background: transparent; scroll-margin-top: 96px; }
+.stand > details > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; }
+.stand > details > summary::-webkit-details-marker { display: none; }
+.no { font: 600 15px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.name { min-width: 0; font-size: 15px; color: var(--muted); }
+.more { font: 12px var(--mono); color: var(--muted); white-space: nowrap; }
+details[open] .more::after { content: " ▴"; }
+details:not([open]) .more::after { content: " ▾"; }
+.all { list-style: none; margin: 0; padding: 0 12px 12px 78px; display: grid; gap: 3px; font-size: 14px; }
+.all li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; color: var(--muted); }
+.all li span:first-child { min-width: 0; }
+.all .abv { font: 12px var(--mono); font-variant-numeric: tabular-nums; }
+.all li.mine { color: var(--kriek); font-weight: 600; }
+.all li.alt { color: var(--ink); }
+.all .tag { font: 600 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; margin-left: 6px; color: var(--geuze); }
+
+.stand.backup { border: 1.5px dashed var(--geuze); }
+.stand.backup .no, .stand.backup .name { color: var(--ink); }
+.stand.mine { border: 2px solid var(--kriek); background: var(--surface); }
+.stand.mine .no { color: var(--kriek); font-size: 26px; }
+.stand.mine .name { color: var(--ink); font-weight: 600; font-size: 16px; }
+.stand.note { border-style: dotted; }
+
+/* Your beers inside a stand */
+.picks { display: grid; gap: 8px; padding: 0 12px 12px; }
+.pick { background: var(--kriek-soft); border-radius: 6px; padding: 10px 12px; display: grid; gap: 4px; }
+.pick.next { box-shadow: inset 0 0 0 2px var(--kriek); }
+.pick.done { opacity: .6; }
+.ptop { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font: 12px var(--mono); color: var(--muted); }
+.badge { font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; }
 .badge.must { color: var(--geuze); border: 1px solid var(--geuze); }
 .badge.now { background: var(--kriek); color: #fff; }
-.stand { display: flex; align-items: baseline; gap: 10px; }
-.stand b { font: 600 44px/1 var(--mono); color: var(--kriek); font-variant-numeric: tabular-nums; }
-.stand span { font-size: 15px; color: var(--muted); }
-.card h2 { font-size: 28px; line-height: 1.1; }
-.spec { font: 13px var(--mono); color: var(--muted); }
-.why { margin: 0; }
-.backup { margin: 0; font-size: 14px; color: var(--muted); }
-.backup b { color: var(--ink); font-weight: 600; }
-.log { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding-top: 8px; border-top: 1px dashed var(--line); }
-.tasted { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 16px; font-weight: 600; }
+.pname { font-family: var(--display); font-size: 22px; line-height: 1.15; }
+.pspec { font: 13px var(--mono); color: var(--muted); }
+.pbackup { font-size: 13px; color: var(--muted); margin: 0; }
+.log { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 4px; }
+.tasted { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 6px 14px; font-weight: 600; font-size: 14px; }
 .tasted[aria-pressed="true"] { background: var(--kriek); border-color: var(--kriek); color: #fff; }
 .rating { display: inline-flex; gap: 2px; }
 .rating button { background: none; border: 0; padding: 4px 2px; line-height: 0; }
-.rating svg { width: 20px; height: 24px; }
+.rating svg { width: 18px; height: 22px; }
 .rating path { fill: none; stroke: var(--muted); stroke-width: 1.4; }
 .rating button.on path { fill: var(--geuze); stroke: var(--geuze); }
 
-.pause { text-align: center; font-size: 14px; color: var(--muted); padding-block: 2px; }
-.pause b { color: var(--ink); font-weight: 600; }
-
-footer { margin-top: 28px; display: grid; gap: 10px; font-size: 13px; color: var(--muted); }
+footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var(--muted); }
 .reset { justify-self: start; background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
 .reset.armed { border-color: var(--kriek); color: var(--kriek); }
+@media (max-width: 420px) {
+  .stand > details > summary { grid-template-columns: 44px minmax(0, 1fr) auto; }
+  .all { padding-left: 12px; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 
 <div class="wrap">
   <header>
     <div class="eyebrow">Modeste Bierfestival · De Koninck</div>
-    <h1>Your 6 sours</h1>
+    <h1>Sour Tour</h1>
     <div class="facts"><span>Sat 3 &amp; Sun 4 Oct</span><span>11:00–19:00</span><span>€7 entry incl. 1st drink</span><span>€2–3 per tasting</span></div>
-    <p class="first"><b>On arrival:</b> walk past stands 3 and 11 first and check that the geuzes and taps are still pouring. Then start at stand 13.</p>
+    <div class="key"><span><i class="k1"></i>Your 6 beers</span><span><i class="k2"></i>Backup if sold out</span><span>Tap any stand to see all its beers</span></div>
   </header>
 
-  <nav class="route" aria-label="Stand route">
+  <nav class="route" aria-label="Your route">
     <div class="hops" id="hops"></div>
     <div class="count" id="count"></div>
   </nav>
 
-  <ol class="list" id="list"></ol>
+  <ol class="stands" id="stands"></ol>
 
   <footer>
-    <span>Beers and stand numbers come from the official 2026 festival booklet. Times are a suggested pace. Your ticks stay on this phone only.</span>
+    <span>All stands and beers come from the official 2026 festival booklet. Times are a suggested pace. Your ticks stay on this phone only.</span>
     <button class="reset" id="reset" type="button">Reset ticks</button>
   </footer>
 </div>
 
 <script>
-const BEERS = [
-  { time: "11:00", stand: "13", brewery: "Vleesmeester", beer: "Babylon Berlin", spec: "Berliner Weisse · 4% · on tap",
-    why: "Light and tart. Warms up your palate. Use your free first drink here.",
-    backup: "Bien Sur Cranberry at stand 12" },
-  { time: "11:30", stand: "3", brewery: "Boerenerf", beer: "Cuvée Heritage 2025", spec: "Geuze · 6.3% · bottle", must: true,
-    why: "Geuze from a small lambic blender. Remember how it tastes, because the next one is a direct comparison.",
-    backup: "Rieslin sur Senne, same stand" },
-  { time: "12:00", stand: "11", brewery: "Geuzestekerij Vissers", beer: "Vissers Geuze B1", spec: "Geuze · 6.9% · bottle", must: true,
-    why: "The highlight of the festival for a geuze fan. Compare it with the Boerenerf.",
-    backup: "Cuvée Petrus B2, same stand" },
-  { pause: "Water (€2 at the food-token stand) and a sausage board at Saucisson d'Olivier, between stands 8 and 9." },
-  { time: "13:00", stand: "3", brewery: "Boerenerf", beer: "Kriek Vanille", spec: "Kriek lambic · 6.7% · on tap", must: true,
-    why: "Kriek on tap from a lambic producer is rare. Tart cherry with a soft vanilla edge.",
-    backup: "Montepulciano Lambik 2025 at stand 11" },
-  { time: "13:45", stand: "13", brewery: "Vleesmeester", beer: "Bezonken Rood", spec: "Oud bruin · 6.5% · on tap",
-    why: "Flanders-style brown sour with oak and red fruit. A different kind of sour before the finale.",
-    backup: "Cuvée De Ranke at stand 14" },
-  { pause: "Water again. The last beer is the strongest." },
-  { time: "14:30", stand: "11", brewery: "Geuzestekerij Vissers", beer: "Lambik 1Y (barrel no. 11)", spec: "Young lambic · 8.5% · on tap", must: true,
-    why: "Poured straight from the barrel. It's flat, which is normal for young lambic. The strongest of the six, so it goes last.",
-    backup: "Rieslin sur Senne at stand 3" }
+const STANDS = [{"stand":"1","brewery":"La Bonace","beers":[["La Bonace Blond","Belgian Blonde","6.5%","bottle"],["La Bonace Grand Cru","Belgian Blonde","8.5%","bottle"],["La Bonace Prestige","Belgian Strong Golden Ale","9%","bottle"],["La Bonace Tripel","Belgian Tripel","8%","bottle"]]},{"stand":"2","brewery":"4KNT","beers":[["66","Belgian Blonde","6.6%","bottle"],["Four","Pilsner","5%","bottle"],["Ipa","Belgian IPA","6%","bottle"],["Tripel","Belgian Tripel","8%","bottle"]]},{"stand":"3","brewery":"Boerenerf","beers":[["Ambrosia","Mead - Melomel","12%","bottle"],["Cuvee Heritage 2025","Lambic/Gueuze","6.3%","bottle"],["Rieslin sur Senne","Lambic","8.2%","bottle"],["Kriek Vanille","Lambic - Kriek","6.7%","tap"],["Kwee","Lambic - Fruit","7%","tap"]]},{"stand":"4","brewery":"Scheldebrouwerij","beers":[["Dulle Griet","Belgian Dubbel","6.4%","bottle"],["Hopruiter","Belgian Tripel","8%","bottle"],["Krab","Belgian IPA","5.5%","bottle"],["Lamme Goedzak","Belgian Blonde","7%","bottle"],["Oesterstout","Stout - Oyster","8.5%","bottle"],["Patsboem","Belgian Quad","10.5%","bottle"],["Strandgaper","Belgian Blonde","6.2%","bottle"],["Duinstuiver","Hefeweizen","5.9%","tap"],["'n Toeback 9","Belgian Strong Golden Ale","9%","tap"],["Zeezuiper","Belgian Tripel","8%","tap"]]},{"stand":"5","brewery":"Leplan-Vermeersch","beers":[["LePlan Alcoholvrij Blond","Non - Alcoholic Beer","0%","bottle"],["LePlan Alcoholvrij Dark","Non - Alcoholic Beer","0%","bottle"],["LePlan Alcoholvrij Rood","Non - Alcoholic Beer","0%","bottle"],["LePlan B.5","Belgian Blonde","0%","bottle"],["LePlan D.10","Belgian Quad","10%","bottle"],["LePlan X.12","Barley Wine","0%","bottle"],["LePlan B.9","Belgian Tripel","9.3%","tap"],["LePlan W.5","Witbier","5%","tap"]]},{"stand":"6","brewery":"Brasserie De Blaugies","beers":[["Blidegarian Imperial Stout","Oatmeal Stout","10%","bottle"],["Blonde de Blaugies","Belgian Blonde","8%","tap"],["Moneuse","Saison","8%","tap"],["Saison d'Epeautre","Saison","6%","tap"],["Vermentoise","Farmhouse Ale - Saison","6%","tap"]]},{"stand":"7","brewery":"Galea Craft Beers / Dame Jeanne","beers":[["Alter Ego","Strong Dark","11.5%","bottle"],["Black Pope BA El Palto","Imperial Coffee Stout","12.5%","bottle"],["Brut d’Anvers Vintage","Bière de Champagne","9%","bottle"],["Brut Royal Bourbon","Bière de Champagne","10.5%","bottle"],["Brut Royal Calvados","Bière de Champagne","10.5%","bottle"],["Brut Royal Cognac","Bière de Champagne","10.5%","bottle"],["Brut Sur Lie","Bière de Champagne","8.5%","bottle"],["Eagle Warrior","American Barleywine","14%","bottle"],["Holy Fruity","Non - Alcoholic Beer","0.3%","bottle"],["Holy Ready","Non - Alcoholic Beer","0.2%","bottle"],["La Mia Luce","Lichtenhainer","5.3%","bottle"],["Maori Warrior","American Barleywine","14%","bottle"],["Midnight Masquerade","Stout","5.5%","bottle"],["Rocco Granada","Non - Alcoholic Beer","0.5%","bottle"],["The Mind of Annapurna","Milk Stout","11.5%","bottle"],["The Mind of Annapurna BA","Milk Stout","12.5%","bottle"],["The Sleeping Saint","Belgian Tripel","10.5%","bottle"],["Festa","Belgian Blonde","4.5%","tap"],["Galea Grand Cru","Belgian Strong Golden Ale","9.5%","tap"],["Shady Priest","Imperial Pastry Stout","11.5%","tap"],["Vanille Bom","Imperial Stout","12%","tap"]]},{"stand":"8","brewery":"The Blacksmith's Meadery","beers":[["Cardinal Sin","Mead - Melomel","14%","bottle"],["Crimson Eclipse","Mead - session","6%","bottle"],["I Wanna Brag A Lot More, eh","Mead - Braggot","13%","bottle"],["I Wanna Brag Some More, eh","Mead - Braggot","13%","bottle"],["Lux in Tenebris","Mead - Melomel","11%","bottle"],["Son of a PEACH!","Mead - Melomel","14%","bottle"],["The Yuzual Suspects","Mead - Melomel","14%","bottle"]]},{"stand":"9","brewery":"Cidernations","beers":[["A Cider","Cider","8.3%","bottle"],["The Belgian Cider","Cider","8.3%","bottle"],["Brut","Cider","0%","tap"]]},{"stand":"10","brewery":"Clockwork Bee Meads","beers":[["Alchemist's Elder Potion","Mead - Metheglin","16.2%","bottle"],["Duchess Appletising Picnic","Mead - Cyser","14.5%","bottle"],["The Botanist's Cherryshed Apple","Mead - Melomel","13%","bottle"],["The Pirate’s wake-up call","Mead","12.5%","bottle"],["The Spymaster's burn notice","Mead","12%","bottle"]]},{"stand":"11","brewery":"GCB - geuzestekerij Vissers","beers":[["Ceci N’est Pas Une Kriek","Lambic - Kriek","7.3%","bottle"],["Cuvée Elise","Cider","7.5%","bottle"],["Mauro’s Spritz","Cider","6.5%","bottle"],["Ne Flierefluiter Eeuwling","Belgian Strong Dark Ale","8.5%","bottle"],["Ne Flierefluiter Family Reserve VII","Belgian Tripel","10%","bottle"],["Ne Flierefluiter Grand Cru","Belgian Tripel","10%","bottle"],["Ne Flierefluiter Nul! Nul! Hoera!","Non - Alcoholic Beer","0.4%","bottle"],["Ne Flierefluiter Westelse Tripel","Belgian Tripel","8.5%","bottle"],["Tafelcider Harvest 2025","Cider","5.5%","bottle"],["Tripel-Cider Harvest 2025","Cider","8%","bottle"],["Vissers Cider lambik B2","Lambic","6.9%","bottle"],["Vissers Cuvée Petrus B2","Lambic","7.5%","bottle"],["Vissers Geuze B1","Lambic/Gueuze","6.9%","bottle"],["Vissers Montepulciano Lambik 2025","Lambic - Fruit","7.6%","bottle"],["Hazy Dazy","IPA - New England","5.5%","tap"],["Vissers Lambik 1Y (vat Nr.11)","Lambic","8.5%","tap"]]},{"stand":"12","brewery":"de Dochter van de Korenaar","beers":[["Beau Monde","Farmhouse Ale - Saison","6.2%","tap"],["Belle Fleur","Belgian IPA","6%","tap"],["Bien Sur Cranberry","Sour - Fruited","7%","tap"],["Embrasse Cognac","Belgian Strong Dark Ale","9%","tap"],["L'Ensemble di Montalcino","Barley Wine","13%","tap"],["Noblesse VSOP","Belgian Pale Ale","6%","tap"],["Sans Pardon Bourbon","Imperial Stout","11%","tap"]]},{"stand":"13","brewery":"Vleesmeester Brewery","beers":[["Antonius","Double IPA","8%","bottle"],["Bloody Nancy","Berliner Weisse","4%","bottle"],["Bruismelk","American IPA","6%","bottle"],["Ambtenaar op Rust","Belgian Dubbel","8.5%","tap"],["Babylon Berlin","Berliner Weisse","4%","tap"],["Bezonken Mispel","Oud Bruin","6.5%","tap"],["Bezonken Pudding","Oud Bruin","7%","tap"],["Bezonken Rood","Oud Bruin","6.5%","tap"],["Black Naughty Rye Whiskey Pudding","Imperial Stout","11%","tap"],["Voor Eigen Gebruik","Double IPA","8%","tap"],["Zieke Geest","Triple","8%","tap"]]},{"stand":"14","brewery":"De Ranke","beers":[["Cuvée De Ranke","Sour - other","7%","bottle"],["Franc Belge","Pale Ale","5.2%","bottle"],["Terroir Unique 2026","Italian Grape Ale","6.5%","bottle"],["Winterbinkske Grand Cru","Belgian Strong Dark Ale","13%","bottle"],["XX-Bitter","Belgian IPA","6%","bottle"],["Guldenberg","Belgian Tripel","8%","tap"],["San Francisco Porter","Porter","5.5%","tap"],["Simplex","Belgian Blonde","4.5%","tap"]]},{"stand":"15","brewery":"KETTU","beers":[["Aurora","Sour - other","4.5%","bottle"],["Dark Kettu","Belgian Quad","10.2%","bottle"],["Micro IPA","IPA - Session","2.7%","bottle"],["Antwerp Blonde","Belgian Blonde","4.8%","tap"],["Belgian Rye IPA","Rye IPA","6.5%","tap"],["Black IPA","Black IPA","6.5%","tap"],["DH Sour","Berliner Weisse","4.5%","tap"],["Mosaic","IPA","5%","tap"]]},{"stand":"16","brewery":"Antwerpse Brouw Compagnie / John Martin","beers":[["Barrel Collab Series #2 - Imperial Tripel","Belgian Tripel","11.3%","bottle"],["Bootjesbier","Pale Ale","7%","bottle"],["Eilandje","IPA - New England","6.4%","bottle"],["Minerva","Belgian Tripel","7%","bottle"],["Nonkel Pater","Belgian Quad","9%","bottle"],["Super Cadix","India Pale Lager","5.6%","bottle"],["AnniverSeef Bared Aged","Bière de Champagne","10%","tap"],["Lucie - Miss T","Belgian Strong Golden Ale","8%","tap"],["Martins Pale Ale","Pale Ale","5.8%","tap"],["Nonkel Pater Barrel Aged","Belgian Quad","10.5%","tap"],["Orvadix","Lager - other","0%","tap"],["SAFEbier Nada","Non - Alcoholic Beer","0.3%","tap"],["Seef","Historical beer - other","6.5%","tap"],["Zure Schipper","Sour - other","0%","tap"]]},{"stand":"17","brewery":"Crow Mountain","beers":[["Chopped In Half BA Bourbon","IPA - Imperial","11%","bottle"],["Eruption","IPA - New England","7.1%","bottle"],["Harvest Moon","Pale Ale","6.1%","bottle"],["Maple Bear Tripel","Belgian Tripel","7%","bottle"],["Regular John","Belgian IPA","6.1%","bottle"],["Slow Ride","Double NEIPA","6.1%","bottle"],["Stone Cold Grazy","Cold IPA","6.1%","bottle"],["Tribute Blond","Belgian Blonde","6.1%","bottle"],["Tribute Tripel","Belgian Tripel","9.1%","bottle"],["Tribute Tripel Aged On Triple-sec Barrel","Belgian Tripel","9.1%","bottle"],["Wilma's Rainbow","Witbier","5.1%","bottle"],["Chopped In Half","IPA - Imperial","11%","tap"],["Murder","Russian Imperial Stout","10.1%","tap"],["My Own Summer","IPA - New England","6.1%","tap"],["Ones In A Lifetime","IPA - New England","6.1%","tap"]]},{"stand":"18","brewery":"'t Verzet","beers":[["Ancienne Belgique","Belgian Blonde","5%","bottle"],["Baby Jesus BA Filliers","Coffee Porter","10%","bottle"],["Baby Jezus","Coffee Porter","10%","bottle"],["Doktor Rudi","Berliner Weisse","6%","bottle"],["Golden Tricky","Belgian IPA","7.5%","bottle"],["Kameradski Balsamico","Russian Imperial Stout","12.5%","bottle"],["Mighty Matroesjka","Russian Imperial Stout","15%","bottle"],["Naughty Napoleon","Imperial Stout","15%","bottle"],["Oud Bruin","Oud Bruin","6%","bottle"],["Oud Bruin MEGABLEND","Oud Bruin","7%","bottle"],["Oud Bruin Oak Leaf","Oud Bruin","6%","bottle"],["Space Cadet","Witbier","5%","bottle"],["Unplugged","Non - Alcoholic Beer","0.4%","bottle"],["Alpaca Panties","Belgian Tripel","7.5%","tap"],["Rebel Local","Belgian Tripel","8%","tap"],["Unwanted Tattoo","IPA","6.2%","tap"]]},{"stand":"19–20","brewery":"Cabardouche / Gistgeest / Special Belge","beers":[["Barrel Proof 3","Rogge Saison","6%","bottle"],["Escort Deluxe 2025","Belgian Quad","11%","bottle"],["Escort Deluxe 2025 v2","Pale Ale","10%","bottle"],["Natte Selder","Göse","5%","bottle"],["Ranke Amy","Belgian Blonde","10.4%","bottle"],["Stout Mokke","Stout","9%","bottle"],["Vlotte Griet","Non - Alcoholic Beer","0.3%","bottle"],["Al Blondy","Blonde Ale","7%","bottle"],["Citrus Hill","Göse","6%","bottle"],["Alles Kapot","Saison","6%","tap"],["Blonde Stoot","Belgian Blonde","5%","tap"],["Burnt Oil","Imperial Stout","12%","tap"],["IPA Bakkes","IPA","7.5%","tap"],["Kloeke Diva","Belgian Tripel","8.5%","tap"],["Dipadawan 2026","Double NEIPA","8%","tap"],["Hotel Reumantiek","Porter","6%","tap"],["Ipadawan (2024 V4)","IPA - New England","5%","tap"],["La Foxy Belge","Sour - Fruited","6.2%","tap"],["Mister man","West Coast IPA","5.2%","tap"]]},{"stand":"21","brewery":"Hophemel / Skøllmann","beers":[["Adelheid V3 Oaked Calvados Barley Wine","American Barleywine","10%","bottle"],["Fornax Wild Turkey Bourbon BA Barley Wine","Barley Wine","13%","bottle"],["Francesca Tomato Basil Sour","Sour - other","3%","bottle"],["Hopulair","American IPA","6%","bottle"],["Otto Bloodorange Hibiscus Saison","Farmhouse Ale - Saison","6.2%","bottle"],["Quintinus Hasselts Sterk Blond","Pale Ale","7.3%","bottle"],["Rauchkopf","Smoked Beer","6%","bottle"],["Swarte Gront","Black IPA","8%","bottle"],["Valentinus West Coast IPA","IPA - West Coast","5.4%","bottle"],["Ame-No-Uzume West Coast IPA","IPA - West Coast","6.6%","tap"],["Burning Skoll","Farmhouse Ale - Saison","7%","tap"],["Cosmic Cupertino Session IPA","Session IPA","3.3%","tap"],["Grand Cru","Belgian Strong Golden Ale","8.5%","tap"],["Khaos 3.0 Black NEIPA","Black IPA","6.6%","tap"],["Marinus Juniper & Kveik Farmhouse Ale","Farmhouse Ale - Saison","5.6%","tap"],["Pascharius Strawberry Mint Sour","Sour - Fruited","3%","tap"],["Potion #1 - session IPA","Session IPA","2.5%","tap"],["Skollmann Meester Skoll","Bière de Champagne","10.5%","tap"],["White Kveiking","White IPA","6%","tap"]]},{"stand":"22","brewery":"Uncharted","beers":[["Ik Drink Eigenlijk Liever Wijn","IPA - New England","6%","bottle"],["It's About Time","Double NEIPA","8%","bottle"],["Ghost Frequency","IPA - New England","6.6%","tap"],["People Will Believe Anything (If You Whisper It)","IPA - New England","6.4%","tap"],["Ragebait For Beginners","IPA - Triple","10.5%","tap"],["Uncharted Hop miner","Black IPA","6.6%","tap"]]},{"stand":"23–25","brewery":"Duvel Moortgat","beers":[["Chouffe Cherry","Fruit Beer","8%","bottle"],["Chouffe Cherry 0.0","Non - Alcoholic Beer","0%","bottle"],["Chouffe Framboise","Fruit Beer","7%","bottle"],["Chouffe IPA","Belgian IPA","9%","bottle"],["Duvel Tripel Hop Citra","Belgian IPA","9.5%","bottle"],["Duvel Tripel Hop Krush","Belgian IPA","8.4%","bottle"],["GOD","Non - Alcoholic Beer","0.2%","bottle"],["Ijwit","Witbier","6.5%","bottle"],["La Chouffe 0.0","Non - Alcoholic Beer","0%","bottle"],["Liefmans 0.0 on the rocks","Non - Alcoholic Beer","0%","bottle"],["Liefmans Goudenband","Sour - Flanders Oud Bruin","8%","bottle"],["Liefmans Kriek Brut","Fruit Beer","6%","bottle"],["Liefmans on the rocks","Fruit Beer","3.8%","bottle"],["Liefmans Peach 0.0 on the rocks","New Zealand IPA","0%","bottle"],["Liefmans Peach on the rocks","Fruit Beer","3.8%","bottle"],["Vedet Pilsner","Pilsner","5.2%","bottle"],["Vedett 0.0","Non - Alcoholic Beer","0%","bottle"],["Vedett Energy Pils","Non - Alcoholic Beer","0%","bottle"],["Vedett IPA","Belgian IPA","5.5%","bottle"],["Vedett White","Witbier","4.7%","bottle"],["Vrijwit","Non - Alcoholic Beer","0.5%","bottle"],["Bolleke","Pale Ale","5.2%","tap"],["Bolleke Hop","Belgian Pale Ale","5.6%","tap"],["Duvel","Belgian Strong Golden Ale","8.5%","tap"],["Duvel 666","Belgian Blonde","6.7%","tap"],["La Chouffe","Belgian Strong Golden Ale","8%","tap"],["Pearl","Russian Imperial Stout","12%","tap"],["Tripel d'Anvers","Belgian Tripel","8%","tap"]]},{"stand":"26","brewery":"Brouwerij Leste","beers":[["Leste Antwerps Blondje","Blonde Ale","6.5%","bottle"],["Leste Cactus","Belgian Blonde","6%","bottle"],["Leste Onnefretter","Belgian Blonde","5.5%","bottle"],["Leste Tripel Hop","Belgian Tripel","8%","bottle"]]},{"stand":"27","brewery":"Het Anker / Huyge","beers":[["Delirio","Non - Alcoholic Beer","0.3%","bottle"],["Gouden Carolus Indulgence 2026 - Symposium","Belgian Tripel","8.1%","bottle"],["Gouden Carolus Whisky Infused Dark","Belgian Strong Dark Ale","11.7%","bottle"],["Delirium Tremens","Belgian Strong Golden Ale","8.5%","tap"],["Gouden Carolus Tripel","Belgian Tripel","9%","tap"],["Gouden Carolus Whiskey Infused","Belgian Strong Dark Ale","11.7%","tap"]]},{"stand":"28","brewery":"'t Paenhuys / The Beersteward","beers":[["Emmer Session Sour BA Bordeaux Rood","IPA - Sour","4%","bottle"],["Emmer Session Sour BA Calvados","IPA - Sour","4%","bottle"],["Emmer Session Sour BA Ginja","Sour - other","4%","bottle"],["Emmer Session Sour BA Loupiac","IPA - Sour","4%","bottle"],["Famous Pastries: Bresilienne Taart","Imperial Pastry Stout","12%","bottle"],["Famous Pastries: Crepe Suzette","Imperial Pastry Stout","12%","bottle"],["Foxier Steward","Baltic Porter","8%","bottle"],["Ik drink eigenlijk liever wijn","Hazy IPA","6%","bottle"],["Lammeke","Belgian Blonde","5.7%","bottle"],["Velvet Sheep 2026 Pinot Noir","Belgian Tripel","8%","bottle"],["Winter Zjef 2026","Stout","9%","bottle"],["Schapenkop","Belgian Tripel","8%","tap"]]},{"stand":"29","brewery":"Brouwerij Leysen","beers":[["Baskwadder Craft Cellar Collection 2","Belgian Strong Dark Ale","14.5%","bottle"],["Baskwadder Craft Cellar Collection 4 - Turf Barrel Aged","Belgian Tripel","10.5%","bottle"],["Baskwadder Craft Cellar Collection 6","Belgian Tripel","10.5%","bottle"],["Baskwadder Tripel","Belgian Tripel","7.8%","bottle"],["Baskwadder Tripel Whisky Barrel Aged","Belgian Tripel","10.5%","bottle"],["Baskwadder Winter 2026-2027","Winter Ale","11.5%","bottle"],["Ne Nuchtere Sjarel","Non - Alcoholic Beer","0.4%","bottle"],["Ne Vlotte Sjarel","Belgian Blonde","5.5%","bottle"]]}];
+
+// Your route, in drinking order. `beer` matches the booklet name exactly.
+const ROUTE = [
+  { time: "11:00", stand: "13", beer: "Babylon Berlin", label: "Berliner Weisse", note: "Use your free first drink here.", backup: ["12", "Bien Sur Cranberry"] },
+  { time: "11:30", stand: "3", beer: "Cuvee Heritage 2025", label: "Geuze", must: true, backup: ["3", "Rieslin sur Senne"] },
+  { time: "12:00", stand: "11", beer: "Vissers Geuze B1", label: "Geuze", must: true, note: "Compare with the Boerenerf geuze. Then take a break: water and sausage.", backup: ["11", "Vissers Cuvée Petrus B2"] },
+  { time: "13:00", stand: "3", beer: "Kriek Vanille", label: "Kriek", must: true, backup: ["11", "Vissers Montepulciano Lambik 2025"] },
+  { time: "13:45", stand: "13", beer: "Bezonken Rood", label: "Oud bruin", note: "Water before the last one.", backup: ["14", "Cuvée De Ranke"] },
+  { time: "14:30", stand: "11", beer: "Vissers Lambik 1Y (vat Nr.11)", label: "Young lambic from barrel", must: true, note: "Flat, which is normal for young lambic. Strongest of the six.", backup: ["3", "Rieslin sur Senne"] }
 ];
-const STEPS = BEERS.filter(b => !b.pause);
+const NOTE_AFTER = { "8": "Saucisson d'Olivier · dried sausage tasting boards. Good break stop." };
 
 const KEY = "sour-tour-top6-2026";
 let state = { tasted: {}, rating: {} };
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
 
+const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const glass = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1h14l-2.2 19H4.2z"/></svg>';
-const list = document.getElementById("list"), hops = document.getElementById("hops");
+const find = (stand, beer) => STANDS.find(s => s.stand === stand).beers.find(b => b[0] === beer);
+const list = document.getElementById("stands"), hops = document.getElementById("hops");
 
-let n = 0;
-BEERS.forEach(b => {
-  if (b.pause) { list.insertAdjacentHTML("beforeend", `<li class="pause"><b>Break:</b> ${b.pause}</li>`); return; }
-  const i = n++;
+STANDS.forEach(s => {
+  const mine = ROUTE.map((r, i) => ({ ...r, i })).filter(r => r.stand === s.stand);
+  const backups = ROUTE.filter(r => r.backup[0] === s.stand).map(r => r.backup[1]);
   const li = document.createElement("li");
-  li.className = "card"; li.id = "beer-" + i;
-  li.innerHTML = `
-    <div class="top"><span>Beer ${i + 1} of 6 · around ${b.time}</span><span class="badges"></span></div>
-    <div class="stand"><b>${b.stand}</b><span>stand · ${b.brewery}</span></div>
-    <h2>${b.beer}</h2>
-    <div class="spec">${b.spec}</div>
-    <p class="why">${b.why}</p>
-    <p class="backup"><b>Sold out?</b> ${b.backup}</p>
-    <div class="log">
-      <button type="button" class="tasted" id="tasted-${i}" aria-pressed="false">Tasted</button>
-      <span class="rating" role="group" aria-label="Your rating">${[1,2,3,4,5].map(r => `<button type="button" data-r="${r}" aria-label="Rate ${r} of 5">${glass}</button>`).join("")}</span>
-    </div>`;
+  li.className = "stand" + (mine.length ? " mine" : backups.length ? " backup" : "");
+  li.id = "stand-" + s.stand;
+  const beers = s.beers.map(([n, style, abv, src]) => {
+    const isMine = mine.some(r => r.beer === n), isAlt = backups.includes(n);
+    return `<li class="${isMine ? "mine" : isAlt ? "alt" : ""}"><span>${esc(n)}${isMine ? '<span class="tag">yours</span>' : isAlt ? '<span class="tag">backup</span>' : ""} · ${esc(style)}</span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span></li>`;
+  }).join("");
+  const picks = mine.map(r => {
+    const b = find(r.stand, r.beer);
+    return `<div class="pick" id="pick-${r.i}">
+      <div class="ptop"><span>Beer ${r.i + 1} of 6 · ~${r.time}</span><span class="badges"></span></div>
+      <div class="pname">${esc(r.beer)}</div>
+      <div class="pspec">${r.label} · ${b[2]} · ${b[3] === "tap" ? "on tap" : "bottle"}</div>
+      ${r.note ? `<p class="pbackup">${r.note}</p>` : ""}
+      <p class="pbackup">Sold out? ${esc(r.backup[1])} at stand ${r.backup[0]}.</p>
+      <div class="log">
+        <button type="button" class="tasted" data-i="${r.i}" aria-pressed="false">Tasted</button>
+        <span class="rating" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button type="button" data-i="${r.i}" data-r="${n}" aria-label="Rate ${n} of 5">${glass}</button>`).join("")}</span>
+      </div></div>`;
+  }).join("");
+  li.innerHTML = `<details><summary><span class="no">${s.stand}</span><span class="name">${esc(s.brewery)}</span><span class="more">${s.beers.length} beers</span></summary><ul class="all">${beers}</ul></details>${picks ? `<div class="picks">${picks}</div>` : ""}`;
   list.appendChild(li);
-  li.querySelector(".tasted").onclick = () => { state.tasted[i] = !state.tasted[i]; save(); paint(); };
-  li.querySelectorAll(".rating button").forEach(btn => btn.onclick = () => {
-    const r = +btn.dataset.r; state.rating[i] = state.rating[i] === r ? 0 : r;
-    if (state.rating[i]) state.tasted[i] = true; save(); paint();
-  });
+  if (NOTE_AFTER[s.stand]) list.insertAdjacentHTML("beforeend", `<li class="stand note"><details><summary><span class="no">·</span><span class="name">${NOTE_AFTER[s.stand]}</span><span></span></summary></details></li>`);
+});
 
+ROUTE.forEach((r, i) => {
   if (i) hops.insertAdjacentHTML("beforeend", '<span class="arrow" aria-hidden="true">→</span>');
   const h = document.createElement("button");
-  h.type = "button"; h.className = "hop"; h.id = "hop-" + i; h.textContent = b.stand;
-  h.setAttribute("aria-label", `Beer ${i + 1}: stand ${b.stand}, ${b.beer}`);
-  h.onclick = () => li.scrollIntoView({ behavior: "smooth", block: "start" });
+  h.type = "button"; h.className = "hop"; h.id = "hop-" + i; h.textContent = r.stand;
+  h.setAttribute("aria-label", `Beer ${i + 1}: stand ${r.stand}, ${r.beer}`);
+  h.onclick = () => document.getElementById("pick-" + i).scrollIntoView({ behavior: "smooth", block: "center" });
   hops.appendChild(h);
 });
 
+list.addEventListener("click", e => {
+  const t = e.target.closest(".tasted"), r = e.target.closest(".rating button");
+  if (t) { const i = +t.dataset.i; state.tasted[i] = !state.tasted[i]; }
+  else if (r) { const i = +r.dataset.i, n = +r.dataset.r; state.rating[i] = state.rating[i] === n ? 0 : n; if (state.rating[i]) state.tasted[i] = true; }
+  else return;
+  save(); paint();
+});
+
 function paint() {
-  const next = STEPS.findIndex((_, i) => !state.tasted[i]);
+  const next = ROUTE.findIndex((_, i) => !state.tasted[i]);
   let done = 0;
-  STEPS.forEach((b, i) => {
+  ROUTE.forEach((r, i) => {
     const t = !!state.tasted[i]; if (t) done++;
-    const card = document.getElementById("beer-" + i);
-    card.classList.toggle("done", t);
-    card.classList.toggle("next", i === next);
-    card.querySelector(".badges").innerHTML = (i === next ? '<span class="badge now">Next</span> ' : "") + (b.must ? '<span class="badge must">Must</span>' : "");
-    const tb = document.getElementById("tasted-" + i);
+    const p = document.getElementById("pick-" + i);
+    p.classList.toggle("done", t); p.classList.toggle("next", i === next);
+    p.querySelector(".badges").innerHTML = (i === next ? '<span class="badge now">Next</span> ' : "") + (r.must ? '<span class="badge must">Must</span>' : "");
+    const tb = p.querySelector(".tasted");
     tb.setAttribute("aria-pressed", t); tb.textContent = t ? "✓ Tasted" : "Tasted";
-    card.querySelectorAll(".rating button").forEach(btn => btn.classList.toggle("on", +btn.dataset.r <= (state.rating[i] || 0)));
-    const hop = document.getElementById("hop-" + i);
-    hop.classList.toggle("done", t); hop.classList.toggle("next", i === next);
+    p.querySelectorAll(".rating button").forEach(b => b.classList.toggle("on", +b.dataset.r <= (state.rating[i] || 0)));
+    const h = document.getElementById("hop-" + i);
+    h.classList.toggle("done", t); h.classList.toggle("next", i === next);
   });
   document.getElementById("count").textContent = next === -1
     ? "All 6 done. Proost!"
-    : `${done} of 6 tasted · next: stand ${STEPS[next].stand}, ${STEPS[next].beer}`;
+    : `${done} of 6 tasted · next: stand ${ROUTE[next].stand}, ${ROUTE[next].beer} (~${ROUTE[next].time})`;
 }
 paint();
 
