@@ -147,6 +147,11 @@ details:not([open]) .more::after { content: " ▾"; }
 .rated li .note { grid-column: 1 / -1; background: var(--bg); }
 .pick .note { background: var(--surface); }
 
+.sadd { display: flex; gap: 6px; padding: 0 12px 12px 78px; }
+.sadd input { flex: 1 1 auto; min-width: 0; font: 14px var(--body); color: var(--ink); background: var(--bg); border: 1px dashed var(--line); border-radius: 4px; padding: 6px 9px; }
+.sadd button { border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+@media (max-width: 420px) { .sadd { padding-left: 12px; } }
+
 footer { margin-top: 24px; display: grid; gap: 10px; font-size: 13px; color: var(--muted); }
 .reset { justify-self: start; background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
 .reset.armed { border-color: var(--kriek); color: var(--kriek); }
@@ -207,7 +212,7 @@ const ROUTE = [
   { time: "11:00", stand: "13", beer: "Babylon Berlin", label: "Berliner Weisse", note: "Use your free first drink here.", backup: ["12", "Bien Sur Cranberry"] },
   { time: "11:30", stand: "3", beer: "Cuvee Heritage 2025", label: "Geuze", must: true, backup: ["3", "Rieslin sur Senne"] },
   { time: "12:00", stand: "11", beer: "Vissers Geuze B1", label: "Geuze", must: true, note: "Compare with the Boerenerf geuze. Then take a break: water and sausage.", backup: ["11", "Vissers Cuvée Petrus B2"] },
-  { time: "13:00", stand: "3", beer: "Kriek Vanille", label: "Kriek", must: true, backup: ["11", "Vissers Montepulciano Lambik 2025"] },
+  { time: "13:00", stand: "3", beer: "Kwee", label: "Fruit lambic", must: true, note: "Ask Boerenerf what else they're pouring first: the booklet doesn't list everything. If they have a straight oude kriek or a barrel-aged blend, take that instead and add it under the stand.", backup: ["11", "Ceci N’est Pas Une Kriek"] },
   { time: "13:45", stand: "13", beer: "Bezonken Rood", label: "Oud bruin", note: "Water before the last one.", backup: ["14", "Cuvée De Ranke"] },
   { time: "14:30", stand: "11", beer: "Vissers Lambik 1Y (vat Nr.11)", label: "Young lambic from barrel", must: true, note: "Flat, which is normal for young lambic. Strongest of the six.", backup: ["3", "Rieslin sur Senne"] }
 ];
@@ -220,7 +225,7 @@ const LIKES = {
   "28": { "Emmer Session Sour BA Bordeaux Rood": "juicy", "Emmer Session Sour BA Calvados": "juicy", "Emmer Session Sour BA Loupiac": "juicy", "Emmer Session Sour BA Ginja": "juicy" }
 };
 // Other sour, lambic, oud bruin and funky farmhouse beers worth a try if there's room.
-const OPTIONAL = {"3": ["Kwee", "Rieslin sur Senne"], "6": ["Saison d'Epeautre", "Vermentoise", "Moneuse"], "7": ["La Mia Luce"], "11": ["Ceci N’est Pas Une Kriek", "Vissers Montepulciano Lambik 2025", "Vissers Cuvée Petrus B2", "Vissers Cider lambik B2"], "12": ["Beau Monde"], "13": ["Bloody Nancy", "Bezonken Mispel", "Bezonken Pudding"], "14": ["Cuvée De Ranke", "Terroir Unique 2026"], "15": ["Aurora"], "18": ["Doktor Rudi", "Oud Bruin", "Oud Bruin Oak Leaf", "Oud Bruin MEGABLEND"], "19–20": ["Barrel Proof 3", "Alles Kapot"], "21": ["Burning Skoll"], "23–25": ["Liefmans Goudenband", "Liefmans Kriek Brut"]};
+const OPTIONAL = {"3": ["Kriek Vanille", "Rieslin sur Senne"], "6": ["Saison d'Epeautre", "Vermentoise", "Moneuse"], "7": ["La Mia Luce"], "11": ["Ceci N’est Pas Une Kriek", "Vissers Montepulciano Lambik 2025", "Vissers Cuvée Petrus B2", "Vissers Cider lambik B2"], "12": ["Beau Monde"], "13": ["Bloody Nancy", "Bezonken Mispel", "Bezonken Pudding"], "14": ["Cuvée De Ranke", "Terroir Unique 2026"], "15": ["Aurora"], "18": ["Doktor Rudi", "Oud Bruin", "Oud Bruin Oak Leaf", "Oud Bruin MEGABLEND"], "19–20": ["Barrel Proof 3", "Alles Kapot"], "21": ["Burning Skoll"], "23–25": ["Liefmans Goudenband", "Liefmans Kriek Brut"]};
 Object.entries(OPTIONAL).forEach(([st, beers]) => beers.forEach(b => { LIKES[st] = LIKES[st] || {}; if (!LIKES[st][b]) LIKES[st][b] = "opt"; }));
 const LIKE_LABEL = { juicy: "juicy sour", spice: "spiced", opt: "optional" };
 const NOTE_AFTER = { "8": "Saucisson d'Olivier · dried sausage tasting boards. Good break stop." };
@@ -244,11 +249,18 @@ if (!state.seeded) {
 }
 state.added = state.added || [];
 state.notes = state.notes || {};
+// Beers the user saw on a stand's board that the booklet doesn't list.
+state.standExtra = state.standExtra || {};
+const BOARD = "on the board";
+Object.entries(state.standExtra).forEach(([st, names]) => {
+  const s = STANDS.find(x => x.stand === st); if (!s) return;
+  names.forEach(n => { if (!s.beers.some(b => b[0] === n)) s.beers.push([n, BOARD, "", "board"]); });
+});
 state.extra.forEach(x => { if (x.id === "limoncello" && !x.fam) x.fam = "fruited"; });
 
 // Sour families, used to suggest beers like the ones rated highly.
 const FAMILY = [
-  [/lambic|gueuze|geuze/i, "lambic"],
+  [/lambi[ck]|gueuze|geuze|kriek|framboise/i, "lambic"],
   [/oud bruin|flanders/i, "oudbruin"],
   [/berliner|lichtenhainer|gose|göse/i, "tart"],
   [/sour|fruit beer/i, "fruited"],
@@ -268,18 +280,20 @@ const glass = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1h14l-2.2
 const find = (stand, beer) => STANDS.find(s => s.stand === stand).beers.find(b => b[0] === beer);
 const list = document.getElementById("stands"), hops = document.getElementById("hops");
 
+function beerRow(s, [n, style, abv, src], mine = [], backups = []) {
+  const isMine = mine.some(r => r.beer === n), isAlt = backups.includes(n), like = (LIKES[s.stand] || {})[n], board = src === "board";
+  const tags = (isMine ? '<span class="tag">yours</span>' : isAlt ? '<span class="tag">backup</span>' : board ? '<span class="tag">added by you</span>' : "") + (like ? `<span class="tag ${like}">${LIKE_LABEL[like]}</span>` : "");
+  const k = bkey(s.stand, n);
+  return `<li class="${isMine ? "mine" : isAlt ? "alt" : like || board ? "like" : ""}" data-key="${esc(k)}"><span>${esc(n)}${tags}${board ? "" : " · " + esc(style)}<span class="rv"></span></span><span class="abv">${abv ? abv + " · " : ""}${board ? "board" : src === "tap" ? "tap" : "btl"}</span><span class="rate"><span class="rating" role="group" aria-label="Rate ${esc(n)}">${rateBtns(k)}</span>${noteInput(k, n)}${ROUTE_KEYS.has(k) ? "" : `<button type="button" class="addt" data-key="${esc(k)}">+ Add to tour</button>`}</span></li>`;
+}
+let saddSeq = 0;
 STANDS.forEach(s => {
   const mine = ROUTE.map((r, i) => ({ ...r, i })).filter(r => r.stand === s.stand);
   const backups = ROUTE.filter(r => r.backup[0] === s.stand).map(r => r.backup[1]);
   const li = document.createElement("li");
   li.className = "stand" + (mine.length ? " mine" : backups.length ? " backup" : "");
   li.id = "stand-" + s.stand;
-  const beers = s.beers.map(([n, style, abv, src]) => {
-    const isMine = mine.some(r => r.beer === n), isAlt = backups.includes(n), like = (LIKES[s.stand] || {})[n];
-    const tags = (isMine ? '<span class="tag">yours</span>' : isAlt ? '<span class="tag">backup</span>' : "") + (like ? `<span class="tag ${like}">${LIKE_LABEL[like]}</span>` : "");
-    const k = bkey(s.stand, n);
-    return `<li class="${isMine ? "mine" : isAlt ? "alt" : like ? "like" : ""}" data-key="${esc(k)}"><span>${esc(n)}${tags} · ${esc(style)}<span class="rv"></span></span><span class="abv">${abv} · ${src === "tap" ? "tap" : "btl"}</span><span class="rate"><span class="rating" role="group" aria-label="Rate ${esc(n)}">${rateBtns(k)}</span>${noteInput(k, n)}${ROUTE_KEYS.has(k) ? "" : `<button type="button" class="addt" data-key="${esc(k)}">+ Add to tour</button>`}</span></li>`;
-  }).join("");
+  const beers = s.beers.map(b => beerRow(s, b, mine, backups)).join("");
   const picks = mine.map(r => {
     const b = find(r.stand, r.beer);
     return `<div class="pick" id="pick-${r.i}">
@@ -294,7 +308,7 @@ STANDS.forEach(s => {
         ${noteInput(bkey(r.stand, r.beer), r.beer)}
       </div></div>`;
   }).join("");
-  li.innerHTML = `<details><summary><span class="no">${s.stand}</span><span class="name">${esc(s.brewery)}${chips(s.stand)}</span><span class="more">${s.beers.length} beers</span></summary><ul class="all">${beers}</ul></details>${picks ? `<div class="picks">${picks}</div>` : ""}`;
+  li.innerHTML = `<details><summary><span class="no">${s.stand}</span><span class="name">${esc(s.brewery)}${chips(s.stand)}</span><span class="more">${s.beers.length} beers</span></summary><ul class="all">${beers}</ul><form class="sadd" data-stand="${s.stand}"><input id="sadd-${++saddSeq}" type="text" placeholder="On the board but not listed? Add it" aria-label="Add a beer at stand ${s.stand}" autocomplete="off"><button type="submit">Add</button></form></details>${picks ? `<div class="picks">${picks}</div>` : ""}`;
   list.appendChild(li);
   if (NOTE_AFTER[s.stand]) list.insertAdjacentHTML("beforeend", `<li class="stand note"><details><summary><span class="no">·</span><span class="name">${NOTE_AFTER[s.stand]}</span><span></span></summary></details></li>`);
 });
@@ -345,6 +359,25 @@ function onClick(e) {
   save(); paint();
 }
 list.addEventListener("click", onClick);
+list.addEventListener("submit", e => {
+  const f = e.target.closest(".sadd"); if (!f) return;
+  e.preventDefault();
+  const input = f.querySelector("input"), name = input.value.trim(), st = f.dataset.stand;
+  const s = STANDS.find(x => x.stand === st); if (!name || !s) return;
+  if (!s.beers.some(b => b[0] === name)) {
+    const beer = [name, BOARD, "", "board"];
+    s.beers.push(beer);
+    (state.standExtra[st] = state.standExtra[st] || []).push(name);
+    const entry = { k: bkey(st, name), stand: st, brewery: s.brewery, name, abv: "", src: "board", fam: famOf(name, name) };
+    ALL.push(entry); byKey[entry.k] = entry;
+    f.previousElementSibling.insertAdjacentHTML("beforeend", beerRow(s, beer));
+    f.closest("details").querySelector(".more").textContent = s.beers.length + " beers";
+    save(); paint();
+  }
+  input.value = "";
+  const row = f.previousElementSibling.querySelector(`li[data-key="${CSS.escape(bkey(st, name))}"]`);
+  if (row) row.classList.add("open");
+});
 ["rated", "extras", "sugg"].forEach(id => document.getElementById(id).addEventListener("click", onClick));
 
 document.getElementById("addf").addEventListener("submit", e => {
