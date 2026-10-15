@@ -1,0 +1,1429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Beat Makers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a living-room wall; the birch board is the hero, a quiet side column holds seats, song shelf and tokens. */
+:root {
+  --wall: #e3e7ea;
+  --panel: #f4f6f7;
+  --ink: #1d2226;
+  --muted: #5a646d;
+  --line: #c9d0d6;
+  --brass: #9c6a1f;
+  --wood: #dcbc8c;
+  --wood-edge: #a77d4a;
+  --wood-dark: #c59f6c;
+  --wood-ink: #4a3218;
+  --well: rgba(74, 50, 24, .13);
+  --well-alt: rgba(255, 255, 255, .22);
+  --glass: #1b211d;
+  --glass-ink: #f3b64b;
+  --led-off: rgba(74, 50, 24, .22);
+  --led-on: #ffb53d;
+  --ok: #2c9b5a;
+  --warn: #e19a1c;
+  --bad: #d2463a;
+  --paper: #ead7b5;
+  --paper-ink: #5b4223;
+  --c-red: #d6443a;
+  --c-blue: #2f6ed4;
+  --c-green: #2c9a60;
+  --c-yellow: #e6b21f;
+  --c-purple: #8758cf;
+  --c-orange: #e57829;
+  --c-shared: #f1e6d2;
+  --c-band: #b99466;
+  --f-display: "Unbounded", "Trebuchet MS", system-ui, sans-serif;
+  --f-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wall: #14181b; --panel: #1c2125; --ink: #eceff1; --muted: #9aa4ad; --line: #30383f; --brass: #d9a54a;
+    --wood: #6a4a32; --wood-edge: #3d2a1c; --wood-dark: #573c28; --wood-ink: #f2dcc0;
+    --well: rgba(0, 0, 0, .28); --well-alt: rgba(255, 255, 255, .05); --led-off: rgba(255, 230, 200, .16);
+    --paper: #cdb48c; --paper-ink: #3e2c15; --c-shared: #e4d6bd;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --wall: #14181b; --panel: #1c2125; --ink: #eceff1; --muted: #9aa4ad; --line: #30383f; --brass: #d9a54a;
+  --wood: #6a4a32; --wood-edge: #3d2a1c; --wood-dark: #573c28; --wood-ink: #f2dcc0;
+  --well: rgba(0, 0, 0, .28); --well-alt: rgba(255, 255, 255, .05); --led-off: rgba(255, 230, 200, .16);
+  --paper: #cdb48c; --paper-ink: #3e2c15; --c-shared: #e4d6bd;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body {
+  background: var(--wall); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 40px;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+.wrap { max-width: 1320px; margin: 0 auto; }
+
+/* Header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-block: 20px 16px; }
+.brand { display: flex; align-items: baseline; gap: 12px; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 24px; letter-spacing: -.01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.top-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.chip .dot.on { background: var(--ok); }
+.code { font-family: var(--f-mono); font-weight: 700; letter-spacing: .12em; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 14px; }
+.btn:hover:not(:disabled) { border-color: var(--brass); }
+.btn.primary { background: var(--ink); color: var(--wall); border-color: var(--ink); }
+.btn.primary:hover:not(:disabled) { opacity: .9; }
+.btn:disabled { opacity: .45; }
+.btn.small { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+
+/* Lobby */
+#lobby { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; padding-top: 8px; }
+.lobby-hero h2 { font-family: var(--f-display); font-weight: 700; font-size: clamp(28px, 4vw, 44px); line-height: 1.1; letter-spacing: -.02em; }
+.lobby-hero p { color: var(--muted); max-width: 52ch; margin: 14px 0 0; }
+.steps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding: 0; list-style: none; }
+.steps li { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; color: var(--muted); }
+.mini-board { margin-top: 24px; max-width: 560px; }
+.lobby-panel { display: grid; gap: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.panel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+.panel p { margin: 0; color: var(--muted); font-size: 14px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.join-input { font-family: var(--f-mono); font-size: 18px; letter-spacing: .3em; text-transform: uppercase; width: 8.5em; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--wall); color: var(--ink); }
+.table-list { display: grid; gap: 6px; }
+.table-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--wall); text-align: left; width: 100%; }
+.table-item:hover { border-color: var(--brass); }
+.table-item small { color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); }
+
+/* Game layout */
+#game { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+.board-scroll { overflow-x: auto; padding-bottom: 6px; min-width: 0; }
+.board {
+  min-width: 760px; border-radius: 22px; padding: 18px 20px 16px; position: relative;
+  background:
+    repeating-linear-gradient(92deg, rgba(110, 70, 30, .045) 0 2px, transparent 2px 11px),
+    repeating-linear-gradient(88deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 23px),
+    linear-gradient(180deg, var(--wood), var(--wood-dark));
+  border: 2px solid var(--wood-edge);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 18px 40px -18px rgba(40, 25, 10, .55);
+  color: var(--wood-ink);
+}
+.engraved { font-weight: 700; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--wood-ink); opacity: .75; }
+.lights-row, .track { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 12px; align-items: center; }
+.leds, .cells { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); }
+.leds { padding-inline: 2px; margin-bottom: 8px; }
+.led { justify-self: center; width: 9px; height: 9px; border-radius: 50%; background: var(--led-off); transition: background .08s, box-shadow .08s; }
+.led.major { width: 12px; height: 12px; }
+.led.on { background: var(--led-on); box-shadow: 0 0 10px 2px rgba(255, 181, 61, .7); }
+.board.won .led { background: var(--ok); box-shadow: 0 0 8px 1px rgba(44, 155, 90, .6); animation: sweep 1.6s ease-in-out infinite; }
+.board.won .led:nth-child(4n+2) { animation-delay: .1s; } .board.won .led:nth-child(4n+3) { animation-delay: .2s; } .board.won .led:nth-child(4n) { animation-delay: .3s; }
+@keyframes sweep { 50% { opacity: .35; } }
+.tracks { display: grid; gap: 5px; }
+.tile {
+  height: 42px; border-radius: 10px; border: 1.5px solid var(--wood-edge); background: rgba(255, 255, 255, .16);
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 10px; text-align: left; color: var(--wood-ink);
+}
+.tile.empty { border-style: dashed; background: transparent; opacity: .6; cursor: default; }
+.tile .tname { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .owners { display: flex; gap: 3px; flex: none; }
+.tile .owners i { width: 12px; height: 12px; border-radius: 50%; background: var(--tc); border: 1px solid rgba(0, 0, 0, .25); }
+.tile .owners .shared { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .7; width: auto; height: auto; background: none; border: 0; }
+.tile.sel { box-shadow: 0 0 0 2px var(--glass-ink) inset; }
+.tile.mine { background: rgba(255, 255, 255, .32); }
+.tile.pulse { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 3px rgba(225, 154, 28, .75); } }
+.cells { gap: 0; border-radius: 10px; overflow: hidden; }
+.cell { height: 42px; border: 0; background: var(--well); position: relative; padding: 0; display: grid; place-items: center; box-shadow: inset 0 0 0 .5px rgba(74, 50, 24, .18); }
+.cell.alt { background: linear-gradient(var(--well-alt), var(--well-alt)), var(--well); }
+.cell.mine:hover:not(.has) .tok { display: block; opacity: .35; }
+.cell:not(.mine) { cursor: default; }
+.track.unused .cells { opacity: .45; }
+.track.bandrow .tok { width: 22px; height: 22px; line-height: 22px; font-size: 10.5px; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .18); opacity: .85; }
+.tile.band { background: rgba(74, 50, 24, .1); border-style: dotted; }
+.shelf-tier { display: grid; gap: 8px; }
+.shelf-tier + .shelf-tier { margin-top: 6px; }
+.tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tier-head b { font-size: 14px; }
+.tier-head span { font-size: 12px; color: var(--muted); }
+.tok {
+  display: none; width: 30px; height: 30px; border-radius: 50%; background: var(--tc, var(--c-shared));
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .22), inset 0 2px 0 rgba(255, 255, 255, .35), 0 2px 3px rgba(0, 0, 0, .3);
+  font-family: var(--f-display); font-weight: 700; font-size: 13px; line-height: 30px; text-align: center; color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+}
+.tok.light { color: #3b2a12; text-shadow: none; }
+.cell.has .tok { display: block; }
+.cell.fb-ok .tok { box-shadow: 0 0 0 3px var(--ok), 0 0 12px 2px rgba(44, 155, 90, .55); }
+.cell.fb-note .tok { box-shadow: 0 0 0 3px var(--warn), 0 0 12px 2px rgba(225, 154, 28, .55); }
+.cell.fb-extra .tok { box-shadow: 0 0 0 3px var(--bad); animation: blink .8s steps(2, start) infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.cell.now { background: linear-gradient(rgba(255, 181, 61, .28), rgba(255, 181, 61, .28)), var(--well); }
+
+/* Control strip */
+.strip { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(74, 50, 24, .22); display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.grp { display: grid; gap: 6px; justify-items: start; }
+.grp-row { display: flex; gap: 8px; align-items: center; }
+.slot { width: 120px; height: 44px; position: relative; display: flex; justify-content: center; align-items: flex-end; }
+.slot::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12px; border-radius: 6px; background: rgba(30, 18, 8, .55); box-shadow: inset 0 2px 3px rgba(0, 0, 0, .5); }
+.slot .peek { width: 100px; height: 36px; border-radius: 4px 4px 0 0; background: var(--paper); margin-bottom: 6px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 5px 10px 0; align-content: start; transform: translateY(0); transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
+.slot .peek.out { transform: translateY(34px); }
+.slot .peek b { width: 8px; height: 8px; border-radius: 50%; justify-self: center; border: 1px solid rgba(91, 66, 35, .35); }
+.slot .peek b.p { background: var(--wood-edge); border-color: transparent; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5); }
+.lcd { font-family: var(--f-mono); font-weight: 700; background: var(--glass); color: var(--glass-ink); border-radius: 8px; padding: 6px 12px; min-width: 72px; text-align: center; letter-spacing: .14em; font-size: 18px; box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6); text-shadow: 0 0 6px rgba(243, 182, 75, .45); }
+.lcd.inst { font-size: 13px; min-width: 138px; letter-spacing: .12em; padding: 9px 12px; }
+.keys { display: flex; gap: 4px; }
+.key { width: 34px; height: 46px; border-radius: 8px; border: 1.5px solid var(--wood-edge); background: linear-gradient(#fbf4e8, #e9dcc6); color: #3b2a12; font-weight: 700; font-family: var(--f-display); font-size: 13px; display: grid; place-items: center; align-content: center; gap: 0; box-shadow: 0 3px 0 var(--wood-edge); transition: transform .05s, box-shadow .05s; }
+.key small { font-family: var(--f-body); font-size: 8.5px; font-weight: 600; letter-spacing: .02em; opacity: .7; }
+.key:active, .key.down { transform: translateY(3px); box-shadow: 0 0 0 var(--wood-edge); }
+.key.sel { background: linear-gradient(#fff3d6, #f4d38e); }
+.key.sharpkey { margin-left: 6px; background: linear-gradient(#3a2a1a, #23170c); color: #f3d9a8; }
+.key.sharpkey.sel { background: linear-gradient(#f3b64b, #d8902a); color: #23170c; }
+.key.sharpkey:disabled { opacity: .35; }
+.transport { display: flex; gap: 10px; }
+.tbtn { display: grid; justify-items: center; gap: 4px; background: none; border: 0; padding: 0; color: var(--wood-ink); }
+.tbtn .knob { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--wood-edge); background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .5), rgba(255, 255, 255, .08) 60%), var(--wood-dark); display: grid; place-items: center; box-shadow: 0 3px 0 var(--wood-edge); }
+.tbtn:active:not(:disabled) .knob { transform: translateY(3px); box-shadow: none; }
+.tbtn.active .knob { background: var(--glass); color: var(--glass-ink); }
+.tbtn:disabled { opacity: .4; }
+.tbtn svg { width: 18px; height: 18px; }
+.board-msg { margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--wood-ink); min-height: 21px; }
+
+/* Side column */
+.side { display: grid; gap: 14px; }
+.seats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.seat { border: 1px solid var(--line); background: var(--wall); border-radius: 12px; padding: 8px; display: grid; justify-items: center; gap: 4px; min-width: 0; text-align: center; position: relative; }
+.seat .disc { width: 26px; height: 26px; border-radius: 50%; background: var(--tc); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .2); }
+.seat .who { font-size: 12px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seat .who.open { color: var(--muted); font-weight: 500; }
+.seat.me { border-color: var(--tc); box-shadow: 0 0 0 1.5px var(--tc) inset; }
+.seat .live { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.shelf { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.card { border: 0; background: var(--paper); color: var(--paper-ink); border-radius: 6px; padding: 10px 26px 10px 10px; text-align: left; display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; row-gap: 2px; align-items: center; position: relative; box-shadow: 0 2px 0 rgba(0, 0, 0, .12), 0 6px 14px -8px rgba(0, 0, 0, .4); transition: transform .15s; min-width: 0; }
+.card:hover { transform: translateY(-2px); }
+.card::before { content: ""; position: absolute; top: 0; right: 0; border-width: 0 14px 14px 0; border-style: solid; border-color: var(--panel) var(--panel) rgba(0, 0, 0, .15) rgba(0, 0, 0, .15); }
+.card.in { outline: 2px solid var(--brass); outline-offset: 2px; }
+.card .holes { display: grid; grid-template-columns: repeat(5, 10px); gap: 4px; grid-row: 1 / 3; }
+.card .num { grid-row: 1 / 3; }
+.card .nm, .card .meta { grid-column: 3; }
+.card .holes b { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(91, 66, 35, .35); }
+.card .holes b.p { background: var(--panel); border-color: rgba(0, 0, 0, .25); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35); }
+.card .num { font-family: var(--f-mono); font-weight: 700; font-size: 12px; letter-spacing: .12em; }
+.card .nm { font-weight: 700; font-size: 14px; line-height: 1.2; }
+.card .meta { font-size: 11.5px; opacity: .8; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; background: var(--wall); padding: 7px 12px; font-weight: 600; font-size: 13px; }
+.seg button.on { background: var(--ink); color: var(--wall); }
+.tray { display: flex; gap: 6px; flex-wrap: wrap; }
+.tray .tok { display: block; cursor: pointer; border: 0; width: 34px; height: 34px; line-height: 34px; }
+.tray .tok.sel { outline: 2px solid var(--ink); outline-offset: 2px; }
+.assign { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.assign li { display: flex; align-items: center; gap: 8px; }
+.assign i { width: 12px; height: 12px; border-radius: 50%; background: var(--tc); flex: none; }
+.stars { font-size: 22px; letter-spacing: .1em; color: var(--brass); }
+.fb-legend { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.fb-legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: -1px; background: var(--k); }
+kbd { font-family: var(--f-mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+
+.credits { font-size: 12px; color: var(--muted); margin: 28px 0 0; max-width: 80ch; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--wall); padding: 10px 16px; border-radius: 10px; font-size: 14px; max-width: min(92vw, 520px); box-shadow: 0 8px 24px rgba(0, 0, 0, .3); z-index: 10; }
+
+@media (max-width: 1100px) { #game { grid-template-columns: minmax(0, 1fr); } .side { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); } }
+@media (max-width: 760px) { #lobby { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .cell.fb-extra .tok { opacity: .55; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Beat Makers</h1><span>a cooperative musical board game</span></div>
+    <div class="top-right" id="topRight"></div>
+  </header>
+
+  <main id="lobby">
+    <section class="lobby-hero">
+      <h2>Listen to a song, then rebuild it together, one instrument each.</h2>
+      <p>Open a table, share its four-letter code, and everyone who opens this page can join. Each player takes a color, draws an instrument, and places tokens on the 8 × 16 board until the whole arrangement matches.</p>
+      <ul class="steps"><li>Listen</li><li>Discover</li><li>Place</li><li>Play</li><li>Match</li></ul>
+      <div class="mini-board" aria-hidden="true">
+        <svg viewBox="0 0 560 150" width="100%" role="img">
+          <rect x="1" y="1" width="558" height="148" rx="16" fill="var(--wood)" stroke="var(--wood-edge)" stroke-width="2"/>
+          <g id="miniGrid"></g>
+        </svg>
+      </div>
+    </section>
+    <section class="lobby-panel">
+      <div class="panel" id="onlinePanel">
+        <h3>Play over the network</h3>
+        <p id="netNote">Connecting…</p>
+        <div class="row">
+          <button class="btn primary" id="createBtn" disabled>Open a new table</button>
+        </div>
+        <div class="row">
+          <label for="joinCode" class="note">Have a code?</label>
+          <input id="joinCode" class="join-input" maxlength="4" autocomplete="off" spellcheck="false" placeholder="ABCD">
+          <button class="btn" id="joinBtn" disabled>Join</button>
+        </div>
+        <div id="rejoin"></div>
+        <div class="table-list" id="tableList"></div>
+      </div>
+      <div class="panel">
+        <h3>Play on this device</h3>
+        <p>No network needed. Pass the device around and switch colors as you take turns.</p>
+        <div class="row"><button class="btn" id="localBtn">Start a local table</button></div>
+      </div>
+    </section>
+  </main>
+
+  <main id="game" hidden>
+    <div class="board-scroll">
+      <div class="board" id="board"></div>
+    </div>
+    <aside class="side" id="side"></aside>
+  </main>
+  <p class="credits">Instrument sounds rendered from the FluidR3 GM soundfont, © 2000–2002, 2008 Frank Wen and Toby Smithe, MIT license. Songs are traditional, folk or classical pieces in the public domain; Happy Birthday uses the 1893 melody, also public domain.</p>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+// ---------- Game data ----------
+const COLORS = [
+  { id: "red", name: "Red" }, { id: "blue", name: "Blue" }, { id: "green", name: "Green" },
+  { id: "yellow", name: "Yellow" }, { id: "purple", name: "Purple" }, { id: "orange", name: "Orange" }
+];
+const LIGHT_TOKENS = { yellow: 1, shared: 1, band: 1 };
+const INST = {
+  drums: { name: "Drums", kind: "drum" }, perc: { name: "Percussion", kind: "drum" },
+  bass: { name: "Bass" }, guitar: { name: "Guitar" }, piano: { name: "Piano" },
+  synth: { name: "Synthesizer" }, strings: { name: "Strings" }, marimba: { name: "Marimba" }, violin: { name: "Violin" },
+  trumpet: { name: "Trumpet" }, flute: { name: "Flute" }
+};
+const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
+const SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const DRUM_KEYS = { C: "k", D: "s", E: "h", F: "o", G: "t", A: "r", B: "y" };
+const PERC_KEYS = { C: "c", D: "n", E: "m", F: "w", G: "h", A: "o", B: "y" };
+const DRUM_NAMES = { k: "Kick", s: "Snare", h: "Hat", c: "Clap", o: "Open", t: "Tom", w: "Wood", y: "Crash", n: "Tamb", m: "Shaker", r: "Ride" };
+// Real public-domain songs, one recognizable 16-beat phrase each.
+// Each song is a full band. Tracks marked band:true are played by the board; the rest are the players' parts.
+// step: 4 = each beat space is a quarter note, 8 = an eighth note, 16 = a sixteenth note. base = lowest note a melody letter may sound.
+// sharps = the key signature (an F token plays F# in D major). chords = song-specific chords for a letter;
+// letters without an entry play the key's own chord. style = how an instrument plays a token: strum, block, pad, arp, rootfifth.
+// Drums use k s h o c t w y n m r; melodic tracks use note letters; "." is silence.
+const SONGS = [
+  { id: "101", tier: "starter", name: "Twinkle Twinkle Little Star", key: "C major", bpm: 92, step: 4, chords: { G: "G7" }, tracks: [
+    { inst: "piano", band: true, base: "C4", pat: "CCGGAAG.FFEEDDC." },
+    { inst: "strings", band: true, role: "chord", style: "pad", pat: "C...F.C.F.C.G.C." },
+    { inst: "bass", band: true, pat: "C...F.C.F.C.G.C." },
+    { inst: "drums", pat: "k...k...k...k..." },
+    { inst: "perc", pat: "..c...c...c...c." } ] },
+  { id: "102", tier: "starter", name: "Mary Had a Little Lamb", key: "C major", bpm: 100, step: 4, chords: { G: "G7" }, tracks: [
+    { inst: "marimba", band: true, base: "C4", pat: "EDCDEEE.DDD.EGG." },
+    { inst: "guitar", band: true, role: "chord", style: "strum", pat: "C.......G...C..." },
+    { inst: "drums", pat: "k.s.k.s.k.s.k.s." },
+    { inst: "bass", pat: "C...C...G...C..." } ] },
+  { id: "103", tier: "starter", name: "Frère Jacques", key: "C major", bpm: 96, step: 4, tracks: [
+    { inst: "flute", band: true, base: "C4", pat: "CDECCDECEFG.EFG." },
+    { inst: "piano", band: true, role: "chord", style: "arp", pat: "C.......C......." },
+    { inst: "drums", pat: "k...k...k...k..." },
+    { inst: "perc", pat: "w.w.w.w.w.w.w.w." },
+    { inst: "bass", pat: "C...C...C...C..." } ] },
+  { id: "201", tier: "easy", name: "Ode to Joy", key: "D major", sharps: "FC", bpm: 108, step: 4, chords: { A: "A7" }, tracks: [
+    { inst: "violin", band: true, base: "D4", pat: "FFGAAGFEDDEFFEE." },
+    { inst: "strings", band: true, role: "chord", style: "pad", pat: "D...A...D...A..." },
+    { inst: "drums", pat: "k.s.k.s.k.s.k.s." },
+    { inst: "bass", style: "rootfifth", pat: "D...A...D...A..." },
+    { inst: "guitar", role: "chord", style: "strum", pat: "D...A...D...A..." } ] },
+  { id: "202", tier: "easy", name: "When the Saints Go Marching In", key: "C major", bpm: 116, step: 4, chords: { C: "C6" }, tracks: [
+    { inst: "trumpet", band: true, base: "C4", pat: "CEFG....CEFG...." },
+    { inst: "piano", band: true, role: "chord", style: "block", pat: "C.C.C.C.C.C.C.C." },
+    { inst: "drums", pat: "k.s.k.s.k.s.kss." },
+    { inst: "perc", pat: "..c...c...c...c." },
+    { inst: "bass", pat: "C.G.C.G.C.G.C.G." } ] },
+  { id: "203", tier: "easy", name: "Jingle Bells", key: "C major", bpm: 120, step: 4, tracks: [
+    { inst: "flute", band: true, base: "C4", pat: "EEE.EEE.EGCDE..." },
+    { inst: "piano", band: true, role: "chord", style: "block", pat: "C.C.C.C.C.C.C.C." },
+    { inst: "drums", pat: "k...s...k...s..." },
+    { inst: "perc", pat: "n.n.n.n.n.n.n.n." },
+    { inst: "bass", pat: "C.G.C.G.C.G.C.G." } ] },
+  { id: "301", tier: "medium", name: "London Bridge Is Falling Down", key: "C major", bpm: 104, step: 4, chords: { G: "G7" }, tracks: [
+    { inst: "flute", band: true, base: "C4", pat: "GAGFEFG.DEF.EFG." },
+    { inst: "drums", band: true, pat: "k.s.k.s.k.s.k.s." },
+    { inst: "perc", band: true, pat: "m.m.m.m.m.m.m.m." },
+    { inst: "bass", pat: "C.G.C.G.G.D.C.G." },
+    { inst: "guitar", role: "chord", style: "strum", pat: "C...C...G...C..." } ] },
+  { id: "302", tier: "medium", name: "Old MacDonald Had a Farm", key: "C major", bpm: 112, step: 4, chords: { G: "G7" }, tracks: [
+    { inst: "piano", band: true, base: "G3", pat: "CCCGAAG.EEDDC..." },
+    { inst: "drums", band: true, pat: "k.s.k.s.k.s.k.s." },
+    { inst: "bass", pat: "C.G.F.C.C.G.C..." },
+    { inst: "guitar", role: "chord", style: "strum", pat: "C...F.C.C.G.C..." } ] },
+  { id: "303", tier: "medium", name: "Canon in D (Pachelbel)", key: "D major", sharps: "FC", bpm: 66, step: 4, tracks: [
+    { inst: "violin", band: true, base: "A4", pat: "F.E.D.C.B.A.B.C." },
+    { inst: "strings", band: true, role: "chord", style: "pad", pat: "D.A.B.F.G.D.G.A." },
+    { inst: "bass", pat: "D.A.B.F.G.D.G.A." },
+    { inst: "piano", role: "chord", style: "arp", pat: "D.A.B.F.G.D.G.A." } ] },
+  { id: "401", tier: "hard", name: "Drunken Sailor", key: "D Dorian", bpm: 116, step: 8, tracks: [
+    { inst: "drums", band: true, pat: "k.s.k.s.k.s.k.sk" },
+    { inst: "perc", band: true, pat: "n.n.n.n.n.n.n.n." },
+    { inst: "violin", base: "C4", pat: "AAAAADFAGGGGGCEG" },
+    { inst: "bass", pat: "D...D...C...C..." },
+    { inst: "guitar", role: "chord", style: "strum", pat: "D...D...C...C..." } ] },
+  { id: "402", tier: "hard", name: "Yankee Doodle", key: "C major", bpm: 112, step: 8, chords: { G: "G7" }, tracks: [
+    { inst: "drums", band: true, pat: "k.s.k.s.k.s.k.s." },
+    { inst: "strings", band: true, role: "chord", style: "pad", pat: "C.......C...G..." },
+    { inst: "flute", base: "B3", pat: "CCDECED.CCDEC.B." },
+    { inst: "bass", pat: "C...C...C...G..." },
+    { inst: "piano", role: "chord", style: "block", pat: "C...C...C...G..." } ] },
+  { id: "403", tier: "hard", name: "Camptown Races", key: "C major", bpm: 120, step: 8, chords: { G: "G7" }, tracks: [
+    { inst: "piano", band: true, role: "chord", style: "block", pat: "C.C.C.C.G.G.G.G." },
+    { inst: "guitar", base: "C4", pat: "GGEGAGE.ED..ED.." },
+    { inst: "bass", pat: "C...C...G...G..." },
+    { inst: "drums", pat: "k.s.k.s.k.s.k.s." } ] },
+  // Famous Tunes pack: well-known pieces whose composers died long ago, so they are free to use worldwide.
+  { id: "501", pack: "famous", tier: "starter", name: "Happy Birthday to You", key: "C major", bpm: 100, step: 4, chords: { G: "G7" }, tracks: [
+    { inst: "piano", band: true, base: "G4", pat: "GGAGCB..GGAGDC.." },
+    { inst: "strings", band: true, role: "chord", style: "pad", pat: "C...G...G...C..." },
+    { inst: "bass", band: true, pat: "C...G...G...C..." },
+    { inst: "drums", pat: "k...k...k...k..." },
+    { inst: "perc", pat: "..c...c...c...c." } ] },
+  { id: "502", pack: "famous", tier: "easy", name: "Here Comes the Bride (Wagner)", key: "F major", flats: "B", bpm: 92, step: 8, chords: { C: "C7" }, tracks: [
+    { inst: "trumpet", band: true, base: "C4", pat: "C.FFF...C.GEF..." },
+    { inst: "strings", band: true, role: "chord", style: "pad", pat: "F.......C...F..." },
+    { inst: "bass", pat: "F.......C...F..." },
+    { inst: "piano", role: "chord", style: "block", pat: "F.......C...F..." } ] },
+  { id: "503", pack: "famous", tier: "easy", name: "Symphony No. 5 (Beethoven)", key: "C minor", flats: "EAB", bpm: 108, step: 8, tracks: [
+    { inst: "violin", band: true, base: "D5", pat: ".GGGE....FFFD..." },
+    { inst: "strings", base: "D4", pat: ".GGGE....FFFD..." },
+    { inst: "bass", pat: ".GGGE....FFFD..." } ] },
+  { id: "504", pack: "famous", tier: "easy", name: "William Tell Overture (Rossini)", key: "C major", bpm: 132, step: 8, tracks: [
+    { inst: "trumpet", band: true, base: "G4", pat: "GGG.GGG.GGC.D.E." },
+    { inst: "piano", band: true, role: "chord", style: "block", pat: "C.C.C.C.C.C.C.C." },
+    { inst: "drums", pat: "k.s.k.s.k.s.kss." },
+    { inst: "perc", pat: "n.nn.nn.nn.nn.n." },
+    { inst: "bass", pat: "C.G.C.G.C.G.C.G." } ] },
+  { id: "505", pack: "famous", tier: "medium", name: "Can-Can (Offenbach)", key: "G major", sharps: "F", bpm: 140, step: 8, chords: { D: "D7" }, tracks: [
+    { inst: "violin", band: true, base: "G4", pat: "ACBAD.D.DEBCA.A." },
+    { inst: "drums", band: true, pat: "k.s.k.s.k.s.k.s." },
+    { inst: "bass", pat: "D...G...G...D..." },
+    { inst: "piano", role: "chord", style: "block", pat: "D...G...G...D..." } ] },
+  { id: "506", pack: "famous", tier: "hard", name: "Für Elise (Beethoven)", key: "A minor", bpm: 100, step: 16, tracks: [
+    { inst: "piano", band: true, role: "chord", style: "arp", pat: "........A......." },
+    { inst: "piano", base: "A4", pat: "EdEdEBDCA......." } ] },
+  { id: "507", pack: "famous", tier: "hard", name: "In the Hall of the Mountain King (Grieg)", key: "A minor", bpm: 108, step: 8, tracks: [
+    { inst: "perc", band: true, pat: "t...t...t...t..." },
+    { inst: "violin", base: "A3", pat: "ABCDECE.dBd.DaD." },
+    { inst: "bass", pat: "A...A...A...A..." } ] },
+  { id: "508", pack: "famous", tier: "hard", name: "The Entertainer (Joplin)", key: "C major", bpm: 76, step: 16, tracks: [
+    { inst: "piano", band: true, role: "chord", style: "block", pat: "....C.......C..." },
+    { inst: "piano", base: "D4", pat: "DdEC.EC.EC......" },
+    { inst: "bass", pat: "C.......G......." } ] }
+];
+const TIERS = [
+  { id: "starter", name: "Starter", sub: "You play the rhythm section", mode: "easy" },
+  { id: "easy", name: "Easy", sub: "Rhythm, bass and strums", mode: "easy" },
+  { id: "medium", name: "Medium", sub: "You play the harmony", mode: "advanced" },
+  { id: "hard", name: "Hard", sub: "You play the melody", mode: "advanced" }
+];
+const tierOf = s => TIERS.find(t => t.id === s.tier);
+const isBand = tr => !!tr.band;
+const isDrumLike = tr => INST[tr.inst].kind === "drum";
+const playerTracks = song => song.tracks.map((tr, i) => i).filter(i => !isBand(song.tracks[i]));
+const songById = id => SONGS.find(s => s.id === id) || null;
+const roleOf = tr => INST[tr.inst].kind === "drum" ? "drum" : (tr.role || "note");
+const defaultChar = tr => tr.pat.replace(/\./g, "")[0];
+const EMPTY = "................";
+
+// ---------- State ----------
+const S = {
+  net: null,            // "online" | "local"
+  code: null,
+  uid: null,
+  readOnly: false,
+  table: null,
+  seats: {},            // color -> {uid}
+  tracks: {},           // index -> {round, cells}
+  peers: [],
+  names: {},
+  localColor: null,
+  previewTrack: 0,
+  selNote: "C",
+  sharp: false,
+  fb: null,             // {checkId, snap, res}
+  beat: -1,
+  playing: null
+};
+let db = null, user = null, room = null, named = null;
+const unsubs = [];
+let lobbyUnsub = null;
+
+// ---------- Helpers ----------
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+let toastTimer;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3600); }
+function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function bits(id) { const n = parseInt(id, 10); return Array.from({ length: 10 }, (_, i) => (n >> (9 - i)) & 1); }
+function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function curSong() { return S.table && S.table.song ? songById(S.table.song) : null; }
+function assignOf(i) { const a = S.table && Array.isArray(S.table.assign) ? S.table.assign[i] : null; return Array.isArray(a) ? a : []; }
+function cellsOf(i) {
+  const d = S.tracks[i];
+  return d && S.table && d.round === S.table.round && typeof d.cells === "string" && d.cells.length === 16 ? d.cells : EMPTY;
+}
+function myColor() {
+  if (S.net === "local") return S.localColor;
+  for (const c of COLORS) { const s = S.seats[c.id]; if (s && s.uid && s.uid === S.uid) return c.id; }
+  return null;
+}
+function seated() { return COLORS.map(c => c.id).filter(c => S.seats[c] && S.seats[c].uid); }
+function canPlace(i) {
+  const song = curSong();
+  if (!song || !song.tracks[i] || isBand(song.tracks[i]) || S.table.status !== "playing" || S.readOnly) return false;
+  const me = myColor(); if (!me) return false;
+  const a = assignOf(i);
+  return a.length === 0 || a.includes(me);
+}
+function myTrack() { const me = myColor(); const song = curSong(); if (!me || !song) return -1; return song.tracks.findIndex((_, i) => assignOf(i).includes(me)); }
+
+// ---------- Audio engine ----------
+// Recorded instruments (rendered from the FluidR3 GM soundfont) with the old synth voices as a fallback.
+const MANIFEST = {"melodic": {"piano": [36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84], "guitar": [40, 43, 46, 49, 52, 55, 58, 61, 64, 67, 70, 73, 76], "bass": [28, 31, 34, 37, 40, 43, 46, 49, 52, 55], "violin": [55, 58, 61, 64, 67, 70, 73, 76, 79, 82, 85, 88], "strings": [48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84], "trumpet": [52, 55, 58, 61, 64, 67, 70, 73, 76, 79, 82], "flute": [60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96], "marimba": [48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84]}, "drums": ["k", "s", "h", "o", "c", "t", "w", "y", "n", "m", "r"]};
+const SAMPLE_OF = { drums: "drums", perc: "drums", bass: "bass", guitar: "guitar", piano: "piano", violin: "violin", strings: "strings", trumpet: "trumpet", flute: "flute", marimba: "marimba" };
+const MIX = { piano: 0.75, guitar: 0.5, bass: 0.95, violin: 0.42, strings: 0.32, trumpet: 0.45, flute: 0.5, marimba: 0.7, drums: 0.85 };
+const DRUM_MIX = { h: 1.7, m: 1.3, n: 0.8, y: 0.55, r: 0.7, o: 0.9, k: 1.1 };
+const RELEASE = { piano: 0.35, guitar: 0.25, bass: 0.12, violin: 0.3, strings: 0.6, trumpet: 0.15, flute: 0.15, marimba: 0.3 };
+let AC = null, master = null, noiseBuf = null;
+const buffers = {}, loading = {};
+function audio() {
+  if (!AC) {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = AC.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3;
+    master = AC.createGain(); master.gain.value = 0.8;
+    const verb = AC.createConvolver(); verb.buffer = roomImpulse(); const wet = AC.createGain(); wet.gain.value = 0.2;
+    master.connect(comp); master.connect(verb); verb.connect(wet); wet.connect(comp); comp.connect(AC.destination);
+  }
+  if (AC.state === "suspended") AC.resume().catch(() => {});
+  return AC;
+}
+function roomImpulse() {
+  const len = Math.floor(AC.sampleRate * 1.8), b = AC.createBuffer(2, len, AC.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  return b;
+}
+function decode(ab) { return new Promise((res, rej) => { const p = AC.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }); }
+function loadSet(name) {
+  if (!name || loading[name]) return loading[name] || Promise.resolve();
+  const list = name === "drums" ? MANIFEST.drums : MANIFEST.melodic[name];
+  if (!list) return Promise.resolve();
+  audio();
+  loading[name] = Promise.all(list.map(n => fetch("samples/" + name + "/" + n + ".mp3")
+    .then(r => { if (!r.ok) throw new Error("missing"); return r.arrayBuffer(); })
+    .then(decode).then(b => { buffers[name + "/" + n] = b; })))
+    .catch(() => { loading[name] = null; });
+  return loading[name];
+}
+function songSets(song) { return [...new Set(song.tracks.map(t => SAMPLE_OF[t.inst]).filter(Boolean))]; }
+let loadingSong = null;
+function preloadSong(song) {
+  if (!song) return Promise.resolve();
+  const p = Promise.all(songSets(song).map(loadSet));
+  loadingSong = song.id; if (B.instLcd) updateBoard();
+  return p.then(() => { if (loadingSong === song.id) { loadingSong = null; if (B.instLcd) updateBoard(); } });
+}
+function songReady(song) { return songSets(song).every(n => (n === "drums" ? MANIFEST.drums : MANIFEST.melodic[n]).every(k => buffers[n + "/" + k])); }
+function noise() {
+  if (!noiseBuf) { const n = AC.sampleRate; noiseBuf = AC.createBuffer(1, n, AC.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
+  return noiseBuf;
+}
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+function freq(letter, oct) { return mtof(12 * (oct + 1) + SEMI[letter]); }
+
+// ---- Music theory: key signatures and the song's real chords ----
+// Uppercase letters follow the song's key signature; lowercase letters are sharp tokens (d = D sharp).
+function semiIn(song, letter) {
+  if (letter >= "a" && letter <= "g") return SEMI[letter.toUpperCase()] + 1;
+  return SEMI[letter] + (song && song.sharps && song.sharps.includes(letter) ? 1 : song && song.flats && song.flats.includes(letter) ? -1 : 0);
+}
+function tokLabel(song, ch) {
+  if (!ch) return "";
+  if (ch >= "a" && ch <= "g") return ch.toUpperCase() + "♯";
+  if (song && song.sharps && song.sharps.includes(ch)) return ch + "♯";
+  if (song && song.flats && song.flats.includes(ch)) return ch + "♭";
+  return ch;
+}
+const curToken = () => S.sharp ? S.selNote.toLowerCase() : S.selNote;
+const QUAL = { "": [0, 4, 7], m: [0, 3, 7], "7": [0, 4, 7, 10], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], dim: [0, 3, 6], sus4: [0, 5, 7], "6": [0, 4, 7, 9], add9: [0, 4, 7, 14] };
+function chordName(song, letter) {
+  if (song.chords && song.chords[letter]) return song.chords[letter];
+  const i = LETTERS.indexOf(letter), r = semiIn(song, letter);
+  const third = (semiIn(song, LETTERS[(i + 2) % 7]) - r + 12) % 12, fifth = (semiIn(song, LETTERS[(i + 4) % 7]) - r + 12) % 12;
+  const acc = song.sharps && song.sharps.includes(letter) ? "#" : song.flats && song.flats.includes(letter) ? "b" : "";
+  return letter + acc + (third === 3 ? (fifth === 6 ? "dim" : "m") : "");
+}
+function parseChord(name) {
+  const m = /^([A-G])(#|b)?(.*)$/.exec(name) || [, "C", "", ""];
+  return { root: SEMI[m[1]] + (m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0), ints: QUAL[m[3]] || QUAL[""] };
+}
+const pretty = n => n.replace("#", "♯").replace(/b(?=$|m|7|6|s|a|d)/, "♭");
+function above(pc, lo) { let m = ((pc % 12) + 12) % 12; while (m < lo) m += 12; return m; }
+function melodyMidi(song, tr, letter) {
+  const lo = tr.base ? 12 * (parseInt(tr.base.slice(1), 10) + 1) + SEMI[tr.base[0]] : 12 * ((tr.oct == null ? 4 : tr.oct) + 1);
+  return above(semiIn(song, letter), lo);
+}
+function bassMidi(song, tr, letter) { return above(semiIn(song, letter), 12 * ((tr.oct == null ? 2 : tr.oct) + 1) - 4); }
+function voicing(song, tr, letter) {
+  const c = parseChord(chordName(song, letter));
+  if (tr.inst === "guitar") {
+    const r = above(c.root, 40); const top = c.ints[3] != null ? c.ints[3] : 12;
+    return [r, r + c.ints[2], r + 12, r + 12 + c.ints[1], r + 12 + c.ints[2], r + top + (top < 12 ? 12 : 0)].filter((v, k, a) => a.indexOf(v) === k).sort((a, b) => a - b);
+  }
+  const bass = above(c.root, 48);
+  const upper = c.ints.map(i => above(c.root + i, 60)).sort((a, b) => a - b);
+  return tr.inst === "strings" ? upper.concat([bass]) : [bass].concat(upper);
+}
+function drumMap(inst) { return inst === "perc" ? PERC_KEYS : DRUM_KEYS; }
+
+// ---- Voices ----
+function playSample(set, midi, t, dur, vel, dest, attack) {
+  const list = MANIFEST.melodic[set]; if (!list) return false;
+  let best = list[0]; for (const n of list) if (Math.abs(n - midi) < Math.abs(best - midi)) best = n;
+  const buf = buffers[set + "/" + best]; if (!buf) return false;
+  const src = AC.createBufferSource(); src.buffer = buf; src.playbackRate.value = Math.pow(2, (midi - best) / 12);
+  const g = AC.createGain(), peak = vel * (MIX[set] || 0.6), rel = RELEASE[set] || 0.2, a = attack || 0.004;
+  const end = t + Math.min(dur, buf.duration / src.playbackRate.value);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a);
+  g.gain.setValueAtTime(peak, Math.max(t + a, end)); g.gain.linearRampToValueAtTime(0.0001, Math.max(t + a, end) + rel);
+  src.connect(g); g.connect(dest); src.start(t); src.stop(end + rel + 0.05);
+  return true;
+}
+function playNote(inst, midi, t, dur, vel, dest, attack) {
+  if (!playSample(SAMPLE_OF[inst], midi, t, dur, vel, dest, attack)) tone(inst, mtof(midi), t, dest, Math.min(dur, 0.6));
+}
+function playDrum(ch, t, vel, dest) {
+  const buf = buffers["drums/" + ch];
+  if (!buf) return drum(ch, t, dest);
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const g = AC.createGain(); g.gain.value = vel * MIX.drums * (DRUM_MIX[ch] || 1);
+  src.connect(g); g.connect(dest); src.start(t);
+}
+const human = () => (Math.random() - 0.5) * 0.012;
+const vary = v => v * (0.88 + Math.random() * 0.2);
+// One token, played in its instrument's style for `span` beats.
+function perform(song, tr, ch, t, span, step, dest, accent) {
+  const role = roleOf(tr), len = span * step, v = accent ? 1 : 0.85;
+  if (role === "drum") return playDrum(ch, t, vary(v), dest);
+  if (role === "chord") {
+    const notes = voicing(song, tr, ch), style = tr.style || (tr.inst === "guitar" ? "strum" : tr.inst === "strings" ? "pad" : "block");
+    const sub = song.step === 4 ? step / 2 : step, hits = Math.max(1, Math.round(len / sub));
+    if (style === "strum") {
+      for (let k = 0; k < hits; k++) {
+        const down = k % 2 === 0, at = t + k * sub + human(), vel = down ? (k === 0 ? 0.95 : 0.7) : 0.45;
+        const ns = down ? notes : notes.slice(-4).reverse();
+        ns.forEach((m, s) => playNote(tr.inst, m, at + s * (down ? 0.013 : 0.009), sub * 1.05, vary(vel) * 0.8, dest));
+      }
+    } else if (style === "arp") {
+      const up = notes.slice(1).concat([notes[1] + 12]);
+      playNote(tr.inst, notes[0], t, len, vary(0.8), dest);
+      for (let k = 0; k < hits; k++) playNote(tr.inst, up[k % up.length], t + k * sub + human(), sub * 1.6, vary(0.6), dest);
+    } else if (style === "pad") {
+      notes.forEach(m => playNote(tr.inst, m, t, len + 0.15, 0.55, dest, 0.18));
+    } else {
+      notes.forEach((m, s) => playNote(tr.inst, m, t + s * 0.004 + human(), len, vary(s === 0 ? 0.7 : 0.6), dest));
+    }
+    return;
+  }
+  if (tr.inst === "bass" || (tr.base == null && (tr.oct || 4) <= 2)) {
+    const r = bassMidi(song, tr, ch);
+    if (tr.style === "rootfifth" && span >= 4) {
+      const half = Math.floor(span / 2);
+      playNote(tr.inst, r, t, half * step * 0.95, vary(v), dest);
+      playNote(tr.inst, r + 7, t + half * step, (span - half) * step * 0.95, vary(0.75), dest);
+    } else playNote(tr.inst, r, t, len * 0.95, vary(v), dest);
+    return;
+  }
+  playNote(tr.inst, melodyMidi(song, tr, ch), t + human(), Math.min(len * 0.97, 2.4), vary(v), dest);
+}
+
+// ---- Fallback synth voices (used until samples load, or if they can't) ----
+function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+function osc(type, f, t, dur, dest, peak, a) {
+  a = a || 0.005;
+  const o = AC.createOscillator(); o.type = type; o.frequency.value = f;
+  const g = AC.createGain(); env(g, t, a, peak, dur); o.connect(g); g.connect(dest); o.start(t); o.stop(t + a + dur + 0.05);
+}
+function sweepOsc(f0, f1, t, dur, dest, peak) {
+  const o = AC.createOscillator(); o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.6);
+  const g = AC.createGain(); env(g, t, 0.003, peak, dur); o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + 0.05);
+}
+function noiseHit(t, dest, type, f, peak, dur) {
+  const s = AC.createBufferSource(); s.buffer = noise();
+  const fl = AC.createBiquadFilter(); fl.type = type; fl.frequency.value = f;
+  const g = AC.createGain(); env(g, t, 0.002, peak, dur);
+  s.connect(fl); fl.connect(g); g.connect(dest); s.start(t); s.stop(t + dur + 0.05);
+}
+function drum(ch, t, dest) {
+  switch (ch) {
+    case "k": sweepOsc(150, 42, t, 0.32, dest, 1); break;
+    case "s": noiseHit(t, dest, "bandpass", 1800, 0.55, 0.17); osc("triangle", 190, t, 0.08, dest, 0.35); break;
+    case "h": case "m": noiseHit(t, dest, "highpass", 7000, 0.3, 0.05); break;
+    case "o": case "y": case "r": noiseHit(t, dest, "highpass", 6500, 0.28, 0.32); break;
+    case "c": case "n": [0, 0.012, 0.025].forEach(o => noiseHit(t + o, dest, "bandpass", 1200, 0.45, 0.07)); break;
+    case "t": sweepOsc(220, 110, t, 0.3, dest, 0.7); break;
+    case "w": osc("sine", 880, t, 0.06, dest, 0.6, 0.002); osc("sine", 1320, t, 0.04, dest, 0.25, 0.002); break;
+  }
+}
+function filtered(type, f, t, dest, peak, dur, fFrom, fTo, q) {
+  const o = AC.createOscillator(); o.type = type; o.frequency.value = f;
+  const fl = AC.createBiquadFilter(); fl.type = "lowpass"; fl.Q.value = q || 1;
+  fl.frequency.setValueAtTime(fFrom, t); fl.frequency.exponentialRampToValueAtTime(fTo, t + Math.min(0.4, dur));
+  const g = AC.createGain(); env(g, t, 0.004, peak, dur);
+  o.connect(fl); fl.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + 0.1);
+}
+function tone(inst, f, t, dest, step) {
+  switch (inst) {
+    case "bass": filtered("sawtooth", f, t, dest, 0.5, Math.max(0.3, step * 1.8), 900, 180, 2); break;
+    case "guitar": filtered("sawtooth", f, t, dest, 0.18, 1.1, f * 8, f * 1.5, 1); break;
+    case "synth": filtered("square", f, t, dest, 0.16, 0.35, 3200, 500, 6); break;
+    case "marimba": osc("sine", f, t, 0.5, dest, 0.5, 0.002); break;
+    default: osc("triangle", f, t, Math.max(0.4, step * 1.5), dest, 0.22); osc("sine", f * 2, t, 0.4, dest, 0.05);
+  }
+}
+function stepSeconds(song) { return 60 / song.bpm / ((song.step || 8) / 4); }
+
+// ---------- Playback ----------
+function playedChar(i, j) {
+  const tr = curSong().tracks[i]; const target = tr.pat[j];
+  if (isBand(tr)) return target !== "." ? target : null;
+  const u = cellsOf(i)[j]; if (u === ".") return null;
+  if (roleOf(tr) === "drum" || S.table.mode !== "advanced") return target !== "." ? target : defaultChar(tr);
+  return u === "x" ? defaultChar(tr) : u;
+}
+// The notes a track plays in one 16-beat pass: each token lasts until the next one (or the end of the bar).
+function trackEvents(song, i, kind) {
+  const tr = song.tracks[i], ev = [];
+  for (let j = 0; j < 16; j++) {
+    const ch = kind === "play" ? playedChar(i, j) : (tr.pat[j] !== "." ? tr.pat[j] : null);
+    if (ch) ev.push({ j, ch });
+  }
+  ev.forEach((e, k) => { e.span = (k + 1 < ev.length ? ev[k + 1].j : 16) - e.j; });
+  return ev;
+}
+async function startPlayback(kind) {
+  if (S.playing && S.playing.kind === kind) { stopPlayback(); return; }
+  stopPlayback();
+  const song = curSong(); if (!song) return;
+  const ac = audio();
+  const token = S.playing = { kind, g: null, timers: [] };
+  updateTransport();
+  if (!songReady(song)) { await Promise.race([preloadSong(song), new Promise(r => setTimeout(r, 8000))]); if (S.playing !== token) return; }
+  const g = ac.createGain(); g.connect(master); token.g = g;
+  const step = stepSeconds(song), loops = 2, t0 = ac.currentTime + 0.1;
+  for (let L = 0; L < loops; L++) {
+    song.tracks.forEach((tr, i) => {
+      if (kind === "solo" && i !== S.previewTrack) return;
+      trackEvents(song, i, kind).forEach(e => perform(song, tr, e.ch, t0 + (L * 16 + e.j) * step, e.span, step, g, e.j % 4 === 0));
+    });
+    for (let j = 0; j < 16; j++) token.timers.push(setTimeout(() => setBeat(j), Math.max(0, (t0 + (L * 16 + j) * step - ac.currentTime) * 1000)));
+  }
+  token.timers.push(setTimeout(stopPlayback, (t0 + loops * 16 * step - ac.currentTime) * 1000 + 400));
+}
+function stopPlayback() {
+  const p = S.playing; if (!p) return;
+  p.timers.forEach(clearTimeout);
+  if (p.g) { try { p.g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.05); setTimeout(() => p.g.disconnect(), 400); } catch (e) {} }
+  S.playing = null; setBeat(-1); updateTransport();
+}
+function previewKey(letter) {
+  const song = curSong(); if (!song) return;
+  const tr = song.tracks[S.previewTrack]; if (!tr) return;
+  const ac = audio(); preloadSong(song);
+  const role = roleOf(tr);
+  perform(song, tr, role === "drum" ? drumMap(tr.inst)[letter] : role === "chord" ? letter : (S.sharp ? letter.toLowerCase() : letter), ac.currentTime + 0.02, role === "chord" ? 4 : 3, 0.32, master, true);
+  if (role === "chord" && B.instLcd) { B.instLcd.textContent = INST[tr.inst].name.toUpperCase() + " · " + pretty(chordName(song, letter)); }
+  const k = document.querySelector('.key[data-k="' + letter + '"]');
+  if (k) { k.classList.add("down"); setTimeout(() => k.classList.remove("down"), 140); }
+}
+
+// ---------- Checking ----------
+function evaluate() {
+  const song = curSong(); const res = { tracks: [], win: true };
+  song.tracks.forEach((tr, i) => {
+    const c = cellsOf(i), cells = []; let missing = 0, wrong = 0, ok = 0, note = 0;
+    if (isBand(tr)) { res.tracks.push({ cells: Array(16).fill(null), missing, wrong, ok, note, band: true }); return; }
+    for (let j = 0; j < 16; j++) {
+      const u = c[j], tg = tr.pat[j]; let st = null;
+      if (u !== "." && tg === ".") { st = "extra"; wrong++; }
+      else if (u !== "." && tg !== ".") {
+        if (S.table.mode === "advanced" && roleOf(tr) !== "drum" && u !== tg) { st = "note"; wrong++; note++; }
+        else { st = "ok"; ok++; }
+      } else if (u === "." && tg !== ".") missing++;
+      cells.push(st);
+    }
+    res.tracks.push({ cells, missing, wrong, ok, note });
+    if (missing || wrong) res.win = false;
+  });
+  return res;
+}
+function captureFeedback() {
+  const song = curSong(); if (!song || !S.table.checkId) { S.fb = null; return; }
+  if (S.fb && S.fb.checkId === S.table.checkId) return;
+  S.fb = { checkId: S.table.checkId, snap: song.tracks.map((_, i) => cellsOf(i)), res: evaluate() };
+}
+function starsFor(n) { return n <= 3 ? 3 : n <= 6 ? 2 : 1; }
+
+// ---------- Writes ----------
+const chains = {};
+function enqueue(key, fn) { chains[key] = (chains[key] || Promise.resolve()).then(fn).catch(onWriteError); return chains[key]; }
+function onWriteError(e) {
+  const code = e && e.code;
+  if (code === "invalid_argument") { S.readOnly = true; toast("You can watch this table but not change it. Ask the page owner for Contributor access, or start a local table."); }
+  else if (code === "quota_exceeded") toast("The game storage is full. Ask the page owner to clear old tables.");
+  else toast("That move did not save. Check your connection and try again.");
+  renderAll();
+}
+const tableRef = () => db.doc("tables/" + S.code);
+const trackRef = i => db.doc("tables/" + S.code + "/tracks/t" + i);
+const seatRef = c => db.doc("tables/" + S.code + "/seats/" + c);
+function saveTable(patch) {
+  const next = Object.assign({}, S.table, patch, { updatedAt: Date.now() });
+  S.table = next; afterTable();
+  if (S.net === "online") enqueue("table", () => tableRef().set(next));
+}
+const pendingTrack = {};
+function writeTrack(i, cells) {
+  S.tracks[i] = { round: S.table.round, cells };
+  updateBoard(); renderSide();
+  if (S.net !== "online") return;
+  const first = !(i in pendingTrack);
+  pendingTrack[i] = { round: S.table.round, cells };
+  if (first) enqueue("t" + i, async () => { const v = pendingTrack[i]; delete pendingTrack[i]; if (v) await trackRef(i).set(v); });
+}
+function defaultTable() { return { song: null, mode: "easy", round: newId(), assign: [], checkId: null, checks: 0, status: "setup", stars: 0, updatedAt: Date.now() }; }
+
+// ---------- Game actions ----------
+function insertSong(id) {
+  stopPlayback();
+  const sg = songById(id);
+  S.previewTrack = playerTracks(sg)[0] || 0; S.fb = null;
+  const peek = document.querySelector(".slot .peek"); if (peek) peek.classList.add("out");
+  saveTable({ song: id, mode: tierOf(sg).mode, round: newId(), assign: [], checkId: null, checks: 0, status: "setup", stars: 0 });
+  setTimeout(() => { const p = document.querySelector(".slot .peek"); if (p) p.classList.remove("out"); }, 30);
+}
+function setMode(mode) {
+  if (S.table.mode === mode) return;
+  stopPlayback(); S.fb = null;
+  saveTable({ mode, round: newId(), checkId: null, checks: 0, status: S.table.status === "won" ? "playing" : S.table.status, stars: 0 });
+}
+function deal() {
+  const song = curSong(); if (!song) return;
+  const players = shuffle(seated());
+  if (!players.length) { toast("Take a seat first: pick a color."); return; }
+  const parts = shuffle(playerTracks(song)), n = parts.length;
+  const assign = Array.from({ length: song.tracks.length }, () => []);
+  players.forEach((c, k) => assign[parts[k % n]].push(c));
+  stopPlayback(); S.fb = null;
+  saveTable({ assign, status: "playing", round: newId(), checkId: null, checks: 0, stars: 0 });
+  const mt = myTrack(); if (mt >= 0) S.previewTrack = mt;
+}
+function check() {
+  const song = curSong(); if (!song || S.table.status !== "playing") return;
+  const res = evaluate();
+  const checks = (S.table.checks || 0) + 1;
+  const patch = { checkId: newId(), checks };
+  if (res.win) Object.assign(patch, { status: "won", stars: starsFor(checks) });
+  saveTable(patch);
+  if (res.win) setTimeout(winTune, 150);
+}
+function winTune() {
+  const ac = audio(); const t = ac.currentTime + 0.05;
+  [72, 76, 79].forEach((m, k) => playNote("marimba", m, t + k * 0.12, 0.3, 0.8, master));
+  playNote("marimba", 84, t + 0.36, 0.8, 0.9, master);
+}
+function onCell(i, j) {
+  if (!canPlace(i)) {
+    const song = curSong();
+    if (!song || !song.tracks[i]) return;
+    if (S.table.status === "setup") toast("Deal the instruments first.");
+    else if (S.table.status === "won") toast("This song is complete. Deal again or pick a new card.");
+    else if (!myColor()) toast("Pick a color to start placing tokens.");
+    else if (!S.readOnly) toast("That's another player's track. You can only place on your own.");
+    return;
+  }
+  const tr = curSong().tracks[i];
+  const c = cellsOf(i).split("");
+  const letters = S.table.mode === "advanced" && roleOf(tr) !== "drum";
+  const tok = roleOf(tr) === "chord" ? S.selNote : curToken();
+  if (letters) c[j] = c[j] === tok ? "." : tok;
+  else c[j] = c[j] === "." ? "x" : ".";
+  if (c[j] !== ".") { const ac = audio(); const song = curSong(); preloadSong(song); perform(song, tr, letters ? tok : defaultChar(tr), ac.currentTime + 0.02, roleOf(tr) === "chord" ? 4 : 2, 0.3, master, true); }
+  writeTrack(i, c.join(""));
+}
+async function claimSeat(color) {
+  if (S.net === "local") {
+    if (S.seats[color]) {
+      if (S.localColor === color) { delete S.seats[color]; S.localColor = seated()[0] || null; }
+      else S.localColor = color;
+    } else { S.seats[color] = { uid: "local" }; S.localColor = color; }
+    renderAll(); return;
+  }
+  if (S.readOnly) { toast("You can watch this table but not take a seat."); return; }
+  if (!S.uid) { toast("Sign in to claude.ai to take a seat."); return; }
+  const mine = myColor();
+  try {
+    if (mine === color) { await seatRef(color).delete(); delete S.seats[color]; renderAll(); updatePresence(); return; }
+    const ref = seatRef(color);
+    const lease = await ref.acquire({ holder: S.uid, ttlMs: 4000 });
+    if (!lease.acquired) { toast("Someone is taking that seat right now."); return; }
+    const cur = await ref.get(); const d = cur.exists ? cur.data() : null;
+    if (d && d.uid && d.uid !== S.uid) { toast("That color is taken."); return; }
+    await ref.set({ uid: S.uid, at: Date.now() });
+    S.seats[color] = { uid: S.uid };
+    if (mine && mine !== color) { await seatRef(mine).delete(); delete S.seats[mine]; }
+    renderAll(); updatePresence();
+  } catch (e) { onWriteError(e); }
+}
+
+// ---------- Board ----------
+const ICON = {
+  listen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>',
+  solo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+};
+const B = { leds: [], rows: [] };
+function buildBoard() {
+  const board = $("board"); board.innerHTML = "";
+  const lr = el("div", "lights-row"); lr.append(el("div", "engraved", "Beat"));
+  const leds = el("div", "leds");
+  for (let j = 0; j < 16; j++) { const l = el("div", "led" + (j % 4 === 0 ? " major" : "")); leds.append(l); B.leds.push(l); }
+  lr.append(leds); board.append(lr);
+  const tracks = el("div", "tracks");
+  for (let i = 0; i < 8; i++) {
+    const row = el("div", "track");
+    const tile = el("button", "tile"); tile.type = "button";
+    const nm = el("span", "tname"); const ow = el("span", "owners"); tile.append(nm, ow);
+    tile.addEventListener("click", () => { const s = curSong(); if (s && s.tracks[i]) { S.previewTrack = i; updateBoard(); } });
+    const cells = el("div", "cells"); const cellEls = [];
+    for (let j = 0; j < 16; j++) {
+      const c = el("button", "cell" + (Math.floor(j / 4) % 2 ? " alt" : "")); c.type = "button";
+      c.setAttribute("aria-label", "Track " + (i + 1) + ", beat " + (j + 1));
+      const tok = el("span", "tok"); c.append(tok);
+      c.addEventListener("click", () => onCell(i, j));
+      cells.append(c); cellEls.push({ c, tok });
+    }
+    row.append(tile, cells); tracks.append(row);
+    B.rows.push({ row, tile, nm, ow, cells: cellEls });
+  }
+  board.append(tracks);
+
+  const strip = el("div", "strip");
+  const g1 = el("div", "grp");
+  const g1r = el("div", "grp-row");
+  const slot = el("div", "slot"); const peek = el("div", "peek"); slot.append(peek); B.peek = peek;
+  B.songLcd = el("div", "lcd", "---");
+  g1r.append(slot, B.songLcd); g1.append(g1r, el("div", "engraved", "Song card"));
+  const g2 = el("div", "grp");
+  const g2r = el("div", "grp-row");
+  B.instLcd = el("div", "lcd inst", "—");
+  const keys = el("div", "keys"); B.keys = [];
+  LETTERS.forEach(L => {
+    const k = el("button", "key"); k.type = "button"; k.dataset.k = L;
+    const b = el("span", null, L); const sm = el("small"); k.append(b, sm);
+    k.addEventListener("click", () => { S.selNote = L; previewKey(L); updateBoard(); renderTray(); });
+    keys.append(k); B.keys.push({ k, sm, L });
+  });
+  const sk = el("button", "key sharpkey"); sk.type = "button"; sk.setAttribute("aria-label", "Sharp: raise the next notes by a half step");
+  sk.append(el("span", null, "♯"), el("small", null, "sharp"));
+  sk.addEventListener("click", () => { S.sharp = !S.sharp; updateBoard(); renderTray(); });
+  keys.append(sk); B.sharpKey = sk;
+  g2r.append(B.instLcd, keys); g2.append(g2r, el("div", "engraved", "Instrument preview"));
+  const g3 = el("div", "grp");
+  const tr = el("div", "transport"); B.tbtn = {};
+  [["listen", "Listen"], ["solo", "Solo"], ["play", "Play"], ["check", "Check"]].forEach(([k, label]) => {
+    const b = el("button", "tbtn"); b.type = "button";
+    const knob = el("span", "knob"); knob.innerHTML = ICON[k === "play" ? "play" : k];
+    b.append(knob, el("span", "engraved", label));
+    b.addEventListener("click", () => { if (k === "check") check(); else startPlayback(k); });
+    tr.append(b); B.tbtn[k] = { b, knob };
+  });
+  g3.append(tr);
+  strip.append(g1, g2, g3);
+  board.append(strip);
+  B.msg = el("div", "board-msg"); board.append(B.msg);
+}
+function setBeat(j) {
+  S.beat = j;
+  B.leds.forEach((l, k) => l.classList.toggle("on", k === j));
+  B.rows.forEach(r => r.cells.forEach((c, k) => c.c.classList.toggle("now", k === j)));
+}
+function updateTransport() {
+  const song = curSong();
+  ["listen", "solo", "play"].forEach(k => {
+    const t = B.tbtn[k]; if (!t) return;
+    const active = S.playing && S.playing.kind === k;
+    t.b.classList.toggle("active", !!active);
+    t.knob.innerHTML = active ? ICON.stop : ICON[k];
+    t.b.disabled = !song;
+    t.b.setAttribute("aria-label", active ? "Stop" : k === "listen" ? "Listen to the original song" : k === "solo" ? "Listen to the selected instrument only" : "Play your team's arrangement");
+  });
+  B.tbtn.check.b.disabled = !song || !S.table || S.table.status !== "playing" || S.readOnly;
+}
+function tokenColor(i) {
+  const a = assignOf(i);
+  return a.length ? a[0] : "shared";
+}
+function updateBoard() {
+  if (!B.rows.length || !S.table) return;
+  const song = curSong();
+  const fb = S.fb && S.fb.checkId === S.table.checkId ? S.fb : null;
+  $("board").classList.toggle("won", S.table.status === "won");
+  if (S.previewTrack >= (song ? song.tracks.length : 0)) S.previewTrack = 0;
+  B.rows.forEach((r, i) => {
+    const tr = song && song.tracks[i];
+    r.row.classList.toggle("unused", !tr);
+    r.tile.classList.toggle("empty", !tr);
+    r.tile.disabled = !tr;
+    r.nm.textContent = tr ? INST[tr.inst].name : "Empty slot";
+    r.ow.innerHTML = "";
+    r.tile.classList.toggle("band", !!tr && isBand(tr));
+    if (tr && isBand(tr)) r.ow.append(el("i", "shared", "Band"));
+    else if (tr && S.table.status !== "setup") {
+      const a = assignOf(i);
+      if (a.length) a.forEach(c => { const d = el("i"); d.style.setProperty("--tc", "var(--c-" + c + ")"); d.title = c; r.ow.append(d); });
+      else r.ow.append(el("i", "shared", "Shared"));
+    }
+    const mine = tr && canPlace(i);
+    r.tile.classList.toggle("sel", !!tr && S.previewTrack === i);
+    r.tile.classList.toggle("mine", !!mine);
+    const band = !!tr && isBand(tr);
+    const cells = !tr ? EMPTY : band ? (roleOf(tr) === "drum" || S.table.mode !== "advanced" ? tr.pat.replace(/[^.]/g, "x") : tr.pat) : cellsOf(i);
+    const unchanged = fb && fb.snap[i] === cells;
+    r.tile.classList.toggle("pulse", !!(tr && !band && unchanged && fb.res.tracks[i].missing > 0 && S.table.status === "playing"));
+    const tc = band ? "band" : tokenColor(i);
+    const letters = S.table.mode === "advanced" && tr && roleOf(tr) !== "drum";
+    r.row.classList.toggle("bandrow", band);
+    r.cells.forEach((c, j) => {
+      const ch = cells[j];
+      c.c.classList.toggle("has", ch !== ".");
+      c.c.classList.toggle("mine", !!mine);
+      c.tok.style.setProperty("--tc", "var(--c-" + tc + ")");
+      c.tok.classList.toggle("light", !!LIGHT_TOKENS[tc]);
+      const shown = ch !== "." && ch !== "x" ? ch : (ch === "." && mine && letters ? (roleOf(tr) === "chord" ? S.selNote : curToken()) : "");
+      c.tok.textContent = tokLabel(song, shown);
+      const st = fb && fb.snap[i] && fb.snap[i][j] === ch && ch !== "." ? fb.res.tracks[i].cells[j] : null;
+      c.c.classList.toggle("fb-ok", st === "ok");
+      c.c.classList.toggle("fb-note", st === "note");
+      c.c.classList.toggle("fb-extra", st === "extra");
+    });
+  });
+  // strip
+  B.songLcd.textContent = song ? song.id : "---";
+  B.peek.innerHTML = "";
+  B.peek.style.visibility = song ? "visible" : "hidden";
+  if (song) bits(song.id).forEach(b => B.peek.append(el("b", b ? "p" : "")));
+  const ptr = song && song.tracks[S.previewTrack];
+  B.instLcd.textContent = !ptr ? "—" : loadingSong === song.id ? "TUNING UP…" : INST[ptr.inst].name.toUpperCase();
+  const drumKeys = ptr && roleOf(ptr) === "drum";
+  if (B.sharpKey) { const melodic = ptr && roleOf(ptr) === "note"; B.sharpKey.disabled = !melodic; B.sharpKey.classList.toggle("sel", !!melodic && S.sharp); }
+  B.keys.forEach(({ k, sm, L }) => {
+    sm.textContent = !ptr ? "" : drumKeys ? DRUM_NAMES[drumMap(ptr.inst)[L]] : roleOf(ptr) === "chord" ? pretty(chordName(song, L)) : (tokLabel(song, L) !== L ? tokLabel(song, L).slice(1) : "");
+    k.classList.toggle("sel", S.table.mode === "advanced" && !drumKeys && S.selNote === L);
+    k.disabled = !ptr;
+  });
+  updateTransport();
+  B.msg.textContent = boardMessage(song, fb);
+}
+function boardMessage(song, fb) {
+  if (!song) return "Pick a song card from the shelf to load a song.";
+  const bandNames = song.tracks.filter(isBand).map(t => INST[t.inst].name.toLowerCase());
+  const bandLine = bandNames.length ? " The board's band plays the " + bandNames.join(" and ") + "." : "";
+  if (S.table.status === "setup") return (seated().length ? song.name + " is loaded. Press Deal instruments to hand out the parts." : song.name + " is loaded. Pick a color, then deal the instruments.") + bandLine;
+  if (S.table.status === "won") return "Song complete in " + S.table.checks + (S.table.checks === 1 ? " check. " : " checks. ") + "Press Play to hear what you built together.";
+  if (fb) {
+    let ok = 0, note = 0, extra = 0; const missing = [];
+    fb.res.tracks.forEach((t, i) => { if (t.band) return; ok += t.ok; note += t.note; extra += t.wrong - t.note; if (t.missing) missing.push(INST[song.tracks[i].inst].name); });
+    const parts = [ok + " right"];
+    if (note) parts.push(note + " wrong note" + (note > 1 ? "s" : ""));
+    if (extra) parts.push(extra + " to remove");
+    return "Check " + S.table.checks + ": " + parts.join(", ") + (missing.length ? ". Still missing sounds: " + missing.join(", ") + "." : ".");
+  }
+  const mt = myTrack();
+  if (mt >= 0) return "You play " + INST[song.tracks[mt].inst].name + ". Listen, solo your track, then place your tokens.";
+  return "Listen to the song, then place tokens on your track.";
+}
+
+// ---------- Side column ----------
+function renderSide() {
+  const side = $("side"); if (!S.table) return;
+  side.innerHTML = "";
+  const song = curSong();
+  const me = myColor();
+
+  // Seats
+  const p1 = el("section", "panel");
+  const h = el("div", "row"); h.style.justifyContent = "space-between";
+  h.append(el("h3", null, "Players"));
+  if (S.net === "local") h.append(el("span", "note", "Tap a color to play as it"));
+  p1.append(h);
+  const seats = el("div", "seats");
+  COLORS.forEach(c => {
+    const s = S.seats[c.id];
+    const b = el("button", "seat" + (me === c.id ? " me" : "")); b.type = "button";
+    b.style.setProperty("--tc", "var(--c-" + c.id + ")");
+    b.append(el("span", "disc"));
+    let label;
+    if (!s || !s.uid) label = el("span", "who open", "Open");
+    else if (S.net === "local") label = el("span", "who", me === c.id ? "Playing now" : c.name);
+    else if (s.uid === S.uid) label = el("span", "who", "You");
+    else label = el("span", "who", (S.names[s.uid] || c.name));
+    b.append(label);
+    if (S.net === "online" && s && s.uid && S.peers.some(p => p.by && p.by === s.uid)) { const l = el("span", "live"); l.title = "At the table now"; b.append(l); }
+    const taken = s && s.uid && S.net === "online" && s.uid !== S.uid;
+    b.disabled = !!taken;
+    b.setAttribute("aria-label", c.name + (taken ? " seat, taken" : me === c.id ? " seat, yours. Tap to leave" : " seat, open"));
+    b.addEventListener("click", () => claimSeat(c.id));
+    seats.append(b);
+  });
+  p1.append(seats);
+  if (S.net === "online" && !me && !S.readOnly) p1.append(el("p", null, "Pick a color to join the game."));
+  if (S.readOnly) p1.append(el("p", null, "You are watching. Your access to this page doesn't allow changes."));
+  side.append(p1);
+
+  // Song + instruments
+  const p2 = el("section", "panel");
+  p2.append(el("h3", null, "This song"));
+  if (!song) p2.append(el("p", null, "No card in the slot yet. Pick one from the shelf below."));
+  else {
+    const t = el("div"); t.append(el("div", "nm", song.name)); t.lastChild.style.fontWeight = "700"; t.lastChild.style.fontSize = "17px";
+    t.append(el("div", "note", "Song " + song.id + " · " + tierOf(song).name + " · Key of " + pretty(song.key) + " · " + playerTracks(song).length + (playerTracks(song).length === 1 ? " part" : " parts") + " to play, " + (song.tracks.length - playerTracks(song).length) + " played by the band"));
+    p2.append(t);
+    const modeRow = el("div", "row");
+    const seg = el("div", "seg");
+    [["easy", "Easy: rhythm"], ["advanced", "Advanced: notes"]].forEach(([m, lab]) => {
+      const b = el("button", S.table.mode === m ? "on" : "", lab); b.type = "button";
+      b.disabled = S.readOnly;
+      b.addEventListener("click", () => setMode(m)); seg.append(b);
+    });
+    modeRow.append(seg); p2.append(modeRow);
+    if (S.table.status === "setup") {
+      const db2 = el("button", "btn primary", "Deal instruments"); db2.type = "button";
+      db2.disabled = S.readOnly || !seated().length;
+      db2.addEventListener("click", deal); p2.append(db2);
+    } else {
+      const ul = el("ul", "assign");
+      song.tracks.forEach((tr, i) => {
+        const li = el("li"); const a = assignOf(i);
+        if (isBand(tr)) { const d = el("i"); d.style.setProperty("--tc", "var(--c-band)"); li.append(d, el("span", null, INST[tr.inst].name + " · the band")); li.style.color = "var(--muted)"; ul.append(li); return; }
+        if (a.length) a.forEach(c => { const d = el("i"); d.style.setProperty("--tc", "var(--c-" + c + ")"); li.append(d); });
+        else { const d = el("i"); d.style.setProperty("--tc", "var(--c-shared)"); li.append(d); }
+        const who = a.length ? a.map(c => c === me ? "you" : (COLORS.find(x => x.id === c).name)).join(" + ") : "everyone";
+        li.append(el("span", null, INST[tr.inst].name + " · " + who));
+        ul.append(li);
+      });
+      p2.append(ul);
+      if (S.table.status === "won") {
+        p2.append(el("div", "stars", "★".repeat(S.table.stars || 1) + "☆".repeat(3 - (S.table.stars || 1))));
+      }
+      const again = el("button", "btn small", S.table.status === "won" ? "Play again with new instruments" : "Deal again (clears the board)"); again.type = "button";
+      again.disabled = S.readOnly; again.addEventListener("click", deal); p2.append(again);
+    }
+  }
+  side.append(p2);
+
+  // Tokens
+  const p3 = el("section", "panel"); p3.id = "trayPanel"; side.append(p3); renderTray();
+
+  // Shelf
+  const p4 = el("section", "panel");
+  p4.append(el("h3", null, "Song shelf"));
+  TIERS.forEach(tier => {
+    const box = el("div", "shelf-tier");
+    const hd = el("div", "tier-head"); hd.append(el("b", null, tier.name), el("span", null, tier.sub)); box.append(hd);
+    const shelf = el("div", "shelf");
+    SONGS.filter(sg => sg.tier === tier.id && !sg.pack).forEach(sg => {
+      const c = el("button", "card" + (song && song.id === sg.id ? " in" : "")); c.type = "button";
+      c.setAttribute("aria-label", "Insert song card " + sg.id + ", " + sg.name);
+      const holes = el("div", "holes"); bits(sg.id).forEach(b => holes.append(el("b", b ? "p" : "")));
+      const parts = playerTracks(sg).map(i => INST[sg.tracks[i].inst].name).join(", ");
+      c.append(holes, el("span", "num", sg.id), el("span", "nm", sg.name), el("span", "meta", "You play: " + parts));
+      c.disabled = S.readOnly;
+      c.addEventListener("click", () => insertSong(sg.id));
+      shelf.append(c);
+    });
+    box.append(shelf); p4.append(box);
+  });
+  {
+    const box = el("div", "shelf-tier");
+    const hd = el("div", "tier-head"); hd.append(el("b", null, "Famous Tunes pack"), el("span", null, "Classics everyone knows")); box.append(hd);
+    const shelf = el("div", "shelf");
+    SONGS.filter(sg => sg.pack === "famous").forEach(sg => {
+      const c = el("button", "card" + (song && song.id === sg.id ? " in" : "")); c.type = "button";
+      c.setAttribute("aria-label", "Insert song card " + sg.id + ", " + sg.name);
+      const holes = el("div", "holes"); bits(sg.id).forEach(b => holes.append(el("b", b ? "p" : "")));
+      const parts = playerTracks(sg).map(i => INST[sg.tracks[i].inst].name).join(", ");
+      c.append(holes, el("span", "num", sg.id), el("span", "nm", sg.name), el("span", "meta", tierOf(sg).name + " · You play: " + parts));
+      c.disabled = S.readOnly;
+      c.addEventListener("click", () => insertSong(sg.id));
+      shelf.append(c);
+    });
+    box.append(shelf); p4.append(box);
+  }
+  side.append(p4);
+
+  // Help
+  const p5 = el("section", "panel");
+  p5.append(el("h3", null, "Reading the lights"));
+  const lg = el("div", "fb-legend");
+  [["var(--ok)", "Green ring: that token is right"], ["var(--warn)", "Amber ring: right beat, wrong note"], ["var(--bad)", "Blinking: nothing plays on that beat"], ["var(--warn)", "Pulsing tile: that track is still missing sounds"]]
+    .forEach(([k, t]) => { const s = el("span", null, t); s.style.setProperty("--k", k); lg.append(s); });
+  p5.append(lg);
+  const kb = el("p"); kb.innerHTML = "Keys <kbd>C</kbd>–<kbd>B</kbd> preview notes, <kbd>Space</kbd> plays your arrangement, <kbd>L</kbd> listens to the original.";
+  p5.append(kb);
+  side.append(p5);
+}
+function renderTray() {
+  const p = $("trayPanel"); if (!p) return;
+  p.innerHTML = "";
+  const song = curSong(); const me = myColor();
+  p.append(el("h3", null, "Your tokens"));
+  if (!me) { p.append(el("p", null, "Take a seat to get a tray of tokens.")); return; }
+  const mt = myTrack();
+  const tr = song && mt >= 0 ? song.tracks[mt] : null;
+  const tray = el("div", "tray");
+  const light = !!LIGHT_TOKENS[me];
+  if (S.table.mode === "advanced" && tr && roleOf(tr) !== "drum") {
+    LETTERS.forEach(L => {
+      const t = el("button", "tok" + (light ? " light" : "") + (S.selNote === L ? " sel" : ""), roleOf(tr) === "chord" ? L : tokLabel(curSong(), S.sharp ? L.toLowerCase() : L)); t.type = "button";
+      t.style.setProperty("--tc", "var(--c-" + me + ")");
+      t.setAttribute("aria-label", "Use note token " + L);
+      t.addEventListener("click", () => { S.selNote = L; previewKey(L); updateBoard(); renderTray(); });
+      tray.append(t);
+    });
+    if (roleOf(tr) === "note") {
+      const sh = el("button", "btn small" + (S.sharp ? " primary" : ""), S.sharp ? "♯ Sharp tokens on" : "♯ Use sharp tokens"); sh.type = "button";
+      sh.addEventListener("click", () => { S.sharp = !S.sharp; updateBoard(); renderTray(); });
+      p.append(tray, sh, el("p", null, "Pick a note, then tap a beat on your track. Tap a token again to lift it. Some famous tunes need a sharp note between the white keys: switch on sharp tokens for those."));
+    } else p.append(tray, el("p", null, "Pick a chord root, then tap a beat on your track. The board plays the song's own chord for that letter."));
+  } else {
+    const t = el("span", "tok" + (light ? " light" : "")); t.style.setProperty("--tc", "var(--c-" + me + ")"); tray.append(t);
+    p.append(tray, el("p", null, tr && roleOf(tr) === "drum" && S.table.mode === "advanced" ? "Drum tracks only need timing, even in Advanced Mode. Tap a beat to place or lift a token." : "Tap a beat on your track to place a token, tap again to lift it."));
+  }
+}
+function renderTop() {
+  const tr = $("topRight"); tr.innerHTML = "";
+  if (!S.net) return;
+  if (S.net === "online") {
+    const c = el("span", "chip"); c.append(el("span", null, "Table"), el("span", "code", S.code));
+    const copy = el("button", "btn small", "Copy code"); copy.type = "button";
+    copy.addEventListener("click", () => {
+      try { navigator.clipboard.writeText(S.code).then(() => toast("Code " + S.code + " copied. Share it with your players."), () => toast("Your table code is " + S.code + ".")); }
+      catch (e) { toast("Your table code is " + S.code + "."); }
+    });
+    const live = el("span", "chip"); const dot = el("span", "dot" + (named ? " on" : ""));
+    live.append(dot, el("span", null, named ? S.peers.length + " at the table" : "Live room unavailable"));
+    tr.append(c, copy, live);
+  } else tr.append(el("span", "chip", "Local table · this device"));
+  const leave = el("button", "btn small", "Leave table"); leave.type = "button";
+  leave.addEventListener("click", leaveTable); tr.append(leave);
+}
+function renderAll() { renderTop(); updateBoard(); renderSide(); }
+let lastSong = null;
+function afterTable() {
+  if (!S.table) return;
+  if (S.table.song !== lastSong) { lastSong = S.table.song; const sg = curSong(); if (sg) preloadSong(sg); }
+  if (S.table.checkId) captureFeedback(); else S.fb = null;
+  renderAll();
+}
+
+// ---------- Lobby & networking ----------
+function showGame(on) { $("lobby").hidden = on; $("game").hidden = !on; }
+function drawMini() {
+  const g = $("miniGrid"); const ns = "http://www.w3.org/2000/svg";
+  const dots = { 0: [0, 4, 8, 12], 1: [2, 6, 10, 14], 2: [0, 7, 8, 14], 3: [0, 4, 8, 12] };
+  const cols = ["var(--c-red)", "var(--c-green)", "var(--c-blue)", "var(--c-yellow)"];
+  for (let r = 0; r < 4; r++) {
+    const tile = document.createElementNS(ns, "rect");
+    tile.setAttribute("x", 16); tile.setAttribute("y", 16 + r * 30); tile.setAttribute("width", 70); tile.setAttribute("height", 24); tile.setAttribute("rx", 6);
+    tile.setAttribute("fill", "none"); tile.setAttribute("stroke", "var(--wood-edge)"); g.append(tile);
+    for (let j = 0; j < 16; j++) {
+      const c = document.createElementNS(ns, "rect");
+      c.setAttribute("x", 98 + j * 28); c.setAttribute("y", 16 + r * 30); c.setAttribute("width", 27); c.setAttribute("height", 24);
+      c.setAttribute("fill", "var(--well)"); g.append(c);
+      if (dots[r].includes(j)) {
+        const d = document.createElementNS(ns, "circle");
+        d.setAttribute("cx", 98 + j * 28 + 13.5); d.setAttribute("cy", 28 + r * 30); d.setAttribute("r", 9); d.setAttribute("fill", cols[r]); g.append(d);
+      }
+    }
+  }
+}
+async function initPlatform() {
+  const c = window.claude;
+  if (!c || !c.use) { setOffline(); return; }
+  try { [db, user, room] = await Promise.all([c.use("db"), c.use("user"), c.use("room")]); } catch (e) {}
+  if (!db) { setOffline(); return; }
+  S.uid = user ? await user.id() : null;
+  const canWrite = user ? await user.can("data.write") : null;
+  if (canWrite === false) S.readOnly = true;
+  S.onlineReadOnly = S.readOnly;
+  $("createBtn").disabled = S.readOnly;
+  $("joinBtn").disabled = false;
+  $("netNote").textContent = S.readOnly
+    ? "You can watch tables here. To play, ask the page owner for Contributor access."
+    : "Open a table and share its code. Everyone who has this page can join from their own device.";
+  const last = load("bm-last");
+  if (last) {
+    const b = el("button", "btn small", "Rejoin table " + last); b.type = "button";
+    b.addEventListener("click", () => joinTable(last)); $("rejoin").append(b);
+  }
+  watchLobby();
+}
+function setOffline() {
+  $("netNote").textContent = "Network play isn't available in this view. You can still play on this device.";
+}
+function watchLobby() {
+  if (!db || lobbyUnsub) return;
+  try {
+    lobbyUnsub = db.collection("tables").orderBy("updatedAt", "desc").limit(8).onSnapshot(qs => {
+      const list = $("tableList"); list.innerHTML = "";
+      const fresh = qs.docs.filter(d => { const v = d.data(); return v && Date.now() - (v.updatedAt || 0) < 6 * 3600e3; });
+      if (!fresh.length) return;
+      list.append(el("span", "note", "Recently active tables"));
+      fresh.forEach(d => {
+        const v = d.data(); const sg = songById(v.song);
+        const b = el("button", "table-item"); b.type = "button";
+        const left = el("span"); left.append(el("span", "code", d.id), document.createTextNode("  "), el("small", null, sg ? sg.name : "No song yet"));
+        const mins = Math.max(0, Math.round((Date.now() - v.updatedAt) / 60000));
+        b.append(left, el("small", null, mins < 1 ? "now" : mins + " min ago"));
+        b.addEventListener("click", () => joinTable(d.id));
+        list.append(b);
+      });
+    }, () => {});
+  } catch (e) {}
+}
+function stopLobby() { if (lobbyUnsub) { lobbyUnsub(); lobbyUnsub = null; } }
+function genCode() { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ"; let s = ""; for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)]; return s; }
+async function createTable() {
+  if (!db) return;
+  $("createBtn").disabled = true;
+  try {
+    let code = genCode();
+    const ex = await db.doc("tables/" + code).get(); if (ex.exists) code = genCode();
+    const t = defaultTable(); t.createdAt = Date.now();
+    await db.doc("tables/" + code).set(t);
+    await joinTable(code);
+  } catch (e) { onWriteError(e); }
+  finally { $("createBtn").disabled = S.readOnly; }
+}
+async function joinTable(code) {
+  code = String(code || "").toUpperCase().replace(/[^A-Z]/g, "");
+  if (code.length !== 4) { toast("Table codes are four letters, like KMBT."); return; }
+  if (!db) return;
+  let snap;
+  try { snap = await db.doc("tables/" + code).get(); } catch (e) { toast("Couldn't reach that table. Try again."); return; }
+  if (!snap.exists) { toast("No table with code " + code + ". Check the letters and try again."); return; }
+  teardown();
+  S.readOnly = !!S.onlineReadOnly;
+  S.net = "online"; S.code = code; S.table = normTable(snap.data()); S.seats = {}; S.tracks = {}; S.fb = null; S.peers = [];
+  store("bm-last", code);
+  stopLobby();
+  showGame(true); buildBoardOnce(); afterTable();
+  unsubs.push(tableRef().onSnapshot(s => {
+    if (!s.exists) { toast("This table was closed."); return; }
+    S.table = normTable(s.data()); afterTable();
+  }, () => toast("Lost the live connection to this table. Reload to reconnect.")));
+  unsubs.push(db.collection("tables/" + code + "/seats").onSnapshot(qs => {
+    const seats = {}; qs.docs.forEach(d => { const v = d.data(); if (v && v.uid) seats[d.id] = { uid: v.uid }; });
+    S.seats = seats; resolveNames(); renderAll(); updatePresence();
+  }, () => {}));
+  unsubs.push(db.collection("tables/" + code + "/tracks").onSnapshot(qs => {
+    qs.docs.forEach(d => { const i = parseInt(d.id.slice(1), 10); if (!(i in pendingTrack)) S.tracks[i] = d.data(); });
+    updateBoard(); renderTray();
+  }, () => {}));
+  if (room) {
+    try {
+      named = await room.join("bm-" + code.toLowerCase());
+      unsubs.push(named.onPeers(ch => { S.peers = ch.peers.slice(); renderTop(); renderSide(); }, () => { named = null; renderTop(); }));
+      updatePresence();
+    } catch (e) { named = null; }
+  }
+  renderAll();
+}
+function normTable(v) {
+  const t = Object.assign(defaultTable(), v || {});
+  if (!Array.isArray(t.assign)) t.assign = [];
+  if (!["easy", "advanced"].includes(t.mode)) t.mode = "easy";
+  if (!["setup", "playing", "won"].includes(t.status)) t.status = "setup";
+  if (t.song && !songById(t.song)) t.song = null;
+  return t;
+}
+function updatePresence() { if (named) named.presence({ seat: myColor() || null }).catch(() => {}); }
+async function resolveNames() {
+  if (!user) return;
+  const ids = Object.values(S.seats).map(s => s.uid).filter(Boolean);
+  if (!ids.length) return;
+  try {
+    const ps = await user.profiles(ids);
+    let changed = false;
+    ids.forEach(id => { const n = ps[id] && ps[id].name ? ps[id].name.split(" ")[0] : ""; if (n && S.names[id] !== n) { S.names[id] = n; changed = true; } });
+    if (changed) renderSide();
+  } catch (e) {}
+}
+function startLocal() {
+  teardown();
+  S.net = "local"; S.code = null; S.table = defaultTable(); S.seats = { red: { uid: "local" } }; S.localColor = "red"; S.tracks = {}; S.fb = null; S.readOnly = false;
+  stopLobby(); showGame(true); buildBoardOnce(); afterTable();
+}
+function teardown() {
+  stopPlayback();
+  while (unsubs.length) { try { unsubs.pop()(); } catch (e) {} }
+  if (named) { named.leave().catch(() => {}); named = null; }
+}
+function leaveTable() {
+  teardown();
+  S.net = null; S.code = null; S.table = null; S.seats = {}; S.tracks = {}; S.peers = [];
+  showGame(false); renderTop(); watchLobby();
+}
+let built = false;
+function buildBoardOnce() { if (!built) { buildBoard(); built = true; } }
+
+// ---------- Wiring ----------
+$("createBtn").addEventListener("click", createTable);
+$("joinBtn").addEventListener("click", () => joinTable($("joinCode").value));
+$("joinCode").addEventListener("keydown", e => { if (e.key === "Enter") joinTable($("joinCode").value); });
+$("joinCode").addEventListener("input", e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4); });
+$("localBtn").addEventListener("click", startLocal);
+document.addEventListener("keydown", e => {
+  if ($("game").hidden || e.target.closest("input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toUpperCase();
+  if (LETTERS.includes(k)) { S.selNote = k; previewKey(k); updateBoard(); renderTray(); }
+  else if (e.key === "#") { S.sharp = !S.sharp; updateBoard(); renderTray(); }
+  else if (k === " ") { e.preventDefault(); startPlayback("play"); }
+  else if (k === "L") startPlayback("listen");
+});
+drawMini();
+initPlatform();
+</script>
+
+</body>
+</html>
