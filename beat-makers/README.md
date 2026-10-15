@@ -2,6 +2,7 @@
 
 A cooperative musical board game: players listen to a song, then rebuild it together on a wooden 8 × 16 sequencer, one instrument each.
 
+- **Play in your browser (this device):** https://luka-psa.github.io/CSOD-API-openAI2.0/beat-makers/
 - **Play online with friends:** https://claude.ai/artifact/NaSS7PaU5gtPRy4RTgpsKh. Network tables, seats and live sync work here. The page is private until its owner shares it with Contributor access.
 - **Game manual:** https://claude.ai/code/artifact/4754fdce-0680-4eb7-acfd-5913d57ed7dd
 - **Sound demos:** [`demos/sound-engine-demo.mp3`](demos/sound-engine-demo.mp3) and [`demos/famous-tunes-demo.mp3`](demos/famous-tunes-demo.mp3)
