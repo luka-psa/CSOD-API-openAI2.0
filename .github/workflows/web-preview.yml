@@ -47,13 +47,17 @@ jobs:
           path: site
 
       # The deploy branch only ever holds the latest build (one commit, replaced each time).
+      # The commit is authored as the person who pushed: Vercel (Hobby plan) only deploys
+      # commits from authors on the Vercel account and blocks bot-authored ones.
       - name: Publish to the hearth-web branch
         working-directory: site
         env:
           REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          AUTHOR_NAME: ${{ github.actor }}
+          AUTHOR_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
         run: |
           git init -q -b hearth-web
           git add -A
-          git -c user.name="github-actions[bot]" -c user.email="41898283+github-actions[bot]@users.noreply.github.com" \
+          git -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" \
             commit -q -m "Hearth web build from ${GITHUB_SHA::7}"
           git push -q -f "$REPO_URL" hearth-web
