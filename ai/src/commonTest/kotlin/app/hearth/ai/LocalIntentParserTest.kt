@@ -96,6 +96,9 @@ class LocalIntentParserTest {
             "break the kitchen clean-out into steps",
             "wanneer is de autokeuring?",
             "can you plan the week for us",
+            "need to go to the dentist",
+            "we need to call the plumber",
+            "ik moet nog naar de tandarts",
         ).forEach { assertNull(parser.parse(it), "should not parse: $it") }
     }
 }

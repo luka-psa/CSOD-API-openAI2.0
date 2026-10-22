@@ -174,7 +174,8 @@ class LocalIntentParser {
         val ADD_RULES = listOf(
             r("add (.+?)(?: to (?:the |our )?$LIST_EN)?") to Lang.EN,
             r("put (.+?) on (?:the |our )?$LIST_EN") to Lang.EN,
-            r("(?:we |i )?(?:still )?need (?:to (?:buy|get) )?(.+)") to Lang.EN,
+            // "need to go to the dentist" is not a shopping item; only "need X" / "need to buy X".
+            r("(?:we |i )?(?:still )?need (?:to (?:buy|get) )?(?!to )(.+)") to Lang.EN,
             r("(?:we(?:'re| are) |i(?:'m| am) )?(?:out of|running low on|low on|almost out of) (.+)") to Lang.EN,
             r("(?:don't|do not) forget(?: to (?:buy|get|grab|pick up))?:? (.+)") to Lang.EN,
             r("remember to (?:buy|get|grab|pick up) (.+)") to Lang.EN,
