@@ -1,4 +1,7 @@
 {
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "",
   "headers": [
     {
       "source": "/:file([0-9a-f]{20}\\.(?:wasm|js))",

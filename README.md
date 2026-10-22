@@ -19,18 +19,16 @@ adb install app/build/outputs/apk/debug/app-debug.apk   # tablet
 
 ## Web preview on Vercel
 
-Every push to `hearth-household-assistant` builds the web app in GitHub Actions
-(`.github/workflows/web-preview.yml`). To publish it on Vercel (once):
+Every push to `hearth-household-assistant` runs `.github/workflows/web-preview.yml`:
+tests, builds the web app, and publishes the finished site to the **`hearth-web`** branch.
+Vercel (connected to this repo) deploys that branch as static files; it never builds Kotlin
+itself. The source branch has a root `vercel.json` that switches Vercel deployments off for it.
 
-1. Create a token at <https://vercel.com/account/tokens>.
-2. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**,
-   name `VERCEL_TOKEN`, paste the token.
-3. Run the **Web preview** workflow (Actions tab → Web preview → Run workflow), or push.
-   The first run creates a Vercel project called `hearth`; the URL is in the workflow log
-   and on your Vercel dashboard.
+For a stable public link, set **Vercel → Project → Settings → Git → Production Branch** to
+`hearth-web`. Otherwise `hearth-web` deploys as a preview, which Vercel shows only to people
+logged in to your Vercel team.
 
-Without the secret the workflow still builds the site and attaches it as the `hearth-web`
-artifact. Each browser keeps its own data (stored in the browser's private file system).
+Each browser keeps its own data (stored in the browser's private file system).
 Works in current Chrome, Edge, Firefox and Safari.
 
 ## Tablet setup (once)

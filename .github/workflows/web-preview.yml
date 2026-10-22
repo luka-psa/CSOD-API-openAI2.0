@@ -1,7 +1,6 @@
-# Builds the Hearth web app (Kotlin/Wasm) and deploys it to Vercel.
-# Setup (once): create a token at https://vercel.com/account/tokens and add it to this repository
-# as the Actions secret VERCEL_TOKEN. Without the secret, the built site is still uploaded as a
-# workflow artifact ("hearth-web") so it can be downloaded and opened locally.
+# Builds the Hearth web app (Kotlin/Wasm) and publishes the finished site to the `hearth-web`
+# branch. Vercel's Git integration deploys that branch as plain static files: Vercel itself has
+# no Java, so it cannot run the Gradle build.
 name: Web preview
 
 on:
@@ -11,17 +10,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: web-preview
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build-and-publish:
     runs-on: ubuntu-latest
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,16 +37,23 @@ jobs:
 
       - name: Prepare site
         run: |
-          mkdir -p site/hearth
-          cp -r web/build/dist/wasmJs/productionExecutable/. site/hearth/
+          mkdir -p site
+          cp -r web/build/dist/wasmJs/productionExecutable/. site/
           find site -name '*.map' -delete
 
       - uses: actions/upload-artifact@v4
         with:
           name: hearth-web
-          path: site/hearth
+          path: site
 
-      - name: Deploy to Vercel
-        if: ${{ env.VERCEL_TOKEN != '' }}
-        working-directory: site/hearth
-        run: npx --yes vercel@62.0.0 deploy --prod --yes --token "$VERCEL_TOKEN"
+      # The deploy branch only ever holds the latest build (one commit, replaced each time).
+      - name: Publish to the hearth-web branch
+        working-directory: site
+        env:
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          git init -q -b hearth-web
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898283+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Hearth web build from ${GITHUB_SHA::7}"
+          git push -q -f "$REPO_URL" hearth-web

@@ -226,7 +226,7 @@ Destructive tools always go through a confirm card.
    - **Theft:** set a normal PIN on the tablet. Hearth still runs over the lock screen, but leaving Hearth, opening settings or other apps needs the PIN. API keys stay encrypted in the Android Keystore, and Android's own cloud backup is off (`allowBackup=false`).
 5. **Stock tracking per item:** either **state** (OK / Low / Out, the default) or **count** ("3 left", with a low mark). Both feed the same restock loop.
 
-6. **Web version:** the app also runs in the browser from the same code (Kotlin/Wasm + Compose Multiplatform + Room 3 with a SQLite web worker). Data is stored per browser (OPFS). It is a preview and demo surface; the tablet stays the "server". Kiosk and the Android recognizer are Android-only; the web uses the browser's speech recognition where available. Deployed to Vercel by `.github/workflows/web-preview.yml`.
+6. **Web version:** the app also runs in the browser from the same code (Kotlin/Wasm + Compose Multiplatform + Room 3 with a SQLite web worker). Data is stored per browser (OPFS). It is a preview and demo surface; the tablet stays the "server". Kiosk and the Android recognizer are Android-only; the web uses the browser's speech recognition where available. Built by `.github/workflows/web-preview.yml`, published to the `hearth-web` branch, deployed by Vercel's Git integration.
 
 ## 10. Build notes
 
