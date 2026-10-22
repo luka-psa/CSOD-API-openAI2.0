@@ -20,6 +20,9 @@ interface Tool<A, R : ToolResult> {
     val resultSerializer: KSerializer<R>
 
     suspend fun run(args: A, ctx: ToolContext): R
+
+    /** The question shown before a destructive tool runs ("Remove milk from the list?"). */
+    fun confirmQuestion(args: A, ctx: ToolContext): String = ctx.t("Zeker?", "Are you sure?")
 }
 
 /** Every result carries a short, friendly line the chat can show verbatim. */

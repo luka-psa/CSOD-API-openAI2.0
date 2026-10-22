@@ -12,6 +12,10 @@ class HearthApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(openHearthDatabase(this), Lang.fromTag(Locale.getDefault().toLanguageTag()))
+        container = AppContainer(
+            openHearthDatabase(this),
+            Lang.fromTag(Locale.getDefault().toLanguageTag()),
+            AndroidSettingsStore(this),
+        )
     }
 }

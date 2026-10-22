@@ -203,6 +203,34 @@ class UnmarkBoughtTool(private val repo: ShoppingRepository) : Tool<MarkBoughtAr
     }
 }
 
+// ---------- remove_shopping_item (destructive) ----------
+
+class RemoveShoppingItemTool(private val repo: ShoppingRepository) : Tool<MarkBoughtArgs, MarkBoughtResult> {
+    override val name = NAME
+    override val description =
+        "Delete shopping items that were added by mistake. To tick something off as bought, use mark_bought instead."
+    override val destructive = true
+    override val argsSerializer = MarkBoughtArgs.serializer()
+    override val resultSerializer = MarkBoughtResult.serializer()
+
+    override fun confirmQuestion(args: MarkBoughtArgs, ctx: ToolContext): String {
+        val what = args.names.joinToString(", ").ifEmpty { ctx.t("dit", "this") }
+        return ctx.t("$what van de lijst verwijderen?", "Remove $what from the list?")
+    }
+
+    override suspend fun run(args: MarkBoughtArgs, ctx: ToolContext): MarkBoughtResult = repo.transaction {
+        val items = (repo.itemsByIds(args.itemIds) + repo.openItemsByNames(args.names)).distinctBy { it.id }
+        if (items.isEmpty()) throw notFound(args, ctx)
+        repo.deleteItems(items.map { it.id })
+        val names = items.joinToString(", ") { label(it) }
+        MarkBoughtResult(items, ctx.t("Verwijderd: $names", "Removed: $names"))
+    }
+
+    companion object {
+        const val NAME = "remove_shopping_item"
+    }
+}
+
 private fun notFound(args: MarkBoughtArgs, ctx: ToolContext): ToolException {
     val what = args.names.joinToString(", ").ifEmpty { ctx.t("dat", "that") }
     return ToolException(ctx.t("Ik vind $what niet op de lijst.", "I can't find $what on the list."))

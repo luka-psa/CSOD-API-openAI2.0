@@ -105,6 +105,10 @@ class ShoppingRepository(
         itemDao.setBought(ids, bought, if (bought) now else null, now)
     }
 
+    suspend fun deleteItems(ids: List<String>) {
+        if (ids.isNotEmpty()) itemDao.delete(ids)
+    }
+
     suspend fun <R> transaction(block: suspend () -> R): R = db.withWriteTransaction { block() }
 
     private companion object {

@@ -14,10 +14,14 @@ class LocalIntentParser {
 
     data class Parsed(val calls: List<ToolCall>, val lang: Lang?)
 
-    fun parse(input: String): Parsed? {
+    /**
+     * @param allowBare also treat a bare word ("melk") as something to buy. Off when a smarter tier is
+     * available to decide, because "tandarts" is a bare word too.
+     */
+    fun parse(input: String, allowBare: Boolean = true): Parsed? {
         val text = clean(input)
         if (text.isEmpty()) return null
-        return parseList(text) ?: parseBought(text) ?: parseAdd(text) ?: parseBare(text)
+        return parseList(text) ?: parseBought(text) ?: parseAdd(text) ?: if (allowBare) parseBare(text) else null
     }
 
     // ---- list ----

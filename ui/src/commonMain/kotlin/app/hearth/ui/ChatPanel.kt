@@ -18,6 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
@@ -43,7 +46,11 @@ import app.hearth.ui.resources.chat_hint
 import app.hearth.ui.resources.chat_welcome
 import app.hearth.ui.resources.chip_list
 import app.hearth.ui.resources.chip_milk
+import app.hearth.ui.resources.ai_status_offline
+import app.hearth.ui.resources.no
 import app.hearth.ui.resources.send
+import app.hearth.ui.resources.settings
+import app.hearth.ui.resources.yes
 import app.hearth.ui.resources.speak
 import org.jetbrains.compose.resources.stringResource
 
@@ -52,7 +59,10 @@ fun ChatPanel(
     messages: List<ChatMessage>,
     busy: Boolean,
     speechLanguage: String,
+    aiLabel: String?,
     onSend: (String) -> Unit,
+    onAnswer: (label: String, confirm: Boolean) -> Unit,
+    onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var input by rememberSaveable { mutableStateOf("") }
@@ -70,14 +80,32 @@ fun ChatPanel(
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(HearthIcons.Flame, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(" Hearth", style = MaterialTheme.typography.titleLarge)
+                Text(" Hearth", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Text(
+                    aiLabel ?: stringResource(Res.string.ai_status_offline),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                IconButton(onClick = onSettings) {
+                    Icon(HearthIcons.Settings, contentDescription = stringResource(Res.string.settings), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(shown) { Bubble(it) }
+                items(shown) { message ->
+                    Bubble(message)
+                    if (message.pending != null) {
+                        val yes = stringResource(Res.string.yes)
+                        val no = stringResource(Res.string.no)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+                            Button(onClick = { onAnswer(yes, true) }) { Text(yes) }
+                            OutlinedButton(onClick = { onAnswer(no, false) }) { Text(no) }
+                        }
+                    }
+                }
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             Row(

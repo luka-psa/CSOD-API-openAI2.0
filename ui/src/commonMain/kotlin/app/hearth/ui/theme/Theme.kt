@@ -25,6 +25,8 @@ private val Colors = lightColorScheme(
     surface = Paper,
     onSurface = Ink,
     surfaceVariant = Color(0xFFF3EAE0),
+    surfaceContainerHigh = Color(0xFFFFFBF7),
+    surfaceContainerHighest = Color(0xFFFFFBF7),
     onSurfaceVariant = Color(0xFF6B5E54),
 )
 

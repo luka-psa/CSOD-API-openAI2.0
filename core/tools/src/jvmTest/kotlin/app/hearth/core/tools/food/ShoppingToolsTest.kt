@@ -3,6 +3,7 @@ package app.hearth.core.tools.food
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.data.inMemoryHearthDatabase
 import app.hearth.core.data.food.ShoppingRepository
+import app.hearth.core.data.inbox.InboxRepository
 import app.hearth.core.model.Lang
 import app.hearth.core.model.ShopKind
 import app.hearth.core.tools.HearthTools
@@ -33,7 +34,7 @@ class ShoppingToolsTest {
         db = inMemoryHearthDatabase()
         repo = ShoppingRepository(db)
         repo.ensureDefaultShops(Lang.NL)
-        tools = HearthTools(repo)
+        tools = HearthTools(repo, InboxRepository(db))
     }
 
     @AfterTest
@@ -124,6 +125,21 @@ class ShoppingToolsTest {
         add("melk")
         tools.registry.run(tools.markBought, MarkBoughtArgs(names = listOf("melk")), nl)
         assertFalse(add("melk").alreadyOnList)
+    }
+
+    @Test
+    fun `removing needs confirmation outside the UI and then deletes`() = runTest {
+        add("melk")
+        add("kaas")
+        val call = ToolCall.of(RemoveShoppingItemTool.NAME, MarkBoughtArgs.serializer(), MarkBoughtArgs(names = listOf("melk")))
+
+        val pending = tools.registry.execute(call, nl)
+        assertEquals(ToolOutcome.NeedsConfirmation(RemoveShoppingItemTool.NAME, "melk van de lijst verwijderen?", call), pending)
+        assertEquals(2, repo.openItems().size)
+
+        val done = tools.registry.execute(call, nl, confirmed = true)
+        assertEquals("Verwijderd: Melk", done.summary)
+        assertEquals(listOf("Kaas"), repo.openItems().map { it.name })
     }
 
     @Test

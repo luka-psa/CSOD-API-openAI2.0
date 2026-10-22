@@ -12,4 +12,24 @@
     <string name="shopping_add_hint">Toevoegen aan de lijst…</string>
     <string name="add">Voeg toe</string>
     <string name="tap_to_wake">Tik om te wekken</string>
+    <string name="inbox">Inbox</string>
+    <string name="inbox_empty">Niets te sorteren. Alles heeft een plek.</string>
+    <string name="inbox_done">Afgehandeld</string>
+    <string name="yes">Ja</string>
+    <string name="no">Nee</string>
+    <string name="settings">Instellingen</string>
+    <string name="ai_title">AI-assistent</string>
+    <string name="ai_intro">Hearth werkt offline voor eenvoudige dingen. Koppel een AI om alles te begrijpen en op de juiste plek te zetten. Je gebruikt je eigen API-sleutel.</string>
+    <string name="ai_off">Uit (alleen offline)</string>
+    <string name="ai_key">API-sleutel</string>
+    <string name="ai_router_model">Sorteermodel (klein, snel)</string>
+    <string name="ai_helper_model">Helpermodel (voert uit en antwoordt)</string>
+    <string name="ai_test">Test</string>
+    <string name="ai_testing">Bezig met testen…</string>
+    <string name="ai_test_ok">Werkt!</string>
+    <string name="ai_save">Bewaar</string>
+    <string name="ai_cancel">Annuleer</string>
+    <string name="ai_key_note_android">De sleutel wordt versleuteld op deze tablet bewaard en gaat alleen naar de AI-dienst zelf.</string>
+    <string name="ai_key_note_web">Op het web wordt de sleutel alleen in deze browser bewaard. Prima om te proberen; niet gebruiken op een gedeelde computer.</string>
+    <string name="ai_status_offline">Offline</string>
 </resources>

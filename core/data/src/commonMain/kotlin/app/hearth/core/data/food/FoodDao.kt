@@ -52,6 +52,9 @@ interface ShoppingItemDao {
     @Update
     suspend fun update(item: ShoppingItemEntity)
 
+    @Query("DELETE FROM shopping_item WHERE id IN (:ids)")
+    suspend fun delete(ids: List<String>)
+
     @Query("UPDATE shopping_item SET bought = :bought, boughtAt = :boughtAt, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setBought(ids: List<String>, bought: Boolean, boughtAt: Long?, now: Long)
 }

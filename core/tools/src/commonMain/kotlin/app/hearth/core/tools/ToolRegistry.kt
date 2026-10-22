@@ -78,7 +78,7 @@ class ToolRegistry(tools: List<Tool<*, *>>) {
             return ToolOutcome.Failed(tool.name, ctx.t("Ik begreep dat niet helemaal.", "I didn't quite get that."))
         }
         if (tool.destructive && !confirmed) {
-            return ToolOutcome.NeedsConfirmation(tool.name, ctx.t("Zeker?", "Are you sure?"), call)
+            return ToolOutcome.NeedsConfirmation(tool.name, tool.confirmQuestion(args, ctx), call)
         }
         return try {
             val result = tool.run(args, ctx)

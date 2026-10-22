@@ -195,23 +195,45 @@ mcp, integrations/google   (later slices)
 
 Dependency direction: `app, web → ui → ai → core:tools → core:data → core:model`.
 
-## 7. Orchestrator flow
+## 7. Orchestrator flow (two models + offline)
 
-Unchanged from v1: local parser (NL + EN) → optional on-device model → cloud model.
-Destructive tools always go through a confirm card.
+```
+message ─▶ 1. local rules (NL/EN, instant, offline) ── clear command? ─▶ tool
+              │ no
+              ▼
+           2. ROUTER model (fixed instruction, small/cheap): section + intent + clean text + language
+              │
+              ├─ CHAT ───────────────▶ short reply, nothing stored
+              ├─ SHOPPING / STOCK ───▶ 3. HELPER model with only shopping tools ─▶ reply
+              ├─ ASK ────────────────▶ 3. HELPER with list tools ─▶ reply
+              ├─ DONE ───────────────▶ 3. HELPER with inbox tools (archive) ─▶ reply
+              └─ ADD, other section ─▶ capture_to_inbox(text, section)   (until that section is built)
 
-## 8. Build slices (revised)
+no AI configured / offline / error ─▶ keyword sorter (NL/EN) ─▶ capture_to_inbox with a section label
+```
 
-1. ✅ **Slice 1: Shopping list.** (also `unmark_bought` for undo, and basic kiosk: always on while charging, over the lock screen, dims when idle) Skeleton + `core` modules, Shop, ShoppingItem, `add_shopping_item`, `list_shopping_items`, `mark_bought`. NL/EN parser: "add milk", "melk", "medicijnen bij de apotheek", "we need eggs and bread". Chat panel + Today shopping card grouped by shop, updating live. Tests.
-2. **Slice 2: Stock loop.** StorageSpot, StockItem (state or count), `set_stock_state`, `set_stock_count`, stock check walkthrough, bought → back in stock.
-3. Cloud providers + API keys + tool-calling loop + confirm flow.
-4. Household setup (members, areas, owners) + Today per member.
-5. Chores (interval, season, readiness) + rhythms.
-6. Planning: appointments, admin, projects with steps, errands, links.
-7. Anchors, protected time, Done log & progress.
-8. Batching, friction, notes, meal plan.
-9. Kiosk hardening, voice polish.
-10. MCP server · 11. Local model · 12. Google Calendar + Drive backup.
+- Providers: ChatGPT (OpenAI), Claude (Anthropic), Grok (xAI); own API key; both model names editable.
+  Defaults: OpenAI `gpt-5.4-nano` / `gpt-5.4-mini`; Claude `claude-haiku-5-5` / `claude-opus-5-5`; Grok `grok-4.3` / `grok-4.3`.
+- Claude: API version `2026-10-21`, structured output for the router, `tool_choice: auto` for the helper,
+  effort `low`, server-side refusal fallback (`fallbacks: "default"`) on the helper, assistant content
+  replayed unchanged in the tool loop.
+- Destructive tools (e.g. `remove_shopping_item`) stop the loop and ask "Ja / Nee" in the chat.
+- Nothing is ever lost: anything the app can't act on lands in the **Inbox** with its section label.
+- Keys: Android Keystore-encrypted; web preview: this browser's local storage only.
+- On-device model (offline tier 2): planned as its own slice; the keyword sorter is the offline router until then.
+
+## 8. Build slices (revised order, agreed)
+
+1. ✅ Shopping list from chat and dashboard; web version; Vercel preview.
+2. ✅ **AI orchestrator + inbox**: router + section helpers (OpenAI, Claude, Grok), offline keyword sorter, inbox card, yes/no confirmations, AI settings.
+3. Household setup: members, styles (doer/planner, quick/project), areas with owners. Routing uses it.
+4. Planning: appointments (to book → booked → done), admin, projects with steps, errands.
+5. Weekly huddle (gezinsoverleg) + per-person Today (max 3 things, "one next thing" for doers).
+6. Home & Rhythm: rhythms, chores with soft intervals and seasons, anchor habits, protected time.
+7. Stock loop, friction log, house rules.
+8. MCP connector (LAN, pairing code).
+9. On-device model for offline sorting (Android: small quantized model; web: in-browser model).
+10. Google Calendar push + Drive backup.
 
 ## 9. Decisions
 

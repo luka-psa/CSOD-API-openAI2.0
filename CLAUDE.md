@@ -55,10 +55,12 @@ structure. Keep it in sync when any of those change.
   interface (Claude, OpenAI, Grok). No provider SDK types leak outside `ai/`.
   Users bring their own API key; keys are stored encrypted with Android
   Keystore and never logged, exported, or backed up.
-- **Tiered intent routing.** 1) deterministic local parser for simple commands
-  ("add milk", "what's open?"); 2) optional small quantized on-device model for
-  simple commands it can't parse; 3) cloud model for anything complex. Offline
-  always degrades gracefully to tiers 1–2 with a friendly message.
+- **Tiered intent routing.** 1) deterministic local parser for clear commands
+  ("voeg melk toe", "wat staat er op de lijst?"); 2) router model (small, fixed
+  instruction) picks section + intent; 3) section helper model acts with only
+  that section's tools. Offline, without a key or on errors, the keyword sorter
+  puts the message in the Inbox with a section label: nothing is ever lost.
+  Prompts live in `ai/.../route/Prompts.kt`; providers in `ai/.../llm/`.
 - **Low-spec tablets.** Target 2–3 GB RAM devices. Avoid heavy libraries,
   keep Compose recompositions cheap, no always-running background work beyond
   what kiosk mode needs. Local model is optional and downloaded on demand.

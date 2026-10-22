@@ -45,15 +45,42 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val shopping by viewModel.shopping.collectAsStateWithLifecycle()
+    val inbox by viewModel.inbox.collectAsStateWithLifecycle()
+    val ai by viewModel.ai.collectAsStateWithLifecycle()
+    var showSettings by remember { mutableStateOf(false) }
 
     val chat = @Composable { modifier: Modifier ->
-        ChatPanel(messages, busy, viewModel.speechLanguage, viewModel::send, modifier)
+        ChatPanel(
+            messages = messages,
+            busy = busy,
+            speechLanguage = viewModel.speechLanguage,
+            aiLabel = ai?.kind?.label?.substringBefore(" ("),
+            onSend = viewModel::send,
+            onAnswer = viewModel::answer,
+            onSettings = { showSettings = true },
+            modifier = modifier,
+        )
     }
-    val dashboard = @Composable { modifier: Modifier ->
+    val cards = @Composable { wide: Boolean, modifier: Modifier ->
+        val shoppingCard = @Composable { m: Modifier -> ShoppingCard(shopping, viewModel::toggleBought, viewModel::addFromCard, m) }
+        val inboxCard = @Composable { m: Modifier -> InboxCard(inbox, lang, viewModel::archiveInbox, m) }
+        if (wide) {
+            Row(modifier, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                shoppingCard(Modifier.weight(1f).fillMaxHeight())
+                inboxCard(Modifier.weight(1f).fillMaxHeight())
+            }
+        } else {
+            Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                shoppingCard(Modifier.weight(1f))
+                inboxCard(Modifier.weight(1f))
+            }
+        }
+    }
+    val dashboard = @Composable { wide: Boolean, modifier: Modifier ->
         Column(modifier) {
             TodayHeader(lang)
             Spacer(Modifier.height(12.dp))
-            ShoppingCard(shopping, viewModel::toggleBought, viewModel::addFromCard, Modifier.weight(1f))
+            cards(wide, Modifier.weight(1f))
         }
     }
 
@@ -66,15 +93,18 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
         if (maxWidth >= WIDE_LAYOUT) {
             Row(Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 chat(Modifier.weight(0.36f).fillMaxHeight())
-                dashboard(Modifier.weight(0.64f).fillMaxHeight())
+                dashboard(true, Modifier.weight(0.64f).fillMaxHeight())
             }
         } else {
             Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                dashboard(Modifier.weight(0.5f).fillMaxWidth())
-                chat(Modifier.weight(0.5f).fillMaxWidth())
+                dashboard(false, Modifier.weight(0.55f).fillMaxWidth())
+                chat(Modifier.weight(0.45f).fillMaxWidth())
             }
         }
         if (dimmed) AmbientOverlay()
+    }
+    if (showSettings) {
+        SettingsDialog(ai, viewModel::testAi, viewModel::saveAi) { showSettings = false }
     }
 }
 

@@ -16,7 +16,7 @@ import kotlinx.browser.window
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     val lang = Lang.fromTag(window.navigator.language)
-    val container = AppContainer(openHearthDatabase(), lang)
+    val container = AppContainer(openHearthDatabase(), lang, BrowserSettingsStore())
     document.getElementById("loading")?.remove()
     ComposeViewport(document.body!!) {
         HearthTheme {
