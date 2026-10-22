@@ -179,9 +179,21 @@ Chat stays docked on the left (~35%). The right side has 5 tabs:
 
 ## 6. Folder structure
 
-Unchanged from v1 (`app`, `core/model`, `core/data`, `core/tools`, `ai`, `mcp`,
-`integrations/google`). Tool packages become:
-`core/tools/{household, food, home, planning, today, batch, friction, notes, system}`.
+Kotlin Multiplatform: shared code in `commonMain`, platform glue in `androidMain` / `wasmJsMain`.
+
+```
+core/model     plain data + helpers (common only)
+core/data      Room 3 entities, DAOs, repositories; openHearthDatabase() per platform
+  worker/      SQLite web worker (npm package) used by the browser build
+core/tools     Tool interface, schema generation, registry, all tools by pillar
+ai             LocalIntentParser (NL + EN), Orchestrator; later LlmProvider + local model
+ui             Compose screens, HomeViewModel, AppContainer, strings (NL/EN), icons
+app            Android: MainActivity, kiosk, Application
+web            Browser: main(), index.html, vercel.json
+mcp, integrations/google   (later slices)
+```
+
+Dependency direction: `app, web → ui → ai → core:tools → core:data → core:model`.
 
 ## 7. Orchestrator flow
 
@@ -214,8 +226,10 @@ Destructive tools always go through a confirm card.
    - **Theft:** set a normal PIN on the tablet. Hearth still runs over the lock screen, but leaving Hearth, opening settings or other apps needs the PIN. API keys stay encrypted in the Android Keystore, and Android's own cloud backup is off (`allowBackup=false`).
 5. **Stock tracking per item:** either **state** (OK / Low / Out, the default) or **count** ("3 left", with a low mark). Both feed the same restock loop.
 
+6. **Web version:** the app also runs in the browser from the same code (Kotlin/Wasm + Compose Multiplatform + Room 3 with a SQLite web worker). Data is stored per browser (OPFS). It is a preview and demo surface; the tablet stays the "server". Kiosk and the Android recognizer are Android-only; the web uses the browser's speech recognition where available. Deployed to Vercel by `.github/workflows/web-preview.yml`.
+
 ## 10. Build notes
 
-- Gradle 8.14.3, AGP 8.13, Kotlin 2.2, KSP, Room 2.8, Compose BOM 2026.06.
-- `./gradlew testDebugUnitTest :app:assembleDebug :app:lintDebug` runs everything; tool and orchestrator tests use Robolectric + in-memory Room.
+- Gradle 8.14.3, AGP 8.13, Kotlin 2.3, KSP 2.3, Room 3.0, androidx.sqlite 2.7, Compose Multiplatform 1.10.
+- `./gradlew hearthCheck` runs everything (see CLAUDE.md).
 - Chat history is kept in memory for now; the `ChatMessage` table arrives with the cloud slice.

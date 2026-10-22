@@ -1,0 +1,55 @@
+# Builds the Hearth web app (Kotlin/Wasm) and deploys it to Vercel.
+# Setup (once): create a token at https://vercel.com/account/tokens and add it to this repository
+# as the Actions secret VERCEL_TOKEN. Without the secret, the built site is still uploaded as a
+# workflow artifact ("hearth-web") so it can be downloaded and opened locally.
+name: Web preview
+
+on:
+  push:
+    branches: [hearth-household-assistant]
+    paths-ignore: ["**.md", "docs/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-preview
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test shared code (JVM + WebAssembly)
+        run: ./gradlew :core:tools:jvmTest :ai:jvmTest :core:tools:wasmJsNodeTest :ai:wasmJsNodeTest
+
+      - name: Build web app
+        run: ./gradlew :web:wasmJsBrowserDistribution
+
+      - name: Prepare site
+        run: |
+          mkdir -p site/hearth
+          cp -r web/build/dist/wasmJs/productionExecutable/. site/hearth/
+          find site -name '*.map' -delete
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hearth-web
+          path: site/hearth
+
+      - name: Deploy to Vercel
+        if: ${{ env.VERCEL_TOKEN != '' }}
+        working-directory: site/hearth
+        run: npx --yes vercel@62.0.0 deploy --prod --yes --token "$VERCEL_TOKEN"

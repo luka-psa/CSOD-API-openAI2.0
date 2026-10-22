@@ -1,7 +1,8 @@
-# Hearth 🔥
+# Hearth
 
 A local-first household assistant for a shared, always-on family tablet.
 Chat (voice or text, Flemish or English) on the left, today's dashboard on the right.
+The same code runs on Android and in the browser.
 
 - Product and architecture rules: [`CLAUDE.md`](CLAUDE.md)
 - Terminology, tools, schema, layout, slices: [`docs/PROPOSAL.md`](docs/PROPOSAL.md)
@@ -11,9 +12,26 @@ Chat (voice or text, Flemish or English) on the left, today's dashboard on the r
 Requires JDK 17+ and the Android SDK (platform 36).
 
 ```
-./gradlew testDebugUnitTest :app:assembleDebug
-adb install app/build/outputs/apk/debug/app-debug.apk
+./gradlew hearthCheck                                   # everything
+adb install app/build/outputs/apk/debug/app-debug.apk   # tablet
+./gradlew :web:wasmJsBrowserDevelopmentRun              # web app on localhost
 ```
+
+## Web preview on Vercel
+
+Every push to `hearth-household-assistant` builds the web app in GitHub Actions
+(`.github/workflows/web-preview.yml`). To publish it on Vercel (once):
+
+1. Create a token at <https://vercel.com/account/tokens>.
+2. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**,
+   name `VERCEL_TOKEN`, paste the token.
+3. Run the **Web preview** workflow (Actions tab → Web preview → Run workflow), or push.
+   The first run creates a Vercel project called `hearth`; the URL is in the workflow log
+   and on your Vercel dashboard.
+
+Without the secret the workflow still builds the site and attaches it as the `hearth-web`
+artifact. Each browser keeps its own data (stored in the browser's private file system).
+Works in current Chrome, Edge, Firefox and Safari.
 
 ## Tablet setup (once)
 

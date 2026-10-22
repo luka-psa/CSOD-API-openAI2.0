@@ -1,7 +1,7 @@
 # Hearth — household assistant for a shared family tablet
 
 Hearth is a local-first Android tablet app. It lives on one shared, always-on
-tablet at home. The home screen is a chat "orchestrator"; the rest is a visual,
+tablet at home. The same code also runs as a web app (Kotlin/Wasm) for previews. The home screen is a chat "orchestrator"; the rest is a visual,
 today-focused dashboard. The tablet *is* the server: there is no backend.
 
 Read `docs/PROPOSAL.md` for the approved tool list, schema, layout and folder
@@ -33,8 +33,13 @@ structure. Keep it in sync when any of those change.
 
 ## Architecture rules (non-negotiable)
 
-- **Local-first.** All data lives in on-device SQLite via Room. The app must be
-  fully usable offline. Cloud is an optional enhancer, never a dependency.
+- **Local-first.** All data lives in on-device SQLite via Room (Room 3, Kotlin
+  Multiplatform). In the browser, the same Room database runs in a SQLite web
+  worker stored in OPFS. The app must be fully usable offline. Cloud is an
+  optional enhancer, never a dependency.
+- **Shared code, thin platforms.** Everything except platform glue (kiosk, voice,
+  database opening) lives in `commonMain`. No `java.*`/`android.*` imports in
+  common code; use Kotlin stdlib, kotlinx-datetime, expect/actual.
 - **One tool layer.** Every action is a typed tool with a schema, defined once
   in `core/tools`. The UI, the chat AI, the local fallback parser and the MCP
   server all call the *same* tool functions. Never write to a DAO from a
@@ -87,9 +92,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 
 ## Code conventions
 
-- Kotlin, Jetpack Compose (Material 3), Room, Coroutines/Flow,
-  kotlinx.serialization. Manual DI via an `AppContainer` (no Hilt) to keep the
-  build and runtime light.
+- Kotlin Multiplatform (Android + JVM for tests + WasmJs), Compose Multiplatform
+  (Material 3), Room 3, Coroutines/Flow, kotlinx.serialization. Manual DI via an
+  `AppContainer` (no Hilt) to keep the build and runtime light.
+- UI strings live in `ui/src/commonMain/composeResources/values{,-nl}/strings.xml`
+  (no Android-style escaping: use “ ” and ’). No emoji in UI or tool summaries:
+  the web build has no emoji font; use the vectors in `HearthIcons`.
 - IDs are UUID strings; every entity has `createdAt`/`updatedAt` (epoch millis)
   to make backup/restore and future sync safe.
 - Tool names are `snake_case` verb_noun (`add_shopping_item`). Tool results are
@@ -104,11 +112,18 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 ## Build & test
 
 ```
-./gradlew testDebugUnitTest :app:assembleDebug :app:lintDebug
+./gradlew hearthCheck          # all tests (JVM + Wasm), Android build + lint, web bundle
+./gradlew :web:wasmJsBrowserDevelopmentRun   # web app on localhost with live reload
 ```
 
-Modules: `core:model` (plain Kotlin) → `core:data` (Room) → `core:tools` (all tools,
-`HearthTools` wires them) → `ai` (parser + orchestrator) → `app` (Compose UI, kiosk).
+Modules (all Kotlin Multiplatform except `app` and `web`):
+`core:model` → `core:data` (Room 3; `worker/` = SQLite web worker) → `core:tools`
+(all tools, `HearthTools` wires them) → `ai` (parser + orchestrator) → `ui` (Compose
+screens, ViewModel, strings, `AppContainer`) → `app` (Android: activity, kiosk) and
+`web` (browser entry point, `index.html`, `vercel.json`).
+
+Tests: tool and orchestrator tests in `jvmTest` (in-memory Room, bundled SQLite);
+parser and registry tests in `commonTest` (run on JVM and WebAssembly).
 New tools: add args/result classes + tool class in `core/tools/.../<pillar>/`, register in
 `HearthTools`, add parser rules (NL + EN) and tests.
 

@@ -7,7 +7,6 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
@@ -21,3 +20,5 @@ include(":core:model")
 include(":core:data")
 include(":core:tools")
 include(":ai")
+include(":ui")
+include(":web")

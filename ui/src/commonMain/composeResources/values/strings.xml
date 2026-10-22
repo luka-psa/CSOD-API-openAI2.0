@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="today">Today</string>
+    <string name="chat_hint">Type or say something…</string>
+    <string name="send">Send</string>
+    <string name="speak">Speak</string>
+    <string name="chat_welcome">Hi! Tell me what we need, like “milk” or “medicine from the pharmacy”.</string>
+    <string name="chip_list">What’s on the list?</string>
+    <string name="chip_milk">Add milk</string>
+    <string name="shopping_list">Shopping list</string>
+    <string name="shopping_empty">Nothing needed right now.</string>
+    <string name="shopping_add_hint">Add to the list…</string>
+    <string name="add">Add</string>
+    <string name="tap_to_wake">Tap to wake</string>
+</resources>

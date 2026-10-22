@@ -1,7 +1,40 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room3)
+}
+
+kotlin {
+    compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
+    androidTarget { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
+    // JVM target exists for fast host tests (in-memory bundled SQLite).
+    jvm { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs { nodejs() }
+
+    sourceSets {
+        commonMain.dependencies {
+            api(project(":core:model"))
+            api(libs.room3.runtime)
+            api(libs.coroutines.core)
+        }
+        androidMain.dependencies {
+            implementation(libs.sqlite.framework)
+        }
+        jvmMain.dependencies {
+            implementation(libs.sqlite.bundled)
+        }
+        wasmJsMain.dependencies {
+            implementation(libs.sqlite.web)
+            implementation(libs.kotlinx.browser)
+            // SQLite (WASM build) running in a web worker; see worker/worker.js.
+            implementation(npm("hearth-sqlite-worker", layout.projectDirectory.dir("worker").asFile))
+        }
+    }
 }
 
 android {
@@ -14,14 +47,12 @@ android {
     }
 }
 
-kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
-
-ksp { arg("room.schemaLocation", "$projectDir/schemas") }
-
 dependencies {
-    api(project(":core:model"))
-    api(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
-    api(libs.coroutines.core)
+    add("kspAndroid", libs.room3.compiler)
+    add("kspJvm", libs.room3.compiler)
+    add("kspWasmJs", libs.room3.compiler)
+}
+
+room3 {
+    schemaDirectory("$projectDir/schemas")
 }

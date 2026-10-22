@@ -1,0 +1,8 @@
+{
+  "headers": [
+    {
+      "source": "/:file([0-9a-f]{20}\\.(?:wasm|js))",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    }
+  ]
+}

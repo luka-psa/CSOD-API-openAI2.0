@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import app.hearth.kiosk.KioskController
 import app.hearth.ui.HearthScreen
 import app.hearth.ui.HomeViewModel
@@ -14,8 +16,9 @@ import app.hearth.ui.theme.HearthTheme
 class MainActivity : ComponentActivity() {
     private val dimmed = mutableStateOf(false)
     private val kiosk = KioskController(this, onDimmedChanged = { dimmed.value = it })
+    private val container get() = (application as HearthApp).container
     private val viewModel: HomeViewModel by viewModels {
-        HomeViewModel.factory((application as HearthApp).container)
+        viewModelFactory { initializer { HomeViewModel(container) } }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,7 +26,7 @@ class MainActivity : ComponentActivity() {
         kiosk.onCreate()
         setContent {
             HearthTheme {
-                HearthScreen(viewModel = viewModel, dimmed = dimmed.value)
+                HearthScreen(viewModel = viewModel, lang = container.lang, dimmed = dimmed.value)
             }
         }
     }
