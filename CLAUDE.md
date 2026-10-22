@@ -68,6 +68,23 @@ structure. Keep it in sync when any of those change.
 - **Privacy.** No analytics, no telemetry. Only the content needed for a cloud
   request leaves the device, and only when a cloud provider is configured.
 
+## Terminology (use these words everywhere: UI, chat, code, tool names)
+
+Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
+
+- **Food & Stock:** *Stock item* (IN_STOCK/LOW/OUT, lives in a *Storage spot*),
+  *Stock check*, *Shopping item* (restock = linked to a stock item, or
+  *one-off buy*), *Shop*, *Meal plan*.
+- **Home & Rhythm:** *Rhythm* (fixed daily sequence), *Chore* (recurring
+  upkeep with a flexible interval + season, never "late"), *Anchor habit*,
+  *Protected time*.
+- **Planning:** *Appointment* (TO_BOOK → BOOKED → DONE), *Admin*, *Project*
+  with *Steps*, *Errand* (a trip to one shop).
+- **Shared:** *Area* with an *Owner*, *Helper*, *Batch*, *Friction*, *Note*,
+  *Done log*.
+- Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
+  UI ships in Dutch (Flemish) and English; the local parser understands both.
+
 ## Code conventions
 
 - Kotlin, Jetpack Compose (Material 3), Room, Coroutines/Flow,

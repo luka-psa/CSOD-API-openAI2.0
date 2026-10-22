@@ -1,200 +1,209 @@
 # Hearth — design proposal (awaiting approval)
 
-Status: **DRAFT — no code until approved.**
+Status: **DRAFT v2. No code until approved.**
+v2 adds: shared terminology, the Stock ↔ Shopping loop, shops & one-off buys,
+recurring household chores, and a Planning area (appointments, admin, projects).
 
-## 1. Tech stack
+## 1. The three pillars and their terms
 
-| Concern | Choice | Why |
+The app is organised around three pillars plus **Today**. Each term below means one
+thing everywhere: in the UI, in chat, in code and in tool names. UI ships in
+**Dutch (Flemish) and English**; the chat parser understands both.
+
+### Pillar A: Food & Stock (*Keuken & Voorraad*)
+
+| Term (EN / NL) | Meaning | Example |
 |---|---|---|
-| Language/UI | Kotlin, Jetpack Compose, Material 3 | Standard, tablet-friendly |
-| Storage | Room (SQLite) + Flow | Local-first, reactive dashboard |
-| DI | Manual `AppContainer` | No Hilt/kapt cost on build or low-spec runtime |
-| Serialization / schemas | kotlinx.serialization + small schema DSL | One definition → JSON Schema for LLMs & MCP |
-| HTTP (LLM, Google) | OkHttp | Small, already transitive in most stacks |
-| Voice | Android `SpeechRecognizer` (on-device where available) + TextToSpeech | Free, offline-capable |
-| Local model | llama.cpp (JNI) with ~0.5B 4-bit model (e.g. Qwen2.5-0.5B-Instruct Q4_K_M, ~400 MB), downloaded on demand | Fits 3 GB devices; optional |
-| MCP server | Ktor CIO embedded server, streamable HTTP | Lightweight, LAN only |
-| Google | Credential Manager sign-in + AuthorizationClient scopes; Calendar & Drive REST via OkHttp | No heavy Google API client libs |
-| Min SDK | 26 (Android 8.0) | Covers old/cheap tablets |
+| **Stock item** / *Voorraaditem* | Something we always want at home. It has a state: `IN_STOCK`, `LOW` or `OUT`, plus a storage spot. | Milk (fridge), dishwasher tabs (under sink), paracetamol (bathroom) |
+| **Storage spot** / *Plek* | Where stock lives. Used to walk through stock room by room. | Fridge, freezer, pantry, bathroom, cleaning cupboard |
+| **Stock check** / *Voorraadcheck* | A quick walk through one or all spots: tap **OK / Low / Out** per item. | "Check the bathroom" |
+| **Shopping item** / *Boodschap* | One line on the shared shopping list. It is either a **restock** (linked to a stock item) or a **one-off buy** (*losse aankoop*). | "Milk" (restock), "Medicine from the pharmacy" (one-off) |
+| **Shop** / *Winkel* | Where an item is bought. The shopping list is grouped by shop. | Supermarket, Pharmacy (*Apotheek*), Gamma, IKEA, Bakery |
+| **Meal plan** / *Weekmenu* | Optional weekly meals. Ingredients that aren't in stock become shopping items. | |
 
-## 2. Tool list
+### Pillar B: Home & Rhythm (*Huis & Ritme*)
 
-Every tool: `name`, `description`, typed `Args` (→ JSON Schema), typed `Result`
-with a `summary`, and `destructive` flag. ⚠ = destructive (needs confirmation).
+| Term | Meaning | Example |
+|---|---|---|
+| **Rhythm** / *Ritme* | A fixed daily sequence tied to a moment of the day. Resets every day. | Evening routine: dishes → lunchboxes → table clear |
+| **Chore** / *Huishoudtaak* | Recurring upkeep with a **flexible interval** ("about every 2 weeks") and an optional **season**. No due date. It slowly becomes "ready" again after it's done. | Weed the terrace (*onkruid wieden terras*), every ~2 wks, Apr–Oct · Mow the lawn (*gras maaien*), ~weekly, Apr–Oct · Change sheets (*lakens verversen*), ~2 wks · Clean windows (*ramen kuisen*), ~2 months |
+| **Anchor habit** / *Gewoonte* | "After X, do Y". Shown while forming, then faded out. | After coffee → empty the dishwasher |
+| **Protected time** / *Vrije tijd* | Recurring fun/rest block, shown as a reward. | Friday movie night |
 
-**Household & members**
-- `get_household` — members, areas, owners
-- `add_member` / `update_member` (name, color, avatar, style: `DOER|PLANNER`, prefers: `QUICK|PROJECT|MIXED`, strengths[])
-- `remove_member` ⚠
-- `add_area` / `update_area` (name, icon, ownerId)
-- `remove_area` ⚠
-- `set_area_owner`
+### Pillar C: Planning (*Planning*)
 
-**Tasks**
-- `list_tasks` (filters: memberId, areaId, status, size, today)
-- `get_today` (per-member Today view: tasks, rhythm step, anchors, protected time)
-- `add_task` (title, areaId?, assigneeId?, size?, due?, recurrence?, notes?) — AI suggests area/assignee/size if omitted
-- `update_task`
-- `complete_task` / `reopen_task` / `skip_task_today`
-- `delete_task` ⚠
-- `break_down_task` (taskId, steps[]) — creates linked sub-tasks; the AI generates the steps, the tool just stores them
-- `ask_for_help` (taskId, helperId, stepTitle) — linked sub-task owned by the area owner, assigned to helper
-- `suggest_quick_task` (memberId?, minutes?) — "give me one quick task"
-- `route_task` (taskId) — re-runs owner/size matching
+| Term | Meaning | Example |
+|---|---|---|
+| **Appointment** / *Afspraak* | Something to **book** and then **attend**. Lifecycle: `TO_BOOK` → `BOOKED` (date, place) → `DONE`. It can repeat ("every year"). | Osteopath, car inspection (*autokeuring*), dentist |
+| **Admin** / *Administratie* | Paperwork with an optional deadline. | Taxes, insurance, school forms |
+| **Project** / *Project (bouw & klussen)* | Bigger job made of **steps**. It can link to shopping items (materials), errands and appointments. | Hang lamps in the toilet · Clear out & clean the whole kitchen (*keuken uitkuisen*) · New cupboard |
+| **Errand** / *Rit* | A trip to one shop. It automatically shows every open shopping item for that shop. | IKEA run for the cupboard, Gamma for paint |
+| **Step** / *Stap* | A sub-task of a project (or any task). Can be assigned to a helper, but the owner stays the owner. | "Buy paint", "Remove old lamp" |
 
-**Groceries & meals**
-- `add_grocery_item` (name, quantity?, note?, addedBy?) — de-dupes, merges quantities
-- `list_grocery_items`
-- `check_grocery_item` / `uncheck_grocery_item`
-- `remove_grocery_item` ⚠ (single item, soft confirm)
-- `clear_checked_groceries` ⚠
-- `add_staple` / `remove_staple` ⚠ / `list_staples`
-- `restock_staples` (staple ids or "all low") → grocery items
-- `set_meal_plan` (weekStart, days[{day, meal, ingredients[]}])
-- `get_meal_plan`
-- `create_shopping_task_from_meal_plan` — adds missing ingredients + a linked "Do the shop" task
+### Shared across pillars
 
-**Rhythm, anchors, protected time**
-- `list_rhythm_cards` / `add_rhythm_card` (name, anchor: MORNING|AFTER_SCHOOL|EVENING|BEDTIME|custom, steps[]) / `update_rhythm_card` / `delete_rhythm_card` ⚠
-- `check_rhythm_step` (resets daily)
-- `add_anchor` ("after X, do Y", memberId?) / `update_anchor` / `fade_anchor` (FORMING → FADING → FORMED) / `delete_anchor` ⚠
-- `log_anchor_done`
-- `add_protected_time` (title, members[], recurrence, start, durationMin, kind: FUN|REST) / `update_protected_time` / `delete_protected_time` ⚠
-- `get_progress` (period: TODAY|WEEK) — done counts per member/area, protected time honored
+| Term | Meaning |
+|---|---|
+| **Area** / *Domein* | A zone of responsibility with one **owner**, e.g. Kitchen, Garden, Admin, Car, Kids. Every chore, project, appointment and stock spot belongs to an area. |
+| **Owner** / *Eigenaar* | The person who notices *and* follows through for an area. Default assignee. |
+| **Helper** / *Helper* | Someone assigned a linked step; the owner keeps ownership. |
+| **Batch** / *Bundel* | A set slot that collects similar items, e.g. "Calls, Tue 10:00". |
+| **Friction** / *Ergernis* | An annoying task plus ideas to fix it: open / to try / to buy / solved. |
+| **Note** / *Huisregel* | A household rule or agreement for reference. |
+| **Done log** / *Gedaan* | Every completed thing, so work becomes visible. |
 
-**Batching**
-- `add_batch_list` (name, slot: recurrence + time, e.g. "Calls — Tue 10:00") / `delete_batch_list` ⚠
-- `add_batch_item` / `complete_batch_item` / `list_batch_items`
+## 2. How the parts link
 
-**Friction log**
-- `log_friction` (title, area?, note?)
-- `add_friction_idea` (entryId, idea)
-- `set_friction_status` (OPEN|TO_TRY|TO_BUY|SOLVED)
-- `list_friction` / `delete_friction` ⚠
+```
+          check: Low/Out                     tick "bought"
+ Stock item ───────────────▶ Shopping item ───────────────▶ Stock item = IN_STOCK
+     ▲                           │  ▲   │
+     │ meal plan only adds       │  │   └─ grouped by Shop ──▶ Errand ("Gamma run")
+     │ what isn't in stock       │  │                             ▲
+ Meal plan ──────────────────────┘  │                             │
+                                    │ materials                   │
+ Friction idea "to buy" ────────────┤                             │
+                                    │                             │
+ Project ── steps ──▶ Step / Helper step                          │
+    │  └──────────── needs shop trip ─────────────────────────────┘
+    └── needs appointment ──▶ Appointment TO_BOOK ──▶ Batch "Calls" ──▶ BOOKED ──▶ Google Calendar
+                                                                         │
+                                         (repeats yearly, e.g. keuring) └──▶ DONE ──▶ next TO_BOOK
 
-**Notes**
-- `add_note` / `update_note` / `search_notes` / `delete_note` ⚠
+ Chore done ─▶ resets its interval ─▶ Done log      Rhythm step ticked ─▶ Done log
+```
 
-**System (not exposed over MCP)**
-- `confirm_pending_action` / `cancel_pending_action`
-- `push_to_calendar` (itemId) / `set_calendar_sync` (on/off)
-- `backup_now` / `restore_backup` ⚠ / `set_backup_enabled`
+The rules behind the diagram:
 
-## 3. Data schema (Room)
+1. **Restock loop.** Marking a stock item `LOW` or `OUT` adds one shopping item linked to it (never a duplicate). Ticking that shopping item as bought sets the stock item back to `IN_STOCK`. Saying "add milk" in chat when *Milk* is a stock item links to it and marks it `LOW`.
+2. **One-off buys** are shopping items without a stock item. When ticked they just leave the list. Chat can tell them apart: "don't forget medicine from the pharmacy" becomes a one-off with shop = Pharmacy.
+3. **Shops → errands.** Every shopping item has a shop (default: Supermarket). An errand for a shop shows all open items for that shop live. Ticking items in the errand is the same action as ticking them on the list.
+4. **Projects pull things in.** A project can create shopping items (materials, with a shop), errands and appointments. These keep a link back, so the project shows its progress across all of them.
+5. **Appointments to book land in the "Calls" batch** automatically. Once booked, they go to Google Calendar (if enabled). Repeating appointments create the next `TO_BOOK` when done.
+6. **Chores never become "late".** Each has `lastDoneAt` and an interval with slack. The UI shows a soft "readiness" (fresh → ready → really ready). Outside its season a chore is hidden.
+7. **Everything done goes to the Done log**, which drives "done this week" and the progress card.
+8. **Area owner is the default** for anything created in that area; the AI may suggest a helper based on style (quick vs. project).
 
-All tables: `id TEXT PK (UUID)`, `createdAt`, `updatedAt` (epoch ms). Enums stored as TEXT.
+## 3. Tool list
+
+`⚠` = destructive (needs confirmation). All tools are typed; schemas generated.
+
+**Household:** `get_household`, `add_member`, `update_member`, `remove_member` ⚠, `add_area`, `update_area`, `remove_area` ⚠, `set_area_owner`
+
+**Stock & shopping**
+- `list_stock` (spot?, state?) · `add_stock_item` · `update_stock_item` · `remove_stock_item` ⚠
+- `set_stock_state` (itemId, IN_STOCK|LOW|OUT): LOW/OUT auto-adds shopping item
+- `start_stock_check` (spot?) → ordered list of items to walk through
+- `add_shopping_item` (name, quantity?, shopName?, note?): links to stock if it matches, otherwise one-off
+- `list_shopping_items` (shop?) · `mark_bought` (itemId[]): restores stock · `unmark_bought`
+- `remove_shopping_item` ⚠ · `clear_bought_items` ⚠
+- `add_shop` · `list_shops`
+- `set_meal_plan` · `get_meal_plan` · `shop_for_meal_plan`: adds only what isn't in stock
+
+**Home & rhythm**
+- `list_rhythms` · `add_rhythm` · `update_rhythm` · `delete_rhythm` ⚠ · `tick_rhythm_step`
+- `add_chore` (title, area, intervalDays, slackDays?, seasonFrom?, seasonTo?, size?) · `update_chore` · `delete_chore` ⚠
+- `list_chores` (ready only?, member?) · `mark_chore_done` · `snooze_chore` (days)
+- `add_anchor` · `update_anchor` · `fade_anchor` · `delete_anchor` ⚠ · `log_anchor_done`
+- `add_protected_time` · `update_protected_time` · `delete_protected_time` ⚠
+
+**Planning**
+- `add_appointment` (title, area?, who?, contact?, repeatEveryMonths?) · `book_appointment` (id, dateTime, place?) · `mark_appointment_done` · `list_appointments` (status?) · `delete_appointment` ⚠
+- `add_admin_task` (title, deadline?) · `list_admin`
+- `add_project` (title, area?, owner?) · `add_project_steps` (projectId, steps[]) · `break_down` (AI writes the steps; tool stores them) · `ask_for_help` (stepId, helperId) · `link_to_project` (projectId, shoppingItem|appointment|errand)
+- `add_errand` (shop, forProjectId?) · `list_errands`
+- Generic for tasks/steps/admin: `complete_task`, `reopen_task`, `update_task`, `delete_task` ⚠
+
+**Today & cross-cutting**
+- `get_today` (member?) · `whats_open` (member?) · `suggest_quick_task` (member?, minutes?) · `get_progress` (TODAY|WEEK)
+- Batch: `add_batch` · `add_batch_item` · `complete_batch_item` · `list_batch`
+- Friction: `log_friction` · `add_friction_idea` · `set_friction_status` · `idea_to_shopping` · `delete_friction` ⚠
+- Notes: `add_note` · `update_note` · `search_notes` · `delete_note` ⚠
+- System (not over MCP): `confirm_pending_action`, `cancel_pending_action`, `set_calendar_sync`, `push_to_calendar`, `backup_now`, `restore_backup` ⚠
+
+## 4. Data schema (Room)
+
+All tables: `id TEXT PK (UUID)`, `createdAt`, `updatedAt`. Enums as TEXT.
 
 | Entity | Key columns |
 |---|---|
-| **Household** | name, timezone, dayStartsAt (e.g. 04:00), anchors JSON (labels + typical times) |
-| **Member** | householdId, name, color, avatar, style (DOER/PLANNER), prefersSize (QUICK/PROJECT/MIXED), strengths (JSON list), isKid |
-| **Area** | householdId, name, icon, ownerId → Member |
-| **Task** | householdId, areaId?, title, notes, ownerId? (from area), assigneeId?, size (QUICK/PROJECT), estimateMin?, parentId? → Task, isHelpRequest, status (OPEN/DONE/SKIPPED), dueDate?, anchor?, recurrence? (simple RRULE subset), completedAt?, completedById?, sortOrder, calendarEventId? |
-| **GroceryItem** | householdId, name, normalizedName, quantity?, note?, checked, checkedAt?, addedById?, sourceStapleId?, sourceMealPlanId? |
-| **Staple** | householdId, name, normalizedName, defaultQuantity?, category |
-| **MealPlan** | householdId, weekStart (date), shoppingTaskId? |
-| **MealPlanDay** | mealPlanId, day (0–6), meal, ingredients (JSON) |
-| **RhythmCard** | householdId, name, anchor, memberIds (JSON), isActive, sortOrder |
-| **RhythmStep** | rhythmCardId, title, sortOrder |
-| **RhythmCheck** | rhythmStepId, date, checkedById — daily state without mutating steps |
-| **Anchor** | householdId, memberId?, afterWhat, doWhat, phase (FORMING/FADING/FORMED), startedAt |
-| **AnchorLog** | anchorId, date |
-| **ProtectedTime** | householdId, title, kind (FUN/REST), memberIds (JSON), recurrence, startTime, durationMin, calendarEventId? |
-| **BatchList** | householdId, name, slotRecurrence, slotTime, calendarEventId? |
-| **BatchItem** | batchListId, title, note?, done, doneAt? |
-| **FrictionEntry** | householdId, areaId?, title, note, status (OPEN/TO_TRY/TO_BUY/SOLVED), solvedAt? |
-| **FrictionIdea** | frictionEntryId, text, tried |
-| **Note** | householdId, title, body, tags (JSON), pinned |
-| **ChatMessage** | role, text, toolCallsJson?, pendingActionId?, createdAt (short rolling history) |
-| **PendingAction** | toolName, argsJson, summary, expiresAt, source (CHAT/MCP) |
+| **Household** | name, locale (nl-BE / en), timezone, dayStartsAt, dayMoments JSON |
+| **Member** | name, color, avatar, style (DOER/PLANNER), prefersSize (QUICK/PROJECT/MIXED), strengths JSON, isKid |
+| **Area** | name, icon, ownerId |
+| **StorageSpot** | name, icon, areaId?, sortOrder |
+| **Shop** | name, kind (SUPERMARKET/PHARMACY/DIY/FURNITURE/OTHER), sortOrder |
+| **StockItem** | name, normalizedName, spotId, defaultShopId, state (IN_STOCK/LOW/OUT), defaultQuantity?, lastCheckedAt |
+| **ShoppingItem** | name, normalizedName, quantity?, note?, shopId, stockItemId? (null = one-off), projectId?, mealPlanId?, frictionIdeaId?, bought, boughtAt?, addedById? |
+| **MealPlan / MealPlanDay** | weekStart · day, meal, ingredients JSON |
+| **Rhythm / RhythmStep / RhythmTick** | name, dayMoment, memberIds, active · title, order · stepId, date, byId |
+| **Chore** | title, areaId, ownerId?, intervalDays, slackDays, seasonFromMonth?, seasonToMonth?, size, lastDoneAt?, lastDoneById?, dayMoment? |
+| **Task** | kind (TODO/ADMIN/PROJECT/STEP/ERRAND), title, notes, areaId?, ownerId?, assigneeId?, parentId? (project → steps), size, deadline?, shopId? (errands), status (OPEN/DONE/SKIPPED), completedAt?, completedById?, sortOrder |
+| **Appointment** | title, areaId?, forMemberId?, contact?, status (TO_BOOK/BOOKED/DONE), scheduledAt?, place?, repeatEveryMonths?, projectId?, calendarEventId? |
+| **Anchor / AnchorLog** | memberId?, afterWhat, doWhat, phase (FORMING/FADING/FORMED) · anchorId, date |
+| **ProtectedTime** | title, kind (FUN/REST), memberIds, recurrence, startTime, durationMin, calendarEventId? |
+| **Batch / BatchItem** | name, slotRecurrence, slotTime · batchId, title, appointmentId?, done |
+| **FrictionEntry / FrictionIdea** | title, areaId?, status · entryId, text, tried |
+| **Note** | title, body, tags, pinned |
+| **DoneLog** | sourceType (CHORE/TASK/RHYTHM/APPOINTMENT/SHOPPING), sourceId, memberId?, doneAt |
+| **ChatMessage / PendingAction** | as in v1 |
 
-Recurrence: completing a recurring task creates the next instance (keeps history = visible progress).
+Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
-## 4. Dashboard layout (landscape tablet, ~1280×800)
+## 5. Navigation & dashboard
 
-```
-┌──────────────────────────┬───────────────────────────────────────────────┐
-│  🔥 Hearth   Tue 20 Oct  │  TODAY                                         │
-│ ─────────────────────── │ ┌─────────┐┌─────────┐┌─────────┐               │
-│  Chat (orchestrator)     │ │ Sam     ││ Alex    ││ Mia     │ per-member    │
-│                          │ │ 3 open  ││ 1 open  ││ ✓ 2 done│ Today columns │
-│  you: add milk           │ │ □ bins  ││ □ call  ││         │ (tap = done)  │
-│  🔥 Added milk to the    │ └─────────┘└─────────┘└─────────┘               │
-│     list. ✓              │ ┌───────────────────┐┌──────────────────────┐   │
-│                          │ │ Evening rhythm  ◐ ││ Groceries (6)        │   │
-│  [confirm card for ⚠]    │ │ ☑ dishes          ││ □ milk  □ eggs       │   │
-│                          │ │ ☐ lunchboxes      ││ □ bread …  + Staples │   │
-│                          │ └───────────────────┘└──────────────────────┘   │
-│  quick chips:            │ ┌──────────┐┌──────────────┐┌───────────────┐  │
-│  [What's open?]          │ │ Anchors  ││ Protected 🎉 ││ Done this week│  │
-│  [One quick task]        │ │ after    ││ Fri movie    ││ ▇▇▇▅ 23 things│  │
-│  [Add to groceries]      │ │ coffee → ││ night 19:30  ││               │  │
-│ ┌──────────────────┐ 🎤 │ └──────────┘└──────────────┘└───────────────┘  │
-│ │ Type or speak…   │    │  Batches: 📞 Calls (3) Tue 10:00               │
-│ └──────────────────┘    │ ─ nav: Today · Tasks · Food · Rhythm · Friction · Notes · ⚙ │
-└──────────────────────────┴───────────────────────────────────────────────┘
-```
-
-- Left ~35%: chat, always visible, big mic button, quick-action chips.
-- Right ~65%: "Today" dashboard; cards are tappable and call the same tools.
-- The rhythm card shown is the one for the current time of day (morning → evening).
-- Bottom nav opens full screens; chat stays docked. Portrait: chat collapses to a bottom sheet.
-- Ambient/night mode: dims after inactivity, shows clock + next protected time.
-
-## 5. Folder structure (Gradle modules)
+Chat stays docked on the left (~35%). The right side has 5 tabs:
 
 ```
-hearth/
-├── CLAUDE.md
-├── docs/PROPOSAL.md
-├── settings.gradle.kts, build.gradle.kts, gradle/libs.versions.toml
-├── app/                         # Activity, kiosk, boot receiver, navigation, AppContainer
-│   └── src/main/java/app/hearth/
-│       ├── MainActivity.kt
-│       ├── kiosk/               # BootReceiver, keep-awake, lock-task
-│       ├── di/AppContainer.kt
-│       └── ui/
-│           ├── chat/            # ChatPanel, ChatViewModel, ConfirmCard
-│           ├── dashboard/       # TodayScreen + cards (Groceries, Rhythm, …)
-│           ├── tasks/ food/ rhythm/ friction/ notes/ settings/
-│           └── theme/
-├── core/model/                  # pure Kotlin data classes & enums (no Android)
-├── core/data/                   # Room entities, DAOs, HearthDatabase, repositories
-├── core/tools/                  # Tool interface, schema DSL, ToolRegistry, all tools
-│   └── tools/{household,tasks,groceries,rhythm,batch,friction,notes,system}/
-├── ai/                          # Orchestrator, LlmProvider + Claude/OpenAI/Grok,
-│                                # LocalIntentParser (tier 1), LocalModel (tier 2, JNI)
-├── mcp/                         # Ktor MCP server adapting ToolRegistry
-└── integrations/google/         # sign-in, Calendar push, Drive appData backup
+ Today | Food & Stock | Home & Rhythm | Planning | Notes & Friction        ⚙
 ```
 
-Dependency direction: `app → ai, mcp, integrations → core:tools → core:data → core:model`.
+- **Today** (home): a column per member (their open steps/admin/errands, ready chores), the current rhythm, the shopping list grouped by shop, today's appointments, protected time, done this week.
+- **Food & Stock**: three sub-views. *Shopping list* (grouped by shop; tick = bought). *Stock* (by storage spot; big OK / Low / Out buttons, plus a "Start stock check" walkthrough). *Meal plan*.
+- **Home & Rhythm**: *Rhythms* (today's sequences). *Chores* board sorted by readiness, with a soft fill bar and season badge; tap = done. *Anchor habits*. *Protected time*.
+- **Planning**: *Appointments* (To book · Booked · upcoming), *Admin*, *Projects* (cards with steps, materials, errands and appointments, plus a progress ring), *Errands* by shop.
+- **Notes & Friction**: friction board (Open / To try / To buy / Solved) and household notes.
 
-## 6. Orchestrator flow
+```
+┌────────────────────┬──────────────────────────────────────────────────┐
+│ Chat               │ Food & Stock › Stock check: Bathroom   (3 / 9)   │
+│                    │                                                  │
+│ you: we zijn bijna │   Paracetamol                                    │
+│ door de wc-papier  │   ┌────────┐  ┌────────┐  ┌────────┐             │
+│ 🔥 Toilet paper is │   │  OK ✓  │  │  Low   │  │  Out   │             │
+│ low, added to the  │   └────────┘  └────────┘  └────────┘             │
+│ supermarket list.  │                                                  │
+│                    │   Low/Out → added to shopping list automatically │
+└────────────────────┴──────────────────────────────────────────────────┘
+```
 
-1. User text/voice → `Orchestrator.handle(text)`.
-2. Tier 1 `LocalIntentParser` (regex/grammar, multilingual-ready) → tool call if confident.
-3. Else tier 2 local model (if installed) with a *small* tool subset → tool call if valid JSON.
-4. Else tier 3 cloud provider with full tool schemas; loop tool calls until a final reply.
-5. Any `destructive` call → `PendingAction` + confirm card; executes only on confirm.
-6. Offline + complex → "I can't do that offline yet — I've saved it as a note/task to revisit."
+## 6. Folder structure
 
-## 7. Build slices
+Unchanged from v1 (`app`, `core/model`, `core/data`, `core/tools`, `ai`, `mcp`,
+`integrations/google`). Tool packages become:
+`core/tools/{household, food, home, planning, today, batch, friction, notes, system}`.
 
-1. **Slice 1 (first):** project skeleton, `core:model/data/tools`, `add_grocery_item` + `list_grocery_items` + `check_grocery_item`, tier-1 parser ("add milk", "we need eggs and bread"), chat panel + dashboard grocery card updating live. Tests for tool + parser.
-2. Cloud providers (Claude/OpenAI/Grok) + API-key settings + tool-calling loop + confirm flow.
-3. Household setup (members, areas, owners) + tasks + per-member Today + routing.
-4. Staples, meal plan → shopping task.
-5. Rhythm cards, anchors, protected time, progress.
-6. Batching, friction log, notes.
-7. Kiosk mode hardening, voice polish.
-8. MCP server.
-9. Local quantized model.
-10. Google Calendar push + Drive backup/restore.
+## 7. Orchestrator flow
 
-## 8. Open questions
+Unchanged from v1: local parser (NL + EN) → optional on-device model → cloud model.
+Destructive tools always go through a confirm card.
+
+## 8. Build slices (revised)
+
+1. **Slice 1: Shopping list.** Skeleton + `core` modules, Shop, ShoppingItem, `add_shopping_item`, `list_shopping_items`, `mark_bought`. NL/EN parser: "add milk", "melk", "medicijnen bij de apotheek", "we need eggs and bread". Chat panel + Today shopping card grouped by shop, updating live. Tests.
+2. **Slice 2: Stock loop.** StorageSpot, StockItem, `set_stock_state`, stock check walkthrough, bought → back in stock.
+3. Cloud providers + API keys + tool-calling loop + confirm flow.
+4. Household setup (members, areas, owners) + Today per member.
+5. Chores (interval, season, readiness) + rhythms.
+6. Planning: appointments, admin, projects with steps, errands, links.
+7. Anchors, protected time, Done log & progress.
+8. Batching, friction, notes, meal plan.
+9. Kiosk hardening, voice polish.
+10. MCP server · 11. Local model · 12. Google Calendar + Drive backup.
+
+## 9. Open questions
 
 1. App name **Hearth** OK? (package `app.hearth`)
-2. Language(s) for UI and the local parser — English only, or also Dutch?
-3. Min SDK 26 OK, or do you have a specific tablet in mind?
-4. Kiosk: is "set as default launcher + immersive" enough, or do you want full device-owner lock-task?
+2. Default UI language **Dutch (Flemish)** with English as a toggle. OK?
+3. Min SDK 26 OK, or a specific tablet?
+4. Kiosk: default launcher + immersive, or full device-owner lock-task?
+5. Should stock items carry quantities ("2 left"), or are OK / Low / Out enough? (Proposal: states only. Faster, zero-thinking.)
