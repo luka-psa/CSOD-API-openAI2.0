@@ -92,7 +92,7 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   build and runtime light.
 - IDs are UUID strings; every entity has `createdAt`/`updatedAt` (epoch millis)
   to make backup/restore and future sync safe.
-- Tool names are `snake_case` verb_noun (`add_grocery_item`). Tool results are
+- Tool names are `snake_case` verb_noun (`add_shopping_item`). Tool results are
   small, serializable data classes plus a short human `summary` string that the
   chat can show verbatim.
 - Every tool gets a unit test (in-memory Room). Parser rules get table-driven
@@ -100,6 +100,17 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - Build in small vertical slices. Each slice ends with: tests passing, the
   feature reachable from both chat and UI, and `docs/PROPOSAL.md` updated if the
   plan changed.
+
+## Build & test
+
+```
+./gradlew testDebugUnitTest :app:assembleDebug :app:lintDebug
+```
+
+Modules: `core:model` (plain Kotlin) → `core:data` (Room) → `core:tools` (all tools,
+`HearthTools` wires them) → `ai` (parser + orchestrator) → `app` (Compose UI, kiosk).
+New tools: add args/result classes + tool class in `core/tools/.../<pillar>/`, register in
+`HearthTools`, add parser rules (NL + EN) and tests.
 
 ## Copy & tone checklist (for any user-facing string)
 

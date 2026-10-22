@@ -1,6 +1,6 @@
-# Hearth — design proposal (awaiting approval)
+# Hearth — design
 
-Status: **DRAFT v2. No code until approved.**
+Status: **Approved (v2 + decisions in §9). Slice 1 built.**
 v2 adds: shared terminology, the Stock ↔ Shopping loop, shops & one-off buys,
 recurring household chores, and a Planning area (appointments, admin, projects).
 
@@ -75,7 +75,7 @@ thing everywhere: in the UI, in chat, in code and in tool names. UI ships in
 
 The rules behind the diagram:
 
-1. **Restock loop.** Marking a stock item `LOW` or `OUT` adds one shopping item linked to it (never a duplicate). Ticking that shopping item as bought sets the stock item back to `IN_STOCK`. Saying "add milk" in chat when *Milk* is a stock item links to it and marks it `LOW`.
+1. **Restock loop.** Marking a stock item `LOW` or `OUT` (or a counted item dropping to its low mark) adds one shopping item linked to it (never a duplicate). Ticking that shopping item as bought sets the stock item back to `IN_STOCK`. Saying "add milk" in chat when *Milk* is a stock item links to it and marks it `LOW`.
 2. **One-off buys** are shopping items without a stock item. When ticked they just leave the list. Chat can tell them apart: "don't forget medicine from the pharmacy" becomes a one-off with shop = Pharmacy.
 3. **Shops → errands.** Every shopping item has a shop (default: Supermarket). An errand for a shop shows all open items for that shop live. Ticking items in the errand is the same action as ticking them on the list.
 4. **Projects pull things in.** A project can create shopping items (materials, with a shop), errands and appointments. These keep a link back, so the project shows its progress across all of them.
@@ -93,6 +93,7 @@ The rules behind the diagram:
 **Stock & shopping**
 - `list_stock` (spot?, state?) · `add_stock_item` · `update_stock_item` · `remove_stock_item` ⚠
 - `set_stock_state` (itemId, IN_STOCK|LOW|OUT): LOW/OUT auto-adds shopping item
+- `set_stock_count` (itemId, count): for counted items; at or below `lowAt` it auto-adds a shopping item
 - `start_stock_check` (spot?) → ordered list of items to walk through
 - `add_shopping_item` (name, quantity?, shopName?, note?): links to stock if it matches, otherwise one-off
 - `list_shopping_items` (shop?) · `mark_bought` (itemId[]): restores stock · `unmark_bought`
@@ -132,7 +133,7 @@ All tables: `id TEXT PK (UUID)`, `createdAt`, `updatedAt`. Enums as TEXT.
 | **Area** | name, icon, ownerId |
 | **StorageSpot** | name, icon, areaId?, sortOrder |
 | **Shop** | name, kind (SUPERMARKET/PHARMACY/DIY/FURNITURE/OTHER), sortOrder |
-| **StockItem** | name, normalizedName, spotId, defaultShopId, state (IN_STOCK/LOW/OUT), defaultQuantity?, lastCheckedAt |
+| **StockItem** | name, normalizedName, spotId, defaultShopId, tracking (STATE/COUNT), state (IN_STOCK/LOW/OUT), count?, lowAt?, restockCount?, lastCheckedAt |
 | **ShoppingItem** | name, normalizedName, quantity?, note?, shopId, stockItemId? (null = one-off), projectId?, mealPlanId?, frictionIdeaId?, bought, boughtAt?, addedById? |
 | **MealPlan / MealPlanDay** | weekStart · day, meal, ingredients JSON |
 | **Rhythm / RhythmStep / RhythmTick** | name, dayMoment, memberIds, active · title, order · stepId, date, byId |
@@ -189,8 +190,8 @@ Destructive tools always go through a confirm card.
 
 ## 8. Build slices (revised)
 
-1. **Slice 1: Shopping list.** Skeleton + `core` modules, Shop, ShoppingItem, `add_shopping_item`, `list_shopping_items`, `mark_bought`. NL/EN parser: "add milk", "melk", "medicijnen bij de apotheek", "we need eggs and bread". Chat panel + Today shopping card grouped by shop, updating live. Tests.
-2. **Slice 2: Stock loop.** StorageSpot, StockItem, `set_stock_state`, stock check walkthrough, bought → back in stock.
+1. ✅ **Slice 1: Shopping list.** (also `unmark_bought` for undo, and basic kiosk: always on while charging, over the lock screen, dims when idle) Skeleton + `core` modules, Shop, ShoppingItem, `add_shopping_item`, `list_shopping_items`, `mark_bought`. NL/EN parser: "add milk", "melk", "medicijnen bij de apotheek", "we need eggs and bread". Chat panel + Today shopping card grouped by shop, updating live. Tests.
+2. **Slice 2: Stock loop.** StorageSpot, StockItem (state or count), `set_stock_state`, `set_stock_count`, stock check walkthrough, bought → back in stock.
 3. Cloud providers + API keys + tool-calling loop + confirm flow.
 4. Household setup (members, areas, owners) + Today per member.
 5. Chores (interval, season, readiness) + rhythms.
@@ -200,10 +201,21 @@ Destructive tools always go through a confirm card.
 9. Kiosk hardening, voice polish.
 10. MCP server · 11. Local model · 12. Google Calendar + Drive backup.
 
-## 9. Open questions
+## 9. Decisions
 
-1. App name **Hearth** OK? (package `app.hearth`)
-2. Default UI language **Dutch (Flemish)** with English as a toggle. OK?
-3. Min SDK 26 OK, or a specific tablet?
-4. Kiosk: default launcher + immersive, or full device-owner lock-task?
-5. Should stock items carry quantities ("2 left"), or are OK / Low / Out enough? (Proposal: states only. Faster, zero-thinking.)
+1. **Name:** Hearth, package `app.hearth`.
+2. **Language:** Flemish Dutch and English. UI follows the device language; the local parser understands both and replies in the language that was used.
+3. **Target device:** Lenovo Tab M10 FHD Plus (TB-X606F): Helio P22T, 2–4 GB RAM, 1920×1200, Android 9/10. `minSdk 26`, `compileSdk/targetSdk 36`.
+4. **Kiosk = "always-on wall display", not a locked-down device.**
+   - Screen stays on while charging (`FLAG_KEEP_SCREEN_ON` only when plugged in).
+   - Hearth shows **over the lock screen** (`showWhenLocked` + `turnScreenOn`), so nobody unlocks to use it.
+   - After 2 minutes without touch it **dims** to a clock; the first touch only wakes it.
+   - Hearth registers as a **home app**: choose it as the default home once, and it also comes back after a reboot.
+   - **Theft:** set a normal PIN on the tablet. Hearth still runs over the lock screen, but leaving Hearth, opening settings or other apps needs the PIN. API keys stay encrypted in the Android Keystore, and Android's own cloud backup is off (`allowBackup=false`).
+5. **Stock tracking per item:** either **state** (OK / Low / Out, the default) or **count** ("3 left", with a low mark). Both feed the same restock loop.
+
+## 10. Build notes
+
+- Gradle 8.14.3, AGP 8.13, Kotlin 2.2, KSP, Room 2.8, Compose BOM 2026.06.
+- `./gradlew testDebugUnitTest :app:assembleDebug :app:lintDebug` runs everything; tool and orchestrator tests use Robolectric + in-memory Room.
+- Chat history is kept in memory for now; the `ChatMessage` table arrives with the cloud slice.
