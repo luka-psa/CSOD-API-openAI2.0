@@ -51,23 +51,26 @@ structure. Keep it in sync when any of those change.
   (delete, clear, bulk-complete, restore-from-backup) never execute directly
   from the AI or MCP. They return a pending confirmation that the user approves
   in chat (or on screen). UI-initiated destructive actions show a confirm too.
-- **Model-agnostic AI.** All LLM access goes through the `LlmProvider`
-  interface (Claude, OpenAI, Grok). No provider SDK types leak outside `ai/`.
-  Users bring their own API key; keys are stored encrypted with Android
-  Keystore and never logged, exported, or backed up.
-- **Tiered intent routing.** 1) deterministic local parser for clear commands
-  ("voeg melk toe", "wat staat er op de lijst?"); 2) router model (small, fixed
-  instruction) picks section + intent; 3) section helper model acts with only
-  that section's tools. Offline, without a key or on errors, the keyword sorter
-  puts the message in the Inbox with a section label: nothing is ever lost.
-  Prompts live in `ai/.../route/Prompts.kt`; providers in `ai/.../llm/`.
+- **AI comes in over MCP, not API keys.** The family's own ChatGPT or Claude
+  subscription is the "brain": it calls Hearth's tools through the MCP server.
+  Hearth itself makes no paid model calls. The `ai/llm` provider layer
+  (OpenAI, Claude, Grok) is kept but not wired into the app.
+- **The tablet's capture bar is local and instant.** 1) deterministic parser
+  for clear commands ("voeg melk toe", "wat staat er op de lijst?"); 2) keyword
+  sorter (NL/EN) puts everything else on the Backlog with a section label and,
+  if a time word ends the sentence ("morgen", "tegen vrijdag"), a plan.
+  Nothing anyone says is ever lost. (The orchestrator can still route through a
+  router + section-helper model pair if a provider is ever configured.)
 - **Low-spec tablets.** Target 2–3 GB RAM devices. Avoid heavy libraries,
   keep Compose recompositions cheap, no always-running background work beyond
   what kiosk mode needs. Local model is optional and downloaded on demand.
 - **Kiosk mode.** Full-screen immersive, screen stays on while charging, starts
   on boot, optional lock-task when provisioned as device owner.
-- **MCP server.** Tools are also exposed over MCP (LAN, streamable HTTP),
-  off by default, protected by a pairing token. Destructive-tool rules apply.
+- **MCP server.** Tools are exposed over MCP (streamable HTTP), off by default,
+  protected by a pairing secret. Destructive tools return a pending action that
+  the person confirms (in their AI chat or on the tablet). ChatGPT/Claude call
+  connectors from their cloud, so the tablet needs a secure way to be reached
+  (see `docs/PROPOSAL.md` §7).
 - **Google integration is opt-in and off by default.** Google sign-in is used
   only to (a) push scheduled items to Google Calendar from the device and
   (b) back up / restore to the user's Drive `appDataFolder`. Request the
@@ -89,6 +92,9 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   with *Steps*, *Errand* (a trip to one shop).
 - **Shared:** *Area* with an *Owner*, *Helper*, *Batch*, *Friction*, *Note*,
   *Done log*.
+- **Backlog:** everything still open from any section until that section has
+  its own screen. Plan: *To plan* (unplanned), *Next up*, a *Day* (do on /
+  *finish by*), *Later*. Earlier days read "sinds dinsdag", never "late".
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
   UI ships in Dutch (Flemish) and English; the local parser understands both.
 
@@ -100,6 +106,11 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - UI strings live in `ui/src/commonMain/composeResources/values{,-nl}/strings.xml`
   (no Android-style escaping: use “ ” and ’). No emoji in UI or tool summaries:
   the web build has no emoji font; use the vectors in `HearthIcons`.
+- Design system: `ui/.../theme` (Plus Jakarta Sans, warm canvas, one ember
+  accent, 28dp cards, section colours in `SectionStyle`). Reuse `HearthCard`,
+  `BacklogRow`, `ChoiceChip`, `RoundCheck` from `Components.kt`. Navigation:
+  rail on wide screens (≥ 840dp), bottom bar on phones; the capture bar sits
+  under every screen.
 - IDs are UUID strings; every entity has `createdAt`/`updatedAt` (epoch millis)
   to make backup/restore and future sync safe.
 - Tool names are `snake_case` verb_noun (`add_shopping_item`). Tool results are

@@ -28,6 +28,10 @@ kotlin {
         jvmMain.dependencies {
             implementation(libs.sqlite.bundled)
         }
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.coroutines.test)
+        }
         wasmJsMain.dependencies {
             implementation(libs.sqlite.web)
             implementation(libs.kotlinx.browser)

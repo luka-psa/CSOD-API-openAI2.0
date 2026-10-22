@@ -16,6 +16,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(libs.serialization.json)
+            api(libs.datetime)
         }
     }
 }

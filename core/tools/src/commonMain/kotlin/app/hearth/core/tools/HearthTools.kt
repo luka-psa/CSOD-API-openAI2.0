@@ -1,32 +1,38 @@
 package app.hearth.core.tools
 
+import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.food.ShoppingRepository
-import app.hearth.core.data.inbox.InboxRepository
+import app.hearth.core.tools.backlog.AddToBacklogTool
+import app.hearth.core.tools.backlog.CompleteBacklogItemTool
+import app.hearth.core.tools.backlog.ListBacklogTool
+import app.hearth.core.tools.backlog.PlanBacklogItemTool
+import app.hearth.core.tools.backlog.RemoveBacklogItemTool
+import app.hearth.core.tools.backlog.ReopenBacklogItemTool
 import app.hearth.core.tools.food.AddShoppingItemTool
 import app.hearth.core.tools.food.ListShoppingItemsTool
 import app.hearth.core.tools.food.MarkBoughtTool
 import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
-import app.hearth.core.tools.inbox.ArchiveInboxItemTool
-import app.hearth.core.tools.inbox.CaptureToInboxTool
-import app.hearth.core.tools.inbox.ListInboxTool
 
 /** Every tool in the app, built once and shared by UI, chat and MCP. */
-class HearthTools(shopping: ShoppingRepository, inbox: InboxRepository) {
+class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository) {
     val addShoppingItem = AddShoppingItemTool(shopping)
     val listShoppingItems = ListShoppingItemsTool(shopping)
     val markBought = MarkBoughtTool(shopping)
     val unmarkBought = UnmarkBoughtTool(shopping)
     val removeShoppingItem = RemoveShoppingItemTool(shopping)
 
-    val captureToInbox = CaptureToInboxTool(inbox)
-    val listInbox = ListInboxTool(inbox)
-    val archiveInboxItem = ArchiveInboxItemTool(inbox)
+    val addToBacklog = AddToBacklogTool(backlog)
+    val listBacklog = ListBacklogTool(backlog)
+    val planBacklogItem = PlanBacklogItemTool(backlog)
+    val completeBacklogItem = CompleteBacklogItemTool(backlog)
+    val reopenBacklogItem = ReopenBacklogItemTool(backlog)
+    val removeBacklogItem = RemoveBacklogItemTool(backlog)
 
     val registry = ToolRegistry(
         listOf(
             addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem,
-            captureToInbox, listInbox, archiveInboxItem,
+            addToBacklog, listBacklog, planBacklogItem, completeBacklogItem, reopenBacklogItem, removeBacklogItem,
         ),
     )
 }

@@ -1,6 +1,8 @@
 package app.hearth.core.tools
 
 import app.hearth.core.model.Lang
+import app.hearth.core.model.today
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialInfo
@@ -36,6 +38,8 @@ data class ToolContext(
     val source: ToolSource,
     val lang: Lang,
     val actorMemberId: String? = null,
+    /** "Today" for planning; injectable so tests and the household's timezone agree. */
+    val today: LocalDate = today(),
 ) {
     fun t(nl: String, en: String): String = if (lang == Lang.NL) nl else en
 }

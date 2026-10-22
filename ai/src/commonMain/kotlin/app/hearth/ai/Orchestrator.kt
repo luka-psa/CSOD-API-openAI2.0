@@ -21,10 +21,14 @@ import app.hearth.core.tools.food.ListShoppingItemsTool
 import app.hearth.core.tools.food.MarkBoughtTool
 import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
-import app.hearth.core.tools.inbox.ArchiveInboxItemTool
-import app.hearth.core.tools.inbox.CaptureArgs
-import app.hearth.core.tools.inbox.CaptureToInboxTool
-import app.hearth.core.tools.inbox.ListInboxTool
+import app.hearth.ai.route.TimeWords
+import app.hearth.core.tools.backlog.AddToBacklogArgs
+import app.hearth.core.tools.backlog.AddToBacklogTool
+import app.hearth.core.tools.backlog.BacklogRefArgs
+import app.hearth.core.tools.backlog.CompleteBacklogItemTool
+import app.hearth.core.tools.backlog.ListBacklogTool
+import app.hearth.core.tools.backlog.PlanBacklogItemTool
+import app.hearth.core.tools.backlog.When
 import app.hearth.core.tools.toJsonSchema
 
 /** A destructive action waiting for a yes in the chat. */
@@ -40,8 +44,8 @@ data class ChatTurn(val fromUser: Boolean, val text: String)
  * 1. Local rules ([LocalIntentParser]): instant and offline, for clear everyday commands.
  * 2. Router model: sorts the message into a [Section] (fixed instruction, small model).
  * 3. Section helper model: acts in that section with only its tools and writes the reply.
- * Without a provider, or when it fails, the [KeywordRouter] sorts the message into the inbox, so
- * nothing anyone says is ever lost.
+ * Without a provider, or when it fails, the [KeywordRouter] puts the message on the
+ * backlog with a section label, so nothing anyone says is ever lost.
  */
 class Orchestrator(
     private val registry: ToolRegistry,
@@ -69,8 +73,8 @@ class Orchestrator(
                 decision.section in SHOPPING_SECTIONS -> helper(llm, Section.SHOPPING, text, routed, history)
                 decision.intent == Intent.ASK -> helper(llm, null, text, routed, history)
                 decision.intent == Intent.DONE -> helper(llm, decision.section, text, routed, history)
-                // Sections that aren't built yet: keep it, sorted, in the inbox.
-                else -> runCalls(listOf(captureCall(decision.text.ifBlank { text }, decision.section)), routed)
+                // Sections that aren't built yet: keep it, sorted, on the backlog.
+                else -> runCalls(listOf(captureCall(decision.text.ifBlank { text }, decision.section, routed)), routed)
             }
         } catch (e: LlmException) {
             captureOffline(text, routed, note = problemNote(e, routed), section = decision.section)
@@ -161,11 +165,18 @@ class Orchestrator(
         val lang = KeywordRouter.language(text, ctx.lang)
         val local = ctx.copy(lang = lang)
         if (section == null && KeywordRouter.isQuestion(text)) {
-            val list = registry.execute(ToolCall(ListInboxTool.NAME, kotlinx.serialization.json.JsonObject(emptyMap())), local)
+            val list = registry.execute(ToolCall(ListBacklogTool.NAME, kotlinx.serialization.json.JsonObject(emptyMap())), local)
             val shopping = registry.execute(ToolCall(ListShoppingItemsTool.NAME, kotlinx.serialization.json.JsonObject(emptyMap())), local)
             return ChatReply(listOfNotNull(note, shopping.summary, list.summary).joinToString("\n"), listOf(shopping, list))
         }
-        val reply = runCalls(listOf(captureCall(text, section ?: KeywordRouter.section(text))), local)
+        if (section == null) {
+            DONE_WORDS.matchEntire(text.trim())?.let { m ->
+                val call = ToolCall.of(CompleteBacklogItemTool.NAME, BacklogRefArgs.serializer(), BacklogRefArgs(texts = listOf(m.groupValues[1])))
+                val outcome = registry.execute(call, local)
+                if (outcome is ToolOutcome.Done) return ChatReply(outcome.summary, listOf(outcome))
+            }
+        }
+        val reply = runCalls(listOf(captureCall(text, section ?: KeywordRouter.section(text), local)), local)
         return if (note == null) reply else reply.copy(text = note + "\n" + reply.text)
     }
 
@@ -174,8 +185,16 @@ class Orchestrator(
         parsed.lang == null && parsed.calls.all { it.name == AddShoppingItemTool.NAME } &&
             KeywordRouter.section(text).let { it != Section.OTHER && it != Section.SHOPPING && it != Section.PROJECT }
 
-    private fun captureCall(text: String, section: Section) =
-        ToolCall.of(CaptureToInboxTool.NAME, CaptureArgs.serializer(), CaptureArgs(text.trim(), section))
+    /** A backlog entry; a trailing time word ("morgen", "tegen vrijdag") plans it right away. */
+    private fun captureCall(text: String, section: Section, ctx: ToolContext): ToolCall {
+        val hint = TimeWords.extract(text, ctx.today)
+        val args = if (hint == null) {
+            AddToBacklogArgs(text.trim(), section)
+        } else {
+            AddToBacklogArgs(hint.text, KeywordRouter.section(hint.text).takeIf { section == Section.OTHER } ?: section, hint.whenValue, hint.date?.toString(), hint.finishBy)
+        }
+        return ToolCall.of(AddToBacklogTool.NAME, AddToBacklogArgs.serializer(), args)
+    }
 
     private fun problemNote(e: LlmException, ctx: ToolContext): String = when (e.reason) {
         LlmException.Reason.AUTH -> ctx.t(
@@ -190,12 +209,16 @@ class Orchestrator(
             AddShoppingItemTool.NAME, ListShoppingItemsTool.NAME, MarkBoughtTool.NAME, UnmarkBoughtTool.NAME,
             RemoveShoppingItemTool.NAME,
         )
-        null -> setOf(ListShoppingItemsTool.NAME, ListInboxTool.NAME)
-        else -> setOf(ListInboxTool.NAME, ArchiveInboxItemTool.NAME, CaptureToInboxTool.NAME)
+        null -> setOf(ListShoppingItemsTool.NAME, ListBacklogTool.NAME)
+        else -> setOf(ListBacklogTool.NAME, CompleteBacklogItemTool.NAME, PlanBacklogItemTool.NAME, AddToBacklogTool.NAME)
     }
 
     private companion object {
         val SHOPPING_SECTIONS = setOf(Section.SHOPPING, Section.STOCK)
+        val DONE_WORDS = Regex(
+            "^(?:de |het |the )?(.+?)\\s+(?:is|zijn|was|are)\\s+(?:gedaan|klaar|geregeld|geboekt|gebeld|done|booked|sorted|finished)[.!]?$",
+            RegexOption.IGNORE_CASE,
+        )
         val ROUTE_SCHEMA = RouteDecision.serializer().descriptor.toJsonSchema()
         const val MAX_STEPS = 5
         const val HISTORY_TURNS = 6

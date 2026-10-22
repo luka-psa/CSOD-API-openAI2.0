@@ -3,7 +3,7 @@ package app.hearth.core.tools.food
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.data.inMemoryHearthDatabase
 import app.hearth.core.data.food.ShoppingRepository
-import app.hearth.core.data.inbox.InboxRepository
+import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.model.Lang
 import app.hearth.core.model.ShopKind
 import app.hearth.core.tools.HearthTools
@@ -34,7 +34,7 @@ class ShoppingToolsTest {
         db = inMemoryHearthDatabase()
         repo = ShoppingRepository(db)
         repo.ensureDefaultShops(Lang.NL)
-        tools = HearthTools(repo, InboxRepository(db))
+        tools = HearthTools(repo, BacklogRepository(db))
     }
 
     @AfterTest

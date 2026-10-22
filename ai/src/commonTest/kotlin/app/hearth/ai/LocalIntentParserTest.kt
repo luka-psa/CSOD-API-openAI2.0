@@ -101,4 +101,11 @@ class LocalIntentParserTest {
             "ik moet nog naar de tandarts",
         ).forEach { assertNull(parser.parse(it), "should not parse: $it") }
     }
+
+    @Test
+    fun keywordSorterTellsRulesFromAppointments() {
+        assertEquals(app.hearth.core.model.Section.NOTE, app.hearth.ai.route.KeywordRouter.section("geen schermen na 20u is de afspraak"))
+        assertEquals(app.hearth.core.model.Section.APPOINTMENT, app.hearth.ai.route.KeywordRouter.section("afspraak bij de kapper"))
+        assertEquals(app.hearth.core.model.Section.CHORE, app.hearth.ai.route.KeywordRouter.section("ramen kuisen"))
+    }
 }

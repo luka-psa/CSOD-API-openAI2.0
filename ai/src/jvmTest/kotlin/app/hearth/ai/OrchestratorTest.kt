@@ -10,7 +10,9 @@ import app.hearth.ai.llm.ProviderConfig
 import app.hearth.ai.llm.ProviderKind
 import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.inMemoryHearthDatabase
-import app.hearth.core.data.inbox.InboxRepository
+import app.hearth.core.data.backlog.BacklogRepository
+import app.hearth.core.model.Plan
+import kotlinx.datetime.LocalDate
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Section
 import app.hearth.core.tools.HearthTools
@@ -33,9 +35,9 @@ import kotlin.test.assertTrue
 class OrchestratorTest {
     private val db = inMemoryHearthDatabase()
     private val shopping = ShoppingRepository(db)
-    private val inbox = InboxRepository(db)
+    private val inbox = BacklogRepository(db)
     private val tools = HearthTools(shopping, inbox)
-    private val nl = ToolContext(ToolSource.CHAT, Lang.NL)
+    private val nl = ToolContext(ToolSource.CHAT, Lang.NL, today = LocalDate(2026, 10, 22))
 
     /** Scripted model: a queue of router decisions and helper replies. */
     private class FakeLlm : LlmProvider {
@@ -72,10 +74,10 @@ class OrchestratorTest {
     fun tearDown() = db.close()
 
     @Test
-    fun `the dentist goes to the inbox as an appointment, not on the shopping list`() = runTest {
+    fun `the dentist goes to the backlog as an appointment, not on the shopping list`() = runTest {
         llm.routes += route(Section.APPOINTMENT, "ADD", "Need to go to the dentist", "en")
         val reply = online.handle("need to go to the dentist", nl)
-        assertEquals("Kept in the inbox: “Need to go to the dentist” (appointment)", reply.text)
+        assertEquals("On the backlog: “Need to go to the dentist” (appointment)", reply.text)
         assertTrue(shopping.openItems().isEmpty())
         assertEquals(Section.APPOINTMENT, inbox.openItems().single().section)
     }
@@ -93,7 +95,7 @@ class OrchestratorTest {
         val reply = online.handle("we hebben paracetamol nodig van de apotheek", nl)
         assertEquals("Paracetamol staat op de lijst bij de apotheek.", reply.text)
         assertEquals("Apotheek", shopping.allShops().first { it.id == shopping.openItems().single().shopId }.name)
-        assertTrue(llm.helperToolSets.first().none { it.contains("inbox") })
+        assertTrue(llm.helperToolSets.first().none { it.contains("backlog") })
     }
 
     @Test
@@ -132,7 +134,7 @@ class OrchestratorTest {
         llm.fail = LlmException(LlmException.Reason.NETWORK, "offline")
         val reply = online.handle("lampen ophangen in het toilet", nl)
         assertEquals(
-            "Even geen verbinding met de AI. Ik heb het veilig bewaard:\nIn de inbox gezet: “lampen ophangen in het toilet” (project)",
+            "Even geen verbinding met de AI. Ik heb het veilig bewaard:\nOp de backlog: “lampen ophangen in het toilet” (project)",
             reply.text,
         )
     }
@@ -150,6 +152,21 @@ class OrchestratorTest {
         offline.handle("melk", nl)
         offline.handle("autokeuring", nl)
         val reply = offline.handle("wat is er nog open?", nl)
-        assertEquals("Supermarkt: Melk\nautokeuring (afspraak)", reply.text)
+        assertEquals("Supermarkt: Melk\nautokeuring (afspraak, in te plannen)", reply.text)
+    }
+
+    @Test
+    fun `offline capture reads time words and done words`() = runTest {
+        assertEquals("Op de backlog: “tandarts” (afspraak) · morgen", offline.handle("tandarts morgen", nl).text)
+        assertEquals(
+            "Op de backlog: “belastingbrief” (administratie) · klaar tegen morgen",
+            offline.handle("belastingbrief tegen vrijdag", nl).text,
+        )
+        val friday = inbox.openItems().first { it.text == "belastingbrief" }
+        assertEquals(Plan.DAY, friday.plan)
+        assertEquals("2026-10-23", friday.date)
+
+        assertEquals("Gedaan: “tandarts”. Mooi zo!", offline.handle("de tandarts is geregeld", nl).text)
+        assertEquals(listOf("belastingbrief"), inbox.openItems().map { it.text })
     }
 }

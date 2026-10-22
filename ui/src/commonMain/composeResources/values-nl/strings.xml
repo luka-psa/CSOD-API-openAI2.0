@@ -1,35 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="today">Vandaag</string>
-    <string name="chat_hint">Typ of zeg iets…</string>
-    <string name="send">Verstuur</string>
-    <string name="speak">Spreek</string>
-    <string name="chat_welcome">Hallo! Zeg wat we nodig hebben, bv. “melk” of “medicijnen bij de apotheek”.</string>
-    <string name="chip_list">Wat staat er op de lijst?</string>
-    <string name="chip_milk">Melk toevoegen</string>
+    <string name="nav_today">Vandaag</string>
+    <string name="nav_backlog">Backlog</string>
+    <string name="nav_shopping">Boodschappen</string>
+
+    <string name="greeting_morning">Goeiemorgen</string>
+    <string name="greeting_afternoon">Goeiemiddag</string>
+    <string name="greeting_evening">Goeienavond</string>
+    <string name="done_today">%1$d gedaan vandaag</string>
+    <string name="done_today_none">Een frisse dag</string>
+
+    <string name="today_planned">Vandaag</string>
+    <string name="today_empty">Niets gepland. Kies iets uit de backlog wanneer je klaar bent.</string>
+    <string name="today_next">Volgende</string>
+    <string name="today_next_empty">Niets in de rij. Zet dingen op “Volgende” in de backlog.</string>
+    <string name="today_to_plan">Wacht op een plek</string>
+    <string name="today_to_plan_count">%1$d dingen om in te plannen</string>
+    <string name="today_to_plan_none">Alles heeft een plek.</string>
+    <string name="open_backlog">Open backlog</string>
+    <string name="shopping_summary_empty">Niets nodig op dit moment.</string>
+    <string name="open_list">Open lijst</string>
+
+    <string name="backlog_subtitle">Alles wat nog open staat, uit elke hoek van het huis.</string>
+    <string name="filter_all">Alles</string>
+    <string name="group_unplanned">In te plannen</string>
+    <string name="group_next">Volgende</string>
+    <string name="group_later">Later</string>
+    <string name="backlog_empty">De backlog is leeg. Zeg of typ gewoon wat in je opkomt.</string>
+    <string name="plan">Plannen</string>
+    <string name="mark_done">Gedaan</string>
+
+    <string name="plan_title">Wanneer?</string>
+    <string name="plan_do_on">Doen op</string>
+    <string name="plan_finish_by">Klaar tegen</string>
+    <string name="plan_next">Volgende</string>
+    <string name="plan_today">Vandaag</string>
+    <string name="plan_tomorrow">Morgen</string>
+    <string name="plan_later">Later</string>
+    <string name="plan_unplanned">Uitplannen</string>
+    <string name="delete">Verwijderen</string>
+    <string name="delete_confirm">“%1$s” verwijderen?</string>
+    <string name="delete_confirm_body">Dit haalt het voor iedereen weg. Is het klaar? Tik dan op Gedaan.</string>
+
     <string name="shopping_list">Boodschappenlijst</string>
     <string name="shopping_empty">Niets nodig op dit moment.</string>
     <string name="shopping_add_hint">Toevoegen aan de lijst…</string>
     <string name="add">Voeg toe</string>
-    <string name="tap_to_wake">Tik om te wekken</string>
-    <string name="inbox">Inbox</string>
-    <string name="inbox_empty">Niets te sorteren. Alles heeft een plek.</string>
-    <string name="inbox_done">Afgehandeld</string>
+
+    <string name="capture_hint">Zeg of typ wat je wil… “tandarts morgen”, “melk”</string>
+    <string name="send">Verstuur</string>
+    <string name="speak">Spreek</string>
+    <string name="conversation">Gesprek</string>
+    <string name="close">Sluit</string>
     <string name="yes">Ja</string>
     <string name="no">Nee</string>
-    <string name="settings">Instellingen</string>
-    <string name="ai_title">AI-assistent</string>
-    <string name="ai_intro">Hearth werkt offline voor eenvoudige dingen. Koppel een AI om alles te begrijpen en op de juiste plek te zetten. Je gebruikt je eigen API-sleutel.</string>
-    <string name="ai_off">Uit (alleen offline)</string>
-    <string name="ai_key">API-sleutel</string>
-    <string name="ai_router_model">Sorteermodel (klein, snel)</string>
-    <string name="ai_helper_model">Helpermodel (voert uit en antwoordt)</string>
-    <string name="ai_test">Test</string>
-    <string name="ai_testing">Bezig met testen…</string>
-    <string name="ai_test_ok">Werkt!</string>
-    <string name="ai_save">Bewaar</string>
-    <string name="ai_cancel">Annuleer</string>
-    <string name="ai_key_note_android">De sleutel wordt versleuteld op deze tablet bewaard en gaat alleen naar de AI-dienst zelf.</string>
-    <string name="ai_key_note_web">Op het web wordt de sleutel alleen in deze browser bewaard. Prima om te proberen; niet gebruiken op een gedeelde computer.</string>
-    <string name="ai_status_offline">Offline</string>
+    <string name="chat_welcome">Hallo! Zeg gewoon wat er moet gebeuren: “melk”, “tandarts morgen”, “belastingbrief tegen vrijdag”. Ik zet het op de juiste plek.</string>
+
+    <string name="tap_to_wake">Tik om te wekken</string>
 </resources>
