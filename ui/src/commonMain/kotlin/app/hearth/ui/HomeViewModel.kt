@@ -45,7 +45,13 @@ import app.hearth.mcp.RelayStatus
 import app.hearth.core.model.Huddle
 import app.hearth.core.model.Meal
 import app.hearth.core.model.plusDays
+import app.hearth.core.model.Recipe
+import app.hearth.core.tools.food.MoveStockItemArgs
+import app.hearth.core.tools.food.RemoveStorageSpotArgs
 import app.hearth.core.tools.week.AgendaArgs
+import app.hearth.core.tools.week.RecipeRefArgs
+import app.hearth.core.tools.week.SaveRecipeArgs
+import app.hearth.core.tools.week.SetRecipePhotoArgs
 import app.hearth.core.tools.week.PlanMealArgs
 import app.hearth.core.tools.week.RemoveMealArgs
 import app.hearth.core.tools.week.WeekAgenda
@@ -113,6 +119,16 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     val dishes: StateFlow<List<Meal>> =
         app.week.dishes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val recipes: StateFlow<List<Recipe>> =
+        app.week.recipes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Bumped when a photo changes, so cards reload it. */
+    private val _photoVersion = MutableStateFlow(0)
+    val photoVersion: StateFlow<Int> = _photoVersion.asStateFlow()
+
+    /** A recipe's photo, read straight from the repository (reads may skip the tools). */
+    suspend fun photo(key: String): ByteArray? = app.week.photo(key)
 
     val lastHuddle: StateFlow<Huddle?> =
         app.week.lastHuddle.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -316,6 +332,41 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Only after the person confirmed on screen. */
     fun removeMeal(meal: Meal) = tool {
         app.tools.registry.run(app.tools.removeMeal, RemoveMealArgs(mealId = meal.id, date = meal.date), it, confirmed = true)
+    }
+
+    /** Saves a recipe; [photo] is set when it changed (empty array = removed). */
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    fun saveRecipe(name: String, ingredients: List<String>, notes: String?, previousKey: String?, photo: ByteArray?) {
+        if (name.isBlank()) return
+        tool {
+            val saved = app.tools.registry.run(app.tools.saveRecipe, SaveRecipeArgs(name, ingredients, notes, previousKey), it)
+            if (photo != null) {
+                val base64 = if (photo.isEmpty()) "" else kotlin.io.encoding.Base64.encode(photo)
+                app.tools.registry.run(app.tools.setRecipePhoto, SetRecipePhotoArgs(saved.recipe.key, base64), it)
+                _photoVersion.update { v -> v + 1 }
+            }
+            _messages.update { list -> list + ChatMessage(fromUser = false, text = saved.summary) }
+        }
+    }
+
+    /** Puts a recipe on a day; its ingredients go onto the shopping list. */
+    fun planRecipe(date: LocalDate, recipe: Recipe) = tool {
+        val planned = app.tools.registry.run(app.tools.planMeal, PlanMealArgs(recipe.name, date.toString()), it)
+        _messages.update { list -> list + ChatMessage(fromUser = false, text = planned.summary) }
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun deleteRecipe(recipe: Recipe) = tool {
+        app.tools.registry.run(app.tools.removeRecipe, RecipeRefArgs(recipe.key), it, confirmed = true)
+    }
+
+    fun moveStock(item: StockItem, spot: StorageSpot) = tool {
+        app.tools.registry.run(app.tools.moveStockItem, MoveStockItemArgs(itemIds = listOf(item.id), spot = spot.name), it)
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun removeSpot(spot: StorageSpot) = tool {
+        app.tools.registry.run(app.tools.removeStorageSpot, RemoveStorageSpotArgs(spot.id), it, confirmed = true)
     }
 
     fun finishWeekoverleg() = tool {

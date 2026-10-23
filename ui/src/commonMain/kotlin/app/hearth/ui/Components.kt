@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -261,7 +262,16 @@ fun DeleteButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 /** Selectable rounded chip used for filters and plan choices. */
 @Composable
-fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, badge: Int? = null, icon: ImageVector? = null) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+fun ChoiceChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    badge: Int? = null,
+    icon: ImageVector? = null,
+    onLongClick: (() -> Unit)? = null,
+) {
     val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.surface)
     val fg = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
     Row(
@@ -270,7 +280,7 @@ fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: 
             .clip(RoundedCornerShape(50))
             .background(bg)
             .border(1.dp, if (selected) Color.Transparent else MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .heightIn(min = 44.dp)
             .padding(horizontal = 16.dp),
     ) {

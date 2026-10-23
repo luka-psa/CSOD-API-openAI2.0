@@ -10,12 +10,18 @@ import app.hearth.core.tools.system.SaveConnectionTool
 import app.hearth.core.tools.week.FinishWeekoverlegTool
 import app.hearth.core.tools.week.ListMealPlanTool
 import app.hearth.core.tools.week.PlanMealTool
+import app.hearth.core.tools.week.ListRecipesTool
 import app.hearth.core.tools.week.RemoveMealTool
+import app.hearth.core.tools.week.RemoveRecipeTool
+import app.hearth.core.tools.week.SaveRecipeTool
+import app.hearth.core.tools.week.SetRecipePhotoTool
 import app.hearth.core.tools.week.WeekoverlegAgendaTool
 import app.hearth.core.tools.food.AddStockItemTool
 import app.hearth.core.tools.food.AddStorageSpotTool
 import app.hearth.core.tools.food.ClearBoughtItemsTool
 import app.hearth.core.tools.food.ListStockTool
+import app.hearth.core.tools.food.MoveStockItemTool
+import app.hearth.core.tools.food.RemoveStorageSpotTool
 import app.hearth.core.tools.food.RemoveStockItemTool
 import app.hearth.core.tools.food.SetStockStateTool
 import app.hearth.core.tools.board.AchieveGoalTool
@@ -66,6 +72,8 @@ class HearthTools(
     val addStorageSpot = AddStorageSpotTool(stock)
     val setStockState = SetStockStateTool(stock, shopping)
     val removeStockItem = RemoveStockItemTool(stock)
+    val moveStockItem = MoveStockItemTool(stock)
+    val removeStorageSpot = RemoveStorageSpotTool(stock)
 
     val addToBacklog = AddToBacklogTool(backlog, board)
     val listBacklog = ListBacklogTool(backlog)
@@ -95,18 +103,23 @@ class HearthTools(
     val removeMeal = RemoveMealTool(week)
     val weekoverlegAgenda = WeekoverlegAgendaTool(week, backlog, board, shopping)
     val finishWeekoverleg = FinishWeekoverlegTool(week)
+    val saveRecipe = SaveRecipeTool(week)
+    val listRecipes = ListRecipesTool(week)
+    val removeRecipe = RemoveRecipeTool(week)
+    val setRecipePhoto = SetRecipePhotoTool(week)
 
     val saveConnection = SaveConnectionTool(settings)
 
     val registry = ToolRegistry(
         listOf(
             addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem, clearBoughtItems,
-            listStock, addStockItem, addStorageSpot, setStockState, removeStockItem,
+            listStock, addStockItem, addStorageSpot, setStockState, removeStockItem, moveStockItem, removeStorageSpot,
             addToBacklog, listBacklog, planBacklogItem, completeBacklogItem, reopenBacklogItem, removeBacklogItem,
             setRoutineInterval, markUrgent, waitForReply, moveBacklogItem, addProjectStep,
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
+            saveRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection,
         ),
     )

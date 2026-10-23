@@ -13,6 +13,7 @@ import app.hearth.core.data.settings.SettingDao
 import app.hearth.core.data.settings.SettingEntity
 import app.hearth.core.data.week.DishEntity
 import app.hearth.core.data.week.HuddleEntity
+import app.hearth.core.data.week.RecipePhotoEntity
 import app.hearth.core.data.week.MealEntity
 import app.hearth.core.data.week.WeekDao
 import app.hearth.core.data.food.StockDao
@@ -35,8 +36,8 @@ import androidx.sqlite.execSQL
  * SQLite-in-a-web-worker in the browser (`openHearthDatabase()`), in-memory on the JVM for tests.
  */
 @Database(
-    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class, MealEntity::class, DishEntity::class, HuddleEntity::class, SettingEntity::class],
-    version = 8,
+    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class, MealEntity::class, DishEntity::class, HuddleEntity::class, SettingEntity::class, RecipePhotoEntity::class],
+    version = 9,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -46,6 +47,7 @@ import androidx.sqlite.execSQL
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
         AutoMigration(from = 7, to = 8),
+        AutoMigration(from = 8, to = 9),
     ],
 )
 @ConstructedBy(HearthDatabaseConstructor::class)

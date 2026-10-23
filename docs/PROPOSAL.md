@@ -104,7 +104,9 @@ NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `ad
 `clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
 with the same name. · Weekoverleg: `plan_meal` (one meal per day; ingredients onto the shopping list; a known
 dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_agenda` (look back since the last
-meeting, meals, shopping, deadlines, due routines, oudjes, open frictions), `finish_weekoverleg`.
+meeting, meals, shopping, deadlines, due routines, oudjes, open frictions), `finish_weekoverleg`. · Recipes:
+`save_recipe` (name, ingredients, how we made it; rename keeps the photo), `list_recipes`, `remove_recipe` ⚠,
+`set_recipe_photo` (tablet only). Stock: `move_stock_item`, `remove_storage_spot` ⚠.
 
 The full target list:
 
@@ -175,7 +177,10 @@ OPEN/BECAME_RULE/BECAME_CHANGE/LET_GO/ACHIEVED, memberId, scope FAMILY/COUPLE/PE
 closedAt); the v4→v5 migration moves open house rules and frictions off the backlog. v6 adds `StorageSpot`
 (name, sortOrder) and `StockItem` (name, spotId, state IN_STOCK/LOW/OUT, shopId?); first run seeds Keuken,
 Badkamer, Wasplaats and Medicijnkast with everyday items (medicine from the Apotheek). v7 adds `Meal` (date
-unique, dish, ingredients), `Dish` (the dish library: name, ingredients, lastUsedOn) and `Huddle` (heldOn). Auto-migrations v1→v5
+unique, dish, ingredients), `Dish` (the dish library: name, ingredients, lastUsedOn) and `Huddle` (heldOn).
+v9: `Dish` becomes the *Recipe* (notes = how we made it, hasPhoto, isRecipe) with `recipe_photo` (JPEG ≤ 800 px,
+apart so lists stay light). Stock layout 2: Koelkast, Vers, Droge voeding, Snacks, Diepvries, Drank, Badkamer,
+Wasplaats, Medicijnkast; households with the first layout get these once and their kitchen items move along. Auto-migrations v1→v5
 keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
@@ -185,7 +190,7 @@ Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional sto
 Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under every screen.
 
 ```
- Vandaag (dashboard) | Taken | Weekoverleg | Werkbord | Boodschappen
+ Vandaag (dashboard) | Taken | Weekmenu | Weekoverleg | Werkbord | Boodschappen      (Verbind AI at the bottom)
 ```
 
 **Vandaag: the tablet dashboard** (three columns on the tablet, one on a phone):
@@ -223,7 +228,7 @@ to move between kinds.
 goals stay as wins). The dashboard shows *Onze afspraken*: three house rules and how many frictions wait
 for the weekoverleg.
 
-**Boodschappen**: the list (grouped by shop, X to remove with a confirm, "Gekochte wissen" once things are
+**Boodschappen**: stock per room or category (hold an item to move it, hold a category to remove it); the list (grouped by shop, X to remove with a confirm, "Gekochte wissen" once things are
 ticked) next to the **Voorraad** (chips per room/topic; tap an item = it's out and goes on the list; tap again
 = we have it). Phone: two tabs.
 
@@ -234,6 +239,12 @@ use); the web uses the Web Speech API with interim results. "de koffie is op", "
 wc-papier", "we're out of milk" mark the stock (or put it on the list when it isn't a stock item).
 
 Every list row has an X at the end; it always asks before deleting.
+
+**Weekmenu**: the coming seven days next to the *Recepten* (cards with photo). Tap a day → pick a recipe
+(one tap; its ingredients go onto the list) or type "iets anders" (dish + ingredients, optionally kept as a
+recipe). *Nieuw recept*: take or choose a photo, tell what you made (typed or with the mic); the name and
+ingredients fill in from the story (`RecipeWords`) and stay editable. Capture bar: "recept: pannenkoeken met
+bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 
 **Weekoverleg**: six steps with Vorige / Volgende, any step reachable from the chips: 1 *Terugblik* (count and
 chips of what got done since the last meeting, plus Werkbord wins; "Een rustige week. Ook dat mag."),

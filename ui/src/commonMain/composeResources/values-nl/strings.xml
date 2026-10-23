@@ -261,4 +261,39 @@
     <string name="connect_claude_steps">Instellingen → Connectors → Add custom connector (aangepaste connector)|Naam: Hearth. Plak de link. Toevoegen|Zet Hearth aan in een gesprek via + → Connectors</string>
     <string name="connect_plan_note">Menunamen veranderen af en toe. ChatGPT heeft een betaald abonnement met Developer mode nodig; Claude laat aangepaste connectors toe op de meeste abonnementen. Hearth moet open staan op de tablet.</string>
     <string name="mcp_asks">Jullie AI vraagt</string>
+    <!-- Week menu and recipes -->
+    <string name="nav_menu">Weekmenu</string>
+    <string name="menu_subtitle">Wat we deze week eten, en de recepten die we graag maken.</string>
+    <string name="menu_tab_week">Deze week</string>
+    <string name="menu_tab_recipes">Recepten</string>
+    <string name="menu_week">Deze week</string>
+    <string name="menu_recipes">Recepten</string>
+    <string name="menu_new_recipe">Nieuw recept</string>
+    <string name="menu_recipes_empty">Nog geen recepten. Iets lekkers gemaakt? Vertel Hearth wat jullie maakten en voeg een foto toe.</string>
+    <string name="menu_earlier">Eerder gegeten: tik om er een recept van te maken</string>
+    <string name="menu_no_ingredients">nog geen ingrediënten</string>
+    <string name="menu_ingredients">Ingrediënten</string>
+    <string name="menu_on_menu">Op het weekmenu</string>
+    <string name="menu_choose_title">%1$s: wat eten we?</string>
+    <string name="menu_other_dish">Iets anders</string>
+    <string name="menu_also_recipe">Ook als recept bewaren</string>
+    <string name="menu_recipe_title">Recept</string>
+    <string name="menu_recipe_body">Vertel wat jullie maakten, getypt of ingesproken. Hearth haalt de naam en wat je moet kopen eruit; pas gerust aan.</string>
+    <string name="menu_story_title">Wat hebben jullie gemaakt?</string>
+    <string name="menu_story_hint">bv. We maakten lasagne met gehakt, tomatensaus en kaas. 45 minuten in de oven.</string>
+    <string name="menu_recipe_name">Naam</string>
+    <string name="menu_ingredient_add">Ingrediënt toevoegen</string>
+    <string name="menu_photo_take">Foto nemen</string>
+    <string name="menu_photo_other">Andere foto</string>
+    <string name="menu_photo_choose">Foto kiezen</string>
+    <string name="menu_photo_remove">Foto weg</string>
+    <string name="edit">Bewerk</string>
+    <string name="stock_move_title">%1$s hoort bij</string>
+    <string name="stock_remove_spot">%1$s weghalen</string>
+    <string name="stock_remove_spot_body">Alles erin verdwijnt mee uit de voorraad. De boodschappenlijst blijft zoals ze is.</string>
+    <string name="stock_hold_hint">Hou een item ingedrukt om het naar een andere plek of categorie te verplaatsen.</string>
+    <plurals name="menu_x_ingredients">
+        <item quantity="one">%1$d ingrediënt</item>
+        <item quantity="other">%1$d ingrediënten</item>
+    </plurals>
 </resources>

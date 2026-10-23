@@ -237,4 +237,13 @@ class OrchestratorTest {
             inbox.openItems().map { it.section },
         )
     }
+
+    @Test
+    fun `recipe prefix saves a recipe`() = runTest {
+        assertEquals(
+            "Recept bewaard: Pannenkoeken (3 ingrediënten)",
+            offline.handle("recept: pannenkoeken met bloem, melk en eieren. Eerst het beslag laten rusten.", nl).text,
+        )
+        assertEquals(emptyList(), shopping.openItems())
+    }
 }

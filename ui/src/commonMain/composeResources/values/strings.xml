@@ -268,4 +268,39 @@
     <string name="connect_claude_steps">Settings → Connectors → Add custom connector|Name: Hearth. Paste the link. Add|In a chat, turn Hearth on under + → Connectors</string>
     <string name="connect_plan_note">Menu names change now and then. ChatGPT needs a paid plan with Developer mode; Claude allows custom connectors on most plans. Hearth must be open on the tablet.</string>
     <string name="mcp_asks">Your AI asks</string>
+    <!-- Week menu and recipes -->
+    <string name="nav_menu">Week menu</string>
+    <string name="menu_subtitle">What we eat this week, and the recipes we love.</string>
+    <string name="menu_tab_week">This week</string>
+    <string name="menu_tab_recipes">Recipes</string>
+    <string name="menu_week">This week</string>
+    <string name="menu_recipes">Recipes</string>
+    <string name="menu_new_recipe">New recipe</string>
+    <string name="menu_recipes_empty">No recipes yet. Cooked something good? Tell Hearth what you made and add a photo.</string>
+    <string name="menu_earlier">Had before: tap to make it a recipe</string>
+    <string name="menu_no_ingredients">no ingredients yet</string>
+    <string name="menu_ingredients">Ingredients</string>
+    <string name="menu_on_menu">Put on the menu</string>
+    <string name="menu_choose_title">%1$s: what are we eating?</string>
+    <string name="menu_other_dish">Something else</string>
+    <string name="menu_also_recipe">Also keep it as a recipe</string>
+    <string name="menu_recipe_title">Recipe</string>
+    <string name="menu_recipe_body">Tell what you cooked, typed or spoken. Hearth picks out the name and what to buy; change anything you like.</string>
+    <string name="menu_story_title">What did you make?</string>
+    <string name="menu_story_hint">e.g. We made lasagne with minced meat, tomato sauce and cheese. 45 minutes in the oven.</string>
+    <string name="menu_recipe_name">Name</string>
+    <string name="menu_ingredient_add">Add an ingredient</string>
+    <string name="menu_photo_take">Take a photo</string>
+    <string name="menu_photo_other">Another photo</string>
+    <string name="menu_photo_choose">Choose a photo</string>
+    <string name="menu_photo_remove">Remove photo</string>
+    <string name="edit">Edit</string>
+    <string name="stock_move_title">%1$s belongs in</string>
+    <string name="stock_remove_spot">Remove %1$s</string>
+    <string name="stock_remove_spot_body">Everything in it leaves the stock too. The shopping list stays as it is.</string>
+    <string name="stock_hold_hint">Hold an item to move it to another room or category.</string>
+    <plurals name="menu_x_ingredients">
+        <item quantity="one">%1$d ingredient</item>
+        <item quantity="other">%1$d ingredients</item>
+    </plurals>
 </resources>

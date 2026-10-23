@@ -79,6 +79,12 @@ interface StockDao {
 
     @Query("DELETE FROM stock_item WHERE id IN (:ids)")
     suspend fun delete(ids: List<String>)
+
+    @Query("UPDATE stock_item SET spotId = :spotId, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun move(ids: List<String>, spotId: String, now: Long)
+
+    @Query("DELETE FROM storage_spot WHERE id = :id")
+    suspend fun deleteSpot(id: String)
 }
 
 /** Storage for stock: spots (rooms or topics) and the items kept there. Writes come from tools only. */
@@ -123,32 +129,74 @@ class StockRepository(
         if (ids.isNotEmpty()) dao.delete(ids)
     }
 
-    /** A first set of spots and everyday items, so the stock page is useful from day one. */
+    /** Moves items to another room or category. */
+    suspend fun move(ids: List<String>, spotId: String) {
+        if (ids.isNotEmpty()) dao.move(ids, spotId, clock())
+    }
+
+    /** Removes a room or category and the items in it. */
+    suspend fun deleteSpot(id: String) = dao.deleteSpot(id)
+
+    /**
+     * Rooms and categories with everyday items, so the stock page is useful from day one. Households
+     * that started with the first layout (one "Keuken") get the new categories once; their items move along.
+     */
     suspend fun ensureDefaults(lang: Lang, shopIdFor: suspend (ShopKind) -> String?) {
-        if (dao.spots().isNotEmpty()) return
+        val settings = db.settingDao()
+        if (settings.all().any { it.key == LAYOUT_KEY && it.value == LAYOUT }) return
         val defaults = if (lang == Lang.NL) DEFAULTS_NL else DEFAULTS_EN
         val shops = defaults.map { it.second }.distinct().associateWith { if (it == ShopKind.SUPERMARKET) null else shopIdFor(it) }
         // One transaction: in the browser every transaction is a round trip to the SQLite worker.
         db.withWriteTransaction {
-            if (dao.spots().isNotEmpty()) return@withWriteTransaction
             val now = clock()
+            val spots = dao.spots().associateBy { it.normalizedName }.toMutableMap()
+            val items = dao.items().associateBy { it.normalizedName }
+            val firstRun = spots.isEmpty()
             defaults.forEachIndexed { order, (spotName, kind, names) ->
-                val spot = StorageSpotEntity(newId(), spotName, normalizeName(spotName), order, now, now)
-                dao.insertSpot(spot)
-                names.forEach { dao.insertItem(StockItemEntity(newId(), it, normalizeName(it), spot.id, StockState.IN_STOCK, shops[kind], now, now)) }
+                val spot = spots[normalizeName(spotName)] ?: StorageSpotEntity(newId(), spotName, normalizeName(spotName), order, now, now).also {
+                    dao.insertSpot(it)
+                    spots[it.normalizedName] = it
+                }
+                names.forEach { name ->
+                    val existing = items[normalizeName(name)]
+                    when {
+                        existing == null -> dao.insertItem(StockItemEntity(newId(), name, normalizeName(name), spot.id, StockState.IN_STOCK, shops[kind], now, now))
+                        // From the first layout's catch-all kitchen to its own category.
+                        !firstRun && existing.spotId in OLD_KITCHENS.mapNotNull { spots[it]?.id } -> dao.move(listOf(existing.id), spot.id, now)
+                    }
+                }
             }
+            // An old "Keuken" that is now empty goes.
+            OLD_KITCHENS.mapNotNull { spots[it] }.forEach { kitchen ->
+                if (dao.items().none { it.spotId == kitchen.id }) dao.deleteSpot(kitchen.id)
+            }
+            settings.put(app.hearth.core.data.settings.SettingEntity(LAYOUT_KEY, LAYOUT, now))
         }
     }
 
     private companion object {
+        const val LAYOUT_KEY = "stock.layout"
+        const val LAYOUT = "2"
+        val OLD_KITCHENS = listOf("keuken", "kitchen")
+
         val DEFAULTS_NL = listOf(
-            Triple("Keuken", ShopKind.SUPERMARKET, listOf("Melk", "Brood", "Eieren", "Boter", "Kaas", "Koffie", "Thee", "Pasta", "Rijst", "Olijfolie", "Tomatensaus", "Fruit")),
+            Triple("Koelkast", ShopKind.SUPERMARKET, listOf("Melk", "Boter", "Kaas", "Eieren", "Yoghurt", "Beleg")),
+            Triple("Vers", ShopKind.SUPERMARKET, listOf("Brood", "Fruit", "Groenten")),
+            Triple("Droge voeding", ShopKind.SUPERMARKET, listOf("Pasta", "Rijst", "Bloem", "Suiker", "Koffie", "Thee", "Tomatensaus", "Olijfolie", "Ontbijtgranen")),
+            Triple("Snacks", ShopKind.SUPERMARKET, listOf("Chips", "Koekjes", "Chocolade", "Noten", "Snoep")),
+            Triple("Diepvries", ShopKind.SUPERMARKET, listOf("Diepvriesgroenten", "Frietjes", "IJs")),
+            Triple("Drank", ShopKind.SUPERMARKET, listOf("Water", "Frisdrank", "Fruitsap")),
             Triple("Badkamer", ShopKind.SUPERMARKET, listOf("WC-papier", "Tandpasta", "Shampoo", "Douchegel", "Handzeep", "Deodorant")),
             Triple("Wasplaats", ShopKind.SUPERMARKET, listOf("Waspoeder", "Wasverzachter", "Afwasmiddel", "Vaatwastabletten", "Vuilniszakken", "Keukenrol", "Allesreiniger")),
             Triple("Medicijnkast", ShopKind.PHARMACY, listOf("Paracetamol", "Ibuprofen", "Pleisters", "Ontsmettingsmiddel")),
         )
         val DEFAULTS_EN = listOf(
-            Triple("Kitchen", ShopKind.SUPERMARKET, listOf("Milk", "Bread", "Eggs", "Butter", "Cheese", "Coffee", "Tea", "Pasta", "Rice", "Olive oil", "Tomato sauce", "Fruit")),
+            Triple("Fridge", ShopKind.SUPERMARKET, listOf("Milk", "Butter", "Cheese", "Eggs", "Yoghurt", "Sandwich fillings")),
+            Triple("Fresh", ShopKind.SUPERMARKET, listOf("Bread", "Fruit", "Vegetables")),
+            Triple("Dry food", ShopKind.SUPERMARKET, listOf("Pasta", "Rice", "Flour", "Sugar", "Coffee", "Tea", "Tomato sauce", "Olive oil", "Cereal")),
+            Triple("Snacks", ShopKind.SUPERMARKET, listOf("Crisps", "Biscuits", "Chocolate", "Nuts", "Sweets")),
+            Triple("Freezer", ShopKind.SUPERMARKET, listOf("Frozen vegetables", "Fries", "Ice cream")),
+            Triple("Drinks", ShopKind.SUPERMARKET, listOf("Water", "Soft drinks", "Juice")),
             Triple("Bathroom", ShopKind.SUPERMARKET, listOf("Toilet paper", "Toothpaste", "Shampoo", "Shower gel", "Hand soap", "Deodorant")),
             Triple("Utility room", ShopKind.SUPERMARKET, listOf("Laundry detergent", "Fabric softener", "Dish soap", "Dishwasher tablets", "Bin bags", "Kitchen roll", "Cleaner")),
             Triple("Medicine cabinet", ShopKind.PHARMACY, listOf("Paracetamol", "Ibuprofen", "Plasters", "Antiseptic")),

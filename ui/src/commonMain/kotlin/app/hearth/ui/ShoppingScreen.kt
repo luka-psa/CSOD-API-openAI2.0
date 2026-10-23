@@ -3,6 +3,7 @@ package app.hearth.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,7 +57,12 @@ import app.hearth.ui.resources.on_list
 import app.hearth.ui.resources.shopping_add_hint
 import app.hearth.ui.resources.shopping_empty
 import app.hearth.ui.resources.shopping_list
+import app.hearth.ui.resources.cancel
 import app.hearth.ui.resources.spot_add
+import app.hearth.ui.resources.stock_hold_hint
+import app.hearth.ui.resources.stock_move_title
+import app.hearth.ui.resources.stock_remove_spot
+import app.hearth.ui.resources.stock_remove_spot_body
 import app.hearth.ui.resources.spot_name_hint
 import app.hearth.ui.resources.stock_add_hint
 import app.hearth.ui.resources.stock_hint
@@ -75,6 +81,8 @@ class ShoppingCallbacks(
     val addStock: (String, StorageSpot) -> Unit,
     val addSpot: (String) -> Unit,
     val removeStock: (StockItem) -> Unit,
+    val moveStock: (StockItem, StorageSpot) -> Unit,
+    val removeSpot: (StorageSpot) -> Unit,
 )
 
 /**
@@ -94,6 +102,8 @@ fun ShoppingScreen(
     var removingStock by remember { mutableStateOf<StockItem?>(null) }
     var clearing by remember { mutableStateOf(false) }
     var addingSpot by remember { mutableStateOf(false) }
+    var moving by remember { mutableStateOf<StockItem?>(null) }
+    var removingSpot by remember { mutableStateOf<StorageSpot?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         Text(stringResource(Res.string.shopping_list), style = MaterialTheme.typography.displaySmall)
@@ -101,7 +111,7 @@ fun ShoppingScreen(
         if (wide) {
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 ListPanel(sections, cb, onRemove = { removing = it }, onClear = { clearing = true }, modifier = Modifier.weight(1f), compact = false)
-                StockPanel(spots, stock, cb, onRemove = { removingStock = it }, onAddSpot = { addingSpot = true }, modifier = Modifier.weight(1.1f))
+                StockPanel(spots, stock, cb, onRemove = { removingStock = it }, onAddSpot = { addingSpot = true }, onMove = { moving = it }, onRemoveSpot = { removingSpot = it }, modifier = Modifier.weight(1.1f))
             }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -109,7 +119,7 @@ fun ShoppingScreen(
                 ChoiceChip(stringResource(Res.string.stock_title), showStock, { showStock = true }, icon = HearthIcons.Home)
             }
             Spacer(Modifier.size(12.dp))
-            if (showStock) StockPanel(spots, stock, cb, onRemove = { removingStock = it }, onAddSpot = { addingSpot = true }, modifier = Modifier.weight(1f))
+            if (showStock) StockPanel(spots, stock, cb, onRemove = { removingStock = it }, onAddSpot = { addingSpot = true }, onMove = { moving = it }, onRemoveSpot = { removingSpot = it }, modifier = Modifier.weight(1f))
             else ListPanel(sections, cb, onRemove = { removing = it }, onClear = { clearing = true }, modifier = Modifier.weight(1f), compact = true)
         }
     }
@@ -122,6 +132,12 @@ fun ShoppingScreen(
     }
     if (clearing) {
         ConfirmDialog(stringResource(Res.string.clear_bought_confirm), stringResource(Res.string.clear_bought_body), onYes = cb.clearBought) { clearing = false }
+    }
+    moving?.let { item ->
+        MoveStockDialog(item, spots, onMove = { cb.moveStock(item, it) }) { moving = null }
+    }
+    removingSpot?.let { spot ->
+        ConfirmDialog(stringResource(Res.string.stock_remove_spot, spot.name) + "?", stringResource(Res.string.stock_remove_spot_body), onYes = { cb.removeSpot(spot) }) { removingSpot = null }
     }
     if (addingSpot) {
         TextDialog(stringResource(Res.string.spot_add), stringResource(Res.string.spot_name_hint), onDone = { text, _ -> cb.addSpot(text) }) { addingSpot = false }
@@ -210,6 +226,8 @@ private fun StockPanel(
     cb: ShoppingCallbacks,
     onRemove: (StockItem) -> Unit,
     onAddSpot: () -> Unit,
+    onMove: (StockItem) -> Unit,
+    onRemoveSpot: (StorageSpot) -> Unit,
     modifier: Modifier,
 ) {
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -218,18 +236,18 @@ private fun StockPanel(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 16.dp)) {
             items(spots, key = { it.id }) { spot ->
                 val needed = stock.count { it.spotId == spot.id && it.state != StockState.IN_STOCK }
-                ChoiceChip(spot.name, spot.id == selected?.id, { selectedId = spot.id }, badge = needed)
+                ChoiceChip(spot.name, spot.id == selected?.id, { selectedId = spot.id }, badge = needed, onLongClick = { onRemoveSpot(spot) })
             }
             item { ChoiceChip("", false, onAddSpot, icon = HearthIcons.Add) }
         }
         Spacer(Modifier.size(12.dp))
         ListSurface(Modifier.weight(1f)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-                Text(stringResource(Res.string.stock_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(Res.string.stock_hint) + " " + stringResource(Res.string.stock_hold_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.size(12.dp))
                 if (selected != null) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        stock.filter { it.spotId == selected.id }.forEach { item -> StockTile(item, { cb.toggleStock(item) }, { onRemove(item) }) }
+                        stock.filter { it.spotId == selected.id }.forEach { item -> StockTile(item, { cb.toggleStock(item) }, { onMove(item) }, { onRemove(item) }) }
                     }
                     Spacer(Modifier.size(16.dp))
                     AddRow(stringResource(Res.string.stock_add_hint, selected.name), { cb.addStock(it, selected) }, muted = true, compact = true)
@@ -239,14 +257,15 @@ private fun StockPanel(
     }
 }
 
-/** Tap: "it's out" (goes on the list). Tap again: "we have it" (comes off the list). */
+/** Tap: "it's out" (goes on the list). Tap again: "we have it". Hold: move it to another place. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun StockTile(item: StockItem, onToggle: () -> Unit, onRemove: () -> Unit) {
+private fun StockTile(item: StockItem, onToggle: () -> Unit, onHold: () -> Unit, onRemove: () -> Unit) {
     val needed = item.state != StockState.IN_STOCK
     val bg by animateColorAsState(if (needed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clip(RoundedCornerShape(18.dp)).background(bg).clickable(onClick = onToggle).heightIn(min = 56.dp).padding(start = 16.dp, end = 2.dp),
+        modifier = Modifier.clip(RoundedCornerShape(18.dp)).background(bg).combinedClickable(onClick = onToggle, onLongClick = onHold).heightIn(min = 56.dp).padding(start = 16.dp, end = 2.dp),
     ) {
         if (needed) {
             Icon(HearthIcons.Cart, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
@@ -258,6 +277,23 @@ private fun StockTile(item: StockItem, onToggle: () -> Unit, onRemove: () -> Uni
         }
         DeleteButton(onRemove)
     }
+}
+
+/** "Chips hoort bij": every place as a chip; one tap moves it. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MoveStockDialog(item: StockItem, spots: List<StorageSpot>, onMove: (StorageSpot) -> Unit, onDismiss: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.stock_move_title, item.name)) },
+        text = {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                spots.forEach { spot -> ChoiceChip(spot.name, spot.id == item.spotId, { onMove(spot); onDismiss() }) }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) } },
+        containerColor = MaterialTheme.colorScheme.surface,
+    )
 }
 
 /** A calm colour per kind of shop, so the eye finds "the pharmacy bit" quickly. */

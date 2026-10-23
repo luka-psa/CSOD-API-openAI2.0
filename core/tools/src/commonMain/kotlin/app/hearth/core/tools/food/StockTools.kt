@@ -225,3 +225,61 @@ class RemoveStockItemTool(private val stock: StockRepository) : Tool<StockRefArg
 
 /** For the default shop of seeded items. */
 suspend fun ShoppingRepository.shopIdFor(kind: ShopKind): String? = allShops().firstOrNull { it.kind == kind }?.id
+
+// ---------- move_stock_item ----------
+
+@Serializable
+data class MoveStockItemArgs(
+    @Describe("Ids of stock items.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Names of stock items, when ids are not known.")
+    val names: List<String> = emptyList(),
+    @Describe("The room or category it belongs in, e.g. 'Snacks', 'Droge voeding'. Created if new.")
+    val spot: String,
+)
+
+class MoveStockItemTool(private val stock: StockRepository) : Tool<MoveStockItemArgs, StockItemsResult> {
+    override val name = NAME
+    override val description = "Move stock items to another room or category (e.g. chips to Snacks)."
+    override val argsSerializer = MoveStockItemArgs.serializer()
+    override val resultSerializer = StockItemsResult.serializer()
+
+    override suspend fun run(args: MoveStockItemArgs, ctx: ToolContext): StockItemsResult {
+        val items = stock.find(args.itemIds, args.names).ifEmpty { notFound(ctx) }
+        val spot = stock.spot(args.spot.trim().ifEmpty { throw ToolException(ctx.t("Naar welke plek?", "To which place?")) })
+        stock.move(items.map { it.id }, spot.id)
+        val names = items.joinToString(", ") { it.name }
+        return StockItemsResult(items.map { it.copy(spotId = spot.id) }, ctx.t("$names staat nu bij ${spot.name}", "$names is now under ${spot.name}"))
+    }
+
+    companion object {
+        const val NAME = "move_stock_item"
+    }
+}
+
+// ---------- remove_storage_spot (destructive) ----------
+
+@Serializable
+data class RemoveStorageSpotArgs(@Describe("The room or category to remove, with its items.") val spot: String)
+
+class RemoveStorageSpotTool(private val stock: StockRepository) : Tool<RemoveStorageSpotArgs, StorageSpotResult> {
+    override val name = NAME
+    override val description = "Remove a room or category from the stock, with the items in it."
+    override val destructive = true
+    override val argsSerializer = RemoveStorageSpotArgs.serializer()
+    override val resultSerializer = StorageSpotResult.serializer()
+
+    override fun confirmQuestion(args: RemoveStorageSpotArgs, ctx: ToolContext) =
+        ctx.t("${args.spot} met alles erin uit de voorraad halen?", "Remove ${args.spot} and everything in it from the stock?")
+
+    override suspend fun run(args: RemoveStorageSpotArgs, ctx: ToolContext): StorageSpotResult {
+        val spot = stock.allSpots().firstOrNull { normalizeName(it.name) == normalizeName(args.spot) || it.id == args.spot }
+            ?: throw ToolException(ctx.t("Die plek ken ik niet: ${args.spot}", "I don't know that place: ${args.spot}"))
+        stock.deleteSpot(spot.id)
+        return StorageSpotResult(spot, ctx.t("${spot.name} is uit de voorraad.", "${spot.name} was removed from the stock."))
+    }
+
+    companion object {
+        const val NAME = "remove_storage_spot"
+    }
+}

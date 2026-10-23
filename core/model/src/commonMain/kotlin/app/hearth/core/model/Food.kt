@@ -51,3 +51,21 @@ data class StockItem(
 /** What we eat on one day (the evening meal); its ingredients went onto the shopping list. */
 @Serializable
 data class Meal(val id: String, val date: String, val dish: String, val ingredients: List<String> = emptyList())
+
+/**
+ * A dish we know: saved on purpose as a recipe (with how we made it and maybe a photo), or remembered
+ * automatically the first time it was planned. [key] is its normalized name.
+ */
+@Serializable
+data class Recipe(
+    val key: String,
+    val name: String,
+    val ingredients: List<String> = emptyList(),
+    /** How we made it, in our own words. */
+    val notes: String? = null,
+    val hasPhoto: Boolean = false,
+    /** Saved on purpose (shows under Recepten), not just remembered from a plan. */
+    val isRecipe: Boolean = false,
+    /** ISO date it was last on the menu, or null. */
+    val lastUsedOn: String? = null,
+)

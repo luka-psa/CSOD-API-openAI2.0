@@ -41,12 +41,15 @@ class StockToolsTest {
 
     @Test
     fun `defaults give every room its everyday items, medicine from the pharmacy`() = runTest {
-        assertEquals(listOf("Keuken", "Badkamer", "Wasplaats", "Medicijnkast"), stock.allSpots().map { it.name })
+        assertEquals(
+            listOf("Koelkast", "Vers", "Droge voeding", "Snacks", "Diepvries", "Drank", "Badkamer", "Wasplaats", "Medicijnkast"),
+            stock.allSpots().map { it.name },
+        )
         val pharmacy = shopping.allShops().first { it.kind == ShopKind.PHARMACY }
         assertEquals(pharmacy.id, stock.findItem("Paracetamol")!!.shopId)
         // Seeding twice does nothing.
         stock.ensureDefaults(Lang.NL) { shopping.shopIdFor(it) }
-        assertEquals(4, stock.allSpots().size)
+        assertEquals(9, stock.allSpots().size)
     }
 
     @Test
@@ -99,5 +102,18 @@ class StockToolsTest {
         assertTrue(tools.registry.execute(call, nl) is ToolOutcome.NeedsConfirmation)
         assertEquals("Lijst opgeruimd: 2 gekocht. Goed gedaan!", tools.registry.execute(call, nl, confirmed = true).summary)
         assertTrue(shopping.boughtItems().isEmpty())
+    }
+
+    @Test
+    fun `items move to another category, and a category can go with its items after a yes`() = runTest {
+        assertEquals("Chips staat nu bij Feest", tools.registry.run(tools.moveStockItem, MoveStockItemArgs(names = listOf("chips"), spot = "feest"), nl).summary)
+        val feest = stock.allSpots().single { it.name == "Feest" }
+        assertEquals(feest.id, stock.findItem("Chips")!!.spotId)
+
+        val call = ToolCall.of(RemoveStorageSpotTool.NAME, RemoveStorageSpotArgs.serializer(), RemoveStorageSpotArgs("Feest"))
+        assertEquals("Feest met alles erin uit de voorraad halen?", tools.registry.execute(call, nl).summary)
+        tools.registry.execute(call, nl, confirmed = true)
+        assertEquals(null, stock.findItem("Chips"))
+        assertTrue(stock.allSpots().none { it.name == "Feest" })
     }
 }

@@ -107,4 +107,38 @@ class WeekToolsTest {
         assertFalse(huddleDue(week.last(), friday.plusDays(3)))
         assertTrue(huddleDue(week.last(), friday.plusDays(6)))
     }
+
+    @Test
+    fun `recipes keep how we made them, their photo survives a rename, and planning brings the ingredients`() = runTest {
+        val saved = tools.registry.run(
+            tools.saveRecipe,
+            SaveRecipeArgs("lasagne van oma", listOf("gehakt, tomatensaus en lasagnebladen", "kaas"), "45 minuten in de oven op 180 graden"),
+            nl,
+        )
+        assertEquals("Recept bewaard: Lasagne van oma (4 ingrediënten)", saved.summary)
+        val photo = kotlin.io.encoding.Base64.encode(byteArrayOf(1, 2, 3))
+        tools.registry.run(tools.setRecipePhoto, SetRecipePhotoArgs(saved.recipe.key, photo), nl)
+        assertTrue(week.recipe("Lasagne van oma")!!.hasPhoto)
+
+        val renamed = tools.registry.run(tools.saveRecipe, SaveRecipeArgs("Lasagne", saved.recipe.ingredients, saved.recipe.notes, recipeKey = saved.recipe.key), nl)
+        assertEquals("Recept bijgewerkt: Lasagne", renamed.summary)
+        assertEquals(listOf<Byte>(1, 2, 3), week.photo(renamed.recipe.key)!!.toList())
+        assertEquals(null, week.recipe("Lasagne van oma"))
+
+        assertEquals("Maandag: Lasagne · 4 op de lijst", tools.registry.run(tools.planMeal, PlanMealArgs("lasagne", "2026-10-26"), nl).summary)
+        assertEquals(listOf("Gehakt", "Tomatensaus", "Lasagnebladen", "Kaas"), shopping.openItems().map { it.name })
+        // Planned recipes stay recipes, with their notes.
+        val after = week.recipe("lasagne")!!
+        assertTrue(after.isRecipe)
+        assertEquals("45 minuten in de oven op 180 graden", after.notes)
+        assertEquals("2026-10-26", after.lastUsedOn)
+
+        assertEquals("Lasagne: gehakt, tomatensaus, lasagnebladen, kaas", tools.registry.run(tools.listRecipes, ListRecipesArgs("gehakt"), nl).summary)
+        val call = ToolCall.of(RemoveRecipeTool.NAME, RecipeRefArgs.serializer(), RecipeRefArgs("Lasagne"))
+        assertTrue(tools.registry.execute(call, nl) is ToolOutcome.NeedsConfirmation)
+        tools.registry.execute(call, nl, confirmed = true)
+        assertEquals(null, week.recipe("lasagne"))
+        assertEquals(null, week.photo("lasagne"))
+        assertEquals(1, week.mealsBetween("2026-10-01", "2026-11-30").size)
+    }
 }

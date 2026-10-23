@@ -58,6 +58,7 @@ import app.hearth.ui.resources.nav_connect
 import app.hearth.ui.resources.mcp_asks
 import app.hearth.ui.resources.no
 import app.hearth.ui.resources.yes
+import app.hearth.ui.resources.nav_menu
 import app.hearth.ui.resources.nav_week
 import app.hearth.ui.resources.nav_tasks
 import app.hearth.ui.resources.nav_shopping
@@ -71,6 +72,7 @@ import org.jetbrains.compose.resources.stringResource
 enum class Destination(val icon: ImageVector, val label: StringResource, val inNav: Boolean = true) {
     TODAY(HearthIcons.Sun, Res.string.nav_today),
     TASKS(HearthIcons.Backlog, Res.string.nav_tasks),
+    MENU(HearthIcons.Restaurant, Res.string.nav_menu),
     WEEK(HearthIcons.People, Res.string.nav_week),
     BOARD(HearthIcons.Board, Res.string.nav_board),
     SHOPPING(HearthIcons.Cart, Res.string.nav_shopping),
@@ -95,6 +97,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val dishes by viewModel.dishes.collectAsStateWithLifecycle()
     val lastHuddle by viewModel.lastHuddle.collectAsStateWithLifecycle()
     val agenda by viewModel.agenda.collectAsStateWithLifecycle()
+    val recipes by viewModel.recipes.collectAsStateWithLifecycle()
+    val photoVersion by viewModel.photoVersion.collectAsStateWithLifecycle()
     val connection by viewModel.connection.collectAsStateWithLifecycle()
     val relayStatus by viewModel.relayStatus.collectAsStateWithLifecycle()
     val mcpPending by viewModel.mcpPending.collectAsStateWithLifecycle()
@@ -134,6 +138,17 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                             onGoBoard = { destination = Destination.BOARD },
                             onGoWeek = { destination = Destination.WEEK },
                             onGoConnect = { destination = Destination.CONNECT },
+                        )
+                        Destination.MENU -> MenuScreen(
+                            meals, recipes, today, lang, wide, photoVersion, viewModel.speechLanguage,
+                            MenuCallbacks(
+                                planRecipe = viewModel::planRecipe,
+                                planDish = viewModel::planMeal,
+                                removeMeal = viewModel::removeMeal,
+                                saveRecipe = viewModel::saveRecipe,
+                                deleteRecipe = viewModel::deleteRecipe,
+                                loadPhoto = viewModel::photo,
+                            ),
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang,
@@ -190,6 +205,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 addStock = viewModel::addStock,
                                 addSpot = viewModel::addSpot,
                                 removeStock = viewModel::removeStock,
+                                moveStock = viewModel::moveStock,
+                                removeSpot = viewModel::removeSpot,
                             ),
                         )
                     }
@@ -326,6 +343,8 @@ private fun BottomBar(selected: Destination, counts: Map<Destination, Int>, onSe
                     }
                 },
                 label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) },
+                // Six places on a phone: only the selected one shows its name.
+                alwaysShowLabel = false,
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.surface,
                     indicatorColor = MaterialTheme.colorScheme.onBackground,

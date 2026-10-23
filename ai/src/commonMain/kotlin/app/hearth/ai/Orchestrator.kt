@@ -22,6 +22,9 @@ import app.hearth.core.tools.food.MarkBoughtTool
 import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
 import app.hearth.ai.route.MealWords
+import app.hearth.ai.route.RecipeWords
+import app.hearth.core.tools.week.SaveRecipeArgs
+import app.hearth.core.tools.week.SaveRecipeTool
 import app.hearth.ai.route.StockWords
 import app.hearth.core.tools.week.PlanMealArgs
 import app.hearth.core.tools.week.PlanMealTool
@@ -71,6 +74,14 @@ class Orchestrator(
     private val parser: LocalIntentParser = LocalIntentParser(),
 ) {
     suspend fun handle(text: String, ctx: ToolContext, history: List<ChatTurn> = emptyList()): ChatReply {
+        // "recept: pannenkoeken met bloem, melk en eieren": a recipe for the week menu.
+        if (RECIPE_PREFIX.containsMatchIn(text)) {
+            val hint = RecipeWords.parse(text)
+            if (hint.name != null) {
+                val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
+                return runCalls(listOf(ToolCall.of(SaveRecipeTool.NAME, SaveRecipeArgs.serializer(), SaveRecipeArgs(hint.name, hint.ingredients, hint.notes))), local)
+            }
+        }
         // "we eten vrijdag spaghetti": the meal plan (its ingredients go onto the list).
         MealWords.extract(text, ctx.today)?.let { hint ->
             val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
@@ -269,6 +280,7 @@ class Orchestrator(
     }
 
     private companion object {
+        val RECIPE_PREFIX = Regex("^\\s*(?:recept|recipe)\\s*:", RegexOption.IGNORE_CASE)
         val SHOPPING_SECTIONS = setOf(Section.SHOPPING, Section.STOCK)
         val DONE_WORDS = Regex(
             "^(?:de |het |the )?(.+?)\\s+(?:is|zijn|was|are)\\s+(?:gedaan|klaar|geregeld|geboekt|gebeld|done|booked|sorted|finished)[.!]?$",

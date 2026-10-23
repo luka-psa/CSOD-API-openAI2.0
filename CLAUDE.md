@@ -113,6 +113,10 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
   and onto the list, bought = IN_STOCK again. Voice never adds on its own: the
   words show live, then "Klopt dit?". Every list row ends in an X that asks first.
+- **Weekmenu & Recept:** a *Recipe* is a dish we know (in the `dish` table):
+  saved on purpose (`isRecipe`, notes = how we made it, an optional photo) or
+  remembered from the plan. Planning one puts its ingredients on the list.
+  Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
 - **Weekoverleg:** Terugblik → Maaltijden → Boodschappen → Deze week → *Oudjes*
   (the longest-open unplanned items, a few picked each week) → Werkbord; *Klaar*
   records a *Huddle*. *Meal*: one per day; the *Dish* library remembers
