@@ -1,5 +1,6 @@
 package app.hearth.ai.route
 
+import app.hearth.core.model.GoalScope
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Section
 
@@ -14,6 +15,11 @@ object KeywordRouter {
         Section.NOTE to listOf(
             "huisregel", "regel", "afspraak is", "is de afspraak", "we spreken af", "afgesproken", "geen schermen",
             "house rule", "rule", "we agreed", "agreement", "no screens",
+        ),
+        // Clear frustration words before anything else: "ik erger me aan de rommel in de gang".
+        Section.FRICTION to listOf(
+            "ik erger me", "erger me", "ergernis", "stoort me", "het stoort", "frictie", "frustrerend", "irritant", "ergerlijk",
+            "annoys me", "bugs me", "frustrating", "i hate that", "friction",
         ),
         Section.APPOINTMENT to listOf(
             "tandarts", "dokter", "huisarts", "osteopaat", "kine", "kinesist", "kapper", "afspraak", "autokeuring", "keuring",
@@ -33,13 +39,36 @@ object KeywordRouter {
             "badkamer", "weeds", "mow", "lawn", "sheets", "windows", "vacuum", "mop", "ironing", "laundry", "bathroom",
         ),
         Section.RHYTHM to listOf("routine", "ritueel", "ochtend", "avond", "bedtijd", "morning", "evening", "bedtime"),
+        Section.GOAL to listOf(
+            "ons doel", "mijn doel", "doel is", "ik wil graag", "we willen graag", "ik wil", "we willen", "zou graag",
+            "our goal", "my goal", "goal is", "i want to", "we want to", "we'd like to", "i'd like to",
+        ),
         Section.PROTECTED_TIME to listOf("filmavond", "spelletjes", "uitstap", "vrije tijd", "rust", "movie night", "game night", "day off", "date night"),
-        Section.FRICTION to listOf("ergerlijk", "altijd op", "nooit", "irritant", "lastig", "annoying", "always runs out", "never", "frustrat"),
+        Section.FRICTION to listOf("altijd op", "nooit", "lastig", "annoying", "always runs out", "never", "frustrat"),
+    )
+
+    /** "huisregel: …", "doel: …", "frictie: …" say it outright. */
+    private val prefixes = listOf(
+        Section.NOTE to listOf("huisregel", "regel", "afspraak", "house rule", "rule"),
+        Section.FRICTION to listOf("frictie", "ergernis", "friction"),
+        Section.GOAL to listOf("doel", "goal"),
     )
 
     fun section(text: String): Section {
+        val start = text.trim().lowercase()
+        prefixes.firstOrNull { (_, words) -> words.any { start.startsWith("$it:") } }?.let { return it.first }
         val t = " ${text.lowercase()} "
         return keywords.firstOrNull { (_, words) -> words.any { it in t } }?.first ?: Section.OTHER
+    }
+
+    /** "samen", "met z’n twee" → the couple; "ik wil" → personal; otherwise the family. */
+    fun goalScope(text: String): GoalScope {
+        val t = " ${text.lowercase()} "
+        return when {
+            listOf("samen", "met z’n twee", "met z'n twee", "als koppel", "together", "as a couple", "the two of us").any { it in t } -> GoalScope.COUPLE
+            listOf(" ik ", " mijn ", " i ", " my ", "i'd").any { it in t } -> GoalScope.PERSONAL
+            else -> GoalScope.FAMILY
+        }
     }
 
     fun isQuestion(text: String): Boolean {

@@ -36,7 +36,8 @@ class OrchestratorTest {
     private val db = inMemoryHearthDatabase()
     private val shopping = ShoppingRepository(db)
     private val inbox = BacklogRepository(db)
-    private val tools = HearthTools(shopping, inbox)
+    private val board = app.hearth.core.data.board.BoardRepository(db)
+    private val tools = HearthTools(shopping, inbox, board)
     private val nl = ToolContext(ToolSource.CHAT, Lang.NL, today = LocalDate(2026, 10, 22))
 
     /** Scripted model: a queue of router decisions and helper replies. */
@@ -195,5 +196,19 @@ class OrchestratorTest {
         offline.handle("lampen", nl)
         assertEquals(listOf("Lampen"), shopping.openItems().map { it.name })
         assertEquals(listOf(Section.PROJECT, Section.PROJECT), inbox.openItems().map { it.section })
+    }
+
+    @Test
+    fun `offline capture puts rules, frictions and goals on the Werkbord`() = runTest {
+        assertEquals("Nieuwe huisregel: “Wie kookt, wast niet af”", offline.handle("huisregel: wie kookt, wast niet af", nl).text)
+        assertEquals(
+            "Op het werkbord: “Ik erger me aan de rommel in de gang”. We bekijken het in het weekoverleg.",
+            offline.handle("ik erger me aan de rommel in de gang", nl).text,
+        )
+        assertEquals("Nieuw doel (samen): “We willen samen elke maand op date”", offline.handle("we willen samen elke maand op date", nl).text)
+        assertEquals("Nieuw doel (gezin): “10 km lopen”", offline.handle("doel: 10 km lopen", nl).text)
+        assertEquals(emptyList(), inbox.openItems())
+        assertEquals(emptyList(), shopping.openItems())
+        assertEquals(4, board.allItems().size)
     }
 }

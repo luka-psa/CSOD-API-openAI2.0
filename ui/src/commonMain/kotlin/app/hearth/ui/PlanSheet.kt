@@ -54,6 +54,8 @@ import app.hearth.ui.resources.follow_up_on
 import app.hearth.ui.resources.how_often
 import app.hearth.ui.resources.kind_admin
 import app.hearth.ui.resources.kind_appointment
+import app.hearth.ui.resources.kind_friction
+import app.hearth.ui.resources.kind_goal
 import app.hearth.ui.resources.kind_note
 import app.hearth.ui.resources.kind_project
 import app.hearth.ui.resources.kind_routine
@@ -253,6 +255,8 @@ private fun MoveRow(item: BacklogItem, actions: PlanActions, close: (() -> Unit)
         Section.APPOINTMENT to Res.string.kind_appointment,
         Section.PROJECT to Res.string.kind_project,
         Section.NOTE to Res.string.kind_note,
+        Section.FRICTION to Res.string.kind_friction,
+        Section.GOAL to Res.string.kind_goal,
     )
     Text(stringResource(Res.string.move_to), style = MaterialTheme.typography.titleMedium)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

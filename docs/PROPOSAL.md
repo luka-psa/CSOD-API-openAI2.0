@@ -95,7 +95,11 @@ ALL, TODAY, NEXT, UNPLANNED, WEEK, DONT_FORGET, ROUTINES_DUE, ROUTINES, ADMIN, P
 `plan_backlog_item`, `complete_backlog_item` (a routine logs "done today" and stays; a project takes its
 steps along), `reopen_backlog_item`, `remove_backlog_item` ⚠ (a project's steps go too),
 `set_routine_interval`, `mark_urgent`, `wait_for_reply` (follow-up day), `move_backlog_item`,
-`add_project_step` (creates the project if needed).
+`add_project_step` (creates the project if needed) · Werkbord: `add_member`, `remove_member` ⚠,
+`add_house_rule`, `log_friction`, `add_goal` (FAMILY/COUPLE/PERSONAL), `list_board`, `resolve_friction`
+(RULE → a house rule, CHANGE → a backlog item as next up, LET_GO), `set_goal_step` (optionally onto the
+backlog as next up), `achieve_goal`, `remove_board_item` ⚠. `add_to_backlog` / `move_backlog_item` with
+NOTE, FRICTION or GOAL put the item on the Werkbord.
 
 The full target list:
 
@@ -161,7 +165,10 @@ All tables: `id TEXT PK (UUID)`, `createdAt`, `updatedAt`. Enums as TEXT.
 
 **Built so far:** `Shop`, `ShoppingItem`, and `BacklogItem` (v4): text, section, plan (UNPLANNED/NEXT/DAY/LATER),
 plannedDate, finishBy, done/doneAt, urgent, waiting (date = follow-up day), intervalDays + lastDone (routines),
-parentId (project steps). Auto-migrations v1→v4 keep every household's data.
+parentId (project steps). v5 adds `Member` (name, colour) and `BoardItem` (kind RULE/FRICTION/GOAL, status
+OPEN/BECAME_RULE/BECAME_CHANGE/LET_GO/ACHIEVED, memberId, scope FAMILY/COUPLE/PERSONAL, nextStep, linkedId,
+closedAt); the v4→v5 migration moves open house rules and frictions off the backlog. Auto-migrations v1→v5
+keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
@@ -170,7 +177,7 @@ Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional sto
 Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under every screen.
 
 ```
- Vandaag (dashboard) | Taken | Boodschappen          (next: Weekoverleg | Werkbord)
+ Vandaag (dashboard) | Taken | Werkbord | Boodschappen          (next: Weekoverleg)
 ```
 
 **Vandaag: the tablet dashboard** (three columns on the tablet, one on a phone):
@@ -202,12 +209,16 @@ The plan sheet adapts to the kind: how often / give it a day (routine); urgent, 
 follow-up day, do on / finish by (admin); next, this weekend, a day, later (project/step); and "Hoort bij"
 to move between kinds.
 
+**Werkbord**: who lives here (name chips with a colour), then three columns: *Huisregels* (numbered),
+*Frictie* (each with Wordt huisregel · Veranderen · Loslaten; sorted-out ones stay visible as wins) and
+*Doelen* (Gezin · Samen · per person, each with one small next step that can go onto "volgende"; reached
+goals stay as wins). The dashboard shows *Onze afspraken*: three house rules and how many frictions wait
+for the weekoverleg.
+
 **Next screens** (approved, not built yet):
 - **Weekoverleg**: a 15-minute guided flow: look back (celebrate) → meals (dishes → ingredients onto the
   shopping list) → shopping check → this week (deadlines, due routines, one project step for the weekend)
   → *Oudjes*: Hearth suggests 2–3 of the longest-open items to tackle this week → new frictions.
-- **Werkbord**: *Huisregels*, *Frictie* (noticed → discussed in the weekoverleg → becomes a rule, a change/
-  project, or let go), *Doelen* (personal and couple, each with one small next step).
 - **Boodschappen & Voorraad**: shopping list, stock (low/out), meal plan.
 
 ## 6. Folder structure
@@ -273,8 +284,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    waiting for a reply + follow-up), projects with steps; Taken screen; dashboard with Niet vergeten,
    Vandaag + ritme, Binnenkort, generated free time, Lopende projecten. Capture bar reads "om de 2 weken",
    "elke week", "dringend".
-5. **Werkbord**: house rules, frictions (→ rule / change / let go), personal & couple goals; household
-   members (names, colours) so goals and ownership have a person.
+5. ✅ **Werkbord**: house rules, frictions (→ rule / change / let go), personal, couple and family goals
+   with a next step; household members (names, colours). Capture bar: "huisregel: …", "ik erger me aan …",
+   "we willen samen …", "doel: …".
 6. **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*.
 7. **MCP relay** managed by Hearth (§7, option A).
 8. Stock loop (low/out → shopping → back in stock), storage spots, stock check.

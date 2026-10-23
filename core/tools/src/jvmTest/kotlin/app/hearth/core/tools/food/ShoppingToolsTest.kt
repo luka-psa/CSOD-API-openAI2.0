@@ -34,7 +34,7 @@ class ShoppingToolsTest {
         db = inMemoryHearthDatabase()
         repo = ShoppingRepository(db)
         repo.ensureDefaultShops(Lang.NL)
-        tools = HearthTools(repo, BacklogRepository(db))
+        tools = HearthTools(repo, BacklogRepository(db), app.hearth.core.data.board.BoardRepository(db))
     }
 
     @AfterTest

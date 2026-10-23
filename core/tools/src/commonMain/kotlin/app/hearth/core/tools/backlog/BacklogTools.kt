@@ -1,6 +1,9 @@
 package app.hearth.core.tools.backlog
 
 import app.hearth.core.data.backlog.BacklogRepository
+import app.hearth.core.data.board.BoardRepository
+import app.hearth.core.model.boardKind
+import app.hearth.core.model.stripBoardPrefix
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
@@ -101,19 +104,27 @@ data class AddToBacklogArgs(
 @Serializable
 data class AddToBacklogResult(val item: BacklogItem, val added: Boolean, override val summary: String) : ToolResult
 
-class AddToBacklogTool(private val repo: BacklogRepository) : Tool<AddToBacklogArgs, AddToBacklogResult> {
+class AddToBacklogTool(private val repo: BacklogRepository, private val board: BoardRepository? = null) : Tool<AddToBacklogArgs, AddToBacklogResult> {
     override val name = NAME
     override val description =
         "Put something that needs doing on the shared backlog, labelled with its section. The section decides its list: " +
             "routines (CHORE, RHYTHM, HABIT: comes back now and then, give intervalDays), admin (ADMIN, APPOINTMENT: " +
             "deadline or urgency), projects (PROJECT: bigger, gets steps via add_project_step). Optionally plan it " +
-            "(next up, a day, or later). Not for shopping items."
+            "(next up, a day, or later). NOTE, FRICTION and GOAL go to the Werkbord. Not for shopping items."
     override val argsSerializer = AddToBacklogArgs.serializer()
     override val resultSerializer = AddToBacklogResult.serializer()
 
     override suspend fun run(args: AddToBacklogArgs, ctx: ToolContext): AddToBacklogResult {
         val text = args.text.trim()
         if (text.isEmpty()) throw ToolException(ctx.t("Wat moet er gebeuren?", "What needs doing?"))
+        // House rules, frictions and goals live on the Werkbord.
+        val boardKind = args.section.boardKind
+        if (board != null && boardKind != null) {
+            val (entry, added) = board.add(boardKind, stripBoardPrefix(text))
+            val shown = BacklogItem(entry.id, entry.text, args.section, createdAt = entry.createdAt)
+            val label = args.section.label(ctx.lang)
+            return AddToBacklogResult(shown, added, if (added) ctx.t("Op het werkbord: “${entry.text}” ($label)", "On the board: “${entry.text}” ($label)") else ctx.t("Staat al op het werkbord: “${entry.text}”", "Already on the board: “${entry.text}”"))
+        }
         val (plan, date) = resolve(args.`when`, args.date, ctx)
         val interval = args.intervalDays?.takeIf { it > 0 && args.section.kind == TaskKind.ROUTINE }
         val (item, added) = repo.add(

@@ -106,8 +106,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   *Binnenkort*, *Vrije tijd* (generated from how full a day is, never from
   durations), *Lopende projecten*. The selectors live in
   `core/model/Overview.kt` so the screen, tools and MCP agree.
-- **Coming next:** *Werkbord* (*Huisregel*, *Frictie*, *Doel*), *Weekoverleg*
-  (with *Oudjes*: the longest-open items, a few picked each week).
+- **Werkbord** (`board_item`, not the backlog): *Huisregel* (RULE), *Frictie*
+  (FRICTION → wordt huisregel / veranderen / loslaten; all three are good
+  outcomes), *Doel* (GOAL, scope gezin / samen / persoonlijk, one small *next
+  step*). *Member*: a person with a colour.
+- **Coming next:** *Weekoverleg* (with *Oudjes*: the longest-open items, a few
+  picked each week).
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
   UI ships in Dutch (Flemish) and English; the local parser understands both.
 

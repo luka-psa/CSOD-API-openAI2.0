@@ -44,9 +44,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Lang
 import app.hearth.core.model.dontForget
 import app.hearth.ui.resources.Res
+import app.hearth.ui.resources.nav_board
 import app.hearth.ui.resources.nav_tasks
 import app.hearth.ui.resources.nav_shopping
 import app.hearth.ui.resources.nav_today
@@ -59,6 +61,7 @@ import org.jetbrains.compose.resources.stringResource
 enum class Destination(val icon: ImageVector, val label: StringResource) {
     TODAY(HearthIcons.Sun, Res.string.nav_today),
     TASKS(HearthIcons.Backlog, Res.string.nav_tasks),
+    BOARD(HearthIcons.Board, Res.string.nav_board),
     SHOPPING(HearthIcons.Cart, Res.string.nav_shopping),
 }
 
@@ -73,6 +76,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val shopping by viewModel.shopping.collectAsStateWithLifecycle()
     val backlog by viewModel.backlog.collectAsStateWithLifecycle()
     val steps by viewModel.steps.collectAsStateWithLifecycle()
+    val board by viewModel.board.collectAsStateWithLifecycle()
+    val members by viewModel.members.collectAsStateWithLifecycle()
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
 
@@ -83,6 +88,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
 
     val counts = mapOf(
         Destination.TASKS to dontForget(backlog, today).size,
+        Destination.BOARD to board.count { it.kind == BoardKind.FRICTION && it.isOpen },
         Destination.SHOPPING to shopping.sumOf { s -> s.items.count { !it.bought } },
     )
 
@@ -93,13 +99,28 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                 AnimatedContent(destination, transitionSpec = { fadeIn() togetherWith fadeOut() }, modifier = Modifier.weight(1f)) { d ->
                     when (d) {
                         Destination.TODAY -> TodayScreen(
-                            backlog, steps, shopping, doneToday, today, lang, wide,
+                            backlog, steps, shopping, board, doneToday, today, lang, wide,
                             onComplete = viewModel::complete,
                             onPlan = { item, w -> viewModel.plan(item, w) },
                             onOpenItem = { planning = it },
                             onGoTasks = { tab = TaskTab.WEEK; destination = Destination.TASKS },
                             onGoProjects = { tab = TaskTab.PROJECTS; destination = Destination.TASKS },
                             onGoShopping = { destination = Destination.SHOPPING },
+                            onGoBoard = { destination = Destination.BOARD },
+                        )
+                        Destination.BOARD -> BoardScreen(
+                            board, members, wide,
+                            BoardCallbacks(
+                                addMember = viewModel::addMember,
+                                removeMember = viewModel::removeMember,
+                                addRule = viewModel::addRule,
+                                logFriction = viewModel::logFriction,
+                                resolveFriction = viewModel::resolveFriction,
+                                addGoal = viewModel::addGoal,
+                                setGoalStep = viewModel::setGoalStep,
+                                achieveGoal = viewModel::achieveGoal,
+                                delete = viewModel::deleteBoardItem,
+                            ),
                         )
                         Destination.TASKS -> TasksScreen(
                             backlog, steps, today, lang, tab, { tab = it },

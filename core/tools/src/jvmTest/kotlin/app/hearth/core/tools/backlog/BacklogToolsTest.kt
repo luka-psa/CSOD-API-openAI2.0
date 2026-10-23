@@ -23,7 +23,7 @@ import kotlin.test.assertTrue
 class BacklogToolsTest {
     private val db = inMemoryHearthDatabase()
     private val backlog = BacklogRepository(db)
-    private val tools = HearthTools(ShoppingRepository(db), backlog)
+    private val tools = HearthTools(ShoppingRepository(db), backlog, app.hearth.core.data.board.BoardRepository(db))
 
     // Thursday 22 October 2026.
     private val thursday = LocalDate(2026, 10, 22)

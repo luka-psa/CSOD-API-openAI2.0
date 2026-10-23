@@ -23,7 +23,15 @@ import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
 import app.hearth.ai.route.TaskWords
 import app.hearth.ai.route.TimeWords
+import app.hearth.core.model.BoardKind
 import app.hearth.core.model.TaskKind
+import app.hearth.core.model.boardKind
+import app.hearth.core.tools.board.AddGoalArgs
+import app.hearth.core.tools.board.AddGoalTool
+import app.hearth.core.tools.board.AddHouseRuleArgs
+import app.hearth.core.tools.board.AddHouseRuleTool
+import app.hearth.core.tools.board.LogFrictionArgs
+import app.hearth.core.tools.board.LogFrictionTool
 import app.hearth.core.model.kind
 import app.hearth.core.tools.backlog.AddToBacklogArgs
 import app.hearth.core.tools.backlog.AddToBacklogTool
@@ -200,6 +208,13 @@ class Orchestrator(
      * ("om de 2 weken") makes it a routine; "dringend" flags it.
      */
     private fun captureCall(text: String, section: Section, ctx: ToolContext): ToolCall {
+        val chosenSection = if (section == Section.OTHER) KeywordRouter.section(text) else section
+        when (chosenSection.boardKind) {
+            BoardKind.RULE -> return ToolCall.of(AddHouseRuleTool.NAME, AddHouseRuleArgs.serializer(), AddHouseRuleArgs(text))
+            BoardKind.FRICTION -> return ToolCall.of(LogFrictionTool.NAME, LogFrictionArgs.serializer(), LogFrictionArgs(text))
+            BoardKind.GOAL -> return ToolCall.of(AddGoalTool.NAME, AddGoalArgs.serializer(), AddGoalArgs(text, KeywordRouter.goalScope(text)))
+            null -> {}
+        }
         val task = TaskWords.extract(text)
         val hint = TimeWords.extract(task.text, ctx.today)
         val body = hint?.text ?: task.text

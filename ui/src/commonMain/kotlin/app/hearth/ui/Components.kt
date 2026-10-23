@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.mutableStateOf
@@ -280,9 +281,9 @@ fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: 
     }
 }
 
-/** A one-line "add" field with a button; Enter adds too. */
+/** A one-line "add" field with a button; Enter adds too. [compact] shows a round + instead of "Voeg toe". */
 @Composable
-fun AddRow(hint: String, onAdd: (String) -> Unit, modifier: Modifier = Modifier, muted: Boolean = false) {
+fun AddRow(hint: String, onAdd: (String) -> Unit, modifier: Modifier = Modifier, muted: Boolean = false, compact: Boolean = false) {
     var text by rememberSaveable { mutableStateOf("") }
     val submit = {
         onAdd(text)
@@ -305,8 +306,14 @@ fun AddRow(hint: String, onAdd: (String) -> Unit, modifier: Modifier = Modifier,
             keyboardActions = KeyboardActions(onDone = { submit() }),
             modifier = Modifier.weight(1f),
         )
-        FilledTonalButton(onClick = submit, enabled = text.isNotBlank(), modifier = Modifier.heightIn(min = 56.dp)) {
-            Text(stringResource(Res.string.add))
+        if (compact) {
+            FilledTonalIconButton(onClick = submit, enabled = text.isNotBlank(), modifier = Modifier.size(52.dp)) {
+                Icon(HearthIcons.Add, stringResource(Res.string.add))
+            }
+        } else {
+            FilledTonalButton(onClick = submit, enabled = text.isNotBlank(), modifier = Modifier.heightIn(min = 56.dp)) {
+                Text(stringResource(Res.string.add))
+            }
         }
     }
 }

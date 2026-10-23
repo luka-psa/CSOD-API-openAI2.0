@@ -1,6 +1,9 @@
 package app.hearth.core.tools.backlog
 
 import app.hearth.core.data.backlog.BacklogRepository
+import app.hearth.core.data.board.BoardRepository
+import app.hearth.core.model.boardKind
+import app.hearth.core.model.stripBoardPrefix
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
 import app.hearth.core.model.TaskKind
@@ -145,7 +148,7 @@ data class MoveBacklogArgs(
     val section: Section,
 )
 
-class MoveBacklogItemTool(private val repo: BacklogRepository) : Tool<MoveBacklogArgs, BacklogItemsResult> {
+class MoveBacklogItemTool(private val repo: BacklogRepository, private val board: BoardRepository? = null) : Tool<MoveBacklogArgs, BacklogItemsResult> {
     override val name = NAME
     override val description = "Move items to another section when they were sorted wrongly (e.g. from 'to sort' to a routine or project)."
     override val argsSerializer = MoveBacklogArgs.serializer()
@@ -153,6 +156,13 @@ class MoveBacklogItemTool(private val repo: BacklogRepository) : Tool<MoveBacklo
 
     override suspend fun run(args: MoveBacklogArgs, ctx: ToolContext): BacklogItemsResult {
         val items = repo.find(args.itemIds, args.texts).filterNot { it.isStep }.ifEmpty { notFound(ctx) }
+        val boardKind = args.section.boardKind
+        if (board != null && boardKind != null) {
+            // A house rule, friction or goal moves to the Werkbord.
+            items.forEach { board.add(boardKind, stripBoardPrefix(it.text)) }
+            repo.delete(items.map { it.id })
+            return BacklogItemsResult(items.map { it.copy(section = args.section) }, ctx.t("${quoted(items)} staat nu op het werkbord (${args.section.label(ctx.lang)})", "${quoted(items)} is now on the board (${args.section.label(ctx.lang)})"))
+        }
         repo.setSection(items.map { it.id }, args.section)
         val updated = items.map { it.copy(section = args.section) }
         return BacklogItemsResult(updated, ctx.t("${quoted(updated)} staat nu bij ${args.section.label(ctx.lang)}", "${quoted(updated)} is now under ${args.section.label(ctx.lang)}"))

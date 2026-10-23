@@ -33,6 +33,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.BoardItem
+import app.hearth.core.model.BoardKind
 import app.hearth.core.model.DayLoad
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
@@ -49,6 +51,9 @@ import app.hearth.core.model.plusDays
 import app.hearth.core.model.weekdayName
 import app.hearth.core.tools.backlog.When
 import app.hearth.ui.resources.Res
+import app.hearth.ui.resources.dash_board
+import app.hearth.ui.resources.dash_board_empty
+import app.hearth.ui.resources.dash_board_frictions
 import app.hearth.ui.resources.dash_coming_up
 import app.hearth.ui.resources.dash_dont_forget
 import app.hearth.ui.resources.dash_dont_forget_empty
@@ -66,6 +71,7 @@ import app.hearth.ui.resources.free_weekend
 import app.hearth.ui.resources.greeting_afternoon
 import app.hearth.ui.resources.greeting_evening
 import app.hearth.ui.resources.greeting_morning
+import app.hearth.ui.resources.nav_board
 import app.hearth.ui.resources.next_step
 import app.hearth.ui.resources.no_steps
 import app.hearth.ui.resources.open_list
@@ -91,6 +97,7 @@ fun TodayScreen(
     backlog: List<BacklogItem>,
     steps: List<BacklogItem>,
     shopping: List<ShopSection>,
+    board: List<BoardItem>,
     doneToday: Int,
     today: LocalDate,
     lang: Lang,
@@ -101,6 +108,7 @@ fun TodayScreen(
     onGoTasks: () -> Unit,
     onGoProjects: () -> Unit,
     onGoShopping: () -> Unit,
+    onGoBoard: () -> Unit,
 ) {
     val names = backlog.associate { it.id to it.text }
     val urgent = dontForget(backlog, today)
@@ -155,6 +163,31 @@ fun TodayScreen(
             projects.take(4).forEach { project -> ProjectLine(project, steps.filter { it.parentId == project.id }, today, lang) { onOpenItem(project) } }
         }
     }
+    val boardCard = @Composable { m: Modifier ->
+        val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
+        val frictions = board.count { it.kind == BoardKind.FRICTION && it.isOpen }
+        HearthCard(stringResource(Res.string.dash_board), HearthIcons.Rule, m, action = { CardAction(stringResource(Res.string.nav_board), onGoBoard, compact = wide) }) {
+            if (rules.isEmpty() && frictions == 0) EmptyHint(stringResource(Res.string.dash_board_empty))
+            rules.take(3).forEach { rule ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
+                    Box(Modifier.size(8.dp).background(Section.NOTE.style().ink, CircleShape))
+                    Spacer(Modifier.width(10.dp))
+                    Text(rule.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            if (frictions > 0) {
+                Spacer(Modifier.size(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onGoBoard).padding(vertical = 4.dp),
+                ) {
+                    Icon(HearthIcons.Bolt, null, tint = Section.FRICTION.style().ink, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(Res.string.dash_board_frictions, frictions), style = MaterialTheme.typography.labelLarge, color = Section.FRICTION.style().ink)
+                }
+            }
+        }
+    }
     val shoppingCard = @Composable { m: Modifier ->
         HearthCard(stringResource(Res.string.shopping_list), HearthIcons.Cart, m, action = { CardAction(stringResource(Res.string.open_list), onGoShopping, compact = wide) }) {
             val open = shopping.flatMap { s -> s.items.filterNot { it.bought } }
@@ -182,6 +215,7 @@ fun TodayScreen(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
                     dontForgetCard(Modifier.fillMaxWidth())
                     shoppingCard(Modifier.fillMaxWidth())
+                    boardCard(Modifier.fillMaxWidth())
                 }
                 Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
                     todayCard(Modifier.fillMaxWidth())
@@ -198,6 +232,7 @@ fun TodayScreen(
                 comingUpCard(Modifier.fillMaxWidth())
                 if (projects.isNotEmpty()) projectsCard(Modifier.fillMaxWidth())
                 shoppingCard(Modifier.fillMaxWidth())
+                boardCard(Modifier.fillMaxWidth())
             }
         }
     }

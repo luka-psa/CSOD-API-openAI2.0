@@ -1,7 +1,18 @@
 package app.hearth.core.tools
 
 import app.hearth.core.data.backlog.BacklogRepository
+import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
+import app.hearth.core.tools.board.AchieveGoalTool
+import app.hearth.core.tools.board.AddGoalTool
+import app.hearth.core.tools.board.AddHouseRuleTool
+import app.hearth.core.tools.board.AddMemberTool
+import app.hearth.core.tools.board.ListBoardTool
+import app.hearth.core.tools.board.LogFrictionTool
+import app.hearth.core.tools.board.RemoveBoardItemTool
+import app.hearth.core.tools.board.RemoveMemberTool
+import app.hearth.core.tools.board.ResolveFrictionTool
+import app.hearth.core.tools.board.SetGoalStepTool
 import app.hearth.core.tools.backlog.AddProjectStepTool
 import app.hearth.core.tools.backlog.AddToBacklogTool
 import app.hearth.core.tools.backlog.CompleteBacklogItemTool
@@ -20,14 +31,14 @@ import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
 
 /** Every tool in the app, built once and shared by UI, chat and MCP. */
-class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository) {
+class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository, board: BoardRepository) {
     val addShoppingItem = AddShoppingItemTool(shopping)
     val listShoppingItems = ListShoppingItemsTool(shopping)
     val markBought = MarkBoughtTool(shopping)
     val unmarkBought = UnmarkBoughtTool(shopping)
     val removeShoppingItem = RemoveShoppingItemTool(shopping)
 
-    val addToBacklog = AddToBacklogTool(backlog)
+    val addToBacklog = AddToBacklogTool(backlog, board)
     val listBacklog = ListBacklogTool(backlog)
     val planBacklogItem = PlanBacklogItemTool(backlog)
     val completeBacklogItem = CompleteBacklogItemTool(backlog)
@@ -36,14 +47,27 @@ class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository) {
     val setRoutineInterval = SetRoutineIntervalTool(backlog)
     val markUrgent = MarkUrgentTool(backlog)
     val waitForReply = WaitForReplyTool(backlog)
-    val moveBacklogItem = MoveBacklogItemTool(backlog)
+    val moveBacklogItem = MoveBacklogItemTool(backlog, board)
     val addProjectStep = AddProjectStepTool(backlog)
+
+    val addMember = AddMemberTool(board)
+    val removeMember = RemoveMemberTool(board)
+    val addHouseRule = AddHouseRuleTool(board)
+    val logFriction = LogFrictionTool(board)
+    val addGoal = AddGoalTool(board)
+    val listBoard = ListBoardTool(board)
+    val resolveFriction = ResolveFrictionTool(board, backlog)
+    val setGoalStep = SetGoalStepTool(board, backlog)
+    val achieveGoal = AchieveGoalTool(board)
+    val removeBoardItem = RemoveBoardItemTool(board)
 
     val registry = ToolRegistry(
         listOf(
             addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem,
             addToBacklog, listBacklog, planBacklogItem, completeBacklogItem, reopenBacklogItem, removeBacklogItem,
             setRoutineInterval, markUrgent, waitForReply, moveBacklogItem, addProjectStep,
+            addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,
+            achieveGoal, removeBoardItem,
         ),
     )
 }

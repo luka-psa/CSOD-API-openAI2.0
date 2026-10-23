@@ -15,7 +15,19 @@ import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolException
 import app.hearth.core.tools.ToolSource
 import app.hearth.ai.route.TaskWords
+import app.hearth.core.model.BoardItem
+import app.hearth.core.model.GoalScope
+import app.hearth.core.model.Member
 import app.hearth.core.model.Section
+import app.hearth.core.tools.board.AddGoalArgs
+import app.hearth.core.tools.board.AddHouseRuleArgs
+import app.hearth.core.tools.board.AddMemberArgs
+import app.hearth.core.tools.board.BoardRefArgs
+import app.hearth.core.tools.board.FrictionOutcome
+import app.hearth.core.tools.board.LogFrictionArgs
+import app.hearth.core.tools.board.RemoveMemberArgs
+import app.hearth.core.tools.board.ResolveFrictionArgs
+import app.hearth.core.tools.board.SetGoalStepArgs
 import app.hearth.core.tools.backlog.AddProjectStepArgs
 import app.hearth.core.tools.backlog.AddToBacklogArgs
 import app.hearth.core.tools.backlog.BacklogRefArgs
@@ -72,6 +84,12 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     val backlog: StateFlow<List<BacklogItem>> =
         app.backlog.open.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val board: StateFlow<List<BoardItem>> =
+        app.board.items.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val members: StateFlow<List<Member>> =
+        app.board.memberList.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Project steps, finished ones too, for progress. */
     val steps: StateFlow<List<BacklogItem>> =
@@ -196,6 +214,51 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun addStep(project: BacklogItem, text: String) {
         if (text.isBlank()) return
         tool { app.tools.registry.run(app.tools.addProjectStep, AddProjectStepArgs(projectId = project.id, project = project.text, text = text), it) }
+    }
+
+    // ---- Werkbord actions ----
+
+    fun addMember(name: String) {
+        if (name.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addMember, AddMemberArgs(name), it) }
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun removeMember(member: Member) = tool {
+        app.tools.registry.run(app.tools.removeMember, RemoveMemberArgs(member.id), it, confirmed = true)
+    }
+
+    fun addRule(text: String) {
+        if (text.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addHouseRule, AddHouseRuleArgs(text), it) }
+    }
+
+    fun logFriction(text: String) {
+        if (text.isBlank()) return
+        tool { app.tools.registry.run(app.tools.logFriction, LogFrictionArgs(text), it) }
+    }
+
+    fun resolveFriction(item: BoardItem, outcome: FrictionOutcome, text: String? = null) = tool {
+        app.tools.registry.run(app.tools.resolveFriction, ResolveFrictionArgs(itemIds = listOf(item.id), outcome = outcome, text = text), it)
+    }
+
+    fun addGoal(text: String, scope: GoalScope, member: Member?) {
+        if (text.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addGoal, AddGoalArgs(text, scope, member?.id), it) }
+    }
+
+    fun setGoalStep(goal: BoardItem, step: String, toWeek: Boolean) {
+        if (step.isBlank()) return
+        tool { app.tools.registry.run(app.tools.setGoalStep, SetGoalStepArgs(goalId = goal.id, step = step, toWeek = toWeek), it) }
+    }
+
+    fun achieveGoal(goal: BoardItem) = tool {
+        app.tools.registry.run(app.tools.achieveGoal, BoardRefArgs(itemIds = listOf(goal.id)), it)
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun deleteBoardItem(item: BoardItem) = tool {
+        app.tools.registry.run(app.tools.removeBoardItem, BoardRefArgs(itemIds = listOf(item.id)), it, confirmed = true)
     }
 
     // ---- shopping actions ----

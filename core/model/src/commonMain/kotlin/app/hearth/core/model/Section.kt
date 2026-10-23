@@ -20,9 +20,18 @@ val Section.kind: TaskKind
         else -> TaskKind.SORT
     }
 
+/** Sections that live on the Werkbord rather than the backlog. */
+val Section.boardKind: BoardKind?
+    get() = when (this) {
+        Section.NOTE -> BoardKind.RULE
+        Section.FRICTION -> BoardKind.FRICTION
+        Section.GOAL -> BoardKind.GOAL
+        else -> null
+    }
+
 /** Where something belongs in Hearth. The router sorts every message into one of these. */
 enum class Section {
-    SHOPPING, STOCK, APPOINTMENT, ADMIN, PROJECT, CHORE, RHYTHM, HABIT, PROTECTED_TIME, FRICTION, NOTE, OTHER;
+    SHOPPING, STOCK, APPOINTMENT, ADMIN, PROJECT, CHORE, RHYTHM, HABIT, PROTECTED_TIME, FRICTION, NOTE, GOAL, OTHER;
 
     fun label(lang: Lang): String = when (lang) {
         Lang.NL -> when (this) {
@@ -37,6 +46,7 @@ enum class Section {
             PROTECTED_TIME -> "vrije tijd"
             FRICTION -> "ergernis"
             NOTE -> "huisregel"
+            GOAL -> "doel"
             OTHER -> "nog te sorteren"
         }
         Lang.EN -> when (this) {
@@ -51,6 +61,7 @@ enum class Section {
             PROTECTED_TIME -> "protected time"
             FRICTION -> "friction"
             NOTE -> "house rule"
+            GOAL -> "goal"
             OTHER -> "to sort"
         }
     }
