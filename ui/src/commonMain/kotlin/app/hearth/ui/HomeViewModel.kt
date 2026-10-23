@@ -39,7 +39,8 @@ import app.hearth.core.tools.backlog.PlanBacklogArgs
 import app.hearth.core.tools.backlog.When
 import app.hearth.core.data.settings.Connection
 import app.hearth.core.tools.system.SaveConnectionArgs
-import app.hearth.mcp.InstallException
+import app.hearth.mcp.LinkedApp
+import app.hearth.mcp.PairingCode
 import app.hearth.mcp.McpPending
 import app.hearth.mcp.RelayStatus
 import app.hearth.core.model.Huddle
@@ -145,32 +146,18 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val mcpPending: StateFlow<List<McpPending>> = app.mcp.pending
     val mcpActivity: StateFlow<List<String>> = app.mcp.activity
 
-    private val _installing = MutableStateFlow(false)
-    val installing: StateFlow<Boolean> = _installing.asStateFlow()
-    private val _installError = MutableStateFlow<String?>(null)
-    val installError: StateFlow<String?> = _installError.asStateFlow()
+    val linkedApps: StateFlow<List<LinkedApp>> = app.relay.apps
+    val pairingCode: StateFlow<PairingCode?> = app.relay.pairing
 
-    /** One time: put the relay on the family's Cloudflare account, then switch the connection on. */
-    fun installRelay(token: String, accountId: String) {
-        if (token.isBlank() || _installing.value) return
-        viewModelScope.launch {
-            _installing.value = true
-            _installError.value = null
-            try {
-                val url = app.installer.install(token, accountId)
-                app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(enabled = true, relayUrl = url), ctx(ToolSource.UI))
-            } catch (e: InstallException) {
-                _installError.value = e.message
-            } catch (e: Exception) {
-                _installError.value = e.message ?: e.toString()
-            }
-            _installing.value = false
-        }
+    fun saveConnection(enabled: Boolean? = null, relayUrl: String? = null) = tool {
+        app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(enabled, relayUrl), it)
     }
 
-    fun saveConnection(enabled: Boolean? = null, relayUrl: String? = null, newLink: Boolean = false) = tool {
-        app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(enabled, relayUrl, newLink), it)
-    }
+    fun showPairingCode() = app.relay.requestPairingCode()
+    fun hidePairingCode() = app.relay.hidePairingCode()
+
+    /** Unlinks an AI app (or all, with null). The screen asked first. */
+    fun unlinkApp(id: String?) = app.relay.unlink(id)
 
     /** Ja / Nee on the tablet for something the family's AI asked to do. */
     fun answerMcp(pending: McpPending, yes: Boolean) {
@@ -216,6 +203,15 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
+
+    // A short "connected" note in the chat the moment an AI app gets linked.
+    init {
+        viewModelScope.launch {
+            app.relay.linked.collect { name ->
+                _messages.update { it + ChatMessage(fromUser = false, text = ctx(ToolSource.UI).t("$name is nu gekoppeld met Hearth.", "$name is now linked to Hearth.")) }
+            }
+        }
+    }
 
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()

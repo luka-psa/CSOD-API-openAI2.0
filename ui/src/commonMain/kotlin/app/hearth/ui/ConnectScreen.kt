@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,68 +26,80 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.hearth.core.data.settings.Connection
+import app.hearth.core.model.nowMillis
+import app.hearth.mcp.LinkedApp
+import app.hearth.mcp.PairingCode
 import app.hearth.mcp.RelayStatus
 import app.hearth.ui.resources.Res
-import app.hearth.ui.resources.connect_account_hint
 import app.hearth.ui.resources.connect_activity
+import app.hearth.ui.resources.connect_address
+import app.hearth.ui.resources.connect_advanced
+import app.hearth.ui.resources.connect_advanced_body
+import app.hearth.ui.resources.connect_apps
 import app.hearth.ui.resources.connect_chatgpt
 import app.hearth.ui.resources.connect_chatgpt_steps
 import app.hearth.ui.resources.connect_claude
 import app.hearth.ui.resources.connect_claude_steps
-import app.hearth.ui.resources.connect_install
-import app.hearth.ui.resources.connect_install_body
-import app.hearth.ui.resources.connect_install_title
+import app.hearth.ui.resources.connect_code_hide
+import app.hearth.ui.resources.connect_code_valid
 import app.hearth.ui.resources.connect_link
 import app.hearth.ui.resources.connect_link_body
-import app.hearth.ui.resources.connect_manual
 import app.hearth.ui.resources.connect_manual_hint
-import app.hearth.ui.resources.connect_new_link
-import app.hearth.ui.resources.connect_new_link_body
-import app.hearth.ui.resources.connect_new_link_confirm
+import app.hearth.ui.resources.connect_no_relay
+import app.hearth.ui.resources.connect_no_relay_body
 import app.hearth.ui.resources.connect_on
 import app.hearth.ui.resources.connect_plan_note
 import app.hearth.ui.resources.connect_share
+import app.hearth.ui.resources.connect_show_code
+import app.hearth.ui.resources.connect_since
+import app.hearth.ui.resources.connect_standard_relay
 import app.hearth.ui.resources.connect_status_connecting
 import app.hearth.ui.resources.connect_status_off
 import app.hearth.ui.resources.connect_status_online
 import app.hearth.ui.resources.connect_status_retrying
 import app.hearth.ui.resources.connect_subtitle
-import app.hearth.ui.resources.connect_token_hint
-import app.hearth.ui.resources.connect_token_steps
+import app.hearth.ui.resources.connect_unlink_body
+import app.hearth.ui.resources.connect_unlink_confirm
 import app.hearth.ui.resources.nav_connect
 import app.hearth.ui.resources.save
 import app.hearth.ui.theme.style
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 class ConnectCallbacks(
-    val install: (token: String, accountId: String) -> Unit,
-    val save: (enabled: Boolean?, relayUrl: String?, newLink: Boolean) -> Unit,
+    val save: (enabled: Boolean?, relayUrl: String?) -> Unit,
+    val showCode: () -> Unit,
+    val hideCode: () -> Unit,
+    val unlink: (appId: String) -> Unit,
 )
 
 /**
- * Connect Hearth to the family's own ChatGPT or Claude. One time: install the relay on a free Cloudflare
- * account (or type its address). Then each person adds the link once in their AI app.
+ * Connect Hearth to the family's own ChatGPT or Claude. Each person adds the same Hearth address once
+ * in their AI app, which opens a Hearth page; they type the code this tablet shows, and that's it.
  */
 @Composable
 fun ConnectScreen(
     connection: Connection,
     status: RelayStatus,
-    installing: Boolean,
-    installError: String?,
+    apps: List<LinkedApp>,
+    code: PairingCode?,
     activity: List<String>,
     cb: ConnectCallbacks,
 ) {
-    var renewing by remember { mutableStateOf(false) }
+    var unlinking by remember { mutableStateOf<LinkedApp?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         Text(stringResource(Res.string.nav_connect), style = MaterialTheme.typography.displaySmall)
         Text(stringResource(Res.string.connect_subtitle), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -98,11 +109,22 @@ fun ConnectScreen(
             HearthCard(stringResource(Res.string.connect_on), HearthIcons.Link, Modifier.fillMaxWidth(), action = {
                 Switch(
                     checked = connection.enabled,
-                    onCheckedChange = { cb.save(it, null, false) },
+                    onCheckedChange = { cb.save(it, null) },
                     enabled = connection.relayUrl != null,
                 )
             }) {
                 StatusPill(if (connection.enabled) status else RelayStatus.OFF)
+                if (connection.enabled && apps.isNotEmpty()) {
+                    Spacer(Modifier.size(14.dp))
+                    Text(stringResource(Res.string.connect_apps), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    apps.forEach { app ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                            Text(app.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            Text(stringResource(Res.string.connect_since, shortDate(app.since)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            DeleteButton(onClick = { unlinking = app })
+                        }
+                    }
+                }
                 if (activity.isNotEmpty()) {
                     Spacer(Modifier.size(12.dp))
                     Text(stringResource(Res.string.connect_activity), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -111,14 +133,21 @@ fun ConnectScreen(
             }
 
             if (connection.relayUrl == null) {
-                InstallCard(installing, installError, cb)
+                HearthCard(stringResource(Res.string.connect_no_relay), HearthIcons.Flame, Modifier.fillMaxWidth()) {
+                    Text(stringResource(Res.string.connect_no_relay_body), style = MaterialTheme.typography.bodyMedium)
+                }
             } else {
-                LinkCard(connection, cb, onRenew = { renewing = true })
+                LinkCard(connection, status, code, cb)
             }
+            AdvancedCard(connection, cb)
         }
     }
-    if (renewing) {
-        ConfirmDialog(stringResource(Res.string.connect_new_link_confirm), stringResource(Res.string.connect_new_link_body), onYes = { cb.save(null, null, true) }) { renewing = false }
+    unlinking?.let { app ->
+        ConfirmDialog(
+            stringResource(Res.string.connect_unlink_confirm, app.name),
+            stringResource(Res.string.connect_unlink_body, app.name),
+            onYes = { cb.unlink(app.id) },
+        ) { unlinking = null }
     }
 }
 
@@ -137,76 +166,96 @@ private fun StatusPill(status: RelayStatus) {
     }
 }
 
-/** One time: a Cloudflare API token, and Hearth installs the relay itself. Or type an address. */
+/** The one Hearth address, the pairing code, and the steps for each AI app. */
 @Composable
-private fun InstallCard(installing: Boolean, error: String?, cb: ConnectCallbacks) {
-    var token by rememberSaveable { mutableStateOf("") }
-    var account by rememberSaveable { mutableStateOf("") }
-    var manual by rememberSaveable { mutableStateOf("") }
-    HearthCard(stringResource(Res.string.connect_install_title), HearthIcons.Flame, Modifier.fillMaxWidth()) {
-        Text(stringResource(Res.string.connect_install_body), style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.size(10.dp))
-        Steps(stringResource(Res.string.connect_token_steps))
-        Spacer(Modifier.size(12.dp))
-        OutlinedTextField(token, { token = it }, placeholder = { Text(stringResource(Res.string.connect_token_hint)) }, singleLine = true, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.size(8.dp))
-        OutlinedTextField(account, { account = it }, placeholder = { Text(stringResource(Res.string.connect_account_hint)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.size(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { cb.install(token, account) }, enabled = token.isNotBlank() && !installing) { Text(stringResource(Res.string.connect_install)) }
-            if (installing) {
-                Spacer(Modifier.width(14.dp))
-                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
-            }
-        }
-        if (error != null) {
-            Spacer(Modifier.size(10.dp))
-            Text(error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-        }
-        Spacer(Modifier.size(18.dp))
-        Text(stringResource(Res.string.connect_manual), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.size(6.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(manual, { manual = it }, placeholder = { Text(stringResource(Res.string.connect_manual_hint)) }, singleLine = true, modifier = Modifier.weight(1f))
-            Spacer(Modifier.width(10.dp))
-            FilledTonalButton(onClick = { cb.save(true, manual, false) }, enabled = manual.isNotBlank()) { Text(stringResource(Res.string.save)) }
-        }
-    }
-}
-
-/** The link to add once in ChatGPT or Claude, with the steps for each. */
-@Composable
-private fun LinkCard(connection: Connection, cb: ConnectCallbacks, onRenew: () -> Unit) {
+private fun LinkCard(connection: Connection, status: RelayStatus, code: PairingCode?, cb: ConnectCallbacks) {
     val share = rememberShare()
     val url = connection.connectorUrl ?: return
     HearthCard(stringResource(Res.string.connect_link), HearthIcons.Share, Modifier.fillMaxWidth()) {
         Text(stringResource(Res.string.connect_link_body), style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.size(10.dp))
-        SelectionContainer {
-            Text(
-                url,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(14.dp)).padding(14.dp),
-            )
-        }
-        Spacer(Modifier.size(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { share(url) }) {
+            SelectionContainer(Modifier.weight(1f)) {
+                Text(
+                    url,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(14.dp)).padding(14.dp),
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            FilledTonalButton(onClick = { share(url) }) {
                 Icon(HearthIcons.Share, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(Res.string.connect_share))
             }
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = onRenew) { Text(stringResource(Res.string.connect_new_link)) }
         }
         Spacer(Modifier.size(16.dp))
-        Text(stringResource(Res.string.connect_chatgpt), style = MaterialTheme.typography.titleSmall)
-        Steps(stringResource(Res.string.connect_chatgpt_steps))
-        Spacer(Modifier.size(12.dp))
+        if (code != null && code.expiresAt > nowMillis()) {
+            CodeBox(code, cb.hideCode)
+        } else {
+            Button(
+                onClick = cb.showCode,
+                enabled = connection.enabled && status == RelayStatus.ONLINE,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(stringResource(Res.string.connect_show_code), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 6.dp)) }
+        }
+        Spacer(Modifier.size(18.dp))
         Text(stringResource(Res.string.connect_claude), style = MaterialTheme.typography.titleSmall)
         Steps(stringResource(Res.string.connect_claude_steps))
         Spacer(Modifier.size(12.dp))
+        Text(stringResource(Res.string.connect_chatgpt), style = MaterialTheme.typography.titleSmall)
+        Steps(stringResource(Res.string.connect_chatgpt_steps))
+        Spacer(Modifier.size(12.dp))
         Text(stringResource(Res.string.connect_plan_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** The pairing code, big enough to read from the sofa, with how long it still works. */
+@Composable
+private fun CodeBox(code: PairingCode, onHide: () -> Unit) {
+    var now by remember { mutableLongStateOf(nowMillis()) }
+    LaunchedEffect(code) {
+        while (now < code.expiresAt) {
+            delay(5_000)
+            now = nowMillis()
+        }
+    }
+    if (now >= code.expiresAt) return
+    val minutes = ((code.expiresAt - now + 59_999) / 60_000).toInt()
+    Column(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), RoundedCornerShape(22.dp)).padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(code.spaced, fontSize = 56.sp, fontWeight = FontWeight.Bold, letterSpacing = 6.sp, color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(Res.string.connect_code_valid, minutes), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = onHide) { Text(stringResource(Res.string.connect_code_hide)) }
+    }
+}
+
+/** Another relay than the built-in one (self-hosting). Most families never open this. */
+@Composable
+private fun AdvancedCard(connection: Connection, cb: ConnectCallbacks) {
+    var open by rememberSaveable { mutableStateOf(connection.relayUrl == null) }
+    var manual by rememberSaveable { mutableStateOf("") }
+    if (!open) {
+        TextButton(onClick = { open = true }) { Text(stringResource(Res.string.connect_advanced)) }
+        return
+    }
+    HearthCard(stringResource(Res.string.connect_advanced), HearthIcons.Flame, Modifier.fillMaxWidth()) {
+        Text(stringResource(Res.string.connect_advanced_body), style = MaterialTheme.typography.bodyMedium)
+        connection.relayUrl?.let {
+            Spacer(Modifier.size(6.dp))
+            Text(stringResource(Res.string.connect_address, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.size(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(manual, { manual = it }, placeholder = { Text(stringResource(Res.string.connect_manual_hint)) }, singleLine = true, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(10.dp))
+            FilledTonalButton(onClick = { cb.save(true, manual); manual = "" }, enabled = manual.isNotBlank()) { Text(stringResource(Res.string.save)) }
+        }
+        if (connection.customRelay) {
+            TextButton(onClick = { cb.save(null, "") }) { Text(stringResource(Res.string.connect_standard_relay)) }
+        }
     }
 }
 
@@ -225,4 +274,10 @@ private fun Steps(text: String) {
             }
         }
     }
+}
+
+/** "23/10" — small and the same in both languages. */
+private fun shortDate(millis: Long): String {
+    val d = dateOf(millis)
+    return "${d.day}/${d.month.ordinal + 1}"
 }

@@ -1,5 +1,6 @@
 package app.hearth.core.data.settings
 
+import kotlinx.serialization.Serializable
 import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.Insert
@@ -15,6 +16,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @Entity(tableName = "setting")
+@Serializable
 data class SettingEntity(@PrimaryKey val key: String, val value: String, val updatedAt: Long)
 
 @Dao
@@ -33,25 +35,29 @@ interface SettingDao {
 }
 
 /**
- * How Hearth reaches the family's AI. [connectorSecret] goes into the connector URL the AI apps use;
- * [tabletKey] proves to the relay that this is the household's own tablet. Both are made on the device.
+ * How Hearth reaches the family's AI. [relayUrl] is the shared relay (built in, or typed under
+ * "Advanced"); [householdId] names this household there and [tabletKey] proves this is its tablet.
+ * Both are made on the device. AI apps get in with a pairing code, never with these.
  */
 data class Connection(
     val enabled: Boolean = false,
     val relayUrl: String? = null,
-    val connectorSecret: String? = null,
+    val householdId: String? = null,
     val tabletKey: String? = null,
+    /** True when [relayUrl] was typed instead of built in. */
+    val customRelay: Boolean = false,
 ) {
-    /** The URL to paste into ChatGPT or Claude. */
-    val connectorUrl: String? get() = if (relayUrl != null && connectorSecret != null) "${relayUrl.trimEnd('/')}/mcp/$connectorSecret" else null
-    val tabletUrl: String? get() = if (relayUrl != null && connectorSecret != null && tabletKey != null) {
-        relayUrl.trimEnd('/').replaceFirst("https://", "wss://").replaceFirst("http://", "ws://") + "/connect/$connectorSecret?key=$tabletKey"
+    /** The address to add once as a connector in ChatGPT or Claude: the same for every family. */
+    val connectorUrl: String? get() = relayUrl?.let { "${it.trimEnd('/')}/mcp" }
+    val tabletUrl: String? get() = if (relayUrl != null && householdId != null && tabletKey != null) {
+        relayUrl.trimEnd('/').replaceFirst("https://", "wss://").replaceFirst("http://", "ws://") + "/connect/$householdId?key=$tabletKey"
     } else null
 }
 
-/** Small key/value settings. Writes come from tools only. */
+/** Small key/value settings. Writes come from tools only. [defaultRelayUrl] is the build's shared relay. */
 class SettingsRepository(
     private val db: HearthDatabase,
+    private val defaultRelayUrl: String? = null,
     private val clock: () -> Long = ::nowMillis,
 ) {
     private val dao = db.settingDao()
@@ -60,27 +66,46 @@ class SettingsRepository(
 
     suspend fun currentConnection(): Connection = toConnection(dao.all())
 
-    /** Updates what's given; makes the secrets the first time. [newSecrets] starts over with fresh ones. */
-    suspend fun saveConnection(enabled: Boolean?, relayUrl: String?, newSecrets: Boolean = false): Connection = db.withWriteTransaction {
+    /**
+     * Updates what's given and makes the household's ids the first time. A blank [relayUrl] goes back
+     * to the built-in relay.
+     */
+    suspend fun saveConnection(enabled: Boolean?, relayUrl: String?): Connection = db.withWriteTransaction {
         val now = clock()
         val current = toConnection(dao.all())
         if (enabled != null) dao.put(SettingEntity(ENABLED, enabled.toString(), now))
-        if (relayUrl != null) dao.put(SettingEntity(RELAY_URL, relayUrl.trim().trimEnd('/'), now))
-        if (newSecrets || current.connectorSecret == null) dao.put(SettingEntity(SECRET, secret(), now))
-        if (newSecrets || current.tabletKey == null) dao.put(SettingEntity(TABLET_KEY, secret(), now))
+        if (relayUrl != null) {
+            if (relayUrl.isBlank()) dao.delete(listOf(RELAY_URL)) else dao.put(SettingEntity(RELAY_URL, relayUrl.trim().trimEnd('/'), now))
+        }
+        if (current.householdId == null) dao.put(SettingEntity(HOUSEHOLD, secret(), now))
+        if (current.tabletKey == null) dao.put(SettingEntity(TABLET_KEY, secret(), now))
         toConnection(dao.all())
+    }
+
+    /** A plain setting (e.g. Google backup), for the few features that keep one. */
+    fun value(key: String): Flow<String?> = dao.observeAll().map { rows -> rows.firstOrNull { it.key == key }?.value }
+
+    suspend fun currentValue(key: String): String? = dao.all().firstOrNull { it.key == key }?.value
+
+    suspend fun put(key: String, value: String?) {
+        if (value == null) dao.delete(listOf(key)) else dao.put(SettingEntity(key, value, clock()))
     }
 
     private fun toConnection(rows: List<SettingEntity>): Connection {
         val map = rows.associate { it.key to it.value }
-        return Connection(map[ENABLED] == "true", map[RELAY_URL], map[SECRET], map[TABLET_KEY])
+        val custom = map[RELAY_URL]
+        val relay = custom ?: defaultRelayUrl?.takeIf { it.isNotBlank() }
+        return Connection(map[ENABLED] == "true" && relay != null, relay, map[HOUSEHOLD], map[TABLET_KEY], custom != null)
     }
 
-    private companion object {
-        const val ENABLED = "mcp.enabled"
-        const val RELAY_URL = "mcp.relayUrl"
-        const val SECRET = "mcp.connectorSecret"
-        const val TABLET_KEY = "mcp.tabletKey"
+    companion object {
+        private const val ENABLED = "mcp.enabled"
+        private const val RELAY_URL = "mcp.relayUrl"
+        private const val HOUSEHOLD = "mcp.householdId"
+        private const val TABLET_KEY = "mcp.tabletKey"
+
+        /** Settings that belong to this device and never travel in a backup. */
+        val DEVICE_ONLY = setOf(ENABLED, RELAY_URL, HOUSEHOLD, TABLET_KEY, "mcp.connectorSecret")
 
         /** 64 random hex characters (two random UUIDs, from a secure random source). */
         @OptIn(ExperimentalUuidApi::class)

@@ -298,22 +298,26 @@ HTTPS address; a tablet on home Wi-Fi has none. Options:
 | B. Tunnel on the tablet | Cloudflare Tunnel / Tailscale Funnel exposes the tablet directly. | No relay, but extra app/setup on the tablet; support on Android varies. |
 | C. Claude Desktop on a home laptop | Local MCP over the LAN. | No public URL at all, but only works from that laptop, not phones; ChatGPT can't do this. |
 
-**Built:** `relay/` (Worker + Durable Object, tested in workerd via Miniflare), `mcp/` module: `McpServer`
-(JSON-RPC: initialize, tools/list with generated schemas and read-only/destructive hints, tools/call through the
-`ToolRegistry`, `confirm_pending_action` / `cancel_pending_action`), `RelayClient` (one outgoing WebSocket,
-heartbeat, reconnect with backoff) and `RelayInstaller` (Cloudflare API: upload with the DO migration, account
-workers.dev subdomain, enable). Settings (v8 `setting` table) through the tablet-only `save_connection` tool
-(`exposeOverMcp = false`). The connector URL is a capability link: `<relay>/mcp/<64 hex>`; the tablet proves
-itself with a separate tablet key. Pending confirmations show on the tablet with Ja/Nee too.
+**Chosen: A, one shared relay for every family (v0.5).** The maintainer deploys `relay/` once (Cloudflare
+Worker, "Deploy relay" workflow); its address is baked into the builds (`-Phearth.relayUrl`, CI variable
+`HEARTH_RELAY_URL`). Families never handle keys:
 
-**Chosen: A, a relay that Hearth manages itself.** Setup once for the whole family: create a free Cloudflare
-account and paste one API token into Hearth's settings; Hearth deploys and updates the relay (a Worker with a
-Durable Object holding the tablet's connection) and shows the connector URL + QR. Each person then adds that
-URL once in their own ChatGPT/Claude. More durable than a tunnel on this tablet: only Hearth runs (it is the
-always-on kiosk app and reconnects by itself), and the URL never changes.
+1. Each person adds the same connector address `<relay>/mcp` in Claude or ChatGPT.
+2. The AI app opens the relay's Hearth page; they tap **Toon koppelcode** on the tablet and type the 6-digit
+   code there. That is a standard MCP OAuth 2.1 login: RFC 9728 resource metadata (401 with
+   `WWW-Authenticate`), RFC 8414 server metadata, dynamic client registration (stateless client ids) and
+   Client ID Metadata Documents, PKCE S256, `resource` checked, 1 h access tokens, rotating refresh tokens.
+3. The tablet lists linked apps (**Gekoppeld**) and unlinks each with a confirm.
 
-Safety: pairing secret in the connector URL/headers; destructive tools return a pending action that the
-person confirms (in their AI chat, or with the Ja/Nee buttons on the tablet).
+**Built:** `relay/src/worker.js`: `Household` Durable Object per tablet (keyed by a hash of the tablet's
+household id; trust-on-first-use tablet key; linked apps with token hashes; tokens start with the object's id,
+so no global token table) and one `Directory` object (pairing codes: 10 min, single use; 10 wrong guesses per
+IP per 15 min). Tested in workerd (`relay/test`) and end to end from Kotlin (`RelayEndToEndTest`). `mcp/`:
+`McpServer` (JSON-RPC: initialize, tools/list with generated schemas and hints, tools/call through the
+`ToolRegistry`, `confirm_pending_action` / `cancel_pending_action`) and `RelayClient` (one outgoing WebSocket,
+heartbeat, backoff; pairing codes, linked apps, unlink). Settings (`setting` table) through the tablet-only
+`save_connection` tool; household id and tablet key are made on the device and never leave it except to the
+relay. Pending confirmations show on the tablet with Ja/Nee too.
 
 The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, tested but not wired in.
 

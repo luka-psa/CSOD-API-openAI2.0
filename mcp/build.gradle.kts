@@ -7,25 +7,27 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// The relay's Worker script, embedded so Hearth can install it itself. Single source: relay/src/worker.js.
-val relayScript = rootProject.file("relay/src/worker.js")
-val generatedRelay = layout.buildDirectory.dir("generated/relay/kotlin")
-val generateRelayScript by tasks.registering {
-    inputs.file(relayScript)
-    outputs.dir(generatedRelay)
+// The address of the one shared relay (relay/, deployed once by the maintainer). Set it with
+// -Phearth.relayUrl=… or HEARTH_RELAY_URL; families can still type another one under "Advanced".
+val relayUrl = (findProperty("hearth.relayUrl") as String?)?.takeIf { it.isNotBlank() }
+    ?: System.getenv("HEARTH_RELAY_URL")?.takeIf { it.isNotBlank() }
+    ?: ""
+val generatedConfig = layout.buildDirectory.dir("generated/relay/kotlin")
+val generateRelayConfig by tasks.registering {
+    inputs.property("relayUrl", relayUrl)
+    outputs.dir(generatedConfig)
     doLast {
-        val js = relayScript.readText().replace("$", "${'$'}{'${'$'}'}")
-        val out = generatedRelay.get().file("app/hearth/mcp/RelayScript.kt").asFile
+        val out = generatedConfig.get().file("app/hearth/mcp/RelayConfig.kt").asFile
         out.parentFile.mkdirs()
         out.writeText(
             "package app.hearth.mcp\n\n" +
-                "/** Generated from relay/src/worker.js. Do not edit. */\n" +
-                "internal const val RELAY_SCRIPT: String = \"\"\"" + js + "\"\"\"\n",
+                "/** Generated from the build's hearth.relayUrl. Empty when this build has no shared relay. */\n" +
+                "const val DEFAULT_RELAY_URL: String = \"" + relayUrl.trimEnd('/') + "\"\n",
         )
     }
 }
 
-// The MCP server (JSON-RPC over the relay's WebSocket) and the relay installer.
+// The MCP server and the tablet's side of the relay (one WebSocket out).
 kotlin {
     androidTarget { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
     jvm { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
@@ -34,7 +36,7 @@ kotlin {
 
     sourceSets {
         commonMain {
-            kotlin.srcDir(generateRelayScript)
+            kotlin.srcDir(generateRelayConfig)
         }
         commonMain.dependencies {
             api(project(":core:tools"))

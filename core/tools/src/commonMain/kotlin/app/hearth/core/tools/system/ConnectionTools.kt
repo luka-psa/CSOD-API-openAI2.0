@@ -14,10 +14,8 @@ import kotlinx.serialization.Serializable
 data class SaveConnectionArgs(
     @Describe("Turn the connection to ChatGPT/Claude on or off.")
     val enabled: Boolean? = null,
-    @Describe("The relay's address, e.g. https://hearth-relay.example.workers.dev")
+    @Describe("Another relay's address (advanced); empty goes back to the built-in one.")
     val relayUrl: String? = null,
-    @Describe("Make a new connector link; the old one stops working.")
-    val newLink: Boolean = false,
 )
 
 @Serializable
@@ -31,13 +29,13 @@ class SaveConnectionTool(private val settings: SettingsRepository) : Tool<SaveCo
     override val resultSerializer = ConnectionResult.serializer()
 
     override suspend fun run(args: SaveConnectionArgs, ctx: ToolContext): ConnectionResult {
-        val url = args.relayUrl?.trim()?.let { if (it.startsWith("http")) it else "https://$it" }
-        if (url != null && !Regex("^https?://[^/\\s]+[^\\s]*$").matches(url)) {
+        val url = args.relayUrl?.trim()?.let { if (it.isEmpty() || it.startsWith("http")) it else "https://$it" }
+        if (!url.isNullOrEmpty() && !Regex("^https?://[^/\\s]+[^\\s]*$").matches(url)) {
             throw ToolException(ctx.t("Dat adres lijkt niet te kloppen.", "That address doesn't look right."))
         }
-        val c = settings.saveConnection(args.enabled, url, args.newLink)
+        val c = settings.saveConnection(args.enabled, url)
         val summary = when {
-            args.newLink -> ctx.t("Nieuwe link gemaakt. Plak hem opnieuw in ChatGPT of Claude.", "New link made. Paste it into ChatGPT or Claude again.")
+            c.relayUrl == null -> ctx.t("Deze versie heeft nog geen relay. Vul een adres in onder Geavanceerd.", "This build has no relay yet. Enter an address under Advanced.")
             c.enabled -> ctx.t("Verbinding met jullie AI staat aan.", "The connection to your AI is on.")
             else -> ctx.t("Verbinding met jullie AI staat uit.", "The connection to your AI is off.")
         }

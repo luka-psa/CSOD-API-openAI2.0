@@ -1,0 +1,42 @@
+# Deploys the one shared relay (relay/) to the maintainer's Cloudflare account.
+# Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID; skips quietly without them.
+name: Deploy relay
+
+on:
+  push:
+    branches: [hearth-household-assistant]
+    paths: ["relay/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: relay-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test the relay
+        working-directory: relay
+        run: npm install && npm test
+
+      - name: Check for Cloudflare secrets
+        id: secrets
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: echo "ready=$([ -n "$TOKEN" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy
+        if: steps.secrets.outputs.ready == 'yes'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: relay
+          command: deploy
+
+      - name: No secrets yet
+        if: steps.secrets.outputs.ready != 'yes'
+        run: echo "::notice::Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to deploy the relay."

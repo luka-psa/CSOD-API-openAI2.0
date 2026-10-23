@@ -68,10 +68,10 @@ structure. Keep it in sync when any of those change.
 - **Kiosk mode.** Full-screen immersive, screen stays on while charging, starts
   on boot, optional lock-task when provisioned as device owner.
 - **MCP server.** Tools are exposed over MCP (streamable HTTP), off by default,
-  protected by a pairing secret. Destructive tools return a pending action that
-  the person confirms (in their AI chat or on the tablet). ChatGPT/Claude call
-  connectors from their cloud, so the tablet needs a secure way to be reached
-  (see `docs/PROPOSAL.md` §7).
+  reached through one shared relay with an OAuth login (a pairing code from the
+  tablet; families never handle API keys). Destructive tools return a pending
+  action that the person confirms (in their AI chat or on the tablet). See
+  `docs/PROPOSAL.md` §7.
 - **Google integration is opt-in and off by default.** Google sign-in is used
   only to (a) push scheduled items to Google Calendar from the device and
   (b) back up / restore to the user's Drive `appDataFolder`. Request the
@@ -121,8 +121,9 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   (the longest-open unplanned items, a few picked each week) → Werkbord; *Klaar*
   records a *Huddle*. *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.
-- **Verbind AI:** *Relay* (`relay/`, a Cloudflare Worker), *connector link*
-  (`/mcp/<secret>`, what people paste in ChatGPT/Claude), *tablet key*. The MCP
+- **Verbind AI:** *Relay* (`relay/`, one shared Cloudflare Worker), *connector address*
+  (`<relay>/mcp`, the same for everyone), *koppelcode* / *pairing code* (6 digits on the tablet, typed on
+  the relay's login page), *linked app* (*Gekoppeld*), *tablet key*. The MCP
   server lives in `mcp/`; tablet-only tools set `exposeOverMcp = false`.
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
   UI ships in Dutch (Flemish) and English; the local parser understands both.

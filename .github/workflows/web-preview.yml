@@ -19,6 +19,9 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    env:
+      # The shared relay's address (repository variable), baked into the web and Android builds.
+      HEARTH_RELAY_URL: ${{ vars.HEARTH_RELAY_URL }}
     steps:
       - uses: actions/checkout@v4
 

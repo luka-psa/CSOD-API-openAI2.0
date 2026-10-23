@@ -103,8 +103,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val relayStatus by viewModel.relayStatus.collectAsStateWithLifecycle()
     val mcpPending by viewModel.mcpPending.collectAsStateWithLifecycle()
     val mcpActivity by viewModel.mcpActivity.collectAsStateWithLifecycle()
-    val installing by viewModel.installing.collectAsStateWithLifecycle()
-    val installError by viewModel.installError.collectAsStateWithLifecycle()
+    val linkedApps by viewModel.linkedApps.collectAsStateWithLifecycle()
+    val pairingCode by viewModel.pairingCode.collectAsStateWithLifecycle()
     val stock by viewModel.stockItems.collectAsStateWithLifecycle()
     var deleting by remember { mutableStateOf<BacklogItem?>(null) }
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
@@ -166,8 +166,13 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                             ),
                         )
                         Destination.CONNECT -> ConnectScreen(
-                            connection, relayStatus, installing, installError, mcpActivity,
-                            ConnectCallbacks(install = viewModel::installRelay, save = viewModel::saveConnection),
+                            connection, relayStatus, linkedApps, pairingCode, mcpActivity,
+                            ConnectCallbacks(
+                                save = { enabled, url -> viewModel.saveConnection(enabled, url) },
+                                showCode = viewModel::showPairingCode,
+                                hideCode = viewModel::hidePairingCode,
+                                unlink = viewModel::unlinkApp,
+                            ),
                         )
                         Destination.BOARD -> BoardScreen(
                             board, members, wide,

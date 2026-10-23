@@ -13,7 +13,7 @@ import app.hearth.core.model.Lang
 import app.hearth.core.tools.HearthTools
 import app.hearth.mcp.McpServer
 import app.hearth.mcp.RelayClient
-import app.hearth.mcp.RelayInstaller
+import app.hearth.mcp.DEFAULT_RELAY_URL
 import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolSource
 import kotlinx.coroutines.CoroutineScope
@@ -36,14 +36,13 @@ class AppContainer(db: HearthDatabase, val lang: Lang) {
     val board = BoardRepository(db)
     val stock = StockRepository(db)
     val week = WeekRepository(db)
-    val settings = SettingsRepository(db)
+    val settings = SettingsRepository(db, DEFAULT_RELAY_URL)
     val tools = HearthTools(shopping, backlog, board, stock, week, settings)
     val orchestrator = Orchestrator(tools.registry)
 
     /** The family's ChatGPT or Claude reaches the same tools here, through the relay. */
     val mcp = McpServer(tools.registry) { context(ToolSource.MCP) }
     val relay = RelayClient(mcp, appScope)
-    val installer = RelayInstaller()
 
     fun context(source: ToolSource) = ToolContext(source = source, lang = lang)
 
