@@ -53,6 +53,10 @@ interface BacklogDao {
     @Query("SELECT COUNT(*) FROM backlog_item WHERE doneAt >= :since")
     fun observeDoneSince(since: Long): Flow<Int>
 
+    /** What got done (or a routine ticked off) since [since], newest first. */
+    @Query("SELECT * FROM backlog_item WHERE doneAt >= :since ORDER BY doneAt DESC")
+    suspend fun doneItemsSince(since: Long): List<BacklogEntity>
+
     /** All project steps, finished ones too, so a project can show its progress. */
     @Query("SELECT * FROM backlog_item WHERE parentId IS NOT NULL ORDER BY createdAt")
     fun observeSteps(): Flow<List<BacklogEntity>>
@@ -113,6 +117,8 @@ class BacklogRepository(
     val open: Flow<List<BacklogItem>> = dao.observeOpen().map { list -> list.map { it.toModel() } }
 
     fun doneSince(since: Long): Flow<Int> = dao.observeDoneSince(since)
+
+    suspend fun doneItemsSince(since: Long): List<BacklogItem> = dao.doneItemsSince(since).map { it.toModel() }
 
     val steps: Flow<List<BacklogItem>> = dao.observeSteps().map { list -> list.map { it.toModel() } }
 

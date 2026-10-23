@@ -28,11 +28,17 @@ object KeywordRouter {
         Section.ADMIN to listOf(
             "belasting", "belastingbrief", "verzekering", "formulier", "factuur", "facturen", "papieren", "bank", "mutualiteit",
             "aangifte", "contract", "tax", "insurance", "form", "invoice", "paperwork", "bills", "renew",
+            // Admin verbs: "school bellen", "abonnement opzeggen".
+            " bellen", " regelen", " betalen", " invullen", " aanvragen", " boeken", " opzeggen", " nakijken", " doorsturen", " mailen",
+            "call ", "book ", "pay ", "cancel ", "email ",
         ),
         Section.PROJECT to listOf(
             "ophangen", "schilderen", "verven", "monteren", "installeren", "uitkuisen", "verbouwen", "repareren", "herstellen",
             "kast", "lamp", "lampen", "plank", "ikea", "gamma", "brico", "hang", "paint", "assemble", "install", "fix", "repair",
             "renovate", "shelf", "clear out",
+            // Project verbs: "zolder opruimen", "fotoboek maken".
+            " opruimen", " organiseren", " uitzoeken", " inpakken", " maken", " bouwen", " vervangen", " sorteren",
+            "tidy ", "organise ", "organize ", "sort out", "build ", "make a ",
         ),
         Section.CHORE to listOf(
             "onkruid", "gras", "maaien", "lakens", "ramen", "kuisen", "stofzuigen", "dweilen", "strijken", "afwas", "was ",

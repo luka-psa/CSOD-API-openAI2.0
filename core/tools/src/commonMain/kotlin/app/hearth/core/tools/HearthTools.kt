@@ -4,6 +4,12 @@ import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.food.StockRepository
+import app.hearth.core.data.week.WeekRepository
+import app.hearth.core.tools.week.FinishWeekoverlegTool
+import app.hearth.core.tools.week.ListMealPlanTool
+import app.hearth.core.tools.week.PlanMealTool
+import app.hearth.core.tools.week.RemoveMealTool
+import app.hearth.core.tools.week.WeekoverlegAgendaTool
 import app.hearth.core.tools.food.AddStockItemTool
 import app.hearth.core.tools.food.AddStorageSpotTool
 import app.hearth.core.tools.food.ClearBoughtItemsTool
@@ -38,7 +44,13 @@ import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
 
 /** Every tool in the app, built once and shared by UI, chat and MCP. */
-class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository, board: BoardRepository, stock: StockRepository) {
+class HearthTools(
+    shopping: ShoppingRepository,
+    backlog: BacklogRepository,
+    board: BoardRepository,
+    stock: StockRepository,
+    week: WeekRepository,
+) {
     val addShoppingItem = AddShoppingItemTool(shopping, stock)
     val listShoppingItems = ListShoppingItemsTool(shopping)
     val markBought = MarkBoughtTool(shopping, stock)
@@ -75,6 +87,12 @@ class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository, boar
     val achieveGoal = AchieveGoalTool(board)
     val removeBoardItem = RemoveBoardItemTool(board)
 
+    val planMeal = PlanMealTool(week, addShoppingItem)
+    val listMealPlan = ListMealPlanTool(week)
+    val removeMeal = RemoveMealTool(week)
+    val weekoverlegAgenda = WeekoverlegAgendaTool(week, backlog, board, shopping)
+    val finishWeekoverleg = FinishWeekoverlegTool(week)
+
     val registry = ToolRegistry(
         listOf(
             addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem, clearBoughtItems,
@@ -83,6 +101,7 @@ class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository, boar
             setRoutineInterval, markUrgent, waitForReply, moveBacklogItem, addProjectStep,
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,
             achieveGoal, removeBoardItem,
+            planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
         ),
     )
 }

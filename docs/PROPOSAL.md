@@ -102,7 +102,9 @@ backlog as next up), `achieve_goal`, `remove_board_item` ⚠. `add_to_backlog` /
 NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `add_stock_item`, `add_storage_spot`,
 `set_stock_state` (LOW/OUT → a linked shopping item, once; IN_STOCK takes it off), `remove_stock_item` ⚠,
 `clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
-with the same name.
+with the same name. · Weekoverleg: `plan_meal` (one meal per day; ingredients onto the shopping list; a known
+dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_agenda` (look back since the last
+meeting, meals, shopping, deadlines, due routines, oudjes, open frictions), `finish_weekoverleg`.
 
 The full target list:
 
@@ -172,7 +174,8 @@ parentId (project steps). v5 adds `Member` (name, colour) and `BoardItem` (kind 
 OPEN/BECAME_RULE/BECAME_CHANGE/LET_GO/ACHIEVED, memberId, scope FAMILY/COUPLE/PERSONAL, nextStep, linkedId,
 closedAt); the v4→v5 migration moves open house rules and frictions off the backlog. v6 adds `StorageSpot`
 (name, sortOrder) and `StockItem` (name, spotId, state IN_STOCK/LOW/OUT, shopId?); first run seeds Keuken,
-Badkamer, Wasplaats and Medicijnkast with everyday items (medicine from the Apotheek). Auto-migrations v1→v5
+Badkamer, Wasplaats and Medicijnkast with everyday items (medicine from the Apotheek). v7 adds `Meal` (date
+unique, dish, ingredients), `Dish` (the dish library: name, ingredients, lastUsedOn) and `Huddle` (heldOn). Auto-migrations v1→v5
 keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
@@ -182,7 +185,7 @@ Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional sto
 Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under every screen.
 
 ```
- Vandaag (dashboard) | Taken | Werkbord | Boodschappen          (next: Weekoverleg)
+ Vandaag (dashboard) | Taken | Weekoverleg | Werkbord | Boodschappen
 ```
 
 **Vandaag: the tablet dashboard** (three columns on the tablet, one on a phone):
@@ -232,11 +235,14 @@ wc-papier", "we're out of milk" mark the stock (or put it on the list when it is
 
 Every list row has an X at the end; it always asks before deleting.
 
-**Next screens** (approved, not built yet):
-- **Weekoverleg**: a 15-minute guided flow: look back (celebrate) → meals (dishes → ingredients onto the
-  shopping list) → shopping check → this week (deadlines, due routines, one project step for the weekend)
-  → *Oudjes*: Hearth suggests 2–3 of the longest-open items to tackle this week → new frictions.
-- **Boodschappen & Voorraad**: shopping list, stock (low/out), meal plan.
+**Weekoverleg**: six steps with Vorige / Volgende, any step reachable from the chips: 1 *Terugblik* (count and
+chips of what got done since the last meeting, plus Werkbord wins; "Een rustige week. Ook dat mag."),
+2 *Maaltijden* (seven days; tap a day → dish + what to buy, earlier dishes in one tap), 3 *Boodschappen* (the
+list at a glance, add, "Voorraad nakijken"), 4 *Deze week* (deadlines, routines aan de beurt, one project step
+"Dit weekend"), 5 *Oudjes* (three longest-open items: Deze week / Later / Gedaan, "Toon andere"), 6 *Werkbord*
+(open frictions with their three outcomes, goals without a next step). *Klaar* records the meeting.
+The dashboard shows "Vanavond: <dish>" and, Friday to Sunday when no meeting was held for 6 days, a calm
+"Tijd voor het weekoverleg?" card with Start.
 
 ## 6. Folder structure
 
@@ -304,7 +310,8 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
 5. ✅ **Werkbord**: house rules, frictions (→ rule / change / let go), personal, couple and family goals
    with a next step; household members (names, colours). Capture bar: "huisregel: …", "ik erger me aan …",
    "we willen samen …", "doel: …".
-6. **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*.
+6. ✅ **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*;
+   capture bar: "we eten maandag spaghetti", "vanavond eten we frietjes", "dinner on monday: pizza".
 7. **MCP relay** managed by Hearth (§7, option A).
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a
    confirm and NL/EN. (Still to do: counted stock "nog 3", a walk-through stock check.)

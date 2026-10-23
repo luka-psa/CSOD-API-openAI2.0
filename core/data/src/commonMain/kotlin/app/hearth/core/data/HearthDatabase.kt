@@ -9,6 +9,10 @@ import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
 import app.hearth.core.data.food.ShopDao
+import app.hearth.core.data.week.DishEntity
+import app.hearth.core.data.week.HuddleEntity
+import app.hearth.core.data.week.MealEntity
+import app.hearth.core.data.week.WeekDao
 import app.hearth.core.data.food.StockDao
 import app.hearth.core.data.food.StockItemEntity
 import app.hearth.core.data.food.StorageSpotEntity
@@ -29,8 +33,8 @@ import androidx.sqlite.execSQL
  * SQLite-in-a-web-worker in the browser (`openHearthDatabase()`), in-memory on the JVM for tests.
  */
 @Database(
-    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class],
-    version = 6,
+    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class, MealEntity::class, DishEntity::class, HuddleEntity::class],
+    version = 7,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -38,6 +42,7 @@ import androidx.sqlite.execSQL
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 4, to = 5, spec = RulesToBoard::class),
         AutoMigration(from = 5, to = 6),
+        AutoMigration(from = 6, to = 7),
     ],
 )
 @ConstructedBy(HearthDatabaseConstructor::class)
@@ -48,6 +53,7 @@ abstract class HearthDatabase : RoomDatabase() {
     abstract fun memberDao(): MemberDao
     abstract fun boardDao(): BoardDao
     abstract fun stockDao(): StockDao
+    abstract fun weekDao(): WeekDao
 }
 
 /** v5: house rules and frictions leave the backlog for the new Werkbord. */

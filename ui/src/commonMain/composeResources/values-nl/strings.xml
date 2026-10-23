@@ -159,7 +159,6 @@
     <string name="days_ago">%1$d dagen geleden</string>
     <string name="today_word">vandaag</string>
     <string name="dash_board">Onze afspraken</string>
-    <string name="dash_board_frictions">%1$d punten voor het weekoverleg</string>
     <string name="dash_board_empty">Nog geen afspraken. Voeg er een toe op het werkbord.</string>
     <string name="kind_friction">Frictie</string>
     <string name="kind_goal">Doel</string>
@@ -181,4 +180,56 @@
     <string name="clear_bought_body">Afgevinkte items gaan van de lijst. Wat nog gekocht moet worden blijft staan.</string>
     <string name="spot_add">Nieuwe plek of categorie</string>
     <string name="spot_name_hint">bv. Kelder, Baby, Huisdieren</string>
+    <!-- Weekoverleg -->
+    <string name="nav_week">Weekoverleg</string>
+    <string name="week_subtitle">Een kwartiertje samen, stap voor stap.</string>
+    <string name="week_last_held">vorige keer: %1$s</string>
+    <string name="step_of">Stap %1$d van %2$d</string>
+    <string name="step_look_back">Terugblik</string>
+    <string name="step_meals">Maaltijden</string>
+    <string name="step_shopping">Boodschappen</string>
+    <string name="step_week">Deze week</string>
+    <string name="step_oudjes">Oudjes</string>
+    <string name="step_board">Werkbord</string>
+    <string name="step_look_back_since">sinds %1$s</string>
+    <string name="step_look_back_week">de voorbije week</string>
+    <string name="step_look_back_calm">Een rustige week. Ook dat mag.</string>
+    <string name="board_won">Opgelost op het werkbord</string>
+    <string name="step_meals_hint">Tik op een dag. De ingrediënten gaan op de boodschappenlijst; gerechten van vroeger komen in één tik terug.</string>
+    <string name="meal_add">Wat eten we?</string>
+    <string name="meal_title">%1$s: wat eten we?</string>
+    <string name="meal_dish_hint">Gerecht, bv. spaghetti bolognese</string>
+    <string name="meal_ingredients_hint">Te kopen, bv. gehakt, tomaten, spaghetti</string>
+    <string name="meal_earlier">Eerder gegeten</string>
+    <string name="meal_remove_body">De boodschappenlijst blijft zoals ze is.</string>
+    <string name="step_shopping_hint">Ontbreekt er iets? Een snelle blik op de voorraad helpt ook.</string>
+    <string name="open_stock">Voorraad nakijken</string>
+    <string name="step_week_deadlines">Met deadline</string>
+    <string name="step_week_routines">Aan de beurt</string>
+    <string name="step_week_projects">Een stap voor het weekend</string>
+    <string name="step_week_calm">Een rustige week. Ruimte voor iets leuks.</string>
+    <string name="step_oudjes_hint">Deze wachten het langst. Kies er een of twee voor deze week; niet alles moet nu.</string>
+    <string name="step_oudjes_empty">Geen oudjes. Alles heeft een plek.</string>
+    <string name="oudje_since">sinds %1$s</string>
+    <string name="oudjes_more">Toon andere</string>
+    <string name="this_week">Deze week</string>
+    <string name="step_board_hint">Wat stoorde er deze week? Beslis samen: een regel, een verandering, of loslaten.</string>
+    <string name="step_board_empty">Geen frictie die wacht. Heerlijk.</string>
+    <string name="week_back">Vorige</string>
+    <string name="week_next">Volgende</string>
+    <string name="week_finish">Klaar</string>
+    <string name="week_done">Klaar voor de week!</string>
+    <string name="week_done_recap">Gedaan: %1$d  ·  Maaltijden gepland: %2$d</string>
+    <string name="dash_tonight">Vanavond</string>
+    <string name="dash_huddle">Tijd voor het weekoverleg?</string>
+    <string name="dash_huddle_body">Een kwartiertje samen: maaltijden, de week, een paar oudjes.</string>
+    <string name="dash_huddle_start">Start</string>
+    <plurals name="dash_board_frictions">
+        <item quantity="one">%1$d punt voor het weekoverleg</item>
+        <item quantity="other">%1$d punten voor het weekoverleg</item>
+    </plurals>
+    <plurals name="step_look_back_count">
+        <item quantity="one">ding gedaan %1$s</item>
+        <item quantity="other">dingen gedaan %1$s</item>
+    </plurals>
 </resources>

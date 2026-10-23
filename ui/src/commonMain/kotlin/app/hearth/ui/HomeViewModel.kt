@@ -37,6 +37,13 @@ import app.hearth.core.tools.backlog.SetRoutineIntervalArgs
 import app.hearth.core.tools.backlog.WaitForReplyArgs
 import app.hearth.core.tools.backlog.PlanBacklogArgs
 import app.hearth.core.tools.backlog.When
+import app.hearth.core.model.Huddle
+import app.hearth.core.model.Meal
+import app.hearth.core.model.plusDays
+import app.hearth.core.tools.week.AgendaArgs
+import app.hearth.core.tools.week.PlanMealArgs
+import app.hearth.core.tools.week.RemoveMealArgs
+import app.hearth.core.tools.week.WeekAgenda
 import app.hearth.core.model.StockItem
 import app.hearth.core.model.StockState
 import app.hearth.core.model.StorageSpot
@@ -92,6 +99,22 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     val backlog: StateFlow<List<BacklogItem>> =
         app.backlog.open.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The coming seven days of meals, from today. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val meals: StateFlow<List<Meal>> = today
+        .flatMapLatest { d -> app.week.meals(d.toString(), d.plusDays(7).toString()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val dishes: StateFlow<List<Meal>> =
+        app.week.dishes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val lastHuddle: StateFlow<Huddle?> =
+        app.week.lastHuddle.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val _agenda = MutableStateFlow<WeekAgenda?>(null)
+    /** A snapshot for the look back (what got done since the last meeting). */
+    val agenda: StateFlow<WeekAgenda?> = _agenda.asStateFlow()
 
     val stockSpots: StateFlow<List<StorageSpot>> =
         app.stock.spots.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -228,6 +251,25 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun addStep(project: BacklogItem, text: String) {
         if (text.isBlank()) return
         tool { app.tools.registry.run(app.tools.addProjectStep, AddProjectStepArgs(projectId = project.id, project = project.text, text = text), it) }
+    }
+
+    // ---- Weekoverleg actions ----
+
+    fun loadAgenda() = tool { _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it) }
+
+    fun planMeal(date: LocalDate, dish: String, ingredients: String) {
+        if (dish.isBlank()) return
+        tool { app.tools.registry.run(app.tools.planMeal, PlanMealArgs(dish, date.toString(), listOf(ingredients).filter { i -> i.isNotBlank() }), it) }
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun removeMeal(meal: Meal) = tool {
+        app.tools.registry.run(app.tools.removeMeal, RemoveMealArgs(mealId = meal.id, date = meal.date), it, confirmed = true)
+    }
+
+    fun finishWeekoverleg() = tool {
+        val done = app.tools.registry.run(app.tools.finishWeekoverleg, AgendaArgs(), it)
+        _messages.update { list -> list + ChatMessage(fromUser = false, text = done.summary) }
     }
 
     // ---- Werkbord actions ----

@@ -113,8 +113,11 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
   and onto the list, bought = IN_STOCK again. Voice never adds on its own: the
   words show live, then "Klopt dit?". Every list row ends in an X that asks first.
-- **Coming next:** *Weekoverleg* (with *Oudjes*: the longest-open items, a few
-  picked each week).
+- **Weekoverleg:** Terugblik → Maaltijden → Boodschappen → Deze week → *Oudjes*
+  (the longest-open unplanned items, a few picked each week) → Werkbord; *Klaar*
+  records a *Huddle*. *Meal*: one per day; the *Dish* library remembers
+  ingredients. Selectors in `core/model/Week.kt`.
+- **Coming next:** the MCP relay (§7).
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
   UI ships in Dutch (Flemish) and English; the local parser understands both.
 

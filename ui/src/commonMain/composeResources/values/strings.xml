@@ -166,7 +166,6 @@
     <string name="days_ago">%1$d days ago</string>
     <string name="today_word">today</string>
     <string name="dash_board">Our agreements</string>
-    <string name="dash_board_frictions">%1$d points for the weekly meeting</string>
     <string name="dash_board_empty">No agreements yet. Add one on the workboard.</string>
     <string name="kind_friction">Friction</string>
     <string name="kind_goal">Goal</string>
@@ -188,4 +187,56 @@
     <string name="clear_bought_body">Ticked items leave the list. Nothing still to buy is touched.</string>
     <string name="spot_add">New room or topic</string>
     <string name="spot_name_hint">e.g. Kelder, Baby, Huisdieren</string>
+    <!-- Weekoverleg -->
+    <string name="nav_week">Weekly meeting</string>
+    <string name="week_subtitle">Fifteen minutes together, step by step.</string>
+    <string name="week_last_held">last time: %1$s</string>
+    <string name="step_of">Step %1$d of %2$d</string>
+    <string name="step_look_back">Look back</string>
+    <string name="step_meals">Meals</string>
+    <string name="step_shopping">Shopping</string>
+    <string name="step_week">This week</string>
+    <string name="step_oudjes">Oudjes</string>
+    <string name="step_board">Workboard</string>
+    <string name="step_look_back_since">since %1$s</string>
+    <string name="step_look_back_week">this past week</string>
+    <string name="step_look_back_calm">A calm week. That’s allowed too.</string>
+    <string name="board_won">Sorted out on the workboard</string>
+    <string name="step_meals_hint">Tap a day. Ingredients go onto the shopping list; dishes from before come back in one tap.</string>
+    <string name="meal_add">What are we eating?</string>
+    <string name="meal_title">%1$s: what are we eating?</string>
+    <string name="meal_dish_hint">Dish, e.g. spaghetti bolognese</string>
+    <string name="meal_ingredients_hint">To buy, e.g. minced meat, tomatoes, spaghetti</string>
+    <string name="meal_earlier">Had it before</string>
+    <string name="meal_remove_body">The shopping list stays as it is.</string>
+    <string name="step_shopping_hint">Anything missing? A quick look at the stock helps too.</string>
+    <string name="open_stock">Check the stock</string>
+    <string name="step_week_deadlines">With a deadline</string>
+    <string name="step_week_routines">About time</string>
+    <string name="step_week_projects">A step for the weekend</string>
+    <string name="step_week_calm">A calm week ahead. Room for something fun.</string>
+    <string name="step_oudjes_hint">These have been waiting longest. Pick one or two for this week; not everything has to happen now.</string>
+    <string name="step_oudjes_empty">No oudjes. Everything has a place.</string>
+    <string name="oudje_since">since %1$s</string>
+    <string name="oudjes_more">Show others</string>
+    <string name="this_week">This week</string>
+    <string name="step_board_hint">What bothered someone this week? Decide together: a rule, a change, or let it go.</string>
+    <string name="step_board_empty">No frictions waiting. Lovely.</string>
+    <string name="week_back">Back</string>
+    <string name="week_next">Next</string>
+    <string name="week_finish">Done</string>
+    <string name="week_done">Ready for the week!</string>
+    <string name="week_done_recap">Done: %1$d  ·  Meals planned: %2$d</string>
+    <string name="dash_tonight">Tonight</string>
+    <string name="dash_huddle">Time for the weekly meeting?</string>
+    <string name="dash_huddle_body">Fifteen minutes together: meals, the week, a few oudjes.</string>
+    <string name="dash_huddle_start">Start</string>
+    <plurals name="dash_board_frictions">
+        <item quantity="one">%1$d point for the weekly meeting</item>
+        <item quantity="other">%1$d points for the weekly meeting</item>
+    </plurals>
+    <plurals name="step_look_back_count">
+        <item quantity="one">thing done %1$s</item>
+        <item quantity="other">things done %1$s</item>
+    </plurals>
 </resources>

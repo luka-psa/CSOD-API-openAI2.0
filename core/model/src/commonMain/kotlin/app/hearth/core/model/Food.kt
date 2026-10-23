@@ -47,3 +47,7 @@ data class StockItem(
     /** Where it's usually bought; null = the default shop. */
     val shopId: String? = null,
 )
+
+/** What we eat on one day (the evening meal); its ingredients went onto the shopping list. */
+@Serializable
+data class Meal(val id: String, val date: String, val dish: String, val ingredients: List<String> = emptyList())

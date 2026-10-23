@@ -21,7 +21,10 @@ import app.hearth.core.tools.food.ListShoppingItemsTool
 import app.hearth.core.tools.food.MarkBoughtTool
 import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
+import app.hearth.ai.route.MealWords
 import app.hearth.ai.route.StockWords
+import app.hearth.core.tools.week.PlanMealArgs
+import app.hearth.core.tools.week.PlanMealTool
 import app.hearth.ai.route.TaskWords
 import app.hearth.core.tools.food.AddShoppingItemArgs
 import app.hearth.core.tools.food.SetStockStateArgs
@@ -68,6 +71,11 @@ class Orchestrator(
     private val parser: LocalIntentParser = LocalIntentParser(),
 ) {
     suspend fun handle(text: String, ctx: ToolContext, history: List<ChatTurn> = emptyList()): ChatReply {
+        // "we eten vrijdag spaghetti": the meal plan (its ingredients go onto the list).
+        MealWords.extract(text, ctx.today)?.let { hint ->
+            val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
+            return runCalls(listOf(ToolCall.of(PlanMealTool.NAME, PlanMealArgs.serializer(), PlanMealArgs(hint.dish, hint.date.toString()))), local)
+        }
         // "de koffie is op": stock if we keep it, otherwise straight onto the shopping list.
         StockWords.extract(text)?.let { hint ->
             val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))

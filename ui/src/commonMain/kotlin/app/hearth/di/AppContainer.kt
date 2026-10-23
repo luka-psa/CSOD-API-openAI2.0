@@ -6,6 +6,7 @@ import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.food.StockRepository
+import app.hearth.core.data.week.WeekRepository
 import app.hearth.core.tools.food.shopIdFor
 import app.hearth.core.model.Lang
 import app.hearth.core.tools.HearthTools
@@ -30,7 +31,8 @@ class AppContainer(db: HearthDatabase, val lang: Lang) {
     val backlog = BacklogRepository(db)
     val board = BoardRepository(db)
     val stock = StockRepository(db)
-    val tools = HearthTools(shopping, backlog, board, stock)
+    val week = WeekRepository(db)
+    val tools = HearthTools(shopping, backlog, board, stock, week)
     val orchestrator = Orchestrator(tools.registry)
 
     fun context(source: ToolSource) = ToolContext(source = source, lang = lang)

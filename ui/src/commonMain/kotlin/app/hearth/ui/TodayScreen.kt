@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
+import app.hearth.core.model.Meal
+import androidx.compose.material3.Button
 import app.hearth.core.model.DayLoad
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
@@ -54,7 +56,12 @@ import app.hearth.ui.resources.Res
 import app.hearth.ui.resources.dash_board
 import app.hearth.ui.resources.dash_board_empty
 import app.hearth.ui.resources.dash_board_frictions
+import org.jetbrains.compose.resources.pluralStringResource
 import app.hearth.ui.resources.dash_coming_up
+import app.hearth.ui.resources.dash_huddle
+import app.hearth.ui.resources.dash_huddle_body
+import app.hearth.ui.resources.dash_huddle_start
+import app.hearth.ui.resources.dash_tonight
 import app.hearth.ui.resources.dash_dont_forget
 import app.hearth.ui.resources.dash_dont_forget_empty
 import app.hearth.ui.resources.dash_free
@@ -98,6 +105,8 @@ fun TodayScreen(
     steps: List<BacklogItem>,
     shopping: List<ShopSection>,
     board: List<BoardItem>,
+    meals: List<Meal>,
+    suggestHuddle: Boolean,
     doneToday: Int,
     today: LocalDate,
     lang: Lang,
@@ -109,6 +118,7 @@ fun TodayScreen(
     onGoProjects: () -> Unit,
     onGoShopping: () -> Unit,
     onGoBoard: () -> Unit,
+    onGoWeek: () -> Unit,
 ) {
     val names = backlog.associate { it.id to it.text }
     val urgent = dontForget(backlog, today)
@@ -130,6 +140,7 @@ fun TodayScreen(
     }
     val todayCard = @Composable { m: Modifier ->
         HearthCard(stringResource(Res.string.today_planned), HearthIcons.Sun, m) {
+            meals.firstOrNull { it.date == today.toString() }?.let { Tonight(it.dish) }
             FreeTime(dueToday, doneToday, lang)
             // With nothing due, the free-time note above says it all.
             if (planned.isEmpty() && rhythm.isEmpty() && dueToday > 0) EmptyHint(stringResource(Res.string.today_empty))
@@ -183,7 +194,7 @@ fun TodayScreen(
                 ) {
                     Icon(HearthIcons.Bolt, null, tint = Section.FRICTION.style().ink, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(Res.string.dash_board_frictions, frictions), style = MaterialTheme.typography.labelLarge, color = Section.FRICTION.style().ink)
+                    Text(pluralStringResource(Res.plurals.dash_board_frictions, frictions, frictions), style = MaterialTheme.typography.labelLarge, color = Section.FRICTION.style().ink)
                 }
             }
         }
@@ -218,6 +229,7 @@ fun TodayScreen(
                     boardCard(Modifier.fillMaxWidth())
                 }
                 Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                    if (suggestHuddle) HuddleCard(onGoWeek)
                     todayCard(Modifier.fillMaxWidth())
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -227,6 +239,7 @@ fun TodayScreen(
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                if (suggestHuddle) HuddleCard(onGoWeek)
                 if (urgent.isNotEmpty()) dontForgetCard(Modifier.fillMaxWidth())
                 todayCard(Modifier.fillMaxWidth())
                 comingUpCard(Modifier.fillMaxWidth())
@@ -234,6 +247,33 @@ fun TodayScreen(
                 shoppingCard(Modifier.fillMaxWidth())
                 boardCard(Modifier.fillMaxWidth())
             }
+        }
+    }
+}
+
+/** "Vanavond: spaghetti", from the meal plan. */
+@Composable
+private fun Tonight(dish: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)) {
+        Text(stringResource(Res.string.dash_tonight), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(10.dp))
+        Text(dish, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** A gentle suggestion near the weekend when no meeting was held this week. Never a ping. */
+@Composable
+private fun HuddleCard(onStart: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.onBackground, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp)) {
+            Icon(HearthIcons.People, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(Res.string.dash_huddle), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.surface)
+                Text(stringResource(Res.string.dash_huddle_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+            }
+            Spacer(Modifier.width(10.dp))
+            Button(onClick = onStart) { Text(stringResource(Res.string.dash_huddle_start)) }
         }
     }
 }

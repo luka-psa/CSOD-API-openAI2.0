@@ -47,12 +47,14 @@ import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Lang
 import app.hearth.core.model.dontForget
+import app.hearth.core.model.huddleDue
 import app.hearth.ui.resources.Res
 import app.hearth.core.model.TaskKind
 import app.hearth.ui.resources.delete_confirm
 import app.hearth.ui.resources.delete_confirm_body
 import app.hearth.ui.resources.delete_confirm_project
 import app.hearth.ui.resources.nav_board
+import app.hearth.ui.resources.nav_week
 import app.hearth.ui.resources.nav_tasks
 import app.hearth.ui.resources.nav_shopping
 import app.hearth.ui.resources.nav_today
@@ -65,6 +67,7 @@ import org.jetbrains.compose.resources.stringResource
 enum class Destination(val icon: ImageVector, val label: StringResource) {
     TODAY(HearthIcons.Sun, Res.string.nav_today),
     TASKS(HearthIcons.Backlog, Res.string.nav_tasks),
+    WEEK(HearthIcons.People, Res.string.nav_week),
     BOARD(HearthIcons.Board, Res.string.nav_board),
     SHOPPING(HearthIcons.Cart, Res.string.nav_shopping),
 }
@@ -83,6 +86,10 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val board by viewModel.board.collectAsStateWithLifecycle()
     val members by viewModel.members.collectAsStateWithLifecycle()
     val spots by viewModel.stockSpots.collectAsStateWithLifecycle()
+    val meals by viewModel.meals.collectAsStateWithLifecycle()
+    val dishes by viewModel.dishes.collectAsStateWithLifecycle()
+    val lastHuddle by viewModel.lastHuddle.collectAsStateWithLifecycle()
+    val agenda by viewModel.agenda.collectAsStateWithLifecycle()
     val stock by viewModel.stockItems.collectAsStateWithLifecycle()
     var deleting by remember { mutableStateOf<BacklogItem?>(null) }
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
@@ -106,7 +113,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                 AnimatedContent(destination, transitionSpec = { fadeIn() togetherWith fadeOut() }, modifier = Modifier.weight(1f)) { d ->
                     when (d) {
                         Destination.TODAY -> TodayScreen(
-                            backlog, steps, shopping, board, doneToday, today, lang, wide,
+                            backlog, steps, shopping, board, meals, huddleDue(lastHuddle, today) && today.dayOfWeek.ordinal >= 4, doneToday, today, lang, wide,
                             onComplete = viewModel::complete,
                             onPlan = { item, w -> viewModel.plan(item, w) },
                             onOpenItem = { planning = it },
@@ -114,6 +121,22 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                             onGoProjects = { tab = TaskTab.PROJECTS; destination = Destination.TASKS },
                             onGoShopping = { destination = Destination.SHOPPING },
                             onGoBoard = { destination = Destination.BOARD },
+                            onGoWeek = { destination = Destination.WEEK },
+                        )
+                        Destination.WEEK -> WeekScreen(
+                            agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang,
+                            WeekCallbacks(
+                                loadAgenda = viewModel::loadAgenda,
+                                planMeal = viewModel::planMeal,
+                                removeMeal = viewModel::removeMeal,
+                                addShopping = viewModel::addShopping,
+                                goShopping = { destination = Destination.SHOPPING },
+                                plan = { item, w, d -> viewModel.plan(item, w, d) },
+                                complete = viewModel::complete,
+                                resolveFriction = viewModel::resolveFriction,
+                                setGoalStep = viewModel::setGoalStep,
+                                finish = viewModel::finishWeekoverleg,
+                            ),
                         )
                         Destination.BOARD -> BoardScreen(
                             board, members, wide,

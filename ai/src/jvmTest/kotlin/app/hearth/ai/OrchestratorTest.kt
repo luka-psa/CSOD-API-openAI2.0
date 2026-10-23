@@ -37,7 +37,7 @@ class OrchestratorTest {
     private val shopping = ShoppingRepository(db)
     private val inbox = BacklogRepository(db)
     private val board = app.hearth.core.data.board.BoardRepository(db)
-    private val tools = HearthTools(shopping, inbox, board, app.hearth.core.data.food.StockRepository(db))
+    private val tools = HearthTools(shopping, inbox, board, app.hearth.core.data.food.StockRepository(db), app.hearth.core.data.week.WeekRepository(db))
     private val nl = ToolContext(ToolSource.CHAT, Lang.NL, today = LocalDate(2026, 10, 22))
 
     /** Scripted model: a queue of router decisions and helper replies. */
@@ -222,5 +222,19 @@ class OrchestratorTest {
         assertEquals("WC-papier is bijna op · op de lijst", offline.handle("we zijn bijna door het wc-papier", nl).text)
         assertEquals("Ijsjes staat op de lijst · Supermarkt", offline.handle("de ijsjes zijn op", nl).text)
         assertEquals(listOf("Koffie", "WC-papier", "Ijsjes"), shopping.openItems().map { it.name })
+    }
+
+    @Test
+    fun `bare chores with a verb are not shopping items`() = runTest {
+        offline.handle("zolder opruimen", nl)
+        offline.handle("fotoboek maken", nl)
+        offline.handle("school bellen", nl)
+        offline.handle("tandarts bellen", nl)
+        offline.handle("melk", nl)
+        assertEquals(listOf("Melk"), shopping.openItems().map { it.name })
+        assertEquals(
+            listOf(Section.PROJECT, Section.PROJECT, Section.ADMIN, Section.APPOINTMENT),
+            inbox.openItems().map { it.section },
+        )
     }
 }

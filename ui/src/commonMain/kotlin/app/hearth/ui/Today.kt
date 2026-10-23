@@ -26,3 +26,8 @@ fun formatDay(dateTime: LocalDateTime, lang: Lang): String {
 
 fun formatClock(dateTime: LocalDateTime): String =
     "${dateTime.hour.toString().padStart(2, '0')}:${dateTime.minute.toString().padStart(2, '0')}"
+
+/** The local day a moment fell on. */
+@OptIn(ExperimentalTime::class)
+fun dateOf(millis: Long): kotlinx.datetime.LocalDate =
+    kotlin.time.Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault()).date
