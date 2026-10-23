@@ -14,6 +14,21 @@ import app.hearth.core.tools.HearthTools
 import app.hearth.mcp.McpServer
 import app.hearth.mcp.RelayClient
 import app.hearth.mcp.DEFAULT_RELAY_URL
+import app.hearth.core.data.backup.BackupRepository
+import app.hearth.core.model.nowMillis
+import app.hearth.core.tools.system.GoogleSettings
+import app.hearth.core.tools.system.NoArgs
+import app.hearth.google.DriveBackupStore
+import app.hearth.google.GoogleAuth
+import app.hearth.google.GoogleCalendarApi
+import app.hearth.google.NoGoogleAuth
+import io.ktor.client.HttpClient
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
 import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolSource
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +43,7 @@ import kotlinx.coroutines.launch
  * The tablet's own chat runs locally (rules + keyword sorter). The family's AI (ChatGPT or Claude,
  * on their own subscription) reaches the same tools over MCP.
  */
-class AppContainer(db: HearthDatabase, val lang: Lang) {
+class AppContainer(db: HearthDatabase, val lang: Lang, val googleAuth: GoogleAuth = NoGoogleAuth) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val shopping = ShoppingRepository(db)
@@ -37,12 +52,24 @@ class AppContainer(db: HearthDatabase, val lang: Lang) {
     val stock = StockRepository(db)
     val week = WeekRepository(db)
     val settings = SettingsRepository(db, DEFAULT_RELAY_URL)
-    val tools = HearthTools(shopping, backlog, board, stock, week, settings)
+    val backups = BackupRepository(db)
+
+    /** The family's own Google Drive and Calendar: off until someone switches them on. */
+    private val googleHttp = HttpClient()
+    val drive = DriveBackupStore(googleHttp, googleAuth)
+    val calendar = GoogleCalendarApi(googleHttp, googleAuth)
+    val tools = HearthTools(shopping, backlog, board, stock, week, settings, backups, drive, calendar)
     val orchestrator = Orchestrator(tools.registry)
 
     /** The family's ChatGPT or Claude reaches the same tools here, through the relay. */
     val mcp = McpServer(tools.registry) { context(ToolSource.MCP) }
     val relay = RelayClient(mcp, appScope)
+
+    private companion object {
+        const val CHECK_EVERY_MS = 60 * 60_000L
+        const val BACKUP_EVERY_MS = 20 * 60 * 60_000L
+        const val CALENDAR_DELAY_MS = 20_000L
+    }
 
     fun context(source: ToolSource) = ToolContext(source = source, lang = lang)
 
@@ -53,5 +80,29 @@ class AppContainer(db: HearthDatabase, val lang: Lang) {
         }
         // Connected only while it's switched on; the client reconnects by itself.
         appScope.launch { settings.connection.collect { c -> relay.connect(if (c.enabled) c.tabletUrl else null) } }
+        if (googleAuth.available) keepGoogleUpToDate()
+    }
+
+    /**
+     * Quiet background care, only for what is switched on: one backup a day, and the calendar follows
+     * the plan a little after it changes. Failures (offline, signed out) just wait for the next round.
+     */
+    @OptIn(FlowPreview::class)
+    private fun keepGoogleUpToDate() {
+        val ctx = context(ToolSource.UI)
+        appScope.launch {
+            while (true) {
+                val on = settings.currentValue(GoogleSettings.BACKUP_ON) == "true"
+                val last = settings.currentValue(GoogleSettings.LAST_BACKUP)?.toLongOrNull() ?: 0L
+                if (on && nowMillis() - last > BACKUP_EVERY_MS) runCatching { tools.registry.run(tools.backupNow!!, NoArgs(), ctx) }
+                delay(CHECK_EVERY_MS)
+            }
+        }
+        appScope.launch {
+            combine(settings.value(GoogleSettings.CALENDAR_ON), backlog.open) { on, items -> if (on == "true") items else null }
+                .filterNotNull()
+                .debounce(CALENDAR_DELAY_MS)
+                .collectLatest { runCatching { tools.registry.run(tools.syncCalendar, NoArgs(), ctx) } }
+        }
     }
 }

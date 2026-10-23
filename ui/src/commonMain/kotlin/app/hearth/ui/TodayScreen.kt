@@ -427,7 +427,7 @@ private fun Header(lang: Lang, doneToday: Int, wide: Boolean, onGoConnect: () ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DonePill(doneToday)
                 Spacer(Modifier.weight(1f))
-                // On a phone there is no rail, so "Verbind AI" lives here.
+                // On a phone there is no rail, so "Koppelingen" lives here.
                 androidx.compose.material3.IconButton(onClick = onGoConnect) {
                     Icon(HearthIcons.Link, stringResource(Res.string.nav_connect), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

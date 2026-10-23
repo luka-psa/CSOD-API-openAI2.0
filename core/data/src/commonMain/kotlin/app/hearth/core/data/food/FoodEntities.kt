@@ -1,5 +1,6 @@
 package app.hearth.core.data.food
 
+import kotlinx.serialization.Serializable
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
@@ -9,6 +10,7 @@ import app.hearth.core.model.ShopKind
 import app.hearth.core.model.ShoppingItem
 
 @Entity(tableName = "shop", indices = [Index("normalizedName", unique = true)])
+@Serializable
 data class ShopEntity(
     @PrimaryKey val id: String,
     val name: String,
@@ -26,6 +28,7 @@ data class ShopEntity(
     foreignKeys = [ForeignKey(entity = ShopEntity::class, parentColumns = ["id"], childColumns = ["shopId"])],
     indices = [Index("shopId"), Index("normalizedName"), Index("bought")],
 )
+@Serializable
 data class ShoppingItemEntity(
     @PrimaryKey val id: String,
     val name: String,

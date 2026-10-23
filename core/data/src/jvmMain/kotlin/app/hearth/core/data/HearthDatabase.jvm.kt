@@ -8,3 +8,5 @@ fun inMemoryHearthDatabase(): HearthDatabase =
     Room.inMemoryDatabaseBuilder<HearthDatabase>()
         .setDriver(BundledSQLiteDriver())
         .build()
+
+internal actual val LONG_TRANSACTIONS: Boolean = true

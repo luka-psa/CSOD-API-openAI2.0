@@ -14,3 +14,5 @@ fun openHearthDatabase(): HearthDatabase =
 // Written as one expression so webpack bundles the worker (and SQLite's WASM) as a worker chunk.
 private fun createSqliteWorker(): Worker =
     js("""new Worker(new URL("hearth-sqlite-worker/worker.js", import.meta.url), { type: "module" })""")
+
+internal actual val LONG_TRANSACTIONS: Boolean = false

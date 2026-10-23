@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Only for "Verbind AI": the link to the relay, and installing it once. Hearth works fully offline without it. -->
+    <!-- Only for "Koppelingen": the relay for ChatGPT/Claude and the opt-in Google backup and calendar. Hearth works fully offline without it. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Voice input listens in the app itself, so the words show live while you speak. -->

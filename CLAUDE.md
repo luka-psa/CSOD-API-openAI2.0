@@ -73,7 +73,8 @@ structure. Keep it in sync when any of those change.
   action that the person confirms (in their AI chat or on the tablet). See
   `docs/PROPOSAL.md` §7.
 - **Google integration is opt-in and off by default.** Google sign-in is used
-  only to (a) push scheduled items to Google Calendar from the device and
+  only to (a) push scheduled items to Google Calendar from the device (Hearth's
+  own calendar, scope `calendar.app.created`) and
   (b) back up / restore to the user's Drive `appDataFolder`. Request the
   narrowest scopes, only when the feature is turned on.
 - **Privacy.** No analytics, no telemetry. Only the content needed for a cloud
@@ -121,10 +122,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   (the longest-open unplanned items, a few picked each week) → Werkbord; *Klaar*
   records a *Huddle*. *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.
-- **Verbind AI:** *Relay* (`relay/`, one shared Cloudflare Worker), *connector address*
+- **Koppelingen** (ChatGPT/Claude and Google): *Relay* (`relay/`, one shared Cloudflare Worker), *connector address*
   (`<relay>/mcp`, the same for everyone), *koppelcode* / *pairing code* (6 digits on the tablet, typed on
   the relay's login page), *linked app* (*Gekoppeld*), *tablet key*. The MCP
-  server lives in `mcp/`; tablet-only tools set `exposeOverMcp = false`.
+  server lives in `mcp/`; tablet-only tools set `exposeOverMcp = false`. Google:
+  *Back-up* (Drive app folder, *Terugzetten* asks first) and the *Hearth* calendar; setup in
+  `docs/GOOGLE.md`.
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
   UI ships in Dutch (Flemish) and English; the local parser understands both.
 
@@ -163,7 +166,7 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 Modules (all Kotlin Multiplatform except `app` and `web`):
 `core:model` → `core:data` (Room 3; `worker/` = SQLite web worker) → `core:tools`
 (all tools, `HearthTools` wires them) → `ai` (parser + orchestrator) and `mcp` (MCP server,
-relay client and installer; embeds `relay/src/worker.js`) → `ui` (Compose
+relay client; `relay/` is the shared Worker) and `google` (Drive backup, Calendar push) → `ui` (Compose
 screens, ViewModel, strings, `AppContainer`) → `app` (Android: activity, kiosk) and
 `web` (browser entry point, `index.html`, `vercel.json`).
 

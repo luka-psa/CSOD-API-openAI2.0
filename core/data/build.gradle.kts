@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room3)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -21,6 +22,7 @@ kotlin {
             api(project(":core:model"))
             api(libs.room3.runtime)
             api(libs.coroutines.core)
+            implementation(libs.serialization.json)
         }
         androidMain.dependencies {
             implementation(libs.sqlite.framework)

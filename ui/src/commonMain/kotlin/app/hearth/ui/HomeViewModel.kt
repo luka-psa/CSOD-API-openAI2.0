@@ -40,6 +40,12 @@ import app.hearth.core.tools.backlog.When
 import app.hearth.core.data.settings.Connection
 import app.hearth.core.tools.system.SaveConnectionArgs
 import app.hearth.mcp.LinkedApp
+import app.hearth.core.tools.system.BackupFile
+import app.hearth.core.tools.system.GoogleSettings
+import app.hearth.core.tools.system.NoArgs
+import app.hearth.core.tools.system.RestoreBackupArgs
+import app.hearth.core.tools.system.SetGoogleSyncArgs
+import app.hearth.google.GoogleScopes
 import app.hearth.mcp.PairingCode
 import app.hearth.mcp.McpPending
 import app.hearth.mcp.RelayStatus
@@ -158,6 +164,87 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     /** Unlinks an AI app (or all, with null). The screen asked first. */
     fun unlinkApp(id: String?) = app.relay.unlink(id)
+
+    // ---- Google Drive backup and Google Calendar (opt-in) ----
+
+    val googleAvailable: Boolean get() = app.googleAuth.available
+
+    val google: StateFlow<GoogleState> = combine(
+        app.settings.value(GoogleSettings.BACKUP_ON),
+        app.settings.value(GoogleSettings.LAST_BACKUP),
+        app.settings.value(GoogleSettings.CALENDAR_ON),
+        app.settings.value(GoogleSettings.LAST_SYNC),
+    ) { backup, lastBackup, calendar, lastSync ->
+        GoogleState(backup == "true", lastBackup?.toLongOrNull(), calendar == "true", lastSync?.toLongOrNull())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GoogleState())
+
+    private val _googleBusy = MutableStateFlow(false)
+    val googleBusy: StateFlow<Boolean> = _googleBusy.asStateFlow()
+
+    private val _backupList = MutableStateFlow<List<BackupFile>?>(null)
+    /** Shown when the family picks a backup to put back; null when the picker is closed. */
+    val backupList: StateFlow<List<BackupFile>?> = _backupList.asStateFlow()
+
+    /** Sign in for Drive (only the hidden app folder), switch the daily backup on and make the first one. */
+    fun connectBackup() = withGoogle {
+        if (app.googleAuth.token(GoogleScopes.DRIVE_APPDATA, interactive = true) == null) return@withGoogle say(signInFailed())
+        app.tools.registry.run(app.tools.setGoogleSync, SetGoogleSyncArgs(backup = true), it)
+        say(app.tools.registry.run(app.tools.backupNow!!, NoArgs(), it).summary)
+    }
+
+    fun backupNow() = withGoogle {
+        if (app.googleAuth.token(GoogleScopes.DRIVE_APPDATA, interactive = true) == null) return@withGoogle say(signInFailed())
+        say(app.tools.registry.run(app.tools.backupNow!!, NoArgs(), it).summary)
+    }
+
+    fun openBackups() = withGoogle {
+        if (app.googleAuth.token(GoogleScopes.DRIVE_APPDATA, interactive = true) == null) return@withGoogle say(signInFailed())
+        _backupList.value = app.tools.registry.run(app.tools.listBackups, NoArgs(), it).backups
+    }
+
+    fun closeBackups() {
+        _backupList.value = null
+    }
+
+    /** The screen asked "replace everything?" first. */
+    fun restoreBackup(id: String) = withGoogle {
+        _backupList.value = null
+        say(app.tools.registry.run(app.tools.restoreBackup!!, RestoreBackupArgs(id), it, confirmed = true).summary)
+    }
+
+    /** Sign in for Calendar (only calendars Hearth makes), switch it on and push the plan. */
+    fun connectCalendar() = withGoogle {
+        if (app.googleAuth.token(GoogleScopes.CALENDAR_APP_CREATED, interactive = true) == null) return@withGoogle say(signInFailed())
+        app.tools.registry.run(app.tools.setGoogleSync, SetGoogleSyncArgs(calendar = true), it)
+        say(app.tools.registry.run(app.tools.syncCalendar, NoArgs(), it).summary)
+    }
+
+    fun syncCalendar() = withGoogle {
+        if (app.googleAuth.token(GoogleScopes.CALENDAR_APP_CREATED, interactive = true) == null) return@withGoogle say(signInFailed())
+        say(app.tools.registry.run(app.tools.syncCalendar, NoArgs(), it).summary)
+    }
+
+    fun setGoogleSync(backup: Boolean? = null, calendar: Boolean? = null) = withGoogle {
+        say(app.tools.registry.run(app.tools.setGoogleSync, SetGoogleSyncArgs(backup, calendar), it).summary)
+    }
+
+    private fun signInFailed() = ctx(ToolSource.UI).t("Aanmelden bij Google lukte niet. Probeer het gerust nog eens.", "Signing in to Google didn’t work. Feel free to try again.")
+
+    private fun say(text: String) = _messages.update { it + ChatMessage(fromUser = false, text = text) }
+
+    private fun withGoogle(block: suspend (ToolContext) -> Unit) {
+        if (_googleBusy.value) return
+        viewModelScope.launch {
+            _googleBusy.value = true
+            try {
+                block(ctx(ToolSource.UI))
+            } catch (e: ToolException) {
+                say(e.userMessage)
+            } finally {
+                _googleBusy.value = false
+            }
+        }
+    }
 
     /** Ja / Nee on the tablet for something the family's AI asked to do. */
     fun answerMcp(pending: McpPending, yes: Boolean) {
@@ -485,3 +572,11 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     }
 }
+
+/** What's switched on with Google, and when it last ran (epoch ms). */
+data class GoogleState(
+    val backup: Boolean = false,
+    val lastBackup: Long? = null,
+    val calendar: Boolean = false,
+    val lastSync: Long? = null,
+)

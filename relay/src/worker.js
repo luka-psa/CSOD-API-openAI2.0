@@ -201,8 +201,8 @@ function appName(c, redirectUri) {
 
 function page(nl, form, error) {
   const t = nl
-    ? { title: "Hearth koppelen", lead: (a) => `<b>${esc(a)}</b> wil jullie Hearth gebruiken.`, ask: "Tik op de tablet in Verbind AI op <b>Toon koppelcode</b> en typ de code hier.", go: "Koppelen", note: "Je kunt dit altijd weer ontkoppelen op de tablet." }
-    : { title: "Link Hearth", lead: (a) => `<b>${esc(a)}</b> wants to use your Hearth.`, ask: "On the tablet, open Connect AI and tap <b>Show pairing code</b>, then type the code here.", go: "Link", note: "You can unlink this any time on the tablet." };
+    ? { title: "Hearth koppelen", lead: (a) => `<b>${esc(a)}</b> wil jullie Hearth gebruiken.`, ask: "Tik op de tablet in Koppelingen op <b>Toon koppelcode</b> en typ de code hier.", go: "Koppelen", note: "Je kunt dit altijd weer ontkoppelen op de tablet." }
+    : { title: "Link Hearth", lead: (a) => `<b>${esc(a)}</b> wants to use your Hearth.`, ask: "On the tablet, open Connections and tap <b>Show pairing code</b>, then type the code here.", go: "Link", note: "You can unlink this any time on the tablet." };
   const inputs = form ? Object.entries(form.hidden).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join("") : "";
   const body = form
     ? `<p>${t.lead(form.app)}</p><p class="muted">${t.ask}</p>

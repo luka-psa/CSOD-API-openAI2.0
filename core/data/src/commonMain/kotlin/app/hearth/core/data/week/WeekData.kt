@@ -1,5 +1,6 @@
 package app.hearth.core.data.week
 
+import kotlinx.serialization.Serializable
 import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Entity
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Entity(tableName = "meal", indices = [Index("date", unique = true), Index("normalizedDish")])
+@Serializable
 data class MealEntity(
     @PrimaryKey val id: String,
     val date: String,
@@ -35,6 +37,7 @@ data class MealEntity(
 
 /** Every dish we know: recipes saved on purpose, and dishes remembered from the meal plan. */
 @Entity(tableName = "dish")
+@Serializable
 data class DishEntity(
     @PrimaryKey val normalizedName: String,
     val name: String,
@@ -60,6 +63,7 @@ data class RecipePhotoEntity(
 )
 
 @Entity(tableName = "huddle", indices = [Index("heldOn")])
+@Serializable
 data class HuddleEntity(
     @PrimaryKey val id: String,
     val heldOn: String,

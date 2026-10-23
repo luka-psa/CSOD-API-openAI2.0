@@ -11,6 +11,7 @@ import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.model.nowMillis
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -83,7 +84,7 @@ class SettingsRepository(
     }
 
     /** A plain setting (e.g. Google backup), for the few features that keep one. */
-    fun value(key: String): Flow<String?> = dao.observeAll().map { rows -> rows.firstOrNull { it.key == key }?.value }
+    fun value(key: String): Flow<String?> = dao.observeAll().map { rows -> rows.firstOrNull { it.key == key }?.value }.distinctUntilChanged()
 
     suspend fun currentValue(key: String): String? = dao.all().firstOrNull { it.key == key }?.value
 

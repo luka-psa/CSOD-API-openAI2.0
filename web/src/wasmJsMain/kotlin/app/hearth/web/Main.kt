@@ -6,6 +6,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.hearth.core.data.openHearthDatabase
 import app.hearth.core.model.Lang
 import app.hearth.di.AppContainer
+import app.hearth.google.GOOGLE_WEB_CLIENT_ID
+import app.hearth.google.WebGoogleAuth
 import app.hearth.ui.HearthScreen
 import app.hearth.ui.HomeViewModel
 import app.hearth.ui.theme.HearthTheme
@@ -16,7 +18,7 @@ import kotlinx.browser.window
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     val lang = Lang.fromTag(window.navigator.language)
-    val container = AppContainer(openHearthDatabase(), lang)
+    val container = AppContainer(openHearthDatabase(), lang, WebGoogleAuth(GOOGLE_WEB_CLIENT_ID))
     document.getElementById("loading")?.remove()
     ComposeViewport(document.body!!) {
         HearthTheme {

@@ -15,7 +15,7 @@ plugins {
 tasks.register("hearthCheck") {
     group = "verification"
     dependsOn(
-        ":core:data:jvmTest", ":core:tools:jvmTest", ":ai:jvmTest", ":mcp:jvmTest",
+        ":core:data:jvmTest", ":core:tools:jvmTest", ":ai:jvmTest", ":mcp:jvmTest", ":google:jvmTest",
         ":core:tools:wasmJsNodeTest", ":ai:wasmJsNodeTest",
         ":app:assembleDebug", ":app:lintDebug",
         ":web:wasmJsBrowserDistribution",

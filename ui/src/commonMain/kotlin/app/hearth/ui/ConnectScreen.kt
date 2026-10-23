@@ -40,11 +40,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.hearth.core.data.settings.Connection
 import app.hearth.core.model.nowMillis
+import app.hearth.core.tools.system.BackupFile
 import app.hearth.mcp.LinkedApp
 import app.hearth.mcp.PairingCode
 import app.hearth.mcp.RelayStatus
 import app.hearth.ui.resources.Res
 import app.hearth.ui.resources.connect_activity
+import app.hearth.ui.resources.connect_ai
+import app.hearth.ui.resources.connect_google
 import app.hearth.ui.resources.connect_address
 import app.hearth.ui.resources.connect_advanced
 import app.hearth.ui.resources.connect_advanced_body
@@ -98,6 +101,11 @@ fun ConnectScreen(
     code: PairingCode?,
     activity: List<String>,
     cb: ConnectCallbacks,
+    google: GoogleState,
+    googleAvailable: Boolean,
+    googleBusy: Boolean,
+    backups: List<BackupFile>?,
+    googleCb: GoogleCallbacks,
 ) {
     var unlinking by remember { mutableStateOf<LinkedApp?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
@@ -106,6 +114,7 @@ fun ConnectScreen(
         Spacer(Modifier.size(20.dp))
 
         Column(Modifier.widthIn(max = 860.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            SectionTitle(stringResource(Res.string.connect_ai))
             HearthCard(stringResource(Res.string.connect_on), HearthIcons.Link, Modifier.fillMaxWidth(), action = {
                 Switch(
                     checked = connection.enabled,
@@ -140,6 +149,8 @@ fun ConnectScreen(
                 LinkCard(connection, status, code, cb)
             }
             AdvancedCard(connection, cb)
+            SectionTitle(stringResource(Res.string.connect_google))
+            GoogleCards(google, googleAvailable, googleBusy, backups, googleCb)
         }
     }
     unlinking?.let { app ->
@@ -149,6 +160,11 @@ fun ConnectScreen(
             onYes = { cb.unlink(app.id) },
         ) { unlinking = null }
     }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 4.dp))
 }
 
 @Composable

@@ -17,6 +17,8 @@ kotlin {
         commonMain.dependencies {
             api(project(":ai"))
             api(project(":mcp"))
+            api(project(":google"))
+            implementation(libs.ktor.client.core)
             api(compose.runtime)
             api(compose.foundation)
             api(compose.material3)

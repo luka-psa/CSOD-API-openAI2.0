@@ -1,6 +1,10 @@
 package app.hearth
 
+import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.CompletableDeferred
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,14 +25,34 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { HomeViewModel(container) } }
     }
 
+    /** Google's account and consent screen, started from a suspend call and answered here. */
+    private var consentReply: CompletableDeferred<Intent?>? = null
+    private val consent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        consentReply?.complete(if (result.resultCode == RESULT_OK) result.data else null)
+        consentReply = null
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         kiosk.onCreate()
+        (application as HearthApp).googleAuth.consent = { sender ->
+            val reply = CompletableDeferred<Intent?>()
+            consentReply?.complete(null)
+            consentReply = reply
+            consent.launch(IntentSenderRequest.Builder(sender).build())
+            reply.await()
+        }
         setContent {
             HearthTheme {
                 HearthScreen(viewModel = viewModel, lang = container.lang, dimmed = dimmed.value)
             }
         }
+    }
+
+    override fun onDestroy() {
+        (application as HearthApp).googleAuth.consent = null
+        consentReply?.complete(null)
+        super.onDestroy()
     }
 
     override fun onResume() {

@@ -6,7 +6,16 @@ import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.food.StockRepository
 import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.data.week.WeekRepository
+import app.hearth.core.data.backup.BackupRepository
+import app.hearth.core.tools.system.BackupNowTool
+import app.hearth.core.tools.system.BackupStore
+import app.hearth.core.tools.system.CalendarApi
+import app.hearth.core.tools.system.ListBackupsTool
+import app.hearth.core.tools.system.NoGoogle
+import app.hearth.core.tools.system.RestoreBackupTool
 import app.hearth.core.tools.system.SaveConnectionTool
+import app.hearth.core.tools.system.SetGoogleSyncTool
+import app.hearth.core.tools.system.SyncCalendarTool
 import app.hearth.core.tools.week.FinishWeekoverlegTool
 import app.hearth.core.tools.week.ListMealPlanTool
 import app.hearth.core.tools.week.PlanMealTool
@@ -59,6 +68,10 @@ class HearthTools(
     stock: StockRepository,
     week: WeekRepository,
     settings: SettingsRepository,
+    /** The household as one file; with [backupStore] and [calendarApi] for the opt-in Google features. */
+    backups: BackupRepository? = null,
+    backupStore: BackupStore = NoGoogle,
+    calendarApi: CalendarApi = NoGoogle,
 ) {
     val addShoppingItem = AddShoppingItemTool(shopping, stock)
     val listShoppingItems = ListShoppingItemsTool(shopping)
@@ -109,6 +122,11 @@ class HearthTools(
     val setRecipePhoto = SetRecipePhotoTool(week)
 
     val saveConnection = SaveConnectionTool(settings)
+    val setGoogleSync = SetGoogleSyncTool(settings)
+    val backupNow = backups?.let { BackupNowTool(it, backupStore, settings) }
+    val listBackups = ListBackupsTool(backupStore)
+    val restoreBackup = backups?.let { RestoreBackupTool(it, backupStore) }
+    val syncCalendar = SyncCalendarTool(backlog, calendarApi, settings)
 
     val registry = ToolRegistry(
         listOf(
@@ -120,7 +138,7 @@ class HearthTools(
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
             saveRecipe, listRecipes, removeRecipe, setRecipePhoto,
-            saveConnection,
-        ),
+            saveConnection, setGoogleSync, listBackups, syncCalendar,
+        ) + listOfNotNull(backupNow, restoreBackup),
     )
 }

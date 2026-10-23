@@ -1,5 +1,6 @@
 package app.hearth.core.data.board
 
+import kotlinx.serialization.Serializable
 import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.Index
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Entity(tableName = "member", indices = [Index("normalizedName", unique = true)])
+@Serializable
 data class MemberEntity(
     @PrimaryKey val id: String,
     val name: String,
@@ -33,6 +35,7 @@ data class MemberEntity(
 }
 
 @Entity(tableName = "board_item", indices = [Index("kind", "status")])
+@Serializable
 data class BoardEntity(
     @PrimaryKey val id: String,
     val kind: BoardKind,

@@ -107,6 +107,8 @@ dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_
 meeting, meals, shopping, deadlines, due routines, oudjes, open frictions), `finish_weekoverleg`. · Recipes:
 `save_recipe` (name, ingredients, how we made it; rename keeps the photo), `list_recipes`, `remove_recipe` ⚠,
 `set_recipe_photo` (tablet only). Stock: `move_stock_item`, `remove_storage_spot` ⚠.
+Google (tablet only, opt-in, see `docs/GOOGLE.md`): `set_google_sync`, `backup_now`, `list_backups`,
+`restore_backup` ⚠, `sync_calendar`.
 
 The full target list:
 
@@ -190,7 +192,7 @@ Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional sto
 Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under every screen.
 
 ```
- Vandaag (dashboard) | Taken | Weekmenu | Weekoverleg | Werkbord | Boodschappen      (Verbind AI at the bottom)
+ Vandaag (dashboard) | Taken | Weekmenu | Weekoverleg | Werkbord | Boodschappen      (Koppelingen at the bottom)
 ```
 
 **Vandaag: the tablet dashboard** (three columns on the tablet, one on a phone):
@@ -268,7 +270,8 @@ ai             LocalIntentParser (NL + EN), Orchestrator; later LlmProvider + lo
 ui             Compose screens, HomeViewModel, AppContainer, strings (NL/EN), icons
 app            Android: MainActivity, kiosk, Application
 web            Browser: main(), index.html, vercel.json
-mcp, integrations/google   (later slices)
+mcp            MCP server + the tablet's relay client (relay/ is the shared Worker)
+google         Drive appDataFolder backups, Hearth's own Google calendar, sign-in per platform
 ```
 
 Dependency direction: `app, web → ui → ai → core:tools → core:data → core:model`.
@@ -335,12 +338,14 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    "we willen samen …", "doel: …".
 6. ✅ **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*;
    capture bar: "we eten maandag spaghetti", "vanavond eten we frietjes", "dinner on monday: pizza".
-7. ✅ **MCP relay** managed by Hearth (§7, option A): "Verbind AI" (rail bottom; on a phone via the link icon
-   on Vandaag): install once with a Cloudflare token, share the link, add it once in ChatGPT/Claude.
+7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
+   icon on Vandaag): add `<relay>/mcp` once in ChatGPT/Claude and type the tablet's pairing code.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a
    confirm and NL/EN. (Still to do: counted stock "nog 3", a walk-through stock check.)
 9. Per-person Today, helpers, seasons for routines, anchor habits, protected time as its own kind.
-10. On-device model for offline sorting; Google Calendar push + Drive backup.
+10. ✅ **Google** (opt-in, narrow scopes): daily backup to Drive's hidden app folder with restore (asks
+    first); planned days in Hearth's own Google calendar (all-day, no reminders). Setup: `docs/GOOGLE.md`.
+11. On-device model for offline sorting.
 
 ## 9. Decisions
 

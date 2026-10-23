@@ -1,5 +1,6 @@
 package app.hearth.core.data.food
 
+import kotlinx.serialization.Serializable
 import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Entity(tableName = "storage_spot", indices = [Index("normalizedName", unique = true)])
+@Serializable
 data class StorageSpotEntity(
     @PrimaryKey val id: String,
     val name: String,
@@ -38,6 +40,7 @@ data class StorageSpotEntity(
     foreignKeys = [ForeignKey(entity = StorageSpotEntity::class, parentColumns = ["id"], childColumns = ["spotId"], onDelete = ForeignKey.CASCADE)],
     indices = [Index("spotId"), Index("normalizedName")],
 )
+@Serializable
 data class StockItemEntity(
     @PrimaryKey val id: String,
     val name: String,

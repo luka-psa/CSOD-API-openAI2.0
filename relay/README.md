@@ -11,7 +11,7 @@ ChatGPT / Claude ──POST /mcp (Bearer token)──▶ relay ──WebSocket�
 ## How a family links an AI app
 
 1. In Claude or ChatGPT they add a custom connector with the address `https://<relay>/mcp` (the same for
-   everyone; Hearth shows it under Verbind AI).
+   everyone; Hearth shows it under Koppelingen).
 2. The AI app opens the relay's Hearth page ("Claude wants to use your Hearth").
 3. On the tablet they tap **Toon koppelcode** and type the 6-digit code on that page. Done.
 
@@ -39,7 +39,7 @@ change to `relay/`.
 Then tell the app where it lives: set the repository variable `HEARTH_RELAY_URL` (Settings → Secrets and
 variables → Actions → Variables), e.g. `https://hearth-relay.<your-subdomain>.workers.dev`. The web and
 Android builds bake it in (`-Phearth.relayUrl`). A custom domain works too. Families can still point their
-tablet at another relay under Verbind AI → Geavanceerd.
+tablet at another relay under Koppelingen → Geavanceerd.
 
 The Workers Free plan is enough for many households (SQLite Durable Objects are included).
 

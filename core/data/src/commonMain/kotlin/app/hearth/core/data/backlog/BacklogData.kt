@@ -1,5 +1,6 @@
 package app.hearth.core.data.backlog
 
+import kotlinx.serialization.Serializable
 import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Entity
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Entity(tableName = "backlog_item", indices = [Index("done"), Index("plan", "plannedDate"), Index("parentId")])
+@Serializable
 data class BacklogEntity(
     @PrimaryKey val id: String,
     val text: String,

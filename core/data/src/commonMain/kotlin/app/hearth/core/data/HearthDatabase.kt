@@ -60,6 +60,7 @@ abstract class HearthDatabase : RoomDatabase() {
     abstract fun stockDao(): StockDao
     abstract fun weekDao(): WeekDao
     abstract fun settingDao(): SettingDao
+    abstract fun backupDao(): app.hearth.core.data.backup.BackupDao
 }
 
 /** v5: house rules and frictions leave the backlog for the new Werkbord. */
@@ -88,3 +89,6 @@ expect object HearthDatabaseConstructor : RoomDatabaseConstructor<HearthDatabase
 }
 
 internal const val DATABASE_NAME = "hearth.db"
+
+/** False where a long multi-table write transaction isn't reliable (the browser's SQLite worker). */
+internal expect val LONG_TRANSACTIONS: Boolean

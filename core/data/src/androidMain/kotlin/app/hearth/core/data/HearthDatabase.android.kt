@@ -9,3 +9,5 @@ fun openHearthDatabase(context: Context): HearthDatabase =
     Room.databaseBuilder<HearthDatabase>(context.applicationContext, DATABASE_NAME)
         .setDriver(AndroidSQLiteDriver())
         .build()
+
+internal actual val LONG_TRANSACTIONS: Boolean = true

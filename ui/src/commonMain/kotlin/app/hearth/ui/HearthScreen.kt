@@ -105,6 +105,9 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val mcpActivity by viewModel.mcpActivity.collectAsStateWithLifecycle()
     val linkedApps by viewModel.linkedApps.collectAsStateWithLifecycle()
     val pairingCode by viewModel.pairingCode.collectAsStateWithLifecycle()
+    val google by viewModel.google.collectAsStateWithLifecycle()
+    val googleBusy by viewModel.googleBusy.collectAsStateWithLifecycle()
+    val backupList by viewModel.backupList.collectAsStateWithLifecycle()
     val stock by viewModel.stockItems.collectAsStateWithLifecycle()
     var deleting by remember { mutableStateOf<BacklogItem?>(null) }
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
@@ -172,6 +175,17 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 showCode = viewModel::showPairingCode,
                                 hideCode = viewModel::hidePairingCode,
                                 unlink = viewModel::unlinkApp,
+                            ),
+                            google, viewModel.googleAvailable, googleBusy, backupList,
+                            GoogleCallbacks(
+                                connectBackup = viewModel::connectBackup,
+                                backupNow = viewModel::backupNow,
+                                openBackups = viewModel::openBackups,
+                                closeBackups = viewModel::closeBackups,
+                                restore = viewModel::restoreBackup,
+                                connectCalendar = viewModel::connectCalendar,
+                                syncCalendar = viewModel::syncCalendar,
+                                set = { b, c -> viewModel.setGoogleSync(b, c) },
                             ),
                         )
                         Destination.BOARD -> BoardScreen(
