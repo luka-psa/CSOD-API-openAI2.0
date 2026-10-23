@@ -170,4 +170,22 @@
     <string name="dash_board_empty">No agreements yet. Add one on the workboard.</string>
     <string name="kind_friction">Friction</string>
     <string name="kind_goal">Goal</string>
+    <string name="listening">Listening…</string>
+    <string name="stop_listening">Stop listening</string>
+    <string name="voice_check">Is this right?</string>
+    <string name="voice_add">Add</string>
+    <string name="voice_clear">Clear</string>
+    <!-- Stock -->
+    <string name="tab_list">List</string>
+    <string name="stock_title">Stock</string>
+    <string name="stock_hint">Tap what’s running out: it goes on the list. Bought means back in the house.</string>
+    <string name="stock_add_hint">Add to %1$s</string>
+    <string name="stock_remove_body">It leaves the stock. The shopping list stays as it is.</string>
+    <string name="on_list">on the list</string>
+    <string name="all_bought">All bought. Nice!</string>
+    <string name="clear_bought">Clear bought (%1$d)</string>
+    <string name="clear_bought_confirm">Clear everything bought?</string>
+    <string name="clear_bought_body">Ticked items leave the list. Nothing still to buy is touched.</string>
+    <string name="spot_add">New room or topic</string>
+    <string name="spot_name_hint">e.g. Kelder, Baby, Huisdieren</string>
 </resources>

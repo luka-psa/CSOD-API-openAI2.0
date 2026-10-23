@@ -37,7 +37,7 @@ class OrchestratorTest {
     private val shopping = ShoppingRepository(db)
     private val inbox = BacklogRepository(db)
     private val board = app.hearth.core.data.board.BoardRepository(db)
-    private val tools = HearthTools(shopping, inbox, board)
+    private val tools = HearthTools(shopping, inbox, board, app.hearth.core.data.food.StockRepository(db))
     private val nl = ToolContext(ToolSource.CHAT, Lang.NL, today = LocalDate(2026, 10, 22))
 
     /** Scripted model: a queue of router decisions and helper replies. */
@@ -210,5 +210,17 @@ class OrchestratorTest {
         assertEquals(emptyList(), inbox.openItems())
         assertEquals(emptyList(), shopping.openItems())
         assertEquals(4, board.allItems().size)
+    }
+
+    @Test
+    fun `stock words mark the stock, or put it on the list when we don't keep it`() = runTest {
+        app.hearth.core.data.food.StockRepository(db).let { stock ->
+            shopping.ensureDefaultShops(Lang.NL)
+            stock.ensureDefaults(Lang.NL) { null }
+        }
+        assertEquals("Koffie is op · op de lijst", offline.handle("de koffie is op", nl).text)
+        assertEquals("WC-papier is bijna op · op de lijst", offline.handle("we zijn bijna door het wc-papier", nl).text)
+        assertEquals("Ijsjes staat op de lijst · Supermarkt", offline.handle("de ijsjes zijn op", nl).text)
+        assertEquals(listOf("Koffie", "WC-papier", "Ijsjes"), shopping.openItems().map { it.name })
     }
 }

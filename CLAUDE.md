@@ -110,6 +110,9 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   (FRICTION → wordt huisregel / veranderen / loslaten; all three are good
   outcomes), *Doel* (GOAL, scope gezin / samen / persoonlijk, one small *next
   step*). *Member*: a person with a colour.
+- **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
+  and onto the list, bought = IN_STOCK again. Voice never adds on its own: the
+  words show live, then "Klopt dit?". Every list row ends in an X that asks first.
 - **Coming next:** *Weekoverleg* (with *Oudjes*: the longest-open items, a few
   picked each week).
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).

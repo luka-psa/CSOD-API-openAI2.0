@@ -59,6 +59,7 @@ internal fun WeekPanel(
     names: Map<String, String>,
     onComplete: (BacklogItem) -> Unit,
     onOpenItem: (BacklogItem) -> Unit,
+    onDelete: (BacklogItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var filter by remember { mutableStateOf<BacklogFilter>(BacklogFilter.All) }
@@ -130,6 +131,7 @@ internal fun WeekPanel(
                                 onOpen = { onOpenItem(item) },
                                 modifier = Modifier.animateItem(),
                                 projectName = item.parentId?.let(names::get),
+                                onDelete = { onDelete(item) },
                             ) {
                                 IconButton(onClick = { onOpenItem(item) }) {
                                     Icon(HearthIcons.Calendar, planLabel, tint = MaterialTheme.colorScheme.onSurfaceVariant)

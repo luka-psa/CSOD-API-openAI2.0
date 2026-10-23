@@ -1,6 +1,8 @@
 package app.hearth.core.tools.food
 
 import app.hearth.core.data.food.ShoppingRepository
+import app.hearth.core.data.food.StockRepository
+import app.hearth.core.model.StockState
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Shop
 import app.hearth.core.model.ShopKind
@@ -35,7 +37,7 @@ data class AddShoppingItemResult(
     override val summary: String,
 ) : ToolResult
 
-class AddShoppingItemTool(private val repo: ShoppingRepository) : Tool<AddShoppingItemArgs, AddShoppingItemResult> {
+class AddShoppingItemTool(private val repo: ShoppingRepository, private val stock: StockRepository? = null) : Tool<AddShoppingItemArgs, AddShoppingItemResult> {
     override val name = NAME
     override val description =
         "Put something on the shared shopping list. Matches an item already on the list instead of adding a " +
@@ -71,7 +73,10 @@ class AddShoppingItemTool(private val repo: ShoppingRepository) : Tool<AddShoppi
                     ),
                 )
             } else {
-                val item = repo.insertItem(itemName, shop.id, quantity, note, addedById = ctx.actorMemberId)
+                // Something we keep in stock: link it, so buying it brings the stock back.
+                val stockItem = stock?.findItem(itemName)
+                stockItem?.let { stock?.setState(listOf(it.id), StockState.LOW) }
+                val item = repo.insertItem(itemName, shop.id, quantity, note, stockItemId = stockItem?.id, addedById = ctx.actorMemberId)
                 AddShoppingItemResult(
                     item = item,
                     shopName = shop.name,
@@ -159,9 +164,9 @@ data class MarkBoughtResult(
     override val summary: String,
 ) : ToolResult
 
-class MarkBoughtTool(private val repo: ShoppingRepository) : Tool<MarkBoughtArgs, MarkBoughtResult> {
+class MarkBoughtTool(private val repo: ShoppingRepository, private val stock: StockRepository? = null) : Tool<MarkBoughtArgs, MarkBoughtResult> {
     override val name = NAME
-    override val description = "Tick shopping items as bought. They leave the list."
+    override val description = "Tick shopping items as bought. They leave the list; stock items are back in the house."
     override val argsSerializer = MarkBoughtArgs.serializer()
     override val resultSerializer = MarkBoughtResult.serializer()
 
@@ -170,7 +175,7 @@ class MarkBoughtTool(private val repo: ShoppingRepository) : Tool<MarkBoughtArgs
             .distinctBy { it.id }
         if (items.isEmpty()) throw notFound(args, ctx)
         repo.setBought(items.map { it.id }, bought = true)
-        // Slice 2: restocks put their stock item back to IN_STOCK here.
+        stock?.setState(items.mapNotNull { it.stockItemId }, StockState.IN_STOCK)
         val names = items.joinToString(", ") { label(it) }
         MarkBoughtResult(items.map { it.copy(bought = true) }, ctx.t("Gekocht: $names", "Bought: $names"))
     }
@@ -205,7 +210,7 @@ class UnmarkBoughtTool(private val repo: ShoppingRepository) : Tool<MarkBoughtAr
 
 // ---------- remove_shopping_item (destructive) ----------
 
-class RemoveShoppingItemTool(private val repo: ShoppingRepository) : Tool<MarkBoughtArgs, MarkBoughtResult> {
+class RemoveShoppingItemTool(private val repo: ShoppingRepository, private val stock: StockRepository? = null) : Tool<MarkBoughtArgs, MarkBoughtResult> {
     override val name = NAME
     override val description =
         "Delete shopping items that were added by mistake. To tick something off as bought, use mark_bought instead."
@@ -222,12 +227,42 @@ class RemoveShoppingItemTool(private val repo: ShoppingRepository) : Tool<MarkBo
         val items = (repo.itemsByIds(args.itemIds) + repo.openItemsByNames(args.names)).distinctBy { it.id }
         if (items.isEmpty()) throw notFound(args, ctx)
         repo.deleteItems(items.map { it.id })
+        // Not needed after all: the stock item counts as in the house again.
+        stock?.setState(items.filter { !it.bought }.mapNotNull { it.stockItemId }, StockState.IN_STOCK)
         val names = items.joinToString(", ") { label(it) }
         MarkBoughtResult(items, ctx.t("Verwijderd: $names", "Removed: $names"))
     }
 
     companion object {
         const val NAME = "remove_shopping_item"
+    }
+}
+
+// ---------- clear_bought_items (destructive) ----------
+
+@Serializable
+class ClearBoughtArgs
+
+class ClearBoughtItemsTool(private val repo: ShoppingRepository) : Tool<ClearBoughtArgs, MarkBoughtResult> {
+    override val name = NAME
+    override val description = "Clear everything that was ticked as bought from the shopping list."
+    override val destructive = true
+    override val argsSerializer = ClearBoughtArgs.serializer()
+    override val resultSerializer = MarkBoughtResult.serializer()
+
+    override fun confirmQuestion(args: ClearBoughtArgs, ctx: ToolContext) =
+        ctx.t("Alles wat gekocht is van de lijst halen?", "Clear everything bought from the list?")
+
+    override suspend fun run(args: ClearBoughtArgs, ctx: ToolContext): MarkBoughtResult = repo.transaction {
+        val bought = repo.boughtItems()
+        repo.deleteItems(bought.map { it.id })
+        val summary = if (bought.isEmpty()) ctx.t("Er was niets gekocht om op te ruimen.", "Nothing bought to clear.")
+        else ctx.t("Lijst opgeruimd: ${bought.size} gekocht. Goed gedaan!", "List cleared: ${bought.size} bought. Well done!")
+        MarkBoughtResult(bought, summary)
+    }
+
+    companion object {
+        const val NAME = "clear_bought_items"
     }
 }
 

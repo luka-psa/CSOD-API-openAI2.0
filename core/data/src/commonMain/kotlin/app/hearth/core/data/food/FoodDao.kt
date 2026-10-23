@@ -57,4 +57,13 @@ interface ShoppingItemDao {
 
     @Query("UPDATE shopping_item SET bought = :bought, boughtAt = :boughtAt, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setBought(ids: List<String>, bought: Boolean, boughtAt: Long?, now: Long)
+
+    @Query("SELECT * FROM shopping_item WHERE bought = 0 AND stockItemId IN (:stockIds)")
+    suspend fun openByStockIds(stockIds: List<String>): List<ShoppingItemEntity>
+
+    @Query("SELECT * FROM shopping_item WHERE bought = 1")
+    suspend fun bought(): List<ShoppingItemEntity>
+
+    @Query("UPDATE shopping_item SET stockItemId = :stockId, updatedAt = :now WHERE id = :id")
+    suspend fun link(id: String, stockId: String, now: Long)
 }

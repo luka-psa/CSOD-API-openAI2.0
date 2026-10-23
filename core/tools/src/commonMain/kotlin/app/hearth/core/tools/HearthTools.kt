@@ -3,6 +3,13 @@ package app.hearth.core.tools
 import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
+import app.hearth.core.data.food.StockRepository
+import app.hearth.core.tools.food.AddStockItemTool
+import app.hearth.core.tools.food.AddStorageSpotTool
+import app.hearth.core.tools.food.ClearBoughtItemsTool
+import app.hearth.core.tools.food.ListStockTool
+import app.hearth.core.tools.food.RemoveStockItemTool
+import app.hearth.core.tools.food.SetStockStateTool
 import app.hearth.core.tools.board.AchieveGoalTool
 import app.hearth.core.tools.board.AddGoalTool
 import app.hearth.core.tools.board.AddHouseRuleTool
@@ -31,12 +38,19 @@ import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
 
 /** Every tool in the app, built once and shared by UI, chat and MCP. */
-class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository, board: BoardRepository) {
-    val addShoppingItem = AddShoppingItemTool(shopping)
+class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository, board: BoardRepository, stock: StockRepository) {
+    val addShoppingItem = AddShoppingItemTool(shopping, stock)
     val listShoppingItems = ListShoppingItemsTool(shopping)
-    val markBought = MarkBoughtTool(shopping)
+    val markBought = MarkBoughtTool(shopping, stock)
     val unmarkBought = UnmarkBoughtTool(shopping)
-    val removeShoppingItem = RemoveShoppingItemTool(shopping)
+    val removeShoppingItem = RemoveShoppingItemTool(shopping, stock)
+    val clearBoughtItems = ClearBoughtItemsTool(shopping)
+
+    val listStock = ListStockTool(stock)
+    val addStockItem = AddStockItemTool(stock, shopping)
+    val addStorageSpot = AddStorageSpotTool(stock)
+    val setStockState = SetStockStateTool(stock, shopping)
+    val removeStockItem = RemoveStockItemTool(stock)
 
     val addToBacklog = AddToBacklogTool(backlog, board)
     val listBacklog = ListBacklogTool(backlog)
@@ -63,7 +77,8 @@ class HearthTools(shopping: ShoppingRepository, backlog: BacklogRepository, boar
 
     val registry = ToolRegistry(
         listOf(
-            addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem,
+            addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem, clearBoughtItems,
+            listStock, addStockItem, addStorageSpot, setStockState, removeStockItem,
             addToBacklog, listBacklog, planBacklogItem, completeBacklogItem, reopenBacklogItem, removeBacklogItem,
             setRoutineInterval, markUrgent, waitForReply, moveBacklogItem, addProjectStep,
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,

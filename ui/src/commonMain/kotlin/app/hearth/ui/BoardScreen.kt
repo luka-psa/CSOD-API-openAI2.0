@@ -216,13 +216,14 @@ private fun RulesCard(rules: List<BoardItem>, modifier: Modifier, cb: BoardCallb
         rules.forEachIndexed { i, rule ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable { onOpen(rule) }.heightIn(min = 56.dp).padding(horizontal = 4.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 4.dp, top = 2.dp, bottom = 2.dp),
             ) {
                 Box(Modifier.size(30.dp).background(s.tint, CircleShape), contentAlignment = Alignment.Center) {
                     Text("${i + 1}", style = MaterialTheme.typography.labelLarge, color = s.ink)
                 }
                 Spacer(Modifier.width(14.dp))
                 Text(rule.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                DeleteButton({ onOpen(rule) })
             }
         }
     }
@@ -243,12 +244,13 @@ private fun FrictionsCard(frictions: List<BoardItem>, members: List<Member>, mod
         else Text(stringResource(Res.string.frictions_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
         open.forEach { f ->
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable { onOpen(f) }.padding(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 4.dp)) {
                     f.memberId?.let(byId::get)?.let { MemberDot(it); Spacer(Modifier.width(10.dp)) }
                     Column(Modifier.weight(1f)) {
                         Text(f.text, style = MaterialTheme.typography.bodyLarge)
                         Text(ago(f.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    DeleteButton({ onOpen(f) })
                 }
                 Spacer(Modifier.size(6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -314,7 +316,7 @@ private fun GoalsCard(goals: List<BoardItem>, members: List<Member>, modifier: M
             listOf(stringResource(Res.string.scope_personal) to open.filter { it.scope == GoalScope.PERSONAL && (it.memberId == null || it.memberId !in byId) })
         groups.filter { it.second.isNotEmpty() }.forEach { (title, list) ->
             GroupTitle(title)
-            list.forEach { goal -> GoalRow(goal, onAchieve = { cb.achieveGoal(goal) }, onStep = { onAsk(Ask.Step(goal)) }, onOpen = { onOpen(goal) }) }
+            list.forEach { goal -> GoalRow(goal, onAchieve = { cb.achieveGoal(goal) }, onStep = { onAsk(Ask.Step(goal)) }, onDelete = { onOpen(goal) }) }
         }
         if (achieved.isNotEmpty()) {
             GroupTitle(stringResource(Res.string.goal_achieved_title))
@@ -330,8 +332,8 @@ private fun GoalsCard(goals: List<BoardItem>, members: List<Member>, modifier: M
 }
 
 @Composable
-private fun GoalRow(goal: BoardItem, onAchieve: () -> Unit, onStep: () -> Unit, onOpen: () -> Unit) {
-    Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable(onClick = onOpen).padding(vertical = 4.dp)) {
+private fun GoalRow(goal: BoardItem, onAchieve: () -> Unit, onStep: () -> Unit, onDelete: () -> Unit) {
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         RoundCheck(false, onAchieve)
         Spacer(Modifier.width(6.dp))
         Column(Modifier.weight(1f).padding(top = 10.dp, bottom = 4.dp)) {
@@ -352,6 +354,7 @@ private fun GoalRow(goal: BoardItem, onAchieve: () -> Unit, onStep: () -> Unit, 
                 }
             }
         }
+        DeleteButton(onDelete, Modifier.padding(top = 2.dp))
     }
 }
 

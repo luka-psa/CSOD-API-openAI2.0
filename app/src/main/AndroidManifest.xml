@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Voice input listens in the app itself, so the words show live while you speak. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <!-- Voice input uses the system speech recognizer; declare it for package visibility (API 30+). -->
     <queries>
         <intent>

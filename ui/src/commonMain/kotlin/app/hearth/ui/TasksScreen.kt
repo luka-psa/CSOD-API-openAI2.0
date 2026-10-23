@@ -79,6 +79,8 @@ class TaskCallbacks(
     val open: (BacklogItem) -> Unit,
     val add: (String, Section) -> Unit,
     val addStep: (BacklogItem, String) -> Unit,
+    /** Asks first (the screen shows a confirm), then deletes. */
+    val delete: (BacklogItem) -> Unit,
 )
 
 /** Routines & habits · Admin · Projects · Week · To sort: each kind of work in the list that suits it. */
@@ -130,7 +132,7 @@ fun TasksScreen(
             TaskTab.PROJECTS -> AddAndList(stringResource(Res.string.add_project_hint), { callbacks.add(it, Section.PROJECT) }, body) {
                 projectList(projects, steps, today, lang, callbacks)
             }
-            TaskTab.WEEK -> WeekPanel(backlog, today, lang, names, callbacks.complete, callbacks.open, body)
+            TaskTab.WEEK -> WeekPanel(backlog, today, lang, names, callbacks.complete, callbacks.open, callbacks.delete, body)
             TaskTab.SORT -> Column(body) {
                 Text(stringResource(Res.string.sort_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.size(10.dp))
@@ -245,6 +247,7 @@ private fun ProjectBlock(project: BacklogItem, steps: List<BacklogItem>, today: 
                     onDone = { if (step.done) cb.reopen(step) else cb.complete(step) },
                     onOpen = { if (!step.done) cb.open(step) },
                     showSection = false,
+                    onDelete = { cb.delete(step) },
                 )
             }
         }
@@ -270,7 +273,7 @@ private fun LazyListScope.group(
 /** A row with a routine's state pill ("aan de beurt") and a plan button. */
 @Composable
 private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCallbacks, modifier: Modifier) {
-    BacklogRow(item, today, lang, onDone = { cb.complete(item) }, onOpen = { cb.open(item) }, modifier = modifier, showSection = !item.isRoutine()) {
+    BacklogRow(item, today, lang, onDone = { cb.complete(item) }, onOpen = { cb.open(item) }, modifier = modifier, showSection = !item.isRoutine(), onDelete = { cb.delete(item) }) {
         if (item.isRoutine() && item.plan != Plan.DAY) {
             when (item.routineState(today)) {
                 RoutineState.DUE -> StatePill(stringResource(Res.string.routine_due), strong = true)

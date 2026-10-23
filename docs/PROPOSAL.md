@@ -99,7 +99,10 @@ steps along), `reopen_backlog_item`, `remove_backlog_item` ⚠ (a project's step
 `add_house_rule`, `log_friction`, `add_goal` (FAMILY/COUPLE/PERSONAL), `list_board`, `resolve_friction`
 (RULE → a house rule, CHANGE → a backlog item as next up, LET_GO), `set_goal_step` (optionally onto the
 backlog as next up), `achieve_goal`, `remove_board_item` ⚠. `add_to_backlog` / `move_backlog_item` with
-NOTE, FRICTION or GOAL put the item on the Werkbord.
+NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `add_stock_item`, `add_storage_spot`,
+`set_stock_state` (LOW/OUT → a linked shopping item, once; IN_STOCK takes it off), `remove_stock_item` ⚠,
+`clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
+with the same name.
 
 The full target list:
 
@@ -167,7 +170,9 @@ All tables: `id TEXT PK (UUID)`, `createdAt`, `updatedAt`. Enums as TEXT.
 plannedDate, finishBy, done/doneAt, urgent, waiting (date = follow-up day), intervalDays + lastDone (routines),
 parentId (project steps). v5 adds `Member` (name, colour) and `BoardItem` (kind RULE/FRICTION/GOAL, status
 OPEN/BECAME_RULE/BECAME_CHANGE/LET_GO/ACHIEVED, memberId, scope FAMILY/COUPLE/PERSONAL, nextStep, linkedId,
-closedAt); the v4→v5 migration moves open house rules and frictions off the backlog. Auto-migrations v1→v5
+closedAt); the v4→v5 migration moves open house rules and frictions off the backlog. v6 adds `StorageSpot`
+(name, sortOrder) and `StockItem` (name, spotId, state IN_STOCK/LOW/OUT, shopId?); first run seeds Keuken,
+Badkamer, Wasplaats and Medicijnkast with everyday items (medicine from the Apotheek). Auto-migrations v1→v5
 keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
@@ -214,6 +219,18 @@ to move between kinds.
 *Doelen* (Gezin · Samen · per person, each with one small next step that can go onto "volgende"; reached
 goals stay as wins). The dashboard shows *Onze afspraken*: three house rules and how many frictions wait
 for the weekoverleg.
+
+**Boodschappen**: the list (grouped by shop, X to remove with a confirm, "Gekochte wissen" once things are
+ticked) next to the **Voorraad** (chips per room/topic; tap an item = it's out and goes on the list; tap again
+= we have it). Phone: two tabs.
+
+**Capture bar & voice**: the mic shows the words live in the field while listening, then asks "Klopt dit?"
+(Toevoegen / Wis): nothing is added by voice alone. An NL/EN pill picks the listening language; the parser
+understands both. Android listens in-app (SpeechRecognizer with partial results, RECORD_AUDIO asked on first
+use); the web uses the Web Speech API with interim results. "de koffie is op", "we zijn bijna door het
+wc-papier", "we're out of milk" mark the stock (or put it on the list when it isn't a stock item).
+
+Every list row has an X at the end; it always asks before deleting.
 
 **Next screens** (approved, not built yet):
 - **Weekoverleg**: a 15-minute guided flow: look back (celebrate) → meals (dishes → ingredients onto the
@@ -289,7 +306,8 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    "we willen samen …", "doel: …".
 6. **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*.
 7. **MCP relay** managed by Hearth (§7, option A).
-8. Stock loop (low/out → shopping → back in stock), storage spots, stock check.
+8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a
+   confirm and NL/EN. (Still to do: counted stock "nog 3", a walk-through stock check.)
 9. Per-person Today, helpers, seasons for routines, anchor habits, protected time as its own kind.
 10. On-device model for offline sorting; Google Calendar push + Drive backup.
 

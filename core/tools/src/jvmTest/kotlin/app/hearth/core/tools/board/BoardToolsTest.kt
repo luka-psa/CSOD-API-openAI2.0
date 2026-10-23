@@ -30,7 +30,7 @@ class BoardToolsTest {
     private val db = inMemoryHearthDatabase()
     private val backlog = BacklogRepository(db)
     private val board = BoardRepository(db)
-    private val tools = HearthTools(ShoppingRepository(db), backlog, board)
+    private val tools = HearthTools(ShoppingRepository(db), backlog, board, app.hearth.core.data.food.StockRepository(db))
     private val nl = ToolContext(ToolSource.CHAT, Lang.NL, today = LocalDate(2026, 10, 22))
 
     @AfterTest

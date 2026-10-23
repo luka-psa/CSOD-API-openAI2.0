@@ -43,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.ImeAction
 import app.hearth.ui.resources.Res
 import app.hearth.ui.resources.add
+import app.hearth.ui.resources.delete
+import androidx.compose.material3.IconButton
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BacklogItem
@@ -212,6 +214,7 @@ fun BacklogRow(
     modifier: Modifier = Modifier,
     projectName: String? = null,
     showSection: Boolean = true,
+    onDelete: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
@@ -244,6 +247,15 @@ fun BacklogRow(
             }
         }
         trailing?.invoke()
+        if (onDelete != null) DeleteButton(onDelete)
+    }
+}
+
+/** The quiet X at the end of a line. It always asks before anything goes. */
+@Composable
+fun DeleteButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    IconButton(onClick = onClick, modifier = modifier) {
+        Icon(HearthIcons.Close, stringResource(Res.string.delete), tint = HearthColors.InkFaint, modifier = Modifier.size(20.dp))
     }
 }
 

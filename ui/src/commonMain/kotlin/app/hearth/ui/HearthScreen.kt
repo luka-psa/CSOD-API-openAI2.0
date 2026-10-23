@@ -48,6 +48,10 @@ import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Lang
 import app.hearth.core.model.dontForget
 import app.hearth.ui.resources.Res
+import app.hearth.core.model.TaskKind
+import app.hearth.ui.resources.delete_confirm
+import app.hearth.ui.resources.delete_confirm_body
+import app.hearth.ui.resources.delete_confirm_project
 import app.hearth.ui.resources.nav_board
 import app.hearth.ui.resources.nav_tasks
 import app.hearth.ui.resources.nav_shopping
@@ -78,6 +82,9 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val steps by viewModel.steps.collectAsStateWithLifecycle()
     val board by viewModel.board.collectAsStateWithLifecycle()
     val members by viewModel.members.collectAsStateWithLifecycle()
+    val spots by viewModel.stockSpots.collectAsStateWithLifecycle()
+    val stock by viewModel.stockItems.collectAsStateWithLifecycle()
+    var deleting by remember { mutableStateOf<BacklogItem?>(null) }
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
 
@@ -130,9 +137,22 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 open = { planning = it },
                                 add = viewModel::addTask,
                                 addStep = viewModel::addStep,
+                                delete = { deleting = it },
                             ),
                         )
-                        Destination.SHOPPING -> ShoppingScreen(shopping, viewModel::toggleBought, viewModel::addShopping)
+                        Destination.SHOPPING -> ShoppingScreen(
+                            shopping, spots, stock, wide,
+                            ShoppingCallbacks(
+                                toggleBought = viewModel::toggleBought,
+                                add = viewModel::addShopping,
+                                remove = viewModel::removeShopping,
+                                clearBought = viewModel::clearBought,
+                                toggleStock = viewModel::toggleStock,
+                                addStock = viewModel::addStock,
+                                addSpot = viewModel::addSpot,
+                                removeStock = viewModel::removeStock,
+                            ),
+                        )
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -176,6 +196,13 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
             ),
             onDismiss = { planning = null },
         )
+    }
+    deleting?.let { item ->
+        ConfirmDialog(
+            stringResource(Res.string.delete_confirm, item.text),
+            stringResource(if (item.kind == TaskKind.PROJECT && !item.isStep) Res.string.delete_confirm_project else Res.string.delete_confirm_body),
+            onYes = { viewModel.delete(item) },
+        ) { deleting = null }
     }
     if (conversation) ConversationSheet(messages, viewModel::answer) { conversation = false }
 }
@@ -232,7 +259,7 @@ private fun BottomBar(selected: Destination, counts: Map<Destination, Int>, onSe
                         Badge(counts[d], Modifier.align(Alignment.TopEnd).padding(start = 18.dp))
                     }
                 },
-                label = { Text(stringResource(d.label)) },
+                label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.surface,
                     indicatorColor = MaterialTheme.colorScheme.onBackground,

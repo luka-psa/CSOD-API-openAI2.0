@@ -105,6 +105,14 @@ class ShoppingRepository(
         itemDao.setBought(ids, bought, if (bought) now else null, now)
     }
 
+    suspend fun openForStock(stockIds: List<String>): List<ShoppingItem> =
+        if (stockIds.isEmpty()) emptyList() else itemDao.openByStockIds(stockIds).map { it.toModel() }
+
+    suspend fun boughtItems(): List<ShoppingItem> = itemDao.bought().map { it.toModel() }
+
+    /** Ties a shopping item to the stock item it restocks. */
+    suspend fun link(itemId: String, stockId: String) = itemDao.link(itemId, stockId, clock())
+
     suspend fun deleteItems(ids: List<String>) {
         if (ids.isNotEmpty()) itemDao.delete(ids)
     }

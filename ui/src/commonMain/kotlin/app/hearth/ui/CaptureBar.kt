@@ -5,7 +5,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,7 +67,12 @@ import app.hearth.ui.resources.close
 import app.hearth.ui.resources.conversation
 import app.hearth.ui.resources.no
 import app.hearth.ui.resources.send
+import app.hearth.ui.resources.listening
 import app.hearth.ui.resources.speak
+import app.hearth.ui.resources.stop_listening
+import app.hearth.ui.resources.voice_add
+import app.hearth.ui.resources.voice_check
+import app.hearth.ui.resources.voice_clear
 import app.hearth.ui.resources.yes
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -78,6 +92,10 @@ fun CaptureBar(
     modifier: Modifier = Modifier,
 ) {
     var input by rememberSaveable { mutableStateOf("") }
+    var listening by remember { mutableStateOf(false) }
+    // Spoken words wait in the field until the person says "yes, add it".
+    var heard by remember { mutableStateOf(false) }
+    var speechLang by rememberSaveable { mutableStateOf(speechLanguage) }
     val last = messages.lastOrNull()?.takeIf { !it.fromUser }
     var showReply by remember { mutableStateOf(false) }
     LaunchedEffect(messages.size) {
@@ -89,7 +107,14 @@ fun CaptureBar(
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        AnimatedVisibility(showReply && last != null, enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
+        AnimatedVisibility(heard && input.isNotBlank() && !listening, enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut()) {
+            VoiceCheck(
+                text = input,
+                onAdd = { onSend(input); input = ""; heard = false },
+                onClear = { input = ""; heard = false },
+            )
+        }
+        AnimatedVisibility(!heard && showReply && last != null, enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
             if (last != null) ReplyCard(last, onAnswer, onClose = { showReply = false }, onOpenConversation = onOpenConversation)
         }
         Surface(shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
@@ -102,11 +127,12 @@ fun CaptureBar(
                     val send = {
                         onSend(input)
                         input = ""
+                        heard = false
                     }
                     Box(Modifier.weight(1f).padding(horizontal = 6.dp), contentAlignment = Alignment.CenterStart) {
                         if (input.isEmpty()) {
                             Text(
-                                stringResource(Res.string.capture_hint),
+                                stringResource(if (listening) Res.string.listening else Res.string.capture_hint),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -116,6 +142,7 @@ fun CaptureBar(
                         BasicTextField(
                             value = input,
                             onValueChange = { input = it },
+                            readOnly = listening,
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -124,13 +151,23 @@ fun CaptureBar(
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 12.dp),
                         )
                     }
-                    VoiceButton(speechLanguage, onResult = onSend)
+                    LangPill(speechLang) { speechLang = if (speechLang.startsWith("nl")) "en-GB" else "nl-BE" }
+                    VoiceButton(
+                        language = speechLang,
+                        listening = listening,
+                        onListening = { listening = it; if (it) { input = ""; heard = false } },
+                        onPartial = { input = it },
+                        onFinal = { input = it; heard = it.isNotBlank() },
+                    )
                     Spacer(Modifier.size(6.dp))
                     FilledIconButton(
                         onClick = send,
                         enabled = input.isNotBlank(),
                         modifier = Modifier.size(52.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.onBackground),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.onBackground,
+                            contentColor = MaterialTheme.colorScheme.surface,
+                        ),
                     ) { Icon(HearthIcons.Send, stringResource(Res.string.send), modifier = Modifier.size(22.dp)) }
                 }
             }
@@ -138,10 +175,58 @@ fun CaptureBar(
     }
 }
 
+/** Ember mic; while listening it turns dark with a soft ring, and tapping stops. */
 @Composable
-internal fun MicButton(onClick: () -> Unit) {
-    FilledIconButton(onClick = onClick, modifier = Modifier.size(52.dp)) {
-        Icon(HearthIcons.Mic, contentDescription = stringResource(Res.string.speak))
+internal fun MicButton(listening: Boolean, onClick: () -> Unit) {
+    val ring by rememberInfiniteTransition().animateFloat(1f, 1.18f, infiniteRepeatable(tween(700), RepeatMode.Reverse))
+    Box(contentAlignment = Alignment.Center) {
+        if (listening) Box(Modifier.size(52.dp).scale(ring).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape))
+        FilledIconButton(
+            onClick = onClick,
+            modifier = Modifier.size(52.dp),
+            colors = if (listening) {
+                IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.surface)
+            } else {
+                IconButtonDefaults.filledIconButtonColors()
+            },
+        ) {
+            Icon(if (listening) HearthIcons.Close else HearthIcons.Mic, contentDescription = stringResource(if (listening) Res.string.stop_listening else Res.string.speak))
+        }
+    }
+}
+
+/** NL / EN: which language the mic listens for. The text parser understands both either way. */
+@Composable
+private fun LangPill(language: String, onToggle: () -> Unit) {
+    Text(
+        if (language.startsWith("nl")) "NL" else "EN",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(end = 6.dp)
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    )
+}
+
+/** What the mic heard, asking before anything is added. */
+@Composable
+private fun VoiceCheck(text: String, onAdd: () -> Unit, onClear: () -> Unit) {
+    Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.onBackground, shadowElevation = 6.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 20.dp, end = 10.dp, top = 10.dp, bottom = 10.dp)) {
+            Icon(HearthIcons.Mic, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(Res.string.voice_check), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+                Text("“$text”", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.surface)
+            }
+            Spacer(Modifier.size(10.dp))
+            OutlinedButton(onClick = onClear) { Text(stringResource(Res.string.voice_clear), color = MaterialTheme.colorScheme.surface) }
+            Spacer(Modifier.size(8.dp))
+            Button(onClick = onAdd) { Text(stringResource(Res.string.voice_add)) }
+        }
     }
 }
 

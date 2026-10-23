@@ -29,3 +29,21 @@ data class ShoppingItem(
 ) {
     val isOneOff: Boolean get() = stockItemId == null
 }
+
+/** How much is left. LOW and OUT put the item on the shopping list; buying it brings it back IN_STOCK. */
+enum class StockState { IN_STOCK, LOW, OUT }
+
+/** A room or topic where things are kept: Keuken, Badkamer, Wasplaats, Medicijnkast. */
+@Serializable
+data class StorageSpot(val id: String, val name: String, val sortOrder: Int)
+
+/** Something the household always wants in the house. */
+@Serializable
+data class StockItem(
+    val id: String,
+    val name: String,
+    val spotId: String,
+    val state: StockState = StockState.IN_STOCK,
+    /** Where it's usually bought; null = the default shop. */
+    val shopId: String? = null,
+)

@@ -163,4 +163,22 @@
     <string name="dash_board_empty">Nog geen afspraken. Voeg er een toe op het werkbord.</string>
     <string name="kind_friction">Frictie</string>
     <string name="kind_goal">Doel</string>
+    <string name="listening">Ik luister…</string>
+    <string name="stop_listening">Stop met luisteren</string>
+    <string name="voice_check">Klopt dit?</string>
+    <string name="voice_add">Toevoegen</string>
+    <string name="voice_clear">Wis</string>
+    <!-- Stock -->
+    <string name="tab_list">Lijst</string>
+    <string name="stock_title">Voorraad</string>
+    <string name="stock_hint">Tik op wat op is: het gaat op de lijst. Gekocht betekent terug in huis.</string>
+    <string name="stock_add_hint">Toevoegen aan %1$s</string>
+    <string name="stock_remove_body">Het verdwijnt uit de voorraad. De boodschappenlijst blijft zoals ze is.</string>
+    <string name="on_list">op de lijst</string>
+    <string name="all_bought">Alles gekocht. Top!</string>
+    <string name="clear_bought">Gekochte wissen (%1$d)</string>
+    <string name="clear_bought_confirm">Alles wat gekocht is wissen?</string>
+    <string name="clear_bought_body">Afgevinkte items gaan van de lijst. Wat nog gekocht moet worden blijft staan.</string>
+    <string name="spot_add">Nieuwe plek of categorie</string>
+    <string name="spot_name_hint">bv. Kelder, Baby, Huisdieren</string>
 </resources>

@@ -9,6 +9,9 @@ import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
 import app.hearth.core.data.food.ShopDao
+import app.hearth.core.data.food.StockDao
+import app.hearth.core.data.food.StockItemEntity
+import app.hearth.core.data.food.StorageSpotEntity
 import app.hearth.core.data.food.ShopEntity
 import app.hearth.core.data.food.ShoppingItemDao
 import app.hearth.core.data.food.ShoppingItemEntity
@@ -26,14 +29,15 @@ import androidx.sqlite.execSQL
  * SQLite-in-a-web-worker in the browser (`openHearthDatabase()`), in-memory on the JVM for tests.
  */
 @Database(
-    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class],
-    version = 5,
+    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class],
+    version = 6,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3, spec = InboxToBacklog::class),
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 4, to = 5, spec = RulesToBoard::class),
+        AutoMigration(from = 5, to = 6),
     ],
 )
 @ConstructedBy(HearthDatabaseConstructor::class)
@@ -43,6 +47,7 @@ abstract class HearthDatabase : RoomDatabase() {
     abstract fun backlogDao(): BacklogDao
     abstract fun memberDao(): MemberDao
     abstract fun boardDao(): BoardDao
+    abstract fun stockDao(): StockDao
 }
 
 /** v5: house rules and frictions leave the backlog for the new Werkbord. */

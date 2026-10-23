@@ -37,7 +37,15 @@ import app.hearth.core.tools.backlog.SetRoutineIntervalArgs
 import app.hearth.core.tools.backlog.WaitForReplyArgs
 import app.hearth.core.tools.backlog.PlanBacklogArgs
 import app.hearth.core.tools.backlog.When
+import app.hearth.core.model.StockItem
+import app.hearth.core.model.StockState
+import app.hearth.core.model.StorageSpot
 import app.hearth.core.tools.food.AddShoppingItemArgs
+import app.hearth.core.tools.food.AddStockItemArgs
+import app.hearth.core.tools.food.AddStorageSpotArgs
+import app.hearth.core.tools.food.ClearBoughtArgs
+import app.hearth.core.tools.food.SetStockStateArgs
+import app.hearth.core.tools.food.StockRefArgs
 import app.hearth.core.tools.food.MarkBoughtArgs
 import app.hearth.di.AppContainer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -84,6 +92,12 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     val backlog: StateFlow<List<BacklogItem>> =
         app.backlog.open.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val stockSpots: StateFlow<List<StorageSpot>> =
+        app.stock.spots.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val stockItems: StateFlow<List<StockItem>> =
+        app.stock.items.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val board: StateFlow<List<BoardItem>> =
         app.board.items.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -266,6 +280,35 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun addShopping(name: String) {
         if (name.isBlank()) return
         tool { app.tools.registry.run(app.tools.addShoppingItem, AddShoppingItemArgs(name = name), it) }
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun removeShopping(item: ShoppingItem) = tool {
+        app.tools.registry.run(app.tools.removeShoppingItem, MarkBoughtArgs(itemIds = listOf(item.id)), it, confirmed = true)
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun clearBought() = tool { app.tools.registry.run(app.tools.clearBoughtItems, ClearBoughtArgs(), it, confirmed = true) }
+
+    /** One tap: out (onto the list) or back in the house (off the list). */
+    fun toggleStock(item: StockItem) = tool {
+        val state = if (item.state == StockState.IN_STOCK) StockState.OUT else StockState.IN_STOCK
+        app.tools.registry.run(app.tools.setStockState, SetStockStateArgs(itemIds = listOf(item.id), state = state), it)
+    }
+
+    fun addStock(name: String, spot: StorageSpot) {
+        if (name.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addStockItem, AddStockItemArgs(name, spot.name), it) }
+    }
+
+    fun addSpot(name: String) {
+        if (name.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addStorageSpot, AddStorageSpotArgs(name), it) }
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun removeStock(item: StockItem) = tool {
+        app.tools.registry.run(app.tools.removeStockItem, StockRefArgs(itemIds = listOf(item.id)), it, confirmed = true)
     }
 
     fun toggleBought(item: ShoppingItem) = tool {

@@ -21,7 +21,11 @@ import app.hearth.core.tools.food.ListShoppingItemsTool
 import app.hearth.core.tools.food.MarkBoughtTool
 import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
+import app.hearth.ai.route.StockWords
 import app.hearth.ai.route.TaskWords
+import app.hearth.core.tools.food.AddShoppingItemArgs
+import app.hearth.core.tools.food.SetStockStateArgs
+import app.hearth.core.tools.food.SetStockStateTool
 import app.hearth.ai.route.TimeWords
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.TaskKind
@@ -64,6 +68,16 @@ class Orchestrator(
     private val parser: LocalIntentParser = LocalIntentParser(),
 ) {
     suspend fun handle(text: String, ctx: ToolContext, history: List<ChatTurn> = emptyList()): ChatReply {
+        // "de koffie is op": stock if we keep it, otherwise straight onto the shopping list.
+        StockWords.extract(text)?.let { hint ->
+            val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
+            val stock = registry.execute(
+                ToolCall.of(SetStockStateTool.NAME, SetStockStateArgs.serializer(), SetStockStateArgs(names = listOf(hint.name), state = hint.state)),
+                local,
+            )
+            if (stock is ToolOutcome.Done) return ChatReply(stock.summary, listOf(stock))
+            return runCalls(listOf(ToolCall.of(AddShoppingItemTool.NAME, AddShoppingItemArgs.serializer(), AddShoppingItemArgs(hint.name))), local)
+        }
         val llm = provider()
         // Tier 1: clear commands never wait for the network.
         parser.parse(text, allowBare = llm == null)?.let { parsed ->
