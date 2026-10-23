@@ -39,16 +39,26 @@ jobs:
       - name: Build web app
         run: ./gradlew :web:wasmJsBrowserDistribution
 
+      # The Android app, signed with the family key (app/hearth-family.jks) so updates install over it.
+      - name: Build Android app
+        run: ./gradlew :app:assembleRelease
+
       - name: Prepare site
         run: |
           mkdir -p site
           cp -r web/build/dist/wasmJs/productionExecutable/. site/
           find site -name '*.map' -delete
+          cp app/build/outputs/apk/release/app-release.apk site/hearth.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: hearth-web
           path: site
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hearth-android
+          path: app/build/outputs/apk/release/app-release.apk
 
       # The deploy branch only ever holds the latest build (one commit, replaced each time).
       # The commit is authored as the person who pushed: Vercel (Hobby plan) only deploys

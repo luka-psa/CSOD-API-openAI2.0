@@ -12,14 +12,29 @@ android {
         applicationId = "app.hearth"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
+    }
+
+    // One fixed key for every build, so a new APK installs over the old one and the family's data stays.
+    // It only identifies "this is Hearth"; it is not a secret that protects the household.
+    signingConfigs {
+        create("family") {
+            storeFile = file("hearth-family.jks")
+            storePassword = "hearth-family"
+            keyAlias = "hearth"
+            keyPassword = "hearth-family"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("family")
+        }
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("family")
+            // Shrinking stays off until it has been checked on a real tablet (Room, serialization, Ktor).
+            isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
