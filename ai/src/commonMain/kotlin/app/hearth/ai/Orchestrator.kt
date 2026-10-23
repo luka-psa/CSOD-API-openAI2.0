@@ -21,7 +21,10 @@ import app.hearth.core.tools.food.ListShoppingItemsTool
 import app.hearth.core.tools.food.MarkBoughtTool
 import app.hearth.core.tools.food.RemoveShoppingItemTool
 import app.hearth.core.tools.food.UnmarkBoughtTool
+import app.hearth.ai.route.TaskWords
 import app.hearth.ai.route.TimeWords
+import app.hearth.core.model.TaskKind
+import app.hearth.core.model.kind
 import app.hearth.core.tools.backlog.AddToBacklogArgs
 import app.hearth.core.tools.backlog.AddToBacklogTool
 import app.hearth.core.tools.backlog.BacklogRefArgs
@@ -180,19 +183,34 @@ class Orchestrator(
         return if (note == null) reply else reply.copy(text = note + "\n" + reply.text)
     }
 
-    /** A bare word the rules would put on the shopping list, but that clearly belongs elsewhere ("tandarts"). */
-    private fun looksLikeOtherSection(parsed: LocalIntentParser.Parsed, text: String): Boolean =
-        parsed.lang == null && parsed.calls.all { it.name == AddShoppingItemTool.NAME } &&
-            KeywordRouter.section(text).let { it != Section.OTHER && it != Section.SHOPPING && it != Section.PROJECT }
+    /**
+     * A bare phrase the rules would put on the shopping list, but that clearly belongs elsewhere: "tandarts",
+     * "IKEA kast", "keuken uitkuisen". A single project word ("lampen") stays something to buy.
+     */
+    private fun looksLikeOtherSection(parsed: LocalIntentParser.Parsed, text: String): Boolean {
+        if (parsed.lang != null || !parsed.calls.all { it.name == AddShoppingItemTool.NAME }) return false
+        val section = KeywordRouter.section(text)
+        val words = text.trim().split(Regex("\\s+")).size
+        return (section != Section.OTHER && section != Section.SHOPPING && (section != Section.PROJECT || words >= 2)) ||
+            TaskWords.extract(text).let { it.intervalDays != null || it.urgent }
+    }
 
-    /** A backlog entry; a trailing time word ("morgen", "tegen vrijdag") plans it right away. */
+    /**
+     * A backlog entry. A trailing time word ("morgen", "tegen vrijdag") plans it right away; a rhythm
+     * ("om de 2 weken") makes it a routine; "dringend" flags it.
+     */
     private fun captureCall(text: String, section: Section, ctx: ToolContext): ToolCall {
-        val hint = TimeWords.extract(text, ctx.today)
-        val args = if (hint == null) {
-            AddToBacklogArgs(text.trim(), section)
-        } else {
-            AddToBacklogArgs(hint.text, KeywordRouter.section(hint.text).takeIf { section == Section.OTHER } ?: section, hint.whenValue, hint.date?.toString(), hint.finishBy)
-        }
+        val task = TaskWords.extract(text)
+        val hint = TimeWords.extract(task.text, ctx.today)
+        val body = hint?.text ?: task.text
+        var chosen = if (section == Section.OTHER) KeywordRouter.section(body) else section
+        if (task.intervalDays != null && chosen.kind != TaskKind.ROUTINE) chosen = Section.CHORE
+        if (task.urgent && chosen == Section.OTHER) chosen = Section.ADMIN
+        val args = AddToBacklogArgs(
+            body, chosen,
+            hint?.whenValue ?: When.UNPLANNED, hint?.date?.toString(), hint?.finishBy ?: false,
+            urgent = task.urgent, intervalDays = task.intervalDays,
+        )
         return ToolCall.of(AddToBacklogTool.NAME, AddToBacklogArgs.serializer(), args)
     }
 

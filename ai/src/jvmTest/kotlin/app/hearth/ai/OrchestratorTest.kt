@@ -169,4 +169,31 @@ class OrchestratorTest {
         assertEquals("Gedaan: “tandarts”. Mooi zo!", offline.handle("de tandarts is geregeld", nl).text)
         assertEquals(listOf("belastingbrief"), inbox.openItems().map { it.text })
     }
+
+    @Test
+    fun `offline capture reads rhythm and urgency`() = runTest {
+        assertEquals(
+            "Op de backlog: “lakens verversen” (huishoudtaak) · om de 2 weken",
+            offline.handle("lakens verversen om de 2 weken", nl).text,
+        )
+        assertEquals(
+            "Op de backlog: “plantjes water geven” (huishoudtaak) · elke week",
+            offline.handle("plantjes water geven elke week", nl).text,
+        )
+        assertEquals(
+            "Op de backlog: “verzekering bellen” (administratie) · dringend",
+            offline.handle("dringend: verzekering bellen", nl).text,
+        )
+        assertEquals(emptyList(), shopping.openItems())
+        assertEquals(listOf(14, 7, null), inbox.openItems().map { it.intervalDays })
+    }
+
+    @Test
+    fun `bare project phrases become projects, a bare thing to buy stays shopping`() = runTest {
+        assertEquals("Op de backlog: “IKEA kast” (project)", offline.handle("IKEA kast", nl).text)
+        offline.handle("keuken uitkuisen", nl)
+        offline.handle("lampen", nl)
+        assertEquals(listOf("Lampen"), shopping.openItems().map { it.name })
+        assertEquals(listOf(Section.PROJECT, Section.PROJECT), inbox.openItems().map { it.section })
+    }
 }

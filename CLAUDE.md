@@ -58,7 +58,8 @@ structure. Keep it in sync when any of those change.
 - **The tablet's capture bar is local and instant.** 1) deterministic parser
   for clear commands ("voeg melk toe", "wat staat er op de lijst?"); 2) keyword
   sorter (NL/EN) puts everything else on the Backlog with a section label and,
-  if a time word ends the sentence ("morgen", "tegen vrijdag"), a plan.
+  if a time word ends the sentence ("morgen", "tegen vrijdag"), a plan; a
+  rhythm ("om de 2 weken") makes it a routine, "dringend" flags it.
   Nothing anyone says is ever lost. (The orchestrator can still route through a
   router + section-helper model pair if a provider is ever configured.)
 - **Low-spec tablets.** Target 2–3 GB RAM devices. Avoid heavy libraries,
@@ -92,9 +93,21 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   with *Steps*, *Errand* (a trip to one shop).
 - **Shared:** *Area* with an *Owner*, *Helper*, *Batch*, *Friction*, *Note*,
   *Done log*.
-- **Backlog:** everything still open from any section until that section has
-  its own screen. Plan: *To plan* (unplanned), *Next up*, a *Day* (do on /
-  *finish by*), *Later*. Earlier days read "sinds dinsdag", never "late".
+- **Backlog:** everything still open from any section. Plan: *To plan*
+  (unplanned), *Next up*, a *Day* (do on / *finish by*), *Later*. Earlier days
+  read "sinds dinsdag", never "late".
+- **Task kinds** (`TaskKind`, derived from the section): *Ritme & gewoontes*
+  (CHORE/RHYTHM/HABIT: interval + lastDone; done = "logged today", it comes
+  back; states NEW/FRESH/SOON/DUE, shown as "aan de beurt", never "late"),
+  *Admin* (ADMIN/APPOINTMENT: *urgent*, deadline, *waiting for a reply* with a
+  follow-up day), *Projecten* (PROJECT: *steps* via `parentId`, a day or "dit
+  weekend"), *Te sorteren* (everything else).
+- **Dashboard terms:** *Niet vergeten*, *Vandaag*, *In het ritme*,
+  *Binnenkort*, *Vrije tijd* (generated from how full a day is, never from
+  durations), *Lopende projecten*. The selectors live in
+  `core/model/Overview.kt` so the screen, tools and MCP agree.
+- **Coming next:** *Werkbord* (*Huisregel*, *Frictie*, *Doel*), *Weekoverleg*
+  (with *Oudjes*: the longest-open items, a few picked each week).
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
   UI ships in Dutch (Flemish) and English; the local parser understands both.
 
@@ -108,7 +121,8 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   the web build has no emoji font; use the vectors in `HearthIcons`.
 - Design system: `ui/.../theme` (Plus Jakarta Sans, warm canvas, one ember
   accent, 28dp cards, section colours in `SectionStyle`). Reuse `HearthCard`,
-  `BacklogRow`, `ChoiceChip`, `RoundCheck` from `Components.kt`. Navigation:
+  `BacklogRow` (with `statusText`), `ChoiceChip`, `RoundCheck`, `AddRow` from
+  `Components.kt`; `PlanSheet` adapts to the task kind. Navigation:
   rail on wide screens (≥ 840dp), bottom bar on phones; the capture bar sits
   under every screen.
 - IDs are UUID strings; every entity has `createdAt`/`updatedAt` (epoch millis)

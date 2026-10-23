@@ -45,8 +45,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Lang
+import app.hearth.core.model.dontForget
 import app.hearth.ui.resources.Res
-import app.hearth.ui.resources.nav_backlog
+import app.hearth.ui.resources.nav_tasks
 import app.hearth.ui.resources.nav_shopping
 import app.hearth.ui.resources.nav_today
 import app.hearth.ui.resources.tap_to_wake
@@ -57,7 +58,7 @@ import org.jetbrains.compose.resources.stringResource
 
 enum class Destination(val icon: ImageVector, val label: StringResource) {
     TODAY(HearthIcons.Sun, Res.string.nav_today),
-    BACKLOG(HearthIcons.Backlog, Res.string.nav_backlog),
+    TASKS(HearthIcons.Backlog, Res.string.nav_tasks),
     SHOPPING(HearthIcons.Cart, Res.string.nav_shopping),
 }
 
@@ -71,15 +72,17 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val shopping by viewModel.shopping.collectAsStateWithLifecycle()
     val backlog by viewModel.backlog.collectAsStateWithLifecycle()
+    val steps by viewModel.steps.collectAsStateWithLifecycle()
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
 
     var destination by rememberSaveable { mutableStateOf(Destination.TODAY) }
+    var tab by rememberSaveable { mutableStateOf(TaskTab.ROUTINES) }
     var planning by remember { mutableStateOf<BacklogItem?>(null) }
     var conversation by remember { mutableStateOf(false) }
 
     val counts = mapOf(
-        Destination.BACKLOG to backlog.count { it.plan == app.hearth.core.model.Plan.UNPLANNED },
+        Destination.TASKS to dontForget(backlog, today).size,
         Destination.SHOPPING to shopping.sumOf { s -> s.items.count { !it.bought } },
     )
 
@@ -90,14 +93,24 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                 AnimatedContent(destination, transitionSpec = { fadeIn() togetherWith fadeOut() }, modifier = Modifier.weight(1f)) { d ->
                     when (d) {
                         Destination.TODAY -> TodayScreen(
-                            backlog, shopping, doneToday, today, lang, wide,
+                            backlog, steps, shopping, doneToday, today, lang, wide,
                             onComplete = viewModel::complete,
                             onPlan = { item, w -> viewModel.plan(item, w) },
                             onOpenItem = { planning = it },
-                            onGoBacklog = { destination = Destination.BACKLOG },
+                            onGoTasks = { tab = TaskTab.WEEK; destination = Destination.TASKS },
+                            onGoProjects = { tab = TaskTab.PROJECTS; destination = Destination.TASKS },
                             onGoShopping = { destination = Destination.SHOPPING },
                         )
-                        Destination.BACKLOG -> BacklogScreen(backlog, today, lang, onComplete = viewModel::complete, onOpenItem = { planning = it })
+                        Destination.TASKS -> TasksScreen(
+                            backlog, steps, today, lang, tab, { tab = it },
+                            TaskCallbacks(
+                                complete = viewModel::complete,
+                                reopen = viewModel::reopen,
+                                open = { planning = it },
+                                add = viewModel::addTask,
+                                addStep = viewModel::addStep,
+                            ),
+                        )
                         Destination.SHOPPING -> ShoppingScreen(shopping, viewModel::toggleBought, viewModel::addShopping)
                     }
                 }
@@ -131,9 +144,15 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
             item = item,
             today = today,
             lang = lang,
-            onPlan = { w, d, finishBy -> viewModel.plan(item, w, d, finishBy) },
-            onDone = { viewModel.complete(item) },
-            onDelete = { viewModel.delete(item) },
+            actions = PlanActions(
+                plan = { w, d, finishBy -> viewModel.plan(item, w, d, finishBy) },
+                done = { viewModel.complete(item) },
+                delete = { viewModel.delete(item) },
+                interval = { viewModel.setInterval(item, it) },
+                urgent = { viewModel.setUrgent(item, it) },
+                waiting = { d, waiting -> viewModel.waitForReply(item, d, waiting) },
+                move = { viewModel.move(item, it) },
+            ),
             onDismiss = { planning = null },
         )
     }

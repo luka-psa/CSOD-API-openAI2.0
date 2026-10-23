@@ -52,7 +52,7 @@ fun ShoppingScreen(sections: List<ShopSection>, onToggle: (ShoppingItem) -> Unit
     Column(Modifier.fillMaxSize()) {
         Text(stringResource(Res.string.shopping_list), style = MaterialTheme.typography.displaySmall)
         Spacer(Modifier.size(18.dp))
-        AddRow(onAdd)
+        AddRow(stringResource(Res.string.shopping_add_hint), onAdd)
         Spacer(Modifier.size(14.dp))
         Surface(Modifier.fillMaxWidth().weight(1f), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             if (sections.isEmpty()) {
@@ -94,35 +94,6 @@ private fun ItemRow(item: ShoppingItem, onToggle: (ShoppingItem) -> Unit, modifi
         )
         item.quantity?.let {
             Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 14.dp))
-        }
-    }
-}
-
-@Composable
-private fun AddRow(onAdd: (String) -> Unit) {
-    var text by rememberSaveable { mutableStateOf("") }
-    val submit = {
-        onAdd(text)
-        text = ""
-    }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            placeholder = { Text(stringResource(Res.string.shopping_add_hint)) },
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium,
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedBorderColor = Color.Transparent,
-            ),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { submit() }),
-            modifier = Modifier.weight(1f),
-        )
-        FilledTonalButton(onClick = submit, enabled = text.isNotBlank(), modifier = Modifier.heightIn(min = 56.dp)) {
-            Text(stringResource(Res.string.add))
         }
     }
 }

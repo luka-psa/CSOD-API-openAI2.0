@@ -29,12 +29,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.ImeAction
+import app.hearth.ui.resources.Res
+import app.hearth.ui.resources.add
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
+import app.hearth.core.model.Section
 import app.hearth.core.model.dayLabel
+import app.hearth.core.model.intervalLabel
+import app.hearth.core.model.isRoutine
+import app.hearth.core.model.lastDoneLabel
 import app.hearth.ui.theme.HearthColors
 import app.hearth.ui.theme.style
 import kotlinx.datetime.LocalDate
@@ -67,8 +84,16 @@ fun HearthCard(
     }
 }
 
+/** "Open lijst ›"; [compact] shows only the arrow in a soft circle, for narrow dashboard columns. */
 @Composable
-fun CardAction(label: String, onClick: () -> Unit) {
+fun CardAction(label: String, onClick: () -> Unit, compact: Boolean = false) {
+    if (compact) {
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) { Icon(HearthIcons.ChevronRight, label, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) }
+        return
+    }
     TextButton(onClick = onClick) {
         Text(label, style = MaterialTheme.typography.labelLarge)
         Icon(HearthIcons.ChevronRight, null, modifier = Modifier.size(18.dp))
@@ -93,6 +118,20 @@ fun SectionTag(item: BacklogItem, lang: Lang) {
         item.section.label(lang),
         style = MaterialTheme.typography.labelSmall,
         color = s.ink,
+        modifier = Modifier.background(s.tint, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
+    )
+}
+
+/** The project a step belongs to, in the project colour. */
+@Composable
+fun ProjectTag(name: String) {
+    val s = Section.PROJECT.style()
+    Text(
+        name,
+        style = MaterialTheme.typography.labelSmall,
+        color = s.ink,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier.background(s.tint, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }
@@ -134,7 +173,34 @@ fun RoundCheck(checked: Boolean, onClick: () -> Unit, modifier: Modifier = Modif
     }
 }
 
-/** One backlog line: tick, text, section + plan, and an optional trailing action. */
+/**
+ * The quiet status line for any open item: a routine's rhythm ("om de 2 weken · 5 dagen geleden"),
+ * waiting admin ("wacht op antwoord · opvolgen maandag"), or the plan.
+ */
+fun statusText(item: BacklogItem, today: LocalDate, lang: Lang): String? {
+    val nl = lang == Lang.NL
+    return when {
+        item.waiting -> listOfNotNull(
+            if (nl) "wacht op antwoord" else "waiting for a reply",
+            item.localDate?.let { (if (nl) "opvolgen " else "follow up ") + dayLabel(it, today, lang) },
+        ).joinToString(" · ")
+        item.isRoutine() && item.plan != Plan.DAY -> "${intervalLabel(item.intervalDays, lang)} · ${lastDoneLabel(item, today, lang)}"
+        else -> planText(item, today, lang)
+    }
+}
+
+/** "dringend" in the accent colour: a nudge, not an alarm. */
+@Composable
+fun UrgentTag(lang: Lang) {
+    Text(
+        if (lang == Lang.NL) "dringend" else "urgent",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onPrimary,
+        modifier = Modifier.background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
+    )
+}
+
+/** One backlog line: tick, text, section (or project) + status, and an optional trailing action. */
 @Composable
 fun BacklogRow(
     item: BacklogItem,
@@ -143,6 +209,8 @@ fun BacklogRow(
     onDone: () -> Unit,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
+    projectName: String? = null,
+    showSection: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
@@ -154,13 +222,21 @@ fun BacklogRow(
             .heightIn(min = 64.dp)
             .padding(end = 4.dp),
     ) {
-        RoundCheck(checked = false, onClick = onDone)
+        RoundCheck(checked = item.done, onClick = onDone)
         Spacer(Modifier.width(6.dp))
         Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(item.text, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                item.text,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textDecoration = if (item.done) TextDecoration.LineThrough else null,
+                color = if (item.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionTag(item, lang)
-                planText(item, today, lang)?.let {
+                if (item.urgent) UrgentTag(lang)
+                if (projectName != null) ProjectTag(projectName) else if (showSection) SectionTag(item, lang)
+                statusText(item, today, lang)?.let {
                     if (item.finishBy) Icon(HearthIcons.Flag, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                     Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -200,6 +276,37 @@ fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: 
                     .background(if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
                     .padding(horizontal = 7.dp, vertical = 1.dp),
             )
+        }
+    }
+}
+
+/** A one-line "add" field with a button; Enter adds too. */
+@Composable
+fun AddRow(hint: String, onAdd: (String) -> Unit, modifier: Modifier = Modifier, muted: Boolean = false) {
+    var text by rememberSaveable { mutableStateOf("") }
+    val submit = {
+        onAdd(text)
+        text = ""
+    }
+    val fill = if (muted) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            placeholder = { Text(hint, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            singleLine = true,
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = fill,
+                focusedContainerColor = fill,
+                unfocusedBorderColor = Color.Transparent,
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            modifier = Modifier.weight(1f),
+        )
+        FilledTonalButton(onClick = submit, enabled = text.isNotBlank(), modifier = Modifier.heightIn(min = 56.dp)) {
+            Text(stringResource(Res.string.add))
         }
     }
 }

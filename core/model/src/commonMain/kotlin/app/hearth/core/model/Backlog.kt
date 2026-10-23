@@ -39,8 +39,23 @@ data class BacklogItem(
     val done: Boolean = false,
     val createdAt: Long,
     val addedById: String? = null,
+    /** Admin: needs attention soon ("dringend"). */
+    val urgent: Boolean = false,
+    /** Admin: waiting for a reply; [date] is the follow-up day. */
+    val waiting: Boolean = false,
+    /** Routine: roughly how often, in days. Null: "now and then". */
+    val intervalDays: Int? = null,
+    /** Routine: ISO date it was last done. Routines are never "done for good", they come back. */
+    val lastDone: String? = null,
+    /** Set for a project step: the id of its project. */
+    val parentId: String? = null,
 ) {
     val localDate: LocalDate? get() = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val lastDoneDate: LocalDate? get() = lastDone?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val isStep: Boolean get() = parentId != null
+
+    /** Which list it lives in. Steps belong to their project and are never listed on their own. */
+    val kind: TaskKind get() = if (isStep) TaskKind.PROJECT else section.kind
 }
 
 @OptIn(ExperimentalTime::class)

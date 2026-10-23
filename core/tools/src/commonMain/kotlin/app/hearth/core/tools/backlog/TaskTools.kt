@@ -1,0 +1,212 @@
+package app.hearth.core.tools.backlog
+
+import app.hearth.core.data.backlog.BacklogRepository
+import app.hearth.core.model.Plan
+import app.hearth.core.model.Section
+import app.hearth.core.model.TaskKind
+import app.hearth.core.model.dayLabel
+import app.hearth.core.model.intervalLabel
+import app.hearth.core.model.isRoutine
+import app.hearth.core.model.kind
+import app.hearth.core.model.normalizeName
+import app.hearth.core.model.plusDays
+import app.hearth.core.tools.Describe
+import app.hearth.core.tools.Tool
+import app.hearth.core.tools.ToolContext
+import app.hearth.core.tools.ToolException
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
+
+// Tools for the three kinds of open work: routines, admin and projects.
+
+private fun notFound(ctx: ToolContext): Nothing =
+    throw ToolException(ctx.t("Dat vind ik niet op de backlog.", "I can't find that on the backlog."))
+
+// ---------- set_routine_interval ----------
+
+@Serializable
+data class SetRoutineIntervalArgs(
+    @Describe("Ids of routines.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of routines, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("Roughly every how many days: 1 daily, 7 weekly, 14, 30 monthly, 90 per season. Empty: now and then.")
+    val days: Int? = null,
+)
+
+class SetRoutineIntervalTool(private val repo: BacklogRepository) : Tool<SetRoutineIntervalArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description = "Set how often a routine comes back (sheets every 2 weeks, mowing every week). Routines are never late."
+    override val argsSerializer = SetRoutineIntervalArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: SetRoutineIntervalArgs, ctx: ToolContext): BacklogItemsResult {
+        val found = repo.find(args.itemIds, args.texts).ifEmpty { notFound(ctx) }
+        val days = args.days?.takeIf { it > 0 }
+        // Giving something a rhythm makes it a routine.
+        val toMove = found.filter { !it.isRoutine() && !it.isStep }
+        repo.setSection(toMove.map { it.id }, Section.CHORE)
+        val items = found.filter { !it.isStep }.ifEmpty { notFound(ctx) }
+        repo.setInterval(items.map { it.id }, days)
+        val updated = items.map { if (it.isRoutine()) it.copy(intervalDays = days) else it.copy(section = Section.CHORE, intervalDays = days) }
+        return BacklogItemsResult(updated, "${quoted(updated)} · ${intervalLabel(days, ctx.lang)}")
+    }
+
+    companion object {
+        const val NAME = "set_routine_interval"
+    }
+}
+
+// ---------- mark_urgent ----------
+
+@Serializable
+data class MarkUrgentArgs(
+    @Describe("Ids of backlog items.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of backlog items, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("True to mark urgent (default), false to take the flag off.")
+    val urgent: Boolean = true,
+)
+
+class MarkUrgentTool(private val repo: BacklogRepository) : Tool<MarkUrgentArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description = "Flag items as urgent so they show under 'Don't forget' on the dashboard, or take the flag off."
+    override val argsSerializer = MarkUrgentArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: MarkUrgentArgs, ctx: ToolContext): BacklogItemsResult {
+        val items = repo.find(args.itemIds, args.texts).ifEmpty { notFound(ctx) }
+        repo.setUrgent(items.map { it.id }, args.urgent)
+        val updated = items.map { it.copy(urgent = args.urgent) }
+        val summary = if (args.urgent) ctx.t("Dringend: ${quoted(updated)}", "Urgent: ${quoted(updated)}")
+        else ctx.t("Niet meer dringend: ${quoted(updated)}", "No longer urgent: ${quoted(updated)}")
+        return BacklogItemsResult(updated, summary)
+    }
+
+    companion object {
+        const val NAME = "mark_urgent"
+    }
+}
+
+// ---------- wait_for_reply ----------
+
+@Serializable
+data class WaitForReplyArgs(
+    @Describe("Ids of backlog items.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of backlog items, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("Follow-up day as yyyy-MM-dd. Default: in 3 days.")
+    val followUp: String? = null,
+    @Describe("False when the reply came in: the item is open again, to plan.")
+    val waiting: Boolean = true,
+)
+
+class WaitForReplyTool(private val repo: BacklogRepository) : Tool<WaitForReplyArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description =
+        "Park admin while waiting for someone (garage, insurance, school). It comes back under 'Don't forget' on the follow-up day."
+    override val argsSerializer = WaitForReplyArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: WaitForReplyArgs, ctx: ToolContext): BacklogItemsResult {
+        val items = repo.find(args.itemIds, args.texts).filterNot { it.isRoutine() }.ifEmpty { notFound(ctx) }
+        val ids = items.map { it.id }
+        if (!args.waiting) {
+            repo.setWaiting(ids, waiting = false, followUp = null)
+            repo.plan(ids, Plan.NEXT, null, false)
+            val updated = items.map { it.copy(waiting = false, plan = Plan.NEXT, date = null, finishBy = false) }
+            return BacklogItemsResult(updated, ctx.t("Antwoord binnen: ${quoted(updated)} staat bij volgende", "Reply in: ${quoted(updated)} is next up"))
+        }
+        val day = args.followUp?.let { runCatching { LocalDate.parse(it.trim()) }.getOrNull() }
+            ?: ctx.today.plusDays(DEFAULT_FOLLOW_UP_DAYS)
+        repo.setWaiting(ids, waiting = true, followUp = day.toString())
+        val updated = items.map { it.copy(waiting = true, plan = Plan.DAY, date = day.toString(), finishBy = false) }
+        val label = dayLabel(day, ctx.today, ctx.lang)
+        return BacklogItemsResult(updated, ctx.t("${quoted(updated)} wacht op antwoord · opvolgen $label", "${quoted(updated)} is waiting for a reply · follow up $label"))
+    }
+
+    companion object {
+        const val NAME = "wait_for_reply"
+        const val DEFAULT_FOLLOW_UP_DAYS = 3
+    }
+}
+
+// ---------- move_backlog_item ----------
+
+@Serializable
+data class MoveBacklogArgs(
+    @Describe("Ids of backlog items.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of backlog items, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("The section it really belongs to, e.g. CHORE (routine), ADMIN, PROJECT.")
+    val section: Section,
+)
+
+class MoveBacklogItemTool(private val repo: BacklogRepository) : Tool<MoveBacklogArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description = "Move items to another section when they were sorted wrongly (e.g. from 'to sort' to a routine or project)."
+    override val argsSerializer = MoveBacklogArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: MoveBacklogArgs, ctx: ToolContext): BacklogItemsResult {
+        val items = repo.find(args.itemIds, args.texts).filterNot { it.isStep }.ifEmpty { notFound(ctx) }
+        repo.setSection(items.map { it.id }, args.section)
+        val updated = items.map { it.copy(section = args.section) }
+        return BacklogItemsResult(updated, ctx.t("${quoted(updated)} staat nu bij ${args.section.label(ctx.lang)}", "${quoted(updated)} is now under ${args.section.label(ctx.lang)}"))
+    }
+
+    companion object {
+        const val NAME = "move_backlog_item"
+    }
+}
+
+// ---------- add_project_step ----------
+
+@Serializable
+data class AddProjectStepArgs(
+    @Describe("The project, by name, e.g. 'IKEA kast'. Created when it doesn't exist yet.")
+    val project: String = "",
+    @Describe("Id of the project, when known.")
+    val projectId: String? = null,
+    @Describe("The step, e.g. 'Verf halen bij Gamma' or 'Kast ophalen'.")
+    val text: String,
+    @Describe("When: UNPLANNED (default), NEXT, TODAY, TOMORROW, DAY (with date) or LATER.")
+    val `when`: When = When.UNPLANNED,
+    @Describe("Only for DAY: the date as yyyy-MM-dd.")
+    val date: String? = null,
+)
+
+class AddProjectStepTool(private val repo: BacklogRepository) : Tool<AddProjectStepArgs, AddToBacklogResult> {
+    override val name = NAME
+    override val description =
+        "Add a step to a project (prep like buying paint, the job itself, a follow-up). Creates the project if needed."
+    override val argsSerializer = AddProjectStepArgs.serializer()
+    override val resultSerializer = AddToBacklogResult.serializer()
+
+    override suspend fun run(args: AddProjectStepArgs, ctx: ToolContext): AddToBacklogResult {
+        val text = args.text.trim()
+        if (text.isEmpty()) throw ToolException(ctx.t("Welke stap?", "Which step?"))
+        val open = repo.openItems().filter { !it.isStep && it.kind == TaskKind.PROJECT }
+        val key = normalizeName(args.project)
+        val project = args.projectId?.let { id -> open.firstOrNull { it.id == id } }
+            ?: open.firstOrNull { key.isNotEmpty() && normalizeName(it.text) == key }
+            ?: open.firstOrNull { key.isNotEmpty() && normalizeName(it.text).contains(key) }
+            ?: if (args.project.isNotBlank()) {
+                repo.add(args.project.trim(), Section.PROJECT, Plan.UNPLANNED, null, false, ctx.actorMemberId).first
+            } else {
+                throw ToolException(ctx.t("Bij welk project?", "For which project?"))
+            }
+        val (plan, date) = resolve(args.`when`, args.date, ctx)
+        val (step, added) = repo.add(text, Section.PROJECT, plan, date?.toString(), false, ctx.actorMemberId, parentId = project.id)
+        val summary = if (added) ctx.t("Stap bij “${project.text}”: “${step.text}”", "Step for “${project.text}”: “${step.text}”")
+        else ctx.t("Die stap staat er al: “${step.text}”", "That step is already there: “${step.text}”")
+        return AddToBacklogResult(step, added, summary)
+    }
+
+    companion object {
+        const val NAME = "add_project_step"
+    }
+}

@@ -7,7 +7,6 @@ import app.hearth.ai.ChatTurn
 import app.hearth.ai.PendingAction
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Lang
-import app.hearth.core.model.Plan
 import app.hearth.core.model.Shop
 import app.hearth.core.model.ShoppingItem
 import app.hearth.core.model.nowMillis
@@ -15,7 +14,15 @@ import app.hearth.core.model.today
 import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolException
 import app.hearth.core.tools.ToolSource
+import app.hearth.ai.route.TaskWords
+import app.hearth.core.model.Section
+import app.hearth.core.tools.backlog.AddProjectStepArgs
+import app.hearth.core.tools.backlog.AddToBacklogArgs
 import app.hearth.core.tools.backlog.BacklogRefArgs
+import app.hearth.core.tools.backlog.MarkUrgentArgs
+import app.hearth.core.tools.backlog.MoveBacklogArgs
+import app.hearth.core.tools.backlog.SetRoutineIntervalArgs
+import app.hearth.core.tools.backlog.WaitForReplyArgs
 import app.hearth.core.tools.backlog.PlanBacklogArgs
 import app.hearth.core.tools.backlog.When
 import app.hearth.core.tools.food.AddShoppingItemArgs
@@ -65,6 +72,10 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     val backlog: StateFlow<List<BacklogItem>> =
         app.backlog.open.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Project steps, finished ones too, for progress. */
+    val steps: StateFlow<List<BacklogItem>> =
+        app.backlog.steps.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val doneToday: StateFlow<Int> = ticker
@@ -149,6 +160,44 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         app.tools.registry.run(app.tools.removeBacklogItem, BacklogRefArgs(itemIds = listOf(item.id)), it, confirmed = true)
     }
 
+    fun reopen(item: BacklogItem) = tool {
+        app.tools.registry.run(app.tools.reopenBacklogItem, BacklogRefArgs(itemIds = listOf(item.id)), it)
+    }
+
+    fun setInterval(item: BacklogItem, days: Int?) = tool {
+        app.tools.registry.run(app.tools.setRoutineInterval, SetRoutineIntervalArgs(itemIds = listOf(item.id), days = days), it)
+    }
+
+    fun setUrgent(item: BacklogItem, urgent: Boolean) = tool {
+        app.tools.registry.run(app.tools.markUrgent, MarkUrgentArgs(itemIds = listOf(item.id), urgent = urgent), it)
+    }
+
+    fun waitForReply(item: BacklogItem, followUp: LocalDate?, waiting: Boolean = true) = tool {
+        app.tools.registry.run(app.tools.waitForReply, WaitForReplyArgs(itemIds = listOf(item.id), followUp = followUp?.toString(), waiting = waiting), it)
+    }
+
+    fun move(item: BacklogItem, section: Section) = tool {
+        app.tools.registry.run(app.tools.moveBacklogItem, MoveBacklogArgs(itemIds = listOf(item.id), section = section), it)
+    }
+
+    /** The add rows on the Tasks screen: same words as the capture bar ("om de 2 weken", "dringend"). */
+    fun addTask(text: String, section: Section) {
+        if (text.isBlank()) return
+        tool {
+            val hint = TaskWords.extract(text)
+            app.tools.registry.run(
+                app.tools.addToBacklog,
+                AddToBacklogArgs(hint.text, section, urgent = hint.urgent, intervalDays = hint.intervalDays),
+                it,
+            )
+        }
+    }
+
+    fun addStep(project: BacklogItem, text: String) {
+        if (text.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addProjectStep, AddProjectStepArgs(projectId = project.id, project = project.text, text = text), it) }
+    }
+
     // ---- shopping actions ----
 
     fun addShopping(name: String) {
@@ -188,8 +237,5 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         private val NO = setOf("nee", "neen", "no", "nope", "stop", "laat maar", "cancel")
         private const val KEEP_BOUGHT_MILLIS = 6 * 60 * 60_000L
 
-        /** Open items that belong on Today: planned for today, or for an earlier day and still open. */
-        fun isToday(item: BacklogItem, today: LocalDate): Boolean =
-            item.plan == Plan.DAY && (item.localDate?.let { it <= today } ?: false)
     }
 }

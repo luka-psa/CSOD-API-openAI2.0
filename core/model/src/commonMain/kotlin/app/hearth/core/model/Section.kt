@@ -1,5 +1,25 @@
 package app.hearth.core.model
 
+/** The three ways open work is planned, plus a tray for what isn't sorted yet. */
+enum class TaskKind {
+    /** Ritme & gewoontes: comes back every now and then, never planned, never "late". */
+    ROUTINE,
+    /** Admin: small things with a deadline or urgency; can wait for a reply. */
+    ADMIN,
+    /** Projecten: bigger things with steps, prep and a time slot. */
+    PROJECT,
+    /** Nog te sorteren: notes, frictions, rules and anything unclear, until those get their own home. */
+    SORT,
+}
+
+val Section.kind: TaskKind
+    get() = when (this) {
+        Section.CHORE, Section.RHYTHM, Section.HABIT -> TaskKind.ROUTINE
+        Section.ADMIN, Section.APPOINTMENT -> TaskKind.ADMIN
+        Section.PROJECT -> TaskKind.PROJECT
+        else -> TaskKind.SORT
+    }
+
 /** Where something belongs in Hearth. The router sorts every message into one of these. */
 enum class Section {
     SHOPPING, STOCK, APPOINTMENT, ADMIN, PROJECT, CHORE, RHYTHM, HABIT, PROTECTED_TIME, FRICTION, NOTE, OTHER;

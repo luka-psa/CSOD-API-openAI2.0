@@ -88,6 +88,17 @@ The rules behind the diagram:
 
 `⚠` = destructive (needs confirmation). All tools are typed; schemas generated.
 
+**Built so far** (one `backlog_item` table carries routines, admin, projects and steps until each pillar
+gets its own tables): `add_shopping_item`, `list_shopping_items`, `mark_bought`, `unmark_bought`,
+`remove_shopping_item` ⚠ · `add_to_backlog` (section, when, urgent, intervalDays), `list_backlog` (views:
+ALL, TODAY, NEXT, UNPLANNED, WEEK, DONT_FORGET, ROUTINES_DUE, ROUTINES, ADMIN, PROJECTS, WAITING),
+`plan_backlog_item`, `complete_backlog_item` (a routine logs "done today" and stays; a project takes its
+steps along), `reopen_backlog_item`, `remove_backlog_item` ⚠ (a project's steps go too),
+`set_routine_interval`, `mark_urgent`, `wait_for_reply` (follow-up day), `move_backlog_item`,
+`add_project_step` (creates the project if needed).
+
+The full target list:
+
 **Household:** `get_household`, `add_member`, `update_member`, `remove_member` ⚠, `add_area`, `update_area`, `remove_area` ⚠, `set_area_owner`
 
 **Stock & shopping**
@@ -148,34 +159,56 @@ All tables: `id TEXT PK (UUID)`, `createdAt`, `updatedAt`. Enums as TEXT.
 | **DoneLog** | sourceType (CHORE/TASK/RHYTHM/APPOINTMENT/SHOPPING), sourceId, memberId?, doneAt |
 | **ChatMessage / PendingAction** | as in v1 |
 
+**Built so far:** `Shop`, `ShoppingItem`, and `BacklogItem` (v4): text, section, plan (UNPLANNED/NEXT/DAY/LATER),
+plannedDate, finishBy, done/doneAt, urgent, waiting (date = follow-up day), intervalDays + lastDone (routines),
+parentId (project steps). Auto-migrations v1→v4 keep every household's data.
+
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
 ## 5. Navigation & dashboard
 
-Chat stays docked on the left (~35%). The right side has 5 tabs:
+Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under every screen.
 
 ```
- Today | Food & Stock | Home & Rhythm | Planning | Notes & Friction        ⚙
+ Vandaag (dashboard) | Taken | Boodschappen          (next: Weekoverleg | Werkbord)
 ```
 
-- **Today** (home): a column per member (their open steps/admin/errands, ready chores), the current rhythm, the shopping list grouped by shop, today's appointments, protected time, done this week.
-- **Food & Stock**: three sub-views. *Shopping list* (grouped by shop; tick = bought). *Stock* (by storage spot; big OK / Low / Out buttons, plus a "Start stock check" walkthrough). *Meal plan*.
-- **Home & Rhythm**: *Rhythms* (today's sequences). *Chores* board sorted by readiness, with a soft fill bar and season badge; tap = done. *Anchor habits*. *Protected time*.
-- **Planning**: *Appointments* (To book · Booked · upcoming), *Admin*, *Projects* (cards with steps, materials, errands and appointments, plus a progress ring), *Errands* by shop.
-- **Notes & Friction**: friction board (Open / To try / To buy / Solved) and household notes.
+**Vandaag: the tablet dashboard** (three columns on the tablet, one on a phone):
 
 ```
-┌────────────────────┬──────────────────────────────────────────────────┐
-│ Chat               │ Food & Stock › Stock check: Bathroom   (3 / 9)   │
-│                    │                                                  │
-│ you: we zijn bijna │   Paracetamol                                    │
-│ door de wc-papier  │   ┌────────┐  ┌────────┐  ┌────────┐             │
-│ 🔥 Toilet paper is │   │  OK ✓  │  │  Low   │  │  Out   │             │
-│ low, added to the  │   └────────┘  └────────┘  └────────┘             │
-│ supermarket list.  │                                                  │
-│                    │   Low/Out → added to shopping list automatically │
-└────────────────────┴──────────────────────────────────────────────────┘
+┌ Niet vergeten ─────────┐ ┌ Vandaag ─────────────────┐ ┌ Binnenkort ──────────────┐
+│ ● verzekering  dringend│ │ ▌Vrije tijd: lichte dag  │ │ Morgen  ● belastingbrief⚑│
+│ ● belastingbrief       │ │ ○ osteopaat bellen       │ │ Zo 25   ● lampen toilet  │
+│   klaar tegen morgen   │ │ In het ritme             │ │ Wo 28   (vrij)           │
+├ Boodschappen ──────────┤ │ ○ vaatwasser · elke dag  │ │ "Zaterdag is nog vrij."  │
+│ Melk  Brood            │ │ ○ lakens · om de 2 weken │ ├ Lopende projecten ───────┤
+└────────────────────────┘ │ Volgende                 │ │ IKEA kast ▓▓░ 1/3 stappen│
+                           └──────────────────────────┘ └──────────────────────────┘
 ```
+
+- **Niet vergeten**: urgent items, deadlines ("klaar tegen") within 3 days, follow-ups that are due.
+- **Vandaag**: what's planned today (earlier days read "sinds dinsdag"), the routines that are about time
+  ("In het ritme"), and what's next up with a one-tap "Vandaag".
+- **Vrije tijd is generated**, without durations: nothing left today means free ("Alles van vandaag is
+  gedaan…"), one or two things means a light day; in *Binnenkort* empty days read "vrij" and the first free
+  weekend day is called out.
+- **Binnenkort**: the next six days with what's on them. **Lopende projecten**: progress and the next step.
+
+**Taken**, one tab per way of planning: *Ritme & gewoontes* (Aan de beurt · Loopt goed · Nog geen ritme;
+the tick logs "done today", the routine returns after its interval), *Admin* (Dringend · Met deadline ·
+Wacht op antwoord · Open), *Projecten* (steps with progress, add a step inline, "Dit weekend" slot),
+*Week* (day strip over everything planned) and *Te sorteren* (only when something is unsorted).
+The plan sheet adapts to the kind: how often / give it a day (routine); urgent, waiting for a reply with a
+follow-up day, do on / finish by (admin); next, this weekend, a day, later (project/step); and "Hoort bij"
+to move between kinds.
+
+**Next screens** (approved, not built yet):
+- **Weekoverleg**: a 15-minute guided flow: look back (celebrate) → meals (dishes → ingredients onto the
+  shopping list) → shopping check → this week (deadlines, due routines, one project step for the weekend)
+  → *Oudjes*: Hearth suggests 2–3 of the longest-open items to tackle this week → new frictions.
+- **Werkbord**: *Huisregels*, *Frictie* (noticed → discussed in the weekoverleg → becomes a rule, a change/
+  project, or let go), *Doelen* (personal and couple, each with one small next step).
+- **Boodschappen & Voorraad**: shopping list, stock (low/out), meal plan.
 
 ## 6. Folder structure
 
@@ -220,6 +253,12 @@ HTTPS address; a tablet on home Wi-Fi has none. Options:
 | B. Tunnel on the tablet | Cloudflare Tunnel / Tailscale Funnel exposes the tablet directly. | No relay, but extra app/setup on the tablet; support on Android varies. |
 | C. Claude Desktop on a home laptop | Local MCP over the LAN. | No public URL at all, but only works from that laptop, not phones; ChatGPT can't do this. |
 
+**Chosen: A, a relay that Hearth manages itself.** Setup once for the whole family: create a free Cloudflare
+account and paste one API token into Hearth's settings; Hearth deploys and updates the relay (a Worker with a
+Durable Object holding the tablet's connection) and shows the connector URL + QR. Each person then adds that
+URL once in their own ChatGPT/Claude. More durable than a tunnel on this tablet: only Hearth runs (it is the
+always-on kiosk app and reconnects by itself), and the URL never changes.
+
 Safety: pairing secret in the connector URL/headers; destructive tools return a pending action that the
 person confirms (in their AI chat, or with the Ja/Nee buttons on the tablet).
 
@@ -229,14 +268,17 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
 
 1. ✅ Shopping list from chat and dashboard; web version; Vercel preview.
 2. ✅ Orchestrator + inbox; offline sorter; Ja/Nee confirmations.
-3. ✅ **Redesign + Backlog planning**: navigation (rail / bottom bar), Today, Backlog with day strip and plan
-   sheet (Next up · Today · Tomorrow · day · Later · do-on / finish-by), Shopping screen, capture bar.
-4. **MCP connector** (pick option A/B/C in §7) so ChatGPT/Claude can use Hearth.
-5. Household setup: members, styles (doer/planner, quick/project), areas with owners; assign backlog items.
-6. Planning: appointments (to book → booked → done), admin, projects with steps, errands.
-7. Weekly huddle (gezinsoverleg) + per-person Today.
-8. Home & Rhythm: rhythms, chores with soft intervals and seasons, anchor habits, protected time.
-9. Stock loop, friction log, house rules.
+3. ✅ Redesign + Backlog planning: navigation, plan sheet, Shopping screen, capture bar.
+4. ✅ **Task types + dashboard**: routines (interval, "about time", never late), admin (urgent, deadline,
+   waiting for a reply + follow-up), projects with steps; Taken screen; dashboard with Niet vergeten,
+   Vandaag + ritme, Binnenkort, generated free time, Lopende projecten. Capture bar reads "om de 2 weken",
+   "elke week", "dringend".
+5. **Werkbord**: house rules, frictions (→ rule / change / let go), personal & couple goals; household
+   members (names, colours) so goals and ownership have a person.
+6. **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*.
+7. **MCP relay** managed by Hearth (§7, option A).
+8. Stock loop (low/out → shopping → back in stock), storage spots, stock check.
+9. Per-person Today, helpers, seasons for routines, anchor habits, protected time as its own kind.
 10. On-device model for offline sorting; Google Calendar push + Drive backup.
 
 ## 9. Decisions

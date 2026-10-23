@@ -34,6 +34,8 @@ class MigrationTest {
         assertEquals(Section.APPOINTMENT, item.section)
         assertEquals(Plan.UNPLANNED, item.plan)
         assertEquals(null, item.date)
+        assertEquals(false, item.urgent)
+        assertEquals(null, item.parentId)
     }
 
     /** Builds a v2 database exactly as the v2 schema export describes it, with one inbox item. */
