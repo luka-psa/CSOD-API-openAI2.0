@@ -117,7 +117,9 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   (the longest-open unplanned items, a few picked each week) → Werkbord; *Klaar*
   records a *Huddle*. *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.
-- **Coming next:** the MCP relay (§7).
+- **Verbind AI:** *Relay* (`relay/`, a Cloudflare Worker), *connector link*
+  (`/mcp/<secret>`, what people paste in ChatGPT/Claude), *tablet key*. The MCP
+  server lives in `mcp/`; tablet-only tools set `exposeOverMcp = false`.
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
   UI ships in Dutch (Flemish) and English; the local parser understands both.
 
@@ -155,7 +157,8 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 
 Modules (all Kotlin Multiplatform except `app` and `web`):
 `core:model` → `core:data` (Room 3; `worker/` = SQLite web worker) → `core:tools`
-(all tools, `HearthTools` wires them) → `ai` (parser + orchestrator) → `ui` (Compose
+(all tools, `HearthTools` wires them) → `ai` (parser + orchestrator) and `mcp` (MCP server,
+relay client and installer; embeds `relay/src/worker.js`) → `ui` (Compose
 screens, ViewModel, strings, `AppContainer`) → `app` (Android: activity, kiosk) and
 `web` (browser entry point, `index.html`, `vercel.json`).
 

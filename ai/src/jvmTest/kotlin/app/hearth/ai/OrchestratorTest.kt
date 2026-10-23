@@ -37,7 +37,7 @@ class OrchestratorTest {
     private val shopping = ShoppingRepository(db)
     private val inbox = BacklogRepository(db)
     private val board = app.hearth.core.data.board.BoardRepository(db)
-    private val tools = HearthTools(shopping, inbox, board, app.hearth.core.data.food.StockRepository(db), app.hearth.core.data.week.WeekRepository(db))
+    private val tools = HearthTools(shopping, inbox, board, app.hearth.core.data.food.StockRepository(db), app.hearth.core.data.week.WeekRepository(db), app.hearth.core.data.settings.SettingsRepository(db))
     private val nl = ToolContext(ToolSource.CHAT, Lang.NL, today = LocalDate(2026, 10, 22))
 
     /** Scripted model: a queue of router decisions and helper replies. */

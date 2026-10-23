@@ -37,6 +37,11 @@ import app.hearth.core.tools.backlog.SetRoutineIntervalArgs
 import app.hearth.core.tools.backlog.WaitForReplyArgs
 import app.hearth.core.tools.backlog.PlanBacklogArgs
 import app.hearth.core.tools.backlog.When
+import app.hearth.core.data.settings.Connection
+import app.hearth.core.tools.system.SaveConnectionArgs
+import app.hearth.mcp.InstallException
+import app.hearth.mcp.McpPending
+import app.hearth.mcp.RelayStatus
 import app.hearth.core.model.Huddle
 import app.hearth.core.model.Meal
 import app.hearth.core.model.plusDays
@@ -115,6 +120,52 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     private val _agenda = MutableStateFlow<WeekAgenda?>(null)
     /** A snapshot for the look back (what got done since the last meeting). */
     val agenda: StateFlow<WeekAgenda?> = _agenda.asStateFlow()
+
+    // ---- connection to the family's AI (MCP) ----
+
+    val connection: StateFlow<Connection> =
+        app.settings.connection.stateIn(viewModelScope, SharingStarted.Eagerly, Connection())
+    val relayStatus: StateFlow<RelayStatus> = app.relay.status
+    val mcpPending: StateFlow<List<McpPending>> = app.mcp.pending
+    val mcpActivity: StateFlow<List<String>> = app.mcp.activity
+
+    private val _installing = MutableStateFlow(false)
+    val installing: StateFlow<Boolean> = _installing.asStateFlow()
+    private val _installError = MutableStateFlow<String?>(null)
+    val installError: StateFlow<String?> = _installError.asStateFlow()
+
+    /** One time: put the relay on the family's Cloudflare account, then switch the connection on. */
+    fun installRelay(token: String, accountId: String) {
+        if (token.isBlank() || _installing.value) return
+        viewModelScope.launch {
+            _installing.value = true
+            _installError.value = null
+            try {
+                val url = app.installer.install(token, accountId)
+                app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(enabled = true, relayUrl = url), ctx(ToolSource.UI))
+            } catch (e: InstallException) {
+                _installError.value = e.message
+            } catch (e: Exception) {
+                _installError.value = e.message ?: e.toString()
+            }
+            _installing.value = false
+        }
+    }
+
+    fun saveConnection(enabled: Boolean? = null, relayUrl: String? = null, newLink: Boolean = false) = tool {
+        app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(enabled, relayUrl, newLink), it)
+    }
+
+    /** Ja / Nee on the tablet for something the family's AI asked to do. */
+    fun answerMcp(pending: McpPending, yes: Boolean) {
+        viewModelScope.launch {
+            if (yes) {
+                app.mcp.confirm(pending.id)?.let { outcome -> _messages.update { it + ChatMessage(fromUser = false, text = outcome.summary) } }
+            } else {
+                app.mcp.cancel(pending.id)
+            }
+        }
+    }
 
     val stockSpots: StateFlow<List<StorageSpot>> =
         app.stock.spots.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

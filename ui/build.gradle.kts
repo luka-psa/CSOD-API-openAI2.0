@@ -16,6 +16,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":ai"))
+            api(project(":mcp"))
             api(compose.runtime)
             api(compose.foundation)
             api(compose.material3)

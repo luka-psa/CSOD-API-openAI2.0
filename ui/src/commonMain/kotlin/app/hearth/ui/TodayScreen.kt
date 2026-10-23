@@ -79,6 +79,7 @@ import app.hearth.ui.resources.greeting_afternoon
 import app.hearth.ui.resources.greeting_evening
 import app.hearth.ui.resources.greeting_morning
 import app.hearth.ui.resources.nav_board
+import app.hearth.ui.resources.nav_connect
 import app.hearth.ui.resources.next_step
 import app.hearth.ui.resources.no_steps
 import app.hearth.ui.resources.open_list
@@ -119,6 +120,7 @@ fun TodayScreen(
     onGoShopping: () -> Unit,
     onGoBoard: () -> Unit,
     onGoWeek: () -> Unit,
+    onGoConnect: () -> Unit,
 ) {
     val names = backlog.associate { it.id to it.text }
     val urgent = dontForget(backlog, today)
@@ -218,7 +220,7 @@ fun TodayScreen(
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        Header(lang, doneToday, wide)
+        Header(lang, doneToday, wide, onGoConnect)
         Spacer(Modifier.size(20.dp))
         val gap = if (wide) 20.dp else 16.dp
         if (wide) {
@@ -401,7 +403,7 @@ private fun Hint(text: String) {
 }
 
 @Composable
-private fun Header(lang: Lang, doneToday: Int, wide: Boolean) {
+private fun Header(lang: Lang, doneToday: Int, wide: Boolean, onGoConnect: () -> Unit) {
     val hour = localNow().hour
     val greeting = stringResource(
         when {
@@ -422,7 +424,14 @@ private fun Header(lang: Lang, doneToday: Int, wide: Boolean) {
     } else {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             title()
-            DonePill(doneToday)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DonePill(doneToday)
+                Spacer(Modifier.weight(1f))
+                // On a phone there is no rail, so "Verbind AI" lives here.
+                androidx.compose.material3.IconButton(onClick = onGoConnect) {
+                    Icon(HearthIcons.Link, stringResource(Res.string.nav_connect), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
 }

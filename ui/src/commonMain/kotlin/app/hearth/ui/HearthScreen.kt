@@ -54,6 +54,10 @@ import app.hearth.ui.resources.delete_confirm
 import app.hearth.ui.resources.delete_confirm_body
 import app.hearth.ui.resources.delete_confirm_project
 import app.hearth.ui.resources.nav_board
+import app.hearth.ui.resources.nav_connect
+import app.hearth.ui.resources.mcp_asks
+import app.hearth.ui.resources.no
+import app.hearth.ui.resources.yes
 import app.hearth.ui.resources.nav_week
 import app.hearth.ui.resources.nav_tasks
 import app.hearth.ui.resources.nav_shopping
@@ -64,12 +68,13 @@ import kotlinx.datetime.LocalDateTime
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-enum class Destination(val icon: ImageVector, val label: StringResource) {
+enum class Destination(val icon: ImageVector, val label: StringResource, val inNav: Boolean = true) {
     TODAY(HearthIcons.Sun, Res.string.nav_today),
     TASKS(HearthIcons.Backlog, Res.string.nav_tasks),
     WEEK(HearthIcons.People, Res.string.nav_week),
     BOARD(HearthIcons.Board, Res.string.nav_board),
     SHOPPING(HearthIcons.Cart, Res.string.nav_shopping),
+    CONNECT(HearthIcons.Link, Res.string.nav_connect, inNav = false),
 }
 
 /**
@@ -90,6 +95,12 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val dishes by viewModel.dishes.collectAsStateWithLifecycle()
     val lastHuddle by viewModel.lastHuddle.collectAsStateWithLifecycle()
     val agenda by viewModel.agenda.collectAsStateWithLifecycle()
+    val connection by viewModel.connection.collectAsStateWithLifecycle()
+    val relayStatus by viewModel.relayStatus.collectAsStateWithLifecycle()
+    val mcpPending by viewModel.mcpPending.collectAsStateWithLifecycle()
+    val mcpActivity by viewModel.mcpActivity.collectAsStateWithLifecycle()
+    val installing by viewModel.installing.collectAsStateWithLifecycle()
+    val installError by viewModel.installError.collectAsStateWithLifecycle()
     val stock by viewModel.stockItems.collectAsStateWithLifecycle()
     var deleting by remember { mutableStateOf<BacklogItem?>(null) }
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
@@ -122,6 +133,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                             onGoShopping = { destination = Destination.SHOPPING },
                             onGoBoard = { destination = Destination.BOARD },
                             onGoWeek = { destination = Destination.WEEK },
+                            onGoConnect = { destination = Destination.CONNECT },
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang,
@@ -137,6 +149,10 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 setGoalStep = viewModel::setGoalStep,
                                 finish = viewModel::finishWeekoverleg,
                             ),
+                        )
+                        Destination.CONNECT -> ConnectScreen(
+                            connection, relayStatus, installing, installError, mcpActivity,
+                            ConnectCallbacks(install = viewModel::installRelay, save = viewModel::saveConnection),
                         )
                         Destination.BOARD -> BoardScreen(
                             board, members, wide,
@@ -179,6 +195,10 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+                mcpPending.firstOrNull()?.let { p ->
+                    McpAsk(p.question, onYes = { viewModel.answerMcp(p, true) }, onNo = { viewModel.answerMcp(p, false) }, modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp).align(Alignment.CenterHorizontally))
+                    Spacer(Modifier.height(10.dp))
+                }
                 CaptureBar(
                     messages, busy, viewModel.speechLanguage,
                     onSend = viewModel::send,
@@ -241,30 +261,53 @@ private fun Rail(selected: Destination, counts: Map<Destination, Int>, onSelect:
             Icon(HearthIcons.Flame, "Hearth", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
         }
         Spacer(Modifier.height(18.dp))
-        Destination.entries.forEach { d ->
-            val isSelected = d == selected
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable { onSelect(d) }.padding(vertical = 8.dp, horizontal = 6.dp),
-            ) {
-                Box(
-                    Modifier
-                        .size(width = 64.dp, height = 40.dp)
-                        .background(if (isSelected) MaterialTheme.colorScheme.onBackground else Color.Transparent, RoundedCornerShape(50)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(d.icon, null, tint = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant)
-                    Badge(counts[d], Modifier.align(Alignment.TopEnd))
-                }
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    stringResource(d.label),
-                    style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1,
-                    softWrap = false,
-                    color = if (isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        Destination.entries.filter { it.inNav }.forEach { d -> RailItem(d, d == selected, counts[d], onSelect) }
+        // Settings-like places sit at the bottom, out of the way.
+        Spacer(Modifier.weight(1f))
+        Destination.entries.filterNot { it.inNav }.forEach { d -> RailItem(d, d == selected, counts[d], onSelect) }
+    }
+}
+
+@Composable
+private fun RailItem(d: Destination, isSelected: Boolean, count: Int?, onSelect: (Destination) -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable { onSelect(d) }.padding(vertical = 8.dp, horizontal = 6.dp),
+    ) {
+        Box(
+            Modifier
+                .size(width = 64.dp, height = 40.dp)
+                .background(if (isSelected) MaterialTheme.colorScheme.onBackground else Color.Transparent, RoundedCornerShape(50)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(d.icon, null, tint = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant)
+            Badge(count, Modifier.align(Alignment.TopEnd))
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            stringResource(d.label),
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            softWrap = false,
+            color = if (isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Something the family's AI wants to do that needs a yes; answered right here on the tablet. */
+@Composable
+private fun McpAsk(question: String, onYes: () -> Unit, onNo: () -> Unit, modifier: Modifier) {
+    androidx.compose.material3.Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.onBackground, shadowElevation = 6.dp, modifier = modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)) {
+            Icon(HearthIcons.Link, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(Res.string.mcp_asks), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+                Text(question, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.surface)
             }
+            androidx.compose.material3.OutlinedButton(onClick = onNo) { Text(stringResource(Res.string.no), color = MaterialTheme.colorScheme.surface) }
+            Spacer(Modifier.width(8.dp))
+            androidx.compose.material3.Button(onClick = onYes) { Text(stringResource(Res.string.yes)) }
         }
     }
 }
@@ -272,7 +315,7 @@ private fun Rail(selected: Destination, counts: Map<Destination, Int>, onSelect:
 @Composable
 private fun BottomBar(selected: Destination, counts: Map<Destination, Int>, onSelect: (Destination) -> Unit) {
     NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-        Destination.entries.forEach { d ->
+        Destination.entries.filter { it.inNav }.forEach { d ->
             NavigationBarItem(
                 selected = d == selected,
                 onClick = { onSelect(d) },

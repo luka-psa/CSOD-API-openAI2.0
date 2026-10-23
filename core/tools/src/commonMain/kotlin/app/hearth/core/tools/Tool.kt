@@ -8,7 +8,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialInfo
 
 /**
- * One household action. The UI, the chat orchestrator, the local parser and (later) the MCP
+ * One household action. The UI, the chat orchestrator, the local parser and the MCP
  * server all go through [Tool.run] via [ToolRegistry]; there is no second code path.
  *
  * [argsSerializer] is the single source of truth for the input schema (see [toJsonSchema]).
@@ -18,6 +18,10 @@ interface Tool<A, R : ToolResult> {
     val description: String
     /** Deletes, clears, bulk changes, restores. Never run from chat or MCP without confirmation. */
     val destructive: Boolean get() = false
+    /** Only reads, never changes anything (MCP clients may call these without asking). */
+    val readOnly: Boolean get() = name.startsWith("list_") || name.endsWith("_agenda")
+    /** False for tablet-only system tools (connection settings): never offered to an AI over MCP. */
+    val exposeOverMcp: Boolean get() = true
     val argsSerializer: KSerializer<A>
     val resultSerializer: KSerializer<R>
 

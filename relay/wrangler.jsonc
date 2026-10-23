@@ -1,0 +1,12 @@
+// Manual deploy (from a laptop): npx wrangler deploy
+// Hearth can also install this itself from its settings with a Cloudflare API token.
+{
+  "name": "hearth-relay",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "HOUSEHOLD", "class_name": "Household" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Household"] }]
+}

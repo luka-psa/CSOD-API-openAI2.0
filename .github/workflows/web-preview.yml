@@ -30,7 +30,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Test shared code (JVM + WebAssembly)
-        run: ./gradlew :core:data:jvmTest :core:tools:jvmTest :ai:jvmTest :core:tools:wasmJsNodeTest :ai:wasmJsNodeTest
+        run: ./gradlew :core:data:jvmTest :core:tools:jvmTest :ai:jvmTest :mcp:jvmTest :core:tools:wasmJsNodeTest :ai:wasmJsNodeTest
+
+      - name: Relay tests (Worker in workerd)
+        run: |
+          cd relay && npm install && npm test
 
       - name: Build web app
         run: ./gradlew :web:wasmJsBrowserDistribution

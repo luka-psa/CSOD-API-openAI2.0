@@ -4,7 +4,9 @@ import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.food.StockRepository
+import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.data.week.WeekRepository
+import app.hearth.core.tools.system.SaveConnectionTool
 import app.hearth.core.tools.week.FinishWeekoverlegTool
 import app.hearth.core.tools.week.ListMealPlanTool
 import app.hearth.core.tools.week.PlanMealTool
@@ -50,6 +52,7 @@ class HearthTools(
     board: BoardRepository,
     stock: StockRepository,
     week: WeekRepository,
+    settings: SettingsRepository,
 ) {
     val addShoppingItem = AddShoppingItemTool(shopping, stock)
     val listShoppingItems = ListShoppingItemsTool(shopping)
@@ -93,6 +96,8 @@ class HearthTools(
     val weekoverlegAgenda = WeekoverlegAgendaTool(week, backlog, board, shopping)
     val finishWeekoverleg = FinishWeekoverlegTool(week)
 
+    val saveConnection = SaveConnectionTool(settings)
+
     val registry = ToolRegistry(
         listOf(
             addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem, clearBoughtItems,
@@ -102,6 +107,7 @@ class HearthTools(
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
+            saveConnection,
         ),
     )
 }

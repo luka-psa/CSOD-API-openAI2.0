@@ -28,6 +28,8 @@ data class ToolSpec(
     val description: String,
     val destructive: Boolean,
     val inputSchema: JsonObject,
+    val readOnly: Boolean = false,
+    val exposeOverMcp: Boolean = true,
 )
 
 sealed interface ToolOutcome {
@@ -45,7 +47,7 @@ class ToolRegistry(tools: List<Tool<*, *>>) {
     }
 
     val specs: List<ToolSpec> = tools.map {
-        ToolSpec(it.name, it.description, it.destructive, it.argsSerializer.descriptor.toJsonSchema())
+        ToolSpec(it.name, it.description, it.destructive, it.argsSerializer.descriptor.toJsonSchema(), it.readOnly, it.exposeOverMcp)
     }
 
     operator fun contains(name: String) = name in byName

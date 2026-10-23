@@ -287,6 +287,14 @@ HTTPS address; a tablet on home Wi-Fi has none. Options:
 | B. Tunnel on the tablet | Cloudflare Tunnel / Tailscale Funnel exposes the tablet directly. | No relay, but extra app/setup on the tablet; support on Android varies. |
 | C. Claude Desktop on a home laptop | Local MCP over the LAN. | No public URL at all, but only works from that laptop, not phones; ChatGPT can't do this. |
 
+**Built:** `relay/` (Worker + Durable Object, tested in workerd via Miniflare), `mcp/` module: `McpServer`
+(JSON-RPC: initialize, tools/list with generated schemas and read-only/destructive hints, tools/call through the
+`ToolRegistry`, `confirm_pending_action` / `cancel_pending_action`), `RelayClient` (one outgoing WebSocket,
+heartbeat, reconnect with backoff) and `RelayInstaller` (Cloudflare API: upload with the DO migration, account
+workers.dev subdomain, enable). Settings (v8 `setting` table) through the tablet-only `save_connection` tool
+(`exposeOverMcp = false`). The connector URL is a capability link: `<relay>/mcp/<64 hex>`; the tablet proves
+itself with a separate tablet key. Pending confirmations show on the tablet with Ja/Nee too.
+
 **Chosen: A, a relay that Hearth manages itself.** Setup once for the whole family: create a free Cloudflare
 account and paste one API token into Hearth's settings; Hearth deploys and updates the relay (a Worker with a
 Durable Object holding the tablet's connection) and shows the connector URL + QR. Each person then adds that
@@ -312,7 +320,8 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    "we willen samen …", "doel: …".
 6. ✅ **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*;
    capture bar: "we eten maandag spaghetti", "vanavond eten we frietjes", "dinner on monday: pizza".
-7. **MCP relay** managed by Hearth (§7, option A).
+7. ✅ **MCP relay** managed by Hearth (§7, option A): "Verbind AI" (rail bottom; on a phone via the link icon
+   on Vandaag): install once with a Cloudflare token, share the link, add it once in ChatGPT/Claude.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a
    confirm and NL/EN. (Still to do: counted stock "nog 3", a walk-through stock check.)
 9. Per-person Today, helpers, seasons for routines, anchor habits, protected time as its own kind.
