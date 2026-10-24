@@ -63,6 +63,23 @@ class MigrationTest {
         assertEquals(listOf(BoardKind.RULE to "Geen schermen na 20u", BoardKind.FRICTION to "Rommel in de gang"), board.map { it.kind to it.text })
     }
 
+    @Test
+    fun meetingsHeldBeforeV10KeepTheirDateAndGetAnEmptySummary() = runTest {
+        val file = File(createTempDirectory("hearth").toFile(), "hearth.db")
+        create(file, 9) { connection ->
+            connection.execSQL("INSERT INTO huddle (id, heldOn, createdAt, updatedAt) VALUES ('h1', '2026-10-17', 1, 1)")
+        }
+        val db = Room.databaseBuilder<HearthDatabase>(file.absolutePath).setDriver(BundledSQLiteDriver()).build()
+        val meeting = app.hearth.core.data.week.MeetingRepository(db)
+        val huddles = meeting.recentHuddles()
+        meeting.addLine("we eten woensdag curry")
+        val lines = meeting.currentTranscript()
+        db.close()
+
+        assertEquals(listOf("2026-10-17" to ""), huddles.map { it.heldOn to it.summary })
+        assertEquals(listOf("we eten woensdag curry" to false), lines.map { it.text to it.sorted })
+    }
+
     /** Builds a v2 database exactly as the v2 schema export describes it, with one inbox item. */
     private fun createV2(file: File) = create(file, 2) { connection ->
         connection.execSQL(

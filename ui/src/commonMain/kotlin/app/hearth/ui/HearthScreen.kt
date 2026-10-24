@@ -106,6 +106,12 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val linkedApps by viewModel.linkedApps.collectAsStateWithLifecycle()
     val pairingCode by viewModel.pairingCode.collectAsStateWithLifecycle()
     val google by viewModel.google.collectAsStateWithLifecycle()
+    val wins by viewModel.wins.collectAsStateWithLifecycle()
+    val feelings by viewModel.feelings.collectAsStateWithLifecycle()
+    val transcript by viewModel.transcript.collectAsStateWithLifecycle()
+    val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
+    val huddles by viewModel.huddles.collectAsStateWithLifecycle()
+    val voorstel by viewModel.voorstel.collectAsStateWithLifecycle()
     val googleBusy by viewModel.googleBusy.collectAsStateWithLifecycle()
     val backupList by viewModel.backupList.collectAsStateWithLifecycle()
     val stock by viewModel.stockItems.collectAsStateWithLifecycle()
@@ -120,7 +126,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
 
     val counts = mapOf(
         Destination.TASKS to dontForget(backlog, today).size,
-        Destination.BOARD to board.count { it.kind == BoardKind.FRICTION && it.isOpen },
+        Destination.BOARD to board.count { it.isWorkingPoint && it.isOpen },
         Destination.SHOPPING to shopping.sumOf { s -> s.items.count { !it.bought } },
     )
 
@@ -131,7 +137,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                 AnimatedContent(destination, transitionSpec = { fadeIn() togetherWith fadeOut() }, modifier = Modifier.weight(1f)) { d ->
                     when (d) {
                         Destination.TODAY -> TodayScreen(
-                            backlog, steps, shopping, board, meals, huddleDue(lastHuddle, today) && today.dayOfWeek.ordinal >= 4, doneToday, today, lang, wide,
+                            backlog, steps, shopping, board, meals, wins, huddleDue(lastHuddle, today) && today.dayOfWeek.ordinal >= 4, doneToday, today, lang, wide,
                             onComplete = viewModel::complete,
                             onPlan = { item, w -> viewModel.plan(item, w) },
                             onOpenItem = { planning = it },
@@ -155,6 +161,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang,
+                            MeetingState(wins, feelings, members, transcript, lastTranscript, huddles, voorstel),
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
                                 planMeal = viewModel::planMeal,
@@ -166,6 +173,16 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 resolveFriction = viewModel::resolveFriction,
                                 setGoalStep = viewModel::setGoalStep,
                                 finish = viewModel::finishWeekoverleg,
+                                addWin = viewModel::addWin,
+                                removeWin = viewModel::removeWin,
+                                setFeeling = { v, m -> viewModel.setFeeling(v, m) },
+                                heard = viewModel::heard,
+                                clearTranscript = viewModel::clearTranscript,
+                                openVoorstel = viewModel::openVoorstel,
+                                closeVoorstel = viewModel::closeVoorstel,
+                                moveVoorstel = { i, p -> viewModel.moveVoorstel(i, p) },
+                                toggleVoorstel = { viewModel.toggleVoorstel(it) },
+                                addVoorstel = viewModel::addVoorstel,
                             ),
                         )
                         Destination.CONNECT -> ConnectScreen(

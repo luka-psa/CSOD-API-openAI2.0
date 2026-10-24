@@ -129,8 +129,8 @@
     <string name="rules_title">Huisregels</string>
     <string name="rules_add_hint">Nieuwe huisregel, bv. schoenen in de kast</string>
     <string name="rules_empty">Nog geen huisregels. Schrijf op wat jullie afspreken.</string>
-    <string name="frictions_title">Frictie</string>
-    <string name="frictions_add_hint">Wat stoort er?</string>
+    <string name="frictions_title">Frictie &amp; ideeën</string>
+    <string name="frictions_add_hint">Wat stoort er, of “idee: …”</string>
     <string name="frictions_empty">Niets dat stoort. Heerlijk.</string>
     <string name="frictions_hint">Bespreek ze in het weekoverleg: een regel, een verandering, of loslaten.</string>
     <string name="friction_to_rule">Wordt huisregel</string>
@@ -322,4 +322,46 @@
         <item quantity="one">%1$d ingrediënt</item>
         <item quantity="other">%1$d ingrediënten</item>
     </plurals>
+    <string name="listen_start">Luister mee</string>
+    <string name="listen_stop">Stop</string>
+    <string name="listen_on">Hearth luistert mee…</string>
+    <string name="listen_hint">Praat gewoon. Straks zet Hearth alles op zijn plek, en jullie kijken het na.</string>
+    <plurals name="listen_lines">
+        <item quantity="one">%1$d zin gehoord</item>
+        <item quantity="other">%1$d zinnen gehoord</item>
+    </plurals>
+    <string name="conversation_show">Gesprek</string>
+    <string name="sort_conversation">Zet op zijn plek</string>
+    <string name="transcript_title">Gesprek van dit weekoverleg</string>
+    <string name="transcript_last">Gesprek van vorige keer</string>
+    <string name="transcript_empty">Nog niets gehoord.</string>
+    <string name="transcript_kept">Blijft leesbaar tot het volgende weekoverleg; de samenvatting blijft altijd.</string>
+    <string name="transcript_clear">Gesprek wissen</string>
+    <string name="transcript_clear_body">Wat Luister mee in dit weekoverleg hoorde, verdwijnt. Wat al op zijn plek staat, blijft.</string>
+    <string name="voorstel_title">Op zijn plek</string>
+    <string name="voorstel_hint">Tik op een plek om een zin te verplaatsen, of haal het vinkje weg. Er komt pas iets bij als je op Toevoegen tikt.</string>
+    <string name="voorstel_add">Toevoegen (%1$d)</string>
+    <string name="voorstel_empty">Niets nieuws om op zijn plek te zetten.</string>
+    <string name="place_planning">Taken</string>
+    <string name="place_event">Afspraak</string>
+    <string name="place_free">Vrije tijd</string>
+    <string name="place_shopping">Boodschappen</string>
+    <string name="place_meal">Weekmenu</string>
+    <string name="place_rule">Huisregel</string>
+    <string name="place_friction">Frictie</string>
+    <string name="place_idea">Idee</string>
+    <string name="place_goal">Doel</string>
+    <string name="place_win">Ging goed</string>
+    <string name="place_none">Gewoon gepraat</string>
+    <string name="wins_title">Wat ging goed</string>
+    <string name="wins_hint">Wat ging goed deze week?</string>
+    <string name="win_remove">Weghalen bij wat goed ging?</string>
+    <string name="feeling_title">Hoe zwaar voelde de week?</string>
+    <string name="feeling_light">licht</string>
+    <string name="feeling_heavy">zwaar</string>
+    <string name="feeling_us">Wij</string>
+    <string name="feeling_heavy_hint">Een zware week. Wat pakken we als eerste aan?</string>
+    <string name="last_time">Vorige keer</string>
+    <string name="week_summary">Samenvatting</string>
+    <string name="earlier_meetings">Eerdere weekoverleggen</string>
 </resources>

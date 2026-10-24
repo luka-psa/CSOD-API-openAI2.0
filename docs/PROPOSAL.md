@@ -104,7 +104,11 @@ NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `ad
 `clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
 with the same name. · Weekoverleg: `plan_meal` (one meal per day; ingredients onto the shopping list; a known
 dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_agenda` (look back since the last
-meeting, meals, shopping, deadlines, due routines, oudjes, open frictions), `finish_weekoverleg`. · Recipes:
+meeting, meals, shopping, deadlines, due routines, oudjes, open frictions and ideas, wins, week feelings and the
+Luister mee transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary), `add_win`,
+`remove_win` ⚠ (tablet), `set_week_feeling` (1 light – 5 heavy, per person or the household), `list_huddles`
+(summaries), `add_transcript_line` / `mark_transcript_sorted` (tablet), `clear_transcript` ⚠ (tablet),
+`add_idea` (Werkbord; decided with `resolve_friction` like a friction). · Recipes:
 `save_recipe` (name, ingredients, how we made it; rename keeps the photo), `list_recipes`, `remove_recipe` ⚠,
 `set_recipe_photo` (tablet only). Stock: `move_stock_item`, `remove_storage_spot` ⚠.
 Google (tablet only, opt-in, see `docs/GOOGLE.md`): `set_google_sync`, `backup_now`, `list_backups`,
@@ -182,8 +186,10 @@ Badkamer, Wasplaats and Medicijnkast with everyday items (medicine from the Apot
 unique, dish, ingredients), `Dish` (the dish library: name, ingredients, lastUsedOn) and `Huddle` (heldOn).
 v9: `Dish` becomes the *Recipe* (notes = how we made it, hasPhoto, isRecipe) with `recipe_photo` (JPEG ≤ 800 px,
 apart so lists stay light). Stock layout 2: Koelkast, Vers, Droge voeding, Snacks, Diepvries, Drank, Badkamer,
-Wasplaats, Medicijnkast; households with the first layout get these once and their kitchen items move along. Auto-migrations v1→v5
-keep every household's data.
+Wasplaats, Medicijnkast; households with the first layout get these once and their kitchen items move along. v10
+adds `reflection` (WIN with text / FEELING with value 1–5, memberId, huddleId null until the meeting ends),
+`transcript_line` (text, sorted, huddleId), `Huddle.summary`, and `BoardKind.IDEA`. A meeting's transcript is
+deleted when the next meeting ends; summaries stay. Auto-migrations v1→v10 keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
@@ -253,7 +259,17 @@ chips of what got done since the last meeting, plus Werkbord wins; "Een rustige 
 2 *Maaltijden* (seven days; tap a day → dish + what to buy, earlier dishes in one tap), 3 *Boodschappen* (the
 list at a glance, add, "Voorraad nakijken"), 4 *Deze week* (deadlines, routines aan de beurt, one project step
 "Dit weekend"), 5 *Oudjes* (three longest-open items: Deze week / Later / Gedaan, "Toon andere"), 6 *Werkbord*
-(open frictions with their three outcomes, goals without a next step). *Klaar* records the meeting.
+(open frictions and ideas with their three outcomes, goals without a next step; after a heavy week: "Wat pakken
+we als eerste aan?"). *Klaar* records the meeting and writes its summary (wat ging goed, hoe zwaar, afgesproken,
+besproken, nieuwe werkpunten, gepland, vrije tijd, menu), shown then and as "Vorige keer" next week.
+Terugblik also has *Wat ging goed* (wins, X asks first) and *Hoe zwaar voelde de week?* (five flames per person,
+or "Wij"). **Luister mee** (bar above the steps): continuous transcription during the meeting (Web Speech;
+Android restarts its recognizer after each pause and prefers on-device recognition). *Gesprek* shows what was
+heard; *Zet op zijn plek* opens the Voorstel: each sentence with its guessed place (Taken, Afspraak, Vrije tijd,
+Boodschappen, Weekmenu, Huisregel, Frictie, Idee, Doel, Ging goed, Gewoon gepraat), all ticked, a tap on the
+place moves it, *Toevoegen* runs the same tools. Sorting is local (`MeetingWords` + the capture-bar rules,
+`Orchestrator.propose`); the family's own AI can read the transcript through `weekoverleg_agenda`.
+The dashboard shows *Wat ging goed* until the meeting takes it along; "dat ging goed: …" in the capture bar adds one.
 The dashboard shows "Vanavond: <dish>" and, Friday to Sunday when no meeting was held for 6 days, a calm
 "Tijd voor het weekoverleg?" card with Start.
 
@@ -339,6 +355,7 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    …", "add to goals: …", "zet … bij de projecten"): only the rest becomes the item (`AreaWords`).
 6. ✅ **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*;
    capture bar: "we eten maandag spaghetti", "vanavond eten we frietjes", "dinner on monday: pizza".
+   v0.6: wat ging goed, hoe zwaar (per person), Luister mee with a Voorstel, ideas on the Werkbord, summaries.
 7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
    icon on Vandaag): add `<relay>/mcp` once in ChatGPT/Claude and type the tablet's pairing code.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a

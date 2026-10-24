@@ -37,7 +37,7 @@ class OrchestratorTest {
     private val shopping = ShoppingRepository(db)
     private val inbox = BacklogRepository(db)
     private val board = app.hearth.core.data.board.BoardRepository(db)
-    private val tools = HearthTools(shopping, inbox, board, app.hearth.core.data.food.StockRepository(db), app.hearth.core.data.week.WeekRepository(db), app.hearth.core.data.settings.SettingsRepository(db))
+    private val tools = HearthTools(shopping, inbox, board, app.hearth.core.data.food.StockRepository(db), app.hearth.core.data.week.WeekRepository(db), app.hearth.core.data.settings.SettingsRepository(db), app.hearth.core.data.week.MeetingRepository(db))
     private val nl = ToolContext(ToolSource.CHAT, Lang.NL, today = LocalDate(2026, 10, 22))
 
     /** Scripted model: a queue of router decisions and helper replies. */
@@ -226,6 +226,56 @@ class OrchestratorTest {
         offline.handle("zet fiets maken bij de projecten", nl)
         assertEquals(listOf("Fiets maken" to Section.PROJECT), inbox.openItems().map { it.text to it.section })
         assertEquals(emptyList(), shopping.openItems())
+    }
+
+    @Test
+    fun `a win goes to the weekoverleg's look back`() = runTest {
+        assertEquals("Mooi! Genoteerd bij wat goed ging: “Elke avond samen gegeten”", offline.handle("dat ging goed: elke avond samen gegeten", nl).text)
+        assertEquals(emptyList(), inbox.openItems())
+    }
+
+    @Test
+    fun `luister mee sorts a weekoverleg into the right places`() = runTest {
+        val saturday = nl.copy(today = kotlinx.datetime.LocalDate(2026, 10, 24))
+        val heard = listOf(
+            "fijn dat de ochtenden vlotter gingen",
+            "de tandarts voor Mia is volgende dinsdag en dan zondag niks plannen",
+            "we moeten nog melk en eieren halen",
+            "we eten woensdag curry",
+            "het stoort me dat de was altijd blijft liggen",
+            "we spreken af dat de kinderen om 8 uur gaan slapen",
+            "misschien kunnen we de was op zondag doen dan is maandag rustiger",
+            "garage opruimen dit weekend",
+            "ja dat is goed",
+        )
+        val proposals = offline.propose(heard, saturday)
+        assertEquals(
+            listOf(
+                app.hearth.ai.route.Place.WIN to "Fijn dat de ochtenden vlotter gingen",
+                app.hearth.ai.route.Place.EVENT to "De tandarts voor Mia",
+                app.hearth.ai.route.Place.FREE_TIME to "Niks plannen",
+                app.hearth.ai.route.Place.SHOPPING to "Melk, Eieren",
+                app.hearth.ai.route.Place.MEAL to "curry",
+                app.hearth.ai.route.Place.FRICTION to "Het stoort me dat de was altijd blijft liggen",
+                app.hearth.ai.route.Place.HOUSE_RULE to "De kinderen gaan om 8 uur slapen",
+                app.hearth.ai.route.Place.IDEA to "Misschien kunnen we de was op zondag doen dan is maandag rustiger",
+                app.hearth.ai.route.Place.PLANNING to "Garage opruimen",
+                app.hearth.ai.route.Place.NONE to "Ja dat is goed",
+            ),
+            proposals.map { it.place to it.text },
+        )
+        assertEquals("2026-10-27", proposals[1].date.toString())
+        assertEquals("2026-10-25", proposals[2].date.toString())
+        assertEquals("2026-10-24", proposals[8].date.toString())
+
+        // Moving a sentence elsewhere, then adding everything: the same tools as everywhere else.
+        val moved = offline.proposal(proposals[7].sentence, app.hearth.ai.route.Place.HOUSE_RULE, saturday)
+        val all = proposals.take(7) + moved + proposals.drop(8)
+        all.flatMap { it.calls }.forEach { tools.registry.execute(it, saturday) }
+        assertEquals(listOf("Melk", "Eieren"), shopping.openItems().map { it.name })
+        assertEquals(setOf("De tandarts voor Mia", "Niks plannen", "Garage opruimen"), inbox.openItems().map { it.text }.toSet())
+        // A friction and two house rules (the idea was moved to the rules).
+        assertEquals(3, board.allItems().size)
     }
 
     @Test

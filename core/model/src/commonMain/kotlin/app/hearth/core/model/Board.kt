@@ -15,6 +15,11 @@ enum class BoardKind {
     FRICTION,
     /** Doel: something to achieve, personal or together, with one small next step. */
     GOAL,
+    /**
+     * Idee: a way to make it easier or quicker ("de was op zondag, dan is maandag rustig"). Talked about
+     * like a friction: it becomes a house rule, a change, or we let it go.
+     */
+    IDEA,
 }
 
 enum class BoardStatus {
@@ -50,11 +55,13 @@ data class BoardItem(
     val closedAt: Long? = null,
 ) {
     val isOpen: Boolean get() = status == BoardStatus.OPEN
+    /** Frictions and ideas are both working points for the weekoverleg. */
+    val isWorkingPoint: Boolean get() = kind == BoardKind.FRICTION || kind == BoardKind.IDEA
 }
 
 /** Strips "huisregel:", "doel:", "rule:" and the like from what someone said. */
 fun stripBoardPrefix(text: String): String =
-    text.trim().replace(Regex("^(?:huisregel|regel|afspraak|doel|frictie|ergernis|house rule|rule|goal|friction)\\s*:\\s*", RegexOption.IGNORE_CASE), "")
+    text.trim().replace(Regex("^(?:huisregel|regel|afspraak|doel|frictie|ergernis|idee|verbetering|house rule|rule|goal|friction|idea)\\s*:\\s*", RegexOption.IGNORE_CASE), "")
         .trim().replaceFirstChar { it.uppercase() }
 
 /** A calm colour per person, picked in turn. */

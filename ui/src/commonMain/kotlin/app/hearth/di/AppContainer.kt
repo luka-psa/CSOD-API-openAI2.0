@@ -7,6 +7,7 @@ import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.food.StockRepository
 import app.hearth.core.data.settings.SettingsRepository
+import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.data.week.WeekRepository
 import app.hearth.core.tools.food.shopIdFor
 import app.hearth.core.model.Lang
@@ -58,7 +59,8 @@ class AppContainer(db: HearthDatabase, val lang: Lang, val googleAuth: GoogleAut
     private val googleHttp = HttpClient()
     val drive = DriveBackupStore(googleHttp, googleAuth)
     val calendar = GoogleCalendarApi(googleHttp, googleAuth)
-    val tools = HearthTools(shopping, backlog, board, stock, week, settings, backups, drive, calendar)
+    val meeting = MeetingRepository(db)
+    val tools = HearthTools(shopping, backlog, board, stock, week, settings, meeting, backups, drive, calendar)
     val orchestrator = Orchestrator(tools.registry)
 
     /** The family's ChatGPT or Claude reaches the same tools here, through the relay. */

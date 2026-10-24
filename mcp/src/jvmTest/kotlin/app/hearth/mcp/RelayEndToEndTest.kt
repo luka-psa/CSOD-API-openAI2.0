@@ -47,7 +47,7 @@ class RelayEndToEndTest {
         val db = inMemoryHearthDatabase()
         val shopping = ShoppingRepository(db)
         shopping.ensureDefaultShops(Lang.NL)
-        val tools = HearthTools(shopping, BacklogRepository(db), BoardRepository(db), StockRepository(db), WeekRepository(db), SettingsRepository(db))
+        val tools = HearthTools(shopping, BacklogRepository(db), BoardRepository(db), StockRepository(db), WeekRepository(db), SettingsRepository(db), app.hearth.core.data.week.MeetingRepository(db))
         val server = McpServer(tools.registry) { ToolContext(ToolSource.MCP, Lang.NL) }
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val client = RelayClient(server, scope)

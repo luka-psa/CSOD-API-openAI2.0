@@ -136,8 +136,8 @@
     <string name="rules_title">House rules</string>
     <string name="rules_add_hint">New rule, e.g. shoes go in the cupboard</string>
     <string name="rules_empty">No house rules yet. Write down what you agree on.</string>
-    <string name="frictions_title">Friction</string>
-    <string name="frictions_add_hint">What bothers you?</string>
+    <string name="frictions_title">Frictions &amp; ideas</string>
+    <string name="frictions_add_hint">What bothers you, or “idea: …”</string>
     <string name="frictions_empty">Nothing bothering anyone. Lovely.</string>
     <string name="frictions_hint">Talk them through in the weekly meeting: a rule, a change, or let go.</string>
     <string name="friction_to_rule">Make a rule</string>
@@ -329,4 +329,46 @@
         <item quantity="one">%1$d ingredient</item>
         <item quantity="other">%1$d ingredients</item>
     </plurals>
+    <string name="listen_start">Luister mee</string>
+    <string name="listen_stop">Stop</string>
+    <string name="listen_on">Hearth is listening…</string>
+    <string name="listen_hint">Just talk. Afterwards Hearth puts everything in its place, and you check it.</string>
+    <plurals name="listen_lines">
+        <item quantity="one">%1$d line heard</item>
+        <item quantity="other">%1$d lines heard</item>
+    </plurals>
+    <string name="conversation_show">Conversation</string>
+    <string name="sort_conversation">Put in place</string>
+    <string name="transcript_title">This meeting’s conversation</string>
+    <string name="transcript_last">Last meeting’s conversation</string>
+    <string name="transcript_empty">Nothing heard yet.</string>
+    <string name="transcript_kept">Stays readable until the next meeting; the summary stays for good.</string>
+    <string name="transcript_clear">Clear conversation</string>
+    <string name="transcript_clear_body">What Luister mee heard in this meeting goes. Things already put in place stay.</string>
+    <string name="voorstel_title">Put in place</string>
+    <string name="voorstel_hint">Tap a place to move a line, or untick it. Nothing is added until you tap Add.</string>
+    <string name="voorstel_add">Add (%1$d)</string>
+    <string name="voorstel_empty">Nothing new to put in place.</string>
+    <string name="place_planning">Tasks</string>
+    <string name="place_event">Appointment</string>
+    <string name="place_free">Free time</string>
+    <string name="place_shopping">Shopping</string>
+    <string name="place_meal">Week menu</string>
+    <string name="place_rule">House rule</string>
+    <string name="place_friction">Friction</string>
+    <string name="place_idea">Idea</string>
+    <string name="place_goal">Goal</string>
+    <string name="place_win">Went well</string>
+    <string name="place_none">Just talk</string>
+    <string name="wins_title">What went well</string>
+    <string name="wins_hint">What went well this week?</string>
+    <string name="win_remove">Remove from what went well?</string>
+    <string name="feeling_title">How heavy did the week feel?</string>
+    <string name="feeling_light">light</string>
+    <string name="feeling_heavy">heavy</string>
+    <string name="feeling_us">Us</string>
+    <string name="feeling_heavy_hint">A heavy week. Which one shall we tackle first?</string>
+    <string name="last_time">Last time</string>
+    <string name="week_summary">Summary</string>
+    <string name="earlier_meetings">Earlier meetings</string>
 </resources>

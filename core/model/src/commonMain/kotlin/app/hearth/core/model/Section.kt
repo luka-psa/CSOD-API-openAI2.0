@@ -26,12 +26,13 @@ val Section.boardKind: BoardKind?
         Section.NOTE -> BoardKind.RULE
         Section.FRICTION -> BoardKind.FRICTION
         Section.GOAL -> BoardKind.GOAL
+        Section.IDEA -> BoardKind.IDEA
         else -> null
     }
 
 /** Where something belongs in Hearth. The router sorts every message into one of these. */
 enum class Section {
-    SHOPPING, STOCK, APPOINTMENT, ADMIN, PROJECT, CHORE, RHYTHM, HABIT, PROTECTED_TIME, FRICTION, NOTE, GOAL, OTHER;
+    SHOPPING, STOCK, APPOINTMENT, ADMIN, PROJECT, CHORE, RHYTHM, HABIT, PROTECTED_TIME, FRICTION, NOTE, GOAL, IDEA, OTHER;
 
     fun label(lang: Lang): String = when (lang) {
         Lang.NL -> when (this) {
@@ -47,6 +48,7 @@ enum class Section {
             FRICTION -> "ergernis"
             NOTE -> "huisregel"
             GOAL -> "doel"
+            IDEA -> "idee"
             OTHER -> "nog te sorteren"
         }
         Lang.EN -> when (this) {
@@ -62,6 +64,7 @@ enum class Section {
             FRICTION -> "friction"
             NOTE -> "house rule"
             GOAL -> "goal"
+            IDEA -> "idea"
             OTHER -> "to sort"
         }
     }

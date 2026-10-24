@@ -25,7 +25,7 @@ class StockToolsTest {
     private val db = inMemoryHearthDatabase()
     private val shopping = ShoppingRepository(db)
     private val stock = StockRepository(db)
-    private val tools = HearthTools(shopping, BacklogRepository(db), BoardRepository(db), stock, app.hearth.core.data.week.WeekRepository(db), app.hearth.core.data.settings.SettingsRepository(db))
+    private val tools = HearthTools(shopping, BacklogRepository(db), BoardRepository(db), stock, app.hearth.core.data.week.WeekRepository(db), app.hearth.core.data.settings.SettingsRepository(db), app.hearth.core.data.week.MeetingRepository(db))
     private val nl = ToolContext(ToolSource.UI, Lang.NL)
 
     @BeforeTest

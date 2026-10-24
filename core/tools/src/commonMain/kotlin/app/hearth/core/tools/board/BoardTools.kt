@@ -51,7 +51,7 @@ private suspend fun BoardRepository.find(ids: List<String>, texts: List<String>,
     return (all.filter { it.id in ids } + byText).distinctBy { it.id }
 }
 
-private suspend fun BoardRepository.member(name: String?, ctx: ToolContext): Member? {
+internal suspend fun BoardRepository.member(name: String?, ctx: ToolContext): Member? {
     if (name.isNullOrBlank()) return null
     val key = normalizeName(name)
     return allMembers().firstOrNull { normalizeName(it.name) == key || it.id == name }
@@ -166,6 +166,36 @@ class LogFrictionTool(private val repo: BoardRepository) : Tool<LogFrictionArgs,
 }
 
 @Serializable
+data class AddIdeaArgs(
+    @Describe("A way to make the household easier or quicker, e.g. 'De was op zondag, dan is maandag rustig'.")
+    val text: String,
+    @Describe("Whose idea (name), if known.")
+    val by: String? = null,
+)
+
+class AddIdeaTool(private val repo: BoardRepository) : Tool<AddIdeaArgs, BoardItemResult> {
+    override val name = NAME
+    override val description =
+        "Note an idea to make things easier or quicker. Like a friction it waits on the Werkbord for the weekoverleg, " +
+            "where it becomes a house rule, a change, or is let go."
+    override val argsSerializer = AddIdeaArgs.serializer()
+    override val resultSerializer = BoardItemResult.serializer()
+
+    override suspend fun run(args: AddIdeaArgs, ctx: ToolContext): BoardItemResult {
+        val text = stripBoardPrefix(args.text).ifEmpty { throw ToolException(ctx.t("Welk idee?", "Which idea?")) }
+        val who = repo.member(args.by, ctx)?.id ?: ctx.actorMemberId
+        val (item, added) = repo.add(BoardKind.IDEA, text, memberId = who)
+        val summary = if (added) ctx.t("Goed idee, het staat op het werkbord: “${item.text}”", "Good idea, it's on the board: “${item.text}”")
+        else ctx.t("Dat idee staat er al: “${item.text}”", "That idea is already there: “${item.text}”")
+        return BoardItemResult(item, added, summary)
+    }
+
+    companion object {
+        const val NAME = "add_idea"
+    }
+}
+
+@Serializable
 data class AddGoalArgs(
     @Describe("The goal, e.g. 'Elke maand een avondje met z’n twee'.")
     val text: String,
@@ -207,7 +237,7 @@ class AddGoalTool(private val repo: BoardRepository) : Tool<AddGoalArgs, BoardIt
 
 @Serializable
 data class ListBoardArgs(
-    @Describe("RULE, FRICTION or GOAL; leave empty for everything open.")
+    @Describe("RULE, FRICTION, GOAL or IDEA; leave empty for everything open.")
     val kind: BoardKind? = null,
 )
 
@@ -227,6 +257,7 @@ class ListBoardTool(private val repo: BoardRepository) : Tool<ListBoardArgs, Boa
                 BoardKind.RULE -> ctx.t("Huisregels", "House rules")
                 BoardKind.FRICTION -> ctx.t("Frictie", "Frictions")
                 BoardKind.GOAL -> ctx.t("Doelen", "Goals")
+                BoardKind.IDEA -> ctx.t("Ideeën", "Ideas")
             }
             title + ":\n" + ofKind.joinToString("\n") { item ->
                 val who = item.memberId?.let(names::get)?.let { " ($it)" } ?: ""
@@ -263,12 +294,13 @@ data class ResolveFrictionArgs(
 class ResolveFrictionTool(private val repo: BoardRepository, private val backlog: BacklogRepository) : Tool<ResolveFrictionArgs, BoardItemsResult> {
     override val name = NAME
     override val description =
-        "Decide what to do about a friction: make it a house rule, turn it into a change (lands on the backlog as next up), or let it go."
+        "Decide what to do about a friction or an idea: make it a house rule, turn it into a change (lands on the backlog as next up), or let it go."
     override val argsSerializer = ResolveFrictionArgs.serializer()
     override val resultSerializer = BoardItemsResult.serializer()
 
     override suspend fun run(args: ResolveFrictionArgs, ctx: ToolContext): BoardItemsResult {
-        val frictions = repo.find(args.itemIds, args.texts, BoardKind.FRICTION).filter { it.isOpen }.ifEmpty { notFound(ctx) }
+        val frictions = (repo.find(args.itemIds, args.texts, BoardKind.FRICTION) + repo.find(args.itemIds, args.texts, BoardKind.IDEA))
+            .filter { it.isOpen }.distinctBy { it.id }.ifEmpty { notFound(ctx) }
         val custom = args.text?.let(::stripBoardPrefix)?.ifEmpty { null }
         val lines = frictions.map { friction ->
             val words = custom ?: friction.text

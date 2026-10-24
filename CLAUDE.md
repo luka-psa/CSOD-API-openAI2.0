@@ -110,7 +110,8 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Werkbord** (`board_item`, not the backlog): *Huisregel* (RULE), *Frictie*
   (FRICTION → wordt huisregel / veranderen / loslaten; all three are good
   outcomes), *Doel* (GOAL, scope gezin / samen / persoonlijk, one small *next
-  step*). *Member*: a person with a colour.
+  step*), *Idee* (IDEA: a way to make it easier; decided like a friction).
+  *Member*: a person with a colour.
 - **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
   and onto the list, bought = IN_STOCK again. Voice never adds on its own: the
   words show live, then "Klopt dit?". Every list row ends in an X that asks first.
@@ -118,9 +119,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   saved on purpose (`isRecipe`, notes = how we made it, an optional photo) or
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
-- **Weekoverleg:** Terugblik → Maaltijden → Boodschappen → Deze week → *Oudjes*
+- **Weekoverleg:** Terugblik (*Wat ging goed* = wins, *Hoe zwaar* = week feeling
+  1–5 per person) → Maaltijden → Boodschappen → Deze week → *Oudjes*
   (the longest-open unplanned items, a few picked each week) → Werkbord; *Klaar*
-  records a *Huddle*. *Meal*: one per day; the *Dish* library remembers
+  records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting
+  (the *transcript* lasts until the next meeting); *Zet op zijn plek* opens the
+  *Voorstel* (each sentence → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.
 - **Koppelingen** (ChatGPT/Claude and Google): *Relay* (`relay/`, one shared Cloudflare Worker), *connector address*
   (`<relay>/mcp`, the same for everyone), *koppelcode* / *pairing code* (6 digits on the tablet, typed on

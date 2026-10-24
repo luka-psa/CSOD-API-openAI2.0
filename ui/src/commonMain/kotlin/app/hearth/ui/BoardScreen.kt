@@ -118,7 +118,7 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, wide: Boolean, cb
     var asking by remember { mutableStateOf<Ask?>(null) }
 
     val rules = items.filter { it.kind == BoardKind.RULE && it.isOpen }
-    val frictions = items.filter { it.kind == BoardKind.FRICTION }
+    val frictions = items.filter { it.isWorkingPoint }
     val goals = items.filter { it.kind == BoardKind.GOAL }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
@@ -246,6 +246,10 @@ private fun FrictionsCard(frictions: List<BoardItem>, members: List<Member>, mod
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 4.dp)) {
                     f.memberId?.let(byId::get)?.let { MemberDot(it); Spacer(Modifier.width(10.dp)) }
+                    if (f.kind == BoardKind.IDEA) {
+                        Icon(HearthIcons.Idea, null, tint = Section.IDEA.style().ink, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Column(Modifier.weight(1f)) {
                         Text(f.text, style = MaterialTheme.typography.bodyLarge)
                         Text(ago(f.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

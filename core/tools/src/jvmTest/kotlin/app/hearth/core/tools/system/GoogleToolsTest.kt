@@ -63,7 +63,7 @@ class GoogleToolsTest {
     private val settings = SettingsRepository(db)
     private val drive = FakeDrive()
     private val calendar = FakeCalendar()
-    private val tools = HearthTools(shopping, backlog, BoardRepository(db), StockRepository(db), WeekRepository(db), settings, BackupRepository(db), drive, calendar)
+    private val tools = HearthTools(shopping, backlog, BoardRepository(db), StockRepository(db), WeekRepository(db), settings, app.hearth.core.data.week.MeetingRepository(db), BackupRepository(db), drive, calendar)
     private val ctx = ToolContext(ToolSource.UI, Lang.NL, today = LocalDate(2026, 10, 22))
 
     @AfterTest
@@ -118,7 +118,7 @@ class GoogleToolsTest {
 
     @Test
     fun `without Google sign-in the tools say so`() = runTest {
-        val offline = HearthTools(shopping, backlog, BoardRepository(db), StockRepository(db), WeekRepository(db), settings, BackupRepository(db))
+        val offline = HearthTools(shopping, backlog, BoardRepository(db), StockRepository(db), WeekRepository(db), settings, app.hearth.core.data.week.MeetingRepository(db), BackupRepository(db))
         val e = assertFailsWith<ToolException> { offline.registry.run(offline.backupNow!!, NoArgs(), ctx) }
         assertEquals("Meld je eerst aan bij Google.", e.userMessage)
     }

@@ -29,6 +29,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.hearth.core.model.Win
+import app.hearth.ui.resources.wins_title
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -107,6 +109,7 @@ fun TodayScreen(
     shopping: List<ShopSection>,
     board: List<BoardItem>,
     meals: List<Meal>,
+    wins: List<Win>,
     suggestHuddle: Boolean,
     doneToday: Int,
     today: LocalDate,
@@ -229,6 +232,7 @@ fun TodayScreen(
                     dontForgetCard(Modifier.fillMaxWidth())
                     shoppingCard(Modifier.fillMaxWidth())
                     boardCard(Modifier.fillMaxWidth())
+                    if (wins.isNotEmpty()) WinsCard(wins, onGoWeek, Modifier.fillMaxWidth())
                 }
                 Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
                     if (suggestHuddle) HuddleCard(onGoWeek)
@@ -248,6 +252,21 @@ fun TodayScreen(
                 if (projects.isNotEmpty()) projectsCard(Modifier.fillMaxWidth())
                 shoppingCard(Modifier.fillMaxWidth())
                 boardCard(Modifier.fillMaxWidth())
+                if (wins.isNotEmpty()) WinsCard(wins, onGoWeek, Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+/** Wat ging goed deze week: done work made visible, until the weekoverleg takes it along. */
+@Composable
+private fun WinsCard(wins: List<Win>, onOpen: () -> Unit, modifier: Modifier) {
+    HearthCard(stringResource(Res.string.wins_title), HearthIcons.Heart, modifier.clickable(onClick = onOpen)) {
+        wins.takeLast(5).reversed().forEach { win ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                Icon(HearthIcons.Check, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(win.text, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }

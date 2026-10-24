@@ -29,7 +29,7 @@ import kotlin.test.assertTrue
 class McpServerTest {
     private val db = inMemoryHearthDatabase()
     private val shopping = ShoppingRepository(db)
-    private val tools = HearthTools(shopping, BacklogRepository(db), BoardRepository(db), StockRepository(db), WeekRepository(db), SettingsRepository(db))
+    private val tools = HearthTools(shopping, BacklogRepository(db), BoardRepository(db), StockRepository(db), WeekRepository(db), SettingsRepository(db), app.hearth.core.data.week.MeetingRepository(db))
     private val server = McpServer(tools.registry) { ToolContext(ToolSource.MCP, Lang.NL) }
 
     @BeforeTest

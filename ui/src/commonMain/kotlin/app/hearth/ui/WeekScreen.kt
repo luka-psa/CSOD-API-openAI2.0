@@ -46,6 +46,17 @@ import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Huddle
+import app.hearth.core.model.Member
+import app.hearth.core.model.TranscriptLine
+import app.hearth.core.model.WeekFeeling
+import app.hearth.core.model.Win
+import app.hearth.ai.route.Place
+import app.hearth.ui.resources.earlier_meetings
+import app.hearth.ui.resources.feeling_heavy_hint
+import app.hearth.ui.resources.last_time
+import app.hearth.ui.resources.transcript_last
+import app.hearth.ui.resources.transcript_title
+import app.hearth.ui.resources.week_summary
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Meal
 import app.hearth.core.model.Plan
@@ -137,6 +148,27 @@ class WeekCallbacks(
     val resolveFriction: (BoardItem, FrictionOutcome, String?) -> Unit,
     val setGoalStep: (BoardItem, String, Boolean) -> Unit,
     val finish: () -> Unit,
+    val addWin: (String) -> Unit,
+    val removeWin: (Win) -> Unit,
+    val setFeeling: (Int, Member?) -> Unit,
+    val heard: (String) -> Unit,
+    val clearTranscript: () -> Unit,
+    val openVoorstel: () -> Unit,
+    val closeVoorstel: () -> Unit,
+    val moveVoorstel: (Int, Place) -> Unit,
+    val toggleVoorstel: (Int) -> Unit,
+    val addVoorstel: () -> Unit,
+)
+
+/** The Weekoverleg's own notes: the look back, Luister mee and the summaries. */
+class MeetingState(
+    val wins: List<Win>,
+    val feelings: List<WeekFeeling>,
+    val members: List<Member>,
+    val transcript: List<TranscriptLine>,
+    val lastTranscript: List<TranscriptLine>,
+    val huddles: List<Huddle>,
+    val voorstel: List<VoorstelRow>?,
 )
 
 enum class WeekStep(val title: StringResource) {
@@ -164,11 +196,21 @@ fun WeekScreen(
     shopping: List<ShopSection>,
     today: LocalDate,
     lang: Lang,
+    meeting: MeetingState,
     cb: WeekCallbacks,
 ) {
     var step by rememberSaveable { mutableStateOf(WeekStep.LOOK_BACK) }
     var finished by rememberSaveable { mutableStateOf(false) }
+    var listening by remember { mutableStateOf(false) }
+    var partial by remember { mutableStateOf("") }
+    var showing by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(Unit) { cb.loadAgenda() }
+    val transcriber = rememberTranscriber(
+        language = if (lang == Lang.NL) "nl-BE" else "en-GB",
+        onLine = cb.heard,
+        onPartial = { partial = it },
+        onActive = { listening = it; if (!it) partial = "" },
+    )
 
     Column(Modifier.fillMaxSize()) {
         Text(stringResource(Res.string.nav_week), style = MaterialTheme.typography.displaySmall)
@@ -185,23 +227,40 @@ fun WeekScreen(
                 ChoiceChip("${i + 1}  ${stringResource(s.title)}", s == step, { step = s; finished = false })
             }
         }
-        Spacer(Modifier.size(14.dp))
+        Spacer(Modifier.size(10.dp))
+        ListenBar(
+            available = transcriber.available,
+            listening = listening,
+            partial = partial,
+            lines = meeting.transcript,
+            onToggle = { if (listening) transcriber.stop() else transcriber.start() },
+            onShow = { showing = true },
+            onSort = cb.openVoorstel,
+        )
+        Spacer(Modifier.size(10.dp))
 
         ListSurface(Modifier.weight(1f)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
                 if (finished) {
-                    Finished(agenda, meals)
+                    Finished(agenda, meals, meeting.huddles)
                 } else {
                     Text(stringResource(Res.string.step_of, step.ordinal + 1, WeekStep.entries.size), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     Text(stringResource(step.title), style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.size(14.dp))
                     when (step) {
-                        WeekStep.LOOK_BACK -> LookBack(agenda, lastHuddle, today, lang)
+                        WeekStep.LOOK_BACK -> {
+                            LastTime(lastHuddle, meeting.lastTranscript, onShow = { showing = false })
+                            LookBack(agenda, lastHuddle, today, lang)
+                            Spacer(Modifier.size(18.dp))
+                            WinsSection(meeting.wins, meeting.members, cb.addWin, cb.removeWin)
+                            Spacer(Modifier.size(18.dp))
+                            FeelingMeter(meeting.members, meeting.feelings, cb.setFeeling)
+                        }
                         WeekStep.MEALS -> Meals(meals, dishes, today, lang, cb)
                         WeekStep.SHOPPING -> ShoppingStep(shopping, cb)
                         WeekStep.THIS_WEEK -> ThisWeek(backlog, steps, today, lang, cb)
                         WeekStep.OUDJES -> Oudjes(backlog, today, lang, cb)
-                        WeekStep.BOARD -> BoardStep(board, cb)
+                        WeekStep.BOARD -> BoardStep(board, heavy = meeting.feelings.any { it.value >= 4 }, cb)
                     }
                 }
             }
@@ -214,7 +273,7 @@ fun WeekScreen(
             Spacer(Modifier.weight(1f))
             when {
                 finished -> {}
-                step == WeekStep.BOARD -> Button(onClick = { cb.finish(); finished = true }) {
+                step == WeekStep.BOARD -> Button(onClick = { if (listening) transcriber.stop(); cb.finish(); finished = true }) {
                     Icon(HearthIcons.Check, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(Res.string.week_finish))
@@ -227,6 +286,29 @@ fun WeekScreen(
             }
         }
     }
+    when (showing) {
+        true -> TranscriptSheet(stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript) { showing = null }
+        false -> TranscriptSheet(stringResource(Res.string.transcript_last), meeting.lastTranscript, onClear = null) { showing = null }
+        null -> {}
+    }
+    meeting.voorstel?.let { rows ->
+        VoorstelSheet(rows, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.addVoorstel, cb.closeVoorstel)
+    }
+}
+
+/** "Vorige keer": the last meeting's summary, and its conversation while it's still kept. */
+@Composable
+private fun LastTime(last: Huddle?, transcript: List<TranscriptLine>, onShow: () -> Unit) {
+    val summary = last?.summary?.takeIf { it.isNotBlank() } ?: return
+    val s = Section.NOTE.style()
+    Column(Modifier.fillMaxWidth().background(s.tint, MaterialTheme.shapes.medium).padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(Res.string.last_time), style = MaterialTheme.typography.labelLarge, color = s.ink, modifier = Modifier.weight(1f))
+            if (transcript.isNotEmpty()) TextButton(onClick = onShow) { Text(stringResource(Res.string.transcript_last)) }
+        }
+        SummaryText(summary)
+    }
+    Spacer(Modifier.size(18.dp))
 }
 
 // ---------- 1. look back ----------
@@ -445,17 +527,22 @@ private fun Oudjes(backlog: List<BacklogItem>, today: LocalDate, lang: Lang, cb:
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BoardStep(board: List<BoardItem>, cb: WeekCallbacks) {
+private fun BoardStep(board: List<BoardItem>, heavy: Boolean, cb: WeekCallbacks) {
     var asking by remember { mutableStateOf<Pair<BoardItem, FrictionOutcome?>?>(null) }
-    val frictions = board.filter { it.kind == BoardKind.FRICTION && it.isOpen }
+    val frictions = board.filter { it.isWorkingPoint && it.isOpen }
     val goals = board.filter { it.kind == BoardKind.GOAL && it.isOpen && it.nextStep == null }
     Text(stringResource(Res.string.step_board_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (heavy && frictions.isNotEmpty()) {
+        Spacer(Modifier.size(10.dp))
+        Hint(stringResource(Res.string.feeling_heavy_hint))
+    }
     Spacer(Modifier.size(12.dp))
     if (frictions.isEmpty() && goals.isEmpty()) Hint(stringResource(Res.string.step_board_empty))
     frictions.forEach { f ->
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(HearthIcons.Bolt, null, tint = Section.FRICTION.style().ink, modifier = Modifier.size(18.dp))
+                val idea = f.kind == BoardKind.IDEA
+                Icon(if (idea) HearthIcons.Idea else HearthIcons.Bolt, null, tint = (if (idea) Section.IDEA else Section.FRICTION).style().ink, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(f.text, style = MaterialTheme.typography.bodyLarge)
             }
@@ -487,7 +574,7 @@ private fun BoardStep(board: List<BoardItem>, cb: WeekCallbacks) {
 // ---------- done ----------
 
 @Composable
-private fun Finished(agenda: WeekAgenda?, meals: List<Meal>) {
+private fun Finished(agenda: WeekAgenda?, meals: List<Meal>, huddles: List<Huddle>) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp)) {
         Icon(HearthIcons.Flame, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
         Spacer(Modifier.size(16.dp))
@@ -501,6 +588,18 @@ private fun Finished(agenda: WeekAgenda?, meals: List<Meal>) {
         if (meals.isNotEmpty()) {
             Spacer(Modifier.size(8.dp))
             Text(meals.joinToString("  ·  ") { it.dish }, style = MaterialTheme.typography.bodyLarge, color = Section.PROTECTED_TIME.style().ink)
+        }
+    }
+    huddles.firstOrNull()?.summary?.takeIf { it.isNotBlank() }?.let {
+        GroupTitle(stringResource(Res.string.week_summary))
+        Column(Modifier.padding(horizontal = 10.dp)) { SummaryText(it) }
+    }
+    val earlier = huddles.drop(1).filter { it.summary.isNotBlank() }.take(3)
+    if (earlier.isNotEmpty()) {
+        Spacer(Modifier.size(12.dp))
+        GroupTitle(stringResource(Res.string.earlier_meetings))
+        earlier.forEach { h ->
+            Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) { SummaryText(h.summary) }
         }
     }
 }

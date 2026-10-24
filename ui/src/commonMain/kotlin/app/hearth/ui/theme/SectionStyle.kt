@@ -17,5 +17,6 @@ fun Section.style(): SectionStyle = when (this) {
     Section.FRICTION -> SectionStyle(Color(0xFFA14B3B), Color(0xFFF6E2DD))
     Section.NOTE -> SectionStyle(Color(0xFF5F6B7A), Color(0xFFE7EAEE))
     Section.GOAL -> SectionStyle(Color(0xFFB08A1E), Color(0xFFF7EFD6))
+    Section.IDEA -> SectionStyle(Color(0xFF2F8A86), Color(0xFFDDF1EF))
     Section.OTHER -> SectionStyle(Color(0xFF8A8079), Color(0xFFEFEBE6))
 }

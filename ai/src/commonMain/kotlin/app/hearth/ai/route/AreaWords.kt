@@ -16,6 +16,7 @@ object AreaWords {
         Section.NOTE to listOf("huisregels", "huisregel", "huis regels", "huis regel", "regels", "afspraken", "house rules", "house rule", "houserules", "rules", "house"),
         Section.FRICTION to listOf("ergernissen", "fricties", "frictie", "irritaties", "frictions", "friction", "annoyances"),
         Section.GOAL to listOf("doelen", "doel", "goals", "goal"),
+        Section.IDEA to listOf("ideeën", "ideeen", "idee", "verbeteringen", "ideas", "idea"),
         Section.PROJECT to listOf("projecten", "project", "projects"),
         Section.CHORE to listOf("huishoudtaken", "gewoontes", "gewoonte", "ritme", "routines", "routine", "habits", "chores"),
         Section.ADMIN to listOf("administratie", "admin", "paperwork"),

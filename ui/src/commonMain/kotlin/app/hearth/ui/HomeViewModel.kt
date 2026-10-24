@@ -41,6 +41,20 @@ import app.hearth.core.data.settings.Connection
 import app.hearth.core.tools.system.SaveConnectionArgs
 import app.hearth.mcp.LinkedApp
 import app.hearth.core.tools.system.BackupFile
+import app.hearth.ai.Orchestrator
+import app.hearth.ai.route.Place
+import app.hearth.ai.route.KeywordRouter
+import app.hearth.core.tools.board.AddIdeaArgs
+import app.hearth.core.model.TranscriptLine
+import app.hearth.core.model.WeekFeeling
+import app.hearth.core.model.Win
+import app.hearth.core.tools.ToolOutcome
+import app.hearth.core.tools.week.AddWinArgs
+import app.hearth.core.tools.week.ClearTranscriptArgs
+import app.hearth.core.tools.week.MarkSortedArgs
+import app.hearth.core.tools.week.RemoveWinArgs
+import app.hearth.core.tools.week.TranscriptLineArgs
+import app.hearth.core.tools.week.WeekFeelingArgs
 import app.hearth.core.tools.system.GoogleSettings
 import app.hearth.core.tools.system.NoArgs
 import app.hearth.core.tools.system.RestoreBackupArgs
@@ -452,6 +466,90 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         app.tools.registry.run(app.tools.removeStorageSpot, RemoveStorageSpotArgs(spot.id), it, confirmed = true)
     }
 
+    // ---- Weekoverleg: what went well, how heavy, Luister mee ----
+
+    val wins: StateFlow<List<Win>> = app.meeting.wins.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val feelings: StateFlow<List<WeekFeeling>> = app.meeting.feelings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val transcript: StateFlow<List<TranscriptLine>> = app.meeting.transcript.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val huddles: StateFlow<List<Huddle>> = app.meeting.huddles().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The last meeting's transcript: readable until the next meeting ends. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val lastTranscript: StateFlow<List<TranscriptLine>> = app.week.lastHuddle
+        .flatMapLatest { h -> if (h == null) flow { emit(emptyList()) } else app.meeting.transcriptOf(h.id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun addWin(text: String) {
+        if (text.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addWin, AddWinArgs(text), it) }
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun removeWin(win: Win) = tool { app.tools.registry.run(app.tools.removeWin, RemoveWinArgs(win.id), it, confirmed = true) }
+
+    fun setFeeling(value: Int, member: Member?) = tool {
+        app.tools.registry.run(app.tools.setWeekFeeling, WeekFeelingArgs(value, member?.id), it)
+    }
+
+    /** Luister mee heard a stretch of talk. */
+    fun heard(line: String) {
+        if (line.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addTranscriptLine, TranscriptLineArgs(line), it) }
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun clearTranscript() = tool { app.tools.registry.run(app.tools.clearTranscript, ClearTranscriptArgs(), it, confirmed = true) }
+
+    private val _voorstel = MutableStateFlow<List<VoorstelRow>?>(null)
+    /** What Luister mee heard, sorted into places, waiting for one tap. Null when closed. */
+    val voorstel: StateFlow<List<VoorstelRow>?> = _voorstel.asStateFlow()
+    private var voorstelLines: List<String> = emptyList()
+
+    fun openVoorstel() {
+        val lines = transcript.value.filter { !it.sorted }
+        voorstelLines = lines.map { it.id }
+        _voorstel.value = app.orchestrator.propose(lines.map { it.text }, ctx(ToolSource.UI))
+            .map { VoorstelRow(it, checked = it.place != Place.NONE && it.calls.isNotEmpty()) }
+    }
+
+    fun closeVoorstel() {
+        _voorstel.value = null
+    }
+
+    /** The family tapped another place for a sentence. */
+    fun moveVoorstel(index: Int, place: Place) = _voorstel.update { rows ->
+        rows?.mapIndexed { i, row ->
+            if (i != index) row else app.orchestrator.proposal(row.proposal.sentence, place, ctx(ToolSource.UI)).let { p ->
+                VoorstelRow(p, checked = p.place != Place.NONE && p.calls.isNotEmpty())
+            }
+        }
+    }
+
+    fun toggleVoorstel(index: Int) = _voorstel.update { rows ->
+        rows?.mapIndexed { i, row -> if (i == index) row.copy(checked = !row.checked && row.proposal.calls.isNotEmpty()) else row }
+    }
+
+    /** Adds every ticked line through the same tools as everywhere else, then marks the talk as sorted. */
+    fun addVoorstel() {
+        val rows = _voorstel.value ?: return
+        _voorstel.value = null
+        tool {
+            var added = 0
+            rows.filter { r -> r.checked }.forEach { row ->
+                row.proposal.calls.forEach { call -> if (app.tools.registry.execute(call, it) is ToolOutcome.Done) added++ }
+            }
+            app.tools.registry.run(app.tools.markTranscriptSorted, MarkSortedArgs(voorstelLines), it)
+            _messages.update { list ->
+                list + ChatMessage(
+                    fromUser = false,
+                    text = if (added == 0) it.t("Niets toegevoegd; het gesprek blijft bewaard.", "Nothing added; the conversation is kept.")
+                    else it.t("$added dingen op hun plek gezet.", "$added things put in their place."),
+                )
+            }
+            loadAgenda()
+        }
+    }
+
     fun finishWeekoverleg() = tool {
         val done = app.tools.registry.run(app.tools.finishWeekoverleg, AgendaArgs(), it)
         _messages.update { list -> list + ChatMessage(fromUser = false, text = done.summary) }
@@ -474,9 +572,16 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         tool { app.tools.registry.run(app.tools.addHouseRule, AddHouseRuleArgs(text), it) }
     }
 
+    /** The Werkbord's working points: a friction, or an idea when it starts with "idee:". */
     fun logFriction(text: String) {
         if (text.isBlank()) return
-        tool { app.tools.registry.run(app.tools.logFriction, LogFrictionArgs(text), it) }
+        tool {
+            if (KeywordRouter.section(text) == Section.IDEA) {
+                app.tools.registry.run(app.tools.addIdea, AddIdeaArgs(text), it)
+            } else {
+                app.tools.registry.run(app.tools.logFriction, LogFrictionArgs(text), it)
+            }
+        }
     }
 
     fun resolveFriction(item: BoardItem, outcome: FrictionOutcome, text: String? = null) = tool {
@@ -572,6 +677,9 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     }
 }
+
+/** One sentence of the Voorstel and whether it gets added. */
+data class VoorstelRow(val proposal: Orchestrator.Proposal, val checked: Boolean)
 
 /** What's switched on with Google, and when it last ran (epoch ms). */
 data class GoogleState(

@@ -37,7 +37,7 @@ class WeekToolsTest {
     private val backlog = BacklogRepository(db)
     private val week = WeekRepository(db)
     private var tick = app.hearth.core.model.nowMillis()
-    private val tools = HearthTools(shopping, BacklogRepository(db) { tick++ }, BoardRepository(db), StockRepository(db), week, app.hearth.core.data.settings.SettingsRepository(db))
+    private val tools = HearthTools(shopping, BacklogRepository(db) { tick++ }, BoardRepository(db), StockRepository(db), week, app.hearth.core.data.settings.SettingsRepository(db), app.hearth.core.data.week.MeetingRepository(db))
 
     // Friday 23 October 2026.
     private val friday = LocalDate(2026, 10, 23)

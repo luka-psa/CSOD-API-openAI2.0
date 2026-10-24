@@ -16,7 +16,16 @@ import app.hearth.core.tools.system.RestoreBackupTool
 import app.hearth.core.tools.system.SaveConnectionTool
 import app.hearth.core.tools.system.SetGoogleSyncTool
 import app.hearth.core.tools.system.SyncCalendarTool
+import app.hearth.core.data.week.MeetingRepository
+import app.hearth.core.tools.board.AddIdeaTool
+import app.hearth.core.tools.week.AddTranscriptLineTool
+import app.hearth.core.tools.week.AddWinTool
+import app.hearth.core.tools.week.ClearTranscriptTool
 import app.hearth.core.tools.week.FinishWeekoverlegTool
+import app.hearth.core.tools.week.ListHuddlesTool
+import app.hearth.core.tools.week.MarkTranscriptSortedTool
+import app.hearth.core.tools.week.RemoveWinTool
+import app.hearth.core.tools.week.SetWeekFeelingTool
 import app.hearth.core.tools.week.ListMealPlanTool
 import app.hearth.core.tools.week.PlanMealTool
 import app.hearth.core.tools.week.ListRecipesTool
@@ -68,6 +77,8 @@ class HearthTools(
     stock: StockRepository,
     week: WeekRepository,
     settings: SettingsRepository,
+    /** The Weekoverleg's notes (wins, week feelings, Luister mee, summaries). */
+    meeting: MeetingRepository,
     /** The household as one file; with [backupStore] and [calendarApi] for the opt-in Google features. */
     backups: BackupRepository? = null,
     backupStore: BackupStore = NoGoogle,
@@ -105,6 +116,7 @@ class HearthTools(
     val addHouseRule = AddHouseRuleTool(board)
     val logFriction = LogFrictionTool(board)
     val addGoal = AddGoalTool(board)
+    val addIdea = AddIdeaTool(board)
     val listBoard = ListBoardTool(board)
     val resolveFriction = ResolveFrictionTool(board, backlog)
     val setGoalStep = SetGoalStepTool(board, backlog)
@@ -114,8 +126,15 @@ class HearthTools(
     val planMeal = PlanMealTool(week, addShoppingItem)
     val listMealPlan = ListMealPlanTool(week)
     val removeMeal = RemoveMealTool(week)
-    val weekoverlegAgenda = WeekoverlegAgendaTool(week, backlog, board, shopping)
-    val finishWeekoverleg = FinishWeekoverlegTool(week)
+    val weekoverlegAgenda = WeekoverlegAgendaTool(week, backlog, board, shopping, meeting)
+    val finishWeekoverleg = FinishWeekoverlegTool(week, meeting, backlog, board)
+    val addWin = AddWinTool(meeting, board)
+    val removeWin = RemoveWinTool(meeting)
+    val setWeekFeeling = SetWeekFeelingTool(meeting, board)
+    val addTranscriptLine = AddTranscriptLineTool(meeting)
+    val clearTranscript = ClearTranscriptTool(meeting)
+    val markTranscriptSorted = MarkTranscriptSortedTool(meeting)
+    val listHuddles = ListHuddlesTool(meeting)
     val saveRecipe = SaveRecipeTool(week)
     val listRecipes = ListRecipesTool(week)
     val removeRecipe = RemoveRecipeTool(week)
@@ -137,6 +156,7 @@ class HearthTools(
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
+            addWin, removeWin, setWeekFeeling, addTranscriptLine, markTranscriptSorted, clearTranscript, listHuddles, addIdea,
             saveRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection, setGoogleSync, listBackups, syncCalendar,
         ) + listOfNotNull(backupNow, restoreBackup),

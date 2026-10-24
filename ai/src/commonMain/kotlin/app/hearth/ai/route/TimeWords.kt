@@ -35,4 +35,37 @@ object TimeWords {
             }
         }
     }
+
+    // A day anywhere in a sentence, for talk: "zaterdag doen we niks", "we gaan volgende dinsdag naar de tandarts".
+    private val anywhere = Regex(
+        "(?:^|\\s)(?:(tegen|voor|by|before)\\s+)?(?:(?:op|on|next|volgende|deze|this)\\s+)?" +
+            "(vandaag|today|morgen|tomorrow|${weekdays.keys.joinToString("|")}|dit\\s+weekend|this\\s+weekend|weekend)(?=[\\s,.!?]|$)",
+        RegexOption.IGNORE_CASE,
+    )
+
+    private val DANGLING = Regex("\\s+(?:is|zijn|op|om|gaat|gaan|staat|are|on|at)$", RegexOption.IGNORE_CASE)
+
+    /** Like [extract], but the day may stand anywhere; it is taken out of the text. */
+    fun extractAnywhere(text: String, today: LocalDate): TimeHint? {
+        extract(text, today)?.let { return it.copy(text = it.text.replace(DANGLING, "").trim().ifEmpty { it.text }) }
+        val m = anywhere.find(text) ?: return null
+        val rest = (text.substring(0, m.range.first) + " " + text.substring(m.range.last + 1))
+            .replace(Regex("\\s+"), " ").trim().trim(',').trim()
+            // "de tandarts is volgende dinsdag" -> "de tandarts", not "de tandarts is".
+            .replace(DANGLING, "").trim().ifEmpty { return null }
+        val finishBy = m.groupValues[1].isNotEmpty()
+        val word = m.groupValues[2].lowercase().replace(Regex("\\s+"), " ")
+        return when {
+            word == "vandaag" || word == "today" -> TimeHint(rest, When.TODAY, null, finishBy)
+            word == "morgen" || word == "tomorrow" -> TimeHint(rest, When.TOMORROW, null, finishBy)
+            word.endsWith("weekend") -> {
+                val delta = (5 - today.dayOfWeek.ordinal + 7) % 7
+                TimeHint(rest, When.DAY, today.plusDays(delta), finishBy)
+            }
+            else -> {
+                val delta = (weekdays.getValue(word) - today.dayOfWeek.ordinal + 7) % 7
+                TimeHint(rest, When.DAY, today.plusDays(if (delta == 0) 7 else delta), finishBy)
+            }
+        }
+    }
 }

@@ -20,6 +20,8 @@ import app.hearth.core.data.week.DishEntity
 import app.hearth.core.data.week.HuddleEntity
 import app.hearth.core.data.week.MealEntity
 import app.hearth.core.data.week.RecipePhotoEntity
+import app.hearth.core.data.week.ReflectionEntity
+import app.hearth.core.data.week.TranscriptLineEntity
 import app.hearth.core.model.nowMillis
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -43,6 +45,8 @@ data class HearthBackup(
     val huddles: List<HuddleEntity> = emptyList(),
     val settings: List<SettingEntity> = emptyList(),
     val photos: List<BackupPhoto> = emptyList(),
+    val reflections: List<ReflectionEntity> = emptyList(),
+    val transcript: List<TranscriptLineEntity> = emptyList(),
 ) {
     /** How much is in it, for "12 taken, 30 boodschappen…" style summaries. */
     val itemCount: Int get() = backlog.size + shoppingItems.size + board.size + stockItems.size + meals.size + dishes.size
@@ -69,6 +73,8 @@ interface BackupDao {
     @Query("SELECT * FROM huddle") suspend fun huddles(): List<HuddleEntity>
     @Query("SELECT * FROM setting") suspend fun settings(): List<SettingEntity>
     @Query("SELECT * FROM recipe_photo") suspend fun photos(): List<RecipePhotoEntity>
+    @Query("SELECT * FROM reflection") suspend fun reflections(): List<ReflectionEntity>
+    @Query("SELECT * FROM transcript_line") suspend fun transcript(): List<TranscriptLineEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putShops(rows: List<ShopEntity>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putShoppingItems(rows: List<ShoppingItemEntity>)
@@ -82,6 +88,8 @@ interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putHuddles(rows: List<HuddleEntity>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putSettings(rows: List<SettingEntity>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putPhotos(rows: List<RecipePhotoEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putReflections(rows: List<ReflectionEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putTranscript(rows: List<TranscriptLineEntity>)
 
     // Children before parents, so foreign keys never point at nothing.
     @Query("DELETE FROM shopping_item") suspend fun clearShoppingItems()
@@ -95,6 +103,8 @@ interface BackupDao {
     @Query("DELETE FROM dish") suspend fun clearDishes()
     @Query("DELETE FROM recipe_photo") suspend fun clearPhotos()
     @Query("DELETE FROM huddle") suspend fun clearHuddles()
+    @Query("DELETE FROM reflection") suspend fun clearReflections()
+    @Query("DELETE FROM transcript_line") suspend fun clearTranscript()
     @Query("DELETE FROM setting WHERE key NOT IN (:keep)") suspend fun clearSettingsExcept(keep: List<String>)
 }
 
@@ -123,6 +133,8 @@ class BackupRepository(
         huddles = dao.huddles(),
         settings = dao.settings().filter { it.key !in SettingsRepository.DEVICE_ONLY },
         photos = dao.photos().map { BackupPhoto(it.recipeKey, Base64.encode(it.jpeg), it.updatedAt) },
+        reflections = dao.reflections(),
+        transcript = dao.transcript(),
     )
 
     suspend fun exportJson(): String = JSON.encodeToString(HearthBackup.serializer(), export())
@@ -158,6 +170,8 @@ class BackupRepository(
         dao.clearDishes()
         dao.clearPhotos()
         dao.clearHuddles()
+        dao.clearReflections()
+        dao.clearTranscript()
         dao.clearSettingsExcept(SettingsRepository.DEVICE_ONLY.toList())
 
         dao.putShops(backup.shops)
@@ -173,11 +187,13 @@ class BackupRepository(
         dao.putHuddles(backup.huddles)
         dao.putSettings(backup.settings.filter { it.key !in SettingsRepository.DEVICE_ONLY })
         dao.putSettings(local)
+        dao.putReflections(backup.reflections)
+        dao.putTranscript(backup.transcript)
         dao.putPhotos(backup.photos.map { RecipePhotoEntity(it.recipeKey, Base64.decode(it.jpegBase64), it.updatedAt) })
     }
 
     companion object {
-        const val DATABASE_VERSION = 9
+        const val DATABASE_VERSION = 10
         private const val LOCAL_FIRST = "google."
         val JSON = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     }

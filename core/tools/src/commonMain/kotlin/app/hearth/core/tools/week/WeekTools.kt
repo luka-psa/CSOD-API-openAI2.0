@@ -3,7 +3,10 @@ package app.hearth.core.tools.week
 import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
+import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.data.week.WeekRepository
+import app.hearth.core.model.WeekFeeling
+import app.hearth.core.model.Win
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
@@ -165,6 +168,10 @@ data class WeekAgenda(
     val dueRoutines: List<BacklogItem>,
     val oudjes: List<BacklogItem>,
     val frictions: List<BoardItem>,
+    val wins: List<Win> = emptyList(),
+    val feelings: List<WeekFeeling> = emptyList(),
+    /** What Luister mee heard in this meeting so far, line by line. */
+    val transcript: List<String> = emptyList(),
     override val summary: String,
 ) : ToolResult
 
@@ -174,11 +181,13 @@ class WeekoverlegAgendaTool(
     private val backlog: BacklogRepository,
     private val board: BoardRepository,
     private val shopping: ShoppingRepository,
+    private val meeting: MeetingRepository,
 ) : Tool<AgendaArgs, WeekAgenda> {
     override val name = NAME
     override val description =
         "The agenda for the weekly meeting (weekoverleg): what got done since last time, meals for the week, the " +
-            "shopping list, deadlines and routines this week, oudjes (longest open, pick a few) and open frictions."
+            "shopping list, deadlines and routines this week, oudjes (longest open, pick a few), open frictions and ideas, " +
+            "what went well, how heavy the week felt, and the conversation Luister mee heard (sort it into the right tools)."
     override val argsSerializer = AgendaArgs.serializer()
     override val resultSerializer = WeekAgenda.serializer()
 
@@ -188,17 +197,21 @@ class WeekoverlegAgendaTool(
         val since = last?.createdAt ?: ctx.today.plusDays(-7).atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
         val open = backlog.openItems()
         val done = backlog.doneItemsSince(since)
-        val wins = board.allItems().filter { (it.closedAt ?: 0) >= since && it.status != BoardStatus.OPEN }
+        val boardWins = board.allItems().filter { (it.closedAt ?: 0) >= since && it.status != BoardStatus.OPEN }
         val meals = week.mealsBetween(ctx.today.toString(), ctx.today.plusDays(7).toString())
         val openShopping = shopping.openItems().size
         val deadlines = deadlinesThisWeek(open, ctx.today)
         val routines = dueRoutines(open, ctx.today)
         val old = oudjes(open)
-        val frictions = board.allItems().filter { it.kind == BoardKind.FRICTION && it.isOpen }
+        val frictions = board.allItems().filter { it.isWorkingPoint && it.isOpen }
+        val wins = meeting.currentWins()
+        val feelings = meeting.currentFeelings()
+        val transcript = meeting.currentTranscript().map { it.text }
 
         val summary = buildList {
             add(ctx.t("1. Terugblik: ${done.size} dingen gedaan", "1. Look back: ${done.size} things done") +
-                (if (wins.isNotEmpty()) ctx.t(", ${wins.size} op het werkbord", ", ${wins.size} on the board") else "") + ".")
+                (if (boardWins.isNotEmpty()) ctx.t(", ${boardWins.size} op het werkbord", ", ${boardWins.size} on the board") else "") +
+                (if (wins.isNotEmpty()) ctx.t(". Wat ging goed: ", ". What went well: ") + wins.joinToString(", ") { it.text } else "") + ".")
             add(ctx.t("2. Maaltijden: ${meals.size} van 7 dagen gepland", "2. Meals: ${meals.size} of 7 days planned") +
                 (if (meals.isNotEmpty()) " (" + meals.joinToString(", ") { it.dish } + ")" else "") + ".")
             add(ctx.t("3. Boodschappen: $openShopping op de lijst.", "3. Shopping: $openShopping on the list."))
@@ -209,34 +222,14 @@ class WeekoverlegAgendaTool(
                 ).joinToString("; ").ifEmpty { ctx.t("rustig", "calm") } + ".")
             add(ctx.t("5. Oudjes: ", "5. Oudjes: ") + old.joinToString(", ") { it.text }.ifEmpty { ctx.t("geen", "none") } + ".")
             add(ctx.t("6. Werkbord: ", "6. Board: ") + frictions.joinToString(", ") { it.text }.ifEmpty { ctx.t("geen frictie", "no frictions") } + ".")
+            if (transcript.isNotEmpty()) add(ctx.t("Gesprek (Luister mee):\n", "Conversation (Luister mee):\n") + transcript.joinToString("\n") { "- $it" })
         }.joinToString("\n")
 
-        return WeekAgenda(since, last, done, wins, meals, openShopping, deadlines, routines, old, frictions, summary)
+        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, old, frictions, wins, feelings, transcript, summary)
     }
 
     companion object {
         const val NAME = "weekoverleg_agenda"
-    }
-}
-
-// ---------- finish_weekoverleg ----------
-
-@Serializable
-data class HuddleResult(val huddle: Huddle, override val summary: String) : ToolResult
-
-class FinishWeekoverlegTool(private val week: WeekRepository) : Tool<AgendaArgs, HuddleResult> {
-    override val name = NAME
-    override val description = "Mark this week's meeting as held, so next week's look back starts from today."
-    override val argsSerializer = AgendaArgs.serializer()
-    override val resultSerializer = HuddleResult.serializer()
-
-    override suspend fun run(args: AgendaArgs, ctx: ToolContext): HuddleResult {
-        val huddle = week.recordHuddle(ctx.today.toString())
-        return HuddleResult(huddle, ctx.t("Mooi weekoverleg! Jullie zijn klaar voor de week.", "Nice weekly meeting! You're set for the week."))
-    }
-
-    companion object {
-        const val NAME = "finish_weekoverleg"
     }
 }
 

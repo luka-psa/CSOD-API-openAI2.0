@@ -5,9 +5,9 @@ import kotlinx.serialization.Serializable
 
 // The Weekoverleg: a short guided meeting, once a week.
 
-/** One weekly meeting that was held. */
+/** One weekly meeting that was held, with the summary written when it ended (kept). */
 @Serializable
-data class Huddle(val id: String, val heldOn: String, val createdAt: Long) {
+data class Huddle(val id: String, val heldOn: String, val createdAt: Long, val summary: String = "") {
     val date: LocalDate? get() = runCatching { LocalDate.parse(heldOn) }.getOrNull()
 }
 
@@ -31,3 +31,21 @@ fun huddleDue(last: Huddle?, today: LocalDate): Boolean {
     val held = last?.date ?: return true
     return today.toEpochDays() - held.toEpochDays() >= 6
 }
+
+/** Wat ging goed: a win someone named. Belongs to the next meeting until that one ends. */
+@Serializable
+data class Win(val id: String, val text: String, val memberId: String?, val huddleId: String?, val createdAt: Long)
+
+/**
+ * How heavy the week felt for someone (1 = light, 5 = heavy), asked in the look back. [memberId] null:
+ * the household as a whole. Never shown as a score to beat; only "lighter than last time".
+ */
+@Serializable
+data class WeekFeeling(val id: String, val value: Int, val memberId: String?, val huddleId: String?, val createdAt: Long)
+
+/**
+ * One thing said during Luister mee (what the recognizer heard between two pauses). The lines of the
+ * last meeting stay readable until the next meeting ends; its summary stays for good.
+ */
+@Serializable
+data class TranscriptLine(val id: String, val text: String, val huddleId: String?, val createdAt: Long, val sorted: Boolean = false)

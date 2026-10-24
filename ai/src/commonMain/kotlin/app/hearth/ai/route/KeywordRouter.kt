@@ -58,6 +58,7 @@ object KeywordRouter {
         Section.NOTE to listOf("huisregel", "regel", "afspraak", "house rule", "rule"),
         Section.FRICTION to listOf("frictie", "ergernis", "friction"),
         Section.GOAL to listOf("doel", "goal"),
+        Section.IDEA to listOf("idee", "verbetering", "idea"),
     )
 
     fun section(text: String): Section {

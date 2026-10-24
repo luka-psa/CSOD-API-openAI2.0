@@ -69,8 +69,10 @@ data class HuddleEntity(
     val heldOn: String,
     val createdAt: Long,
     val updatedAt: Long,
+    /** Written when the meeting ends; kept for good (the transcript is not). */
+    @ColumnInfo(defaultValue = "") val summary: String = "",
 ) {
-    fun toModel() = Huddle(id, heldOn, createdAt)
+    fun toModel() = Huddle(id, heldOn, createdAt, summary)
 }
 
 @Dao
@@ -208,11 +210,4 @@ class WeekRepository(
 
     val lastHuddle: Flow<Huddle?> = dao.observeLastHuddle().map { it?.toModel() }
     suspend fun last(): Huddle? = dao.lastHuddle()?.toModel()
-
-    suspend fun recordHuddle(date: String): Huddle {
-        val now = clock()
-        val entity = HuddleEntity(newId(), date, now, now)
-        dao.insertHuddle(entity)
-        return entity.toModel()
-    }
 }

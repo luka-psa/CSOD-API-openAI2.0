@@ -37,6 +37,14 @@ import app.hearth.core.model.BoardKind
 import app.hearth.core.model.TaskKind
 import app.hearth.core.model.boardKind
 import app.hearth.ai.route.AreaWords
+import app.hearth.ai.route.MeetingWords
+import app.hearth.ai.route.Place
+import app.hearth.core.model.plusDays
+import app.hearth.core.tools.board.AddIdeaArgs
+import app.hearth.core.tools.board.AddIdeaTool
+import app.hearth.core.tools.week.AddWinArgs
+import app.hearth.core.tools.week.AddWinTool
+import kotlinx.datetime.LocalDate
 import app.hearth.core.tools.board.AddGoalArgs
 import app.hearth.core.tools.board.AddGoalTool
 import app.hearth.core.tools.board.AddHouseRuleArgs
@@ -82,6 +90,11 @@ class Orchestrator(
                 val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
                 return runCalls(listOf(ToolCall.of(SaveRecipeTool.NAME, SaveRecipeArgs.serializer(), SaveRecipeArgs(hint.name, hint.ingredients, hint.notes))), local)
             }
+        }
+        // "dat ging goed: we aten elke avond samen": a win for the weekoverleg.
+        WIN_PREFIX.matchEntire(text.trim())?.let { m ->
+            val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
+            return runCalls(listOf(ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(m.groupValues[1]))), local)
         }
         // "voeg aan de huisregels toe dat …": the person named the place; only the rest becomes the item.
         AreaWords.extract(text)?.let { hint ->
@@ -252,20 +265,95 @@ class Orchestrator(
             BoardKind.RULE -> return ToolCall.of(AddHouseRuleTool.NAME, AddHouseRuleArgs.serializer(), AddHouseRuleArgs(text))
             BoardKind.FRICTION -> return ToolCall.of(LogFrictionTool.NAME, LogFrictionArgs.serializer(), LogFrictionArgs(text))
             BoardKind.GOAL -> return ToolCall.of(AddGoalTool.NAME, AddGoalArgs.serializer(), AddGoalArgs(text, KeywordRouter.goalScope(text)))
+            BoardKind.IDEA -> return ToolCall.of(AddIdeaTool.NAME, AddIdeaArgs.serializer(), AddIdeaArgs(text))
             null -> {}
         }
+        return backlogCall(text, section, ctx, dayAnywhere = false).first
+    }
+
+    /**
+     * A backlog entry (never the Werkbord). A time word plans it ("morgen", "tegen vrijdag"; in talk the
+     * day may stand anywhere), a rhythm ("om de 2 weken") makes it a routine, "dringend" flags it.
+     */
+    private fun backlogCall(text: String, section: Section, ctx: ToolContext, dayAnywhere: Boolean): Pair<ToolCall, AddToBacklogArgs> {
         val task = TaskWords.extract(text)
-        val hint = TimeWords.extract(task.text, ctx.today)
+        val hint = if (dayAnywhere) TimeWords.extractAnywhere(task.text, ctx.today) else TimeWords.extract(task.text, ctx.today)
         val body = hint?.text ?: task.text
         var chosen = if (section == Section.OTHER) KeywordRouter.section(body) else section
+        if (chosen.boardKind != null || chosen == Section.SHOPPING || chosen == Section.STOCK) chosen = Section.OTHER
         if (task.intervalDays != null && chosen.kind != TaskKind.ROUTINE) chosen = Section.CHORE
         if (task.urgent && chosen == Section.OTHER) chosen = Section.ADMIN
         val args = AddToBacklogArgs(
-            body, chosen,
+            if (dayAnywhere) body.replaceFirstChar { it.uppercase() } else body, chosen,
             hint?.whenValue ?: When.UNPLANNED, hint?.date?.toString(), hint?.finishBy ?: false,
             urgent = task.urgent, intervalDays = task.intervalDays,
         )
-        return ToolCall.of(AddToBacklogTool.NAME, AddToBacklogArgs.serializer(), args)
+        return ToolCall.of(AddToBacklogTool.NAME, AddToBacklogArgs.serializer(), args) to args
+    }
+
+    // ---------- Luister mee: the weekoverleg's conversation, sorted ----------
+
+    /** One sentence of the conversation and where it would go. [calls] run when the family says yes. */
+    data class Proposal(
+        val sentence: String,
+        val place: Place,
+        /** What the new item will say. */
+        val text: String,
+        /** The day it gets, if any. */
+        val date: LocalDate?,
+        val calls: List<ToolCall>,
+    )
+
+    /** Every sentence of [lines] with its best guess; just talk comes back as [Place.NONE]. */
+    fun propose(lines: List<String>, ctx: ToolContext): List<Proposal> =
+        MeetingWords.sentences(lines).map { proposal(it, MeetingWords.place(it, ctx.today), ctx) }
+
+    /** The same sentence put somewhere else (the family tapped another place). */
+    fun proposal(sentence: String, place: Place, ctx: ToolContext): Proposal {
+        val local = ctx.copy(lang = KeywordRouter.language(sentence, ctx.lang))
+        val area = AreaWords.extract(sentence)
+        val body = area?.text ?: sentence.trim().trimEnd('.', '!').replaceFirstChar { it.uppercase() }
+        fun backlog(section: Section): Proposal {
+            val (call, args) = backlogCall(body, section, local, dayAnywhere = true)
+            val date = when (args.`when`) {
+                When.TODAY -> local.today
+                When.TOMORROW -> local.today.plusDays(1)
+                When.DAY -> args.date?.let { LocalDate.parse(it) }
+                else -> null
+            }
+            return Proposal(sentence, place, args.text, date, listOf(call))
+        }
+        fun board(text: String, call: ToolCall) = Proposal(sentence, place, text, null, listOf(call))
+        return when (place) {
+            Place.PLANNING -> backlog(area?.section?.takeIf { it.boardKind == null } ?: Section.OTHER)
+            Place.EVENT -> backlog(Section.APPOINTMENT)
+            Place.FREE_TIME -> backlog(Section.PROTECTED_TIME)
+            Place.SHOPPING -> {
+                val calls = shoppingCalls(body)
+                Proposal(sentence, place, calls.joinToString(", ") { ToolJson.decodeFromJsonElement(AddShoppingItemArgs.serializer(), it.arguments).name.replaceFirstChar { c -> c.uppercase() } }, null, calls)
+            }
+            Place.MEAL -> {
+                val meal = MealWords.extract(body, local.today) ?: MealWords.extract(sentence, local.today)
+                if (meal == null) Proposal(sentence, place, body, null, emptyList())
+                else Proposal(sentence, place, meal.dish, meal.date, listOf(ToolCall.of(PlanMealTool.NAME, PlanMealArgs.serializer(), PlanMealArgs(meal.dish, meal.date.toString()))))
+            }
+            Place.HOUSE_RULE -> MeetingWords.ruleText(body).let { board(it, ToolCall.of(AddHouseRuleTool.NAME, AddHouseRuleArgs.serializer(), AddHouseRuleArgs(it))) }
+            Place.FRICTION -> board(body, ToolCall.of(LogFrictionTool.NAME, LogFrictionArgs.serializer(), LogFrictionArgs(body)))
+            Place.IDEA -> board(body, ToolCall.of(AddIdeaTool.NAME, AddIdeaArgs.serializer(), AddIdeaArgs(body)))
+            Place.GOAL -> board(body, ToolCall.of(AddGoalTool.NAME, AddGoalArgs.serializer(), AddGoalArgs(body, KeywordRouter.goalScope(body))))
+            Place.WIN -> board(body, ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(body)))
+            Place.NONE -> Proposal(sentence, place, body, null, emptyList())
+        }
+    }
+
+    /** "we moeten nog melk en eieren halen" -> melk, eieren. */
+    private fun shoppingCalls(text: String): List<ToolCall> {
+        StockWords.extract(text)?.let { return listOf(ToolCall.of(AddShoppingItemTool.NAME, AddShoppingItemArgs.serializer(), AddShoppingItemArgs(it.name))) }
+        parser.parse(text, allowBare = false)?.calls?.filter { it.name == AddShoppingItemTool.NAME }?.takeIf { it.isNotEmpty() }?.let { return it }
+        val items = text.replace(SHOPPING_TALK, " ").replace(Regex("\\s+"), " ").trim()
+        if (items.isEmpty()) return emptyList()
+        return parser.parse(items, allowBare = true)?.calls?.filter { it.name == AddShoppingItemTool.NAME }?.takeIf { it.isNotEmpty() }
+            ?: listOf(ToolCall.of(AddShoppingItemTool.NAME, AddShoppingItemArgs.serializer(), AddShoppingItemArgs(items)))
     }
 
     private fun problemNote(e: LlmException, ctx: ToolContext): String = when (e.reason) {
@@ -293,6 +381,11 @@ class Orchestrator(
             RegexOption.IGNORE_CASE,
         )
         val ROUTE_SCHEMA = RouteDecision.serializer().descriptor.toJsonSchema()
+        val WIN_PREFIX = Regex("^(?:dat ging goed|wat ging goed|ging goed|went well|that went well)\\s*[:,\\-]\\s*(.+)$", RegexOption.IGNORE_CASE)
+        val SHOPPING_TALK = Regex(
+            "\\b(?:we|moeten|moet|nog|wat|even|ook|kopen|halen|gaan|in de winkel|boodschappen|need to|we need|buy|pick up|get some|groceries)\\b",
+            RegexOption.IGNORE_CASE,
+        )
         const val MAX_STEPS = 5
         const val HISTORY_TURNS = 6
     }
