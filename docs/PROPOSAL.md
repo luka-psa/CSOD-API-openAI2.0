@@ -254,19 +254,21 @@ recipe). *Nieuw recept*: take or choose a photo, tell what you made (typed or wi
 ingredients fill in from the story (`RecipeWords`) and stay editable. Capture bar: "recept: pannenkoeken met
 bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 
-**Weekoverleg**: six steps with Vorige / Volgende, any step reachable from the chips: 1 *Terugblik* (count and
-chips of what got done since the last meeting, plus Werkbord wins; "Een rustige week. Ook dat mag."),
-2 *Maaltijden* (seven days; tap a day → dish + what to buy, earlier dishes in one tap), 3 *Boodschappen* (the
-list at a glance, add, "Voorraad nakijken"), 4 *Deze week* (deadlines, routines aan de beurt, one project step
-"Dit weekend"), 5 *Oudjes* (three longest-open items: Deze week / Later / Gedaan, "Toon andere"), 6 *Werkbord*
-(open frictions and ideas with their three outcomes, goals without a next step; after a heavy week: "Wat pakken
-we als eerste aan?"). *Klaar* records the meeting and writes its summary (wat ging goed, hoe zwaar, afgesproken,
-besproken, nieuwe werkpunten, gepland, vrije tijd, menu), shown then and as "Vorige keer" next week.
+**Weekoverleg** (v0.7): one prepared page instead of steps, *Klaar* at the top. Left: *Terugblik* (last
+meeting's summary as "Vorige keer", what got done since, *Wat ging goed*, *Hoe zwaar*) and *Werkbord* (open
+frictions and ideas with their three outcomes, goals without a next step; after a heavy week: "Wat pakken we
+als eerste aan?"). Right: *Deze week* (seven days, each with its meal (tap to plan, X asks first) and what has
+that day, then deadlines, routines aan de beurt and a project step), *Vooruitblik* (what has a day after this
+week: verlof, trips, birthdays), *Oudjes* (only when something has waited long), *Boodschappen* (list at a
+glance, add, Voorraad nakijken, Taken openen). *Klaar* records the meeting and writes its summary (wat ging goed,
+hoe zwaar, afgesproken, besproken, nieuwe werkpunten, gepland, vrije tijd, menu).
 Terugblik also has *Wat ging goed* (wins, X asks first) and *Hoe zwaar voelde de week?* (five flames per person,
-or "Wij"). **Luister mee** (bar above the steps): continuous transcription during the meeting (Web Speech;
+or "Wij"). **Luister mee** (bar at the top of the page; it keeps listening while the family opens the list, the
+stock or the tasks, with a small "Terug naar het overleg" bar there): continuous transcription during the meeting (Web Speech;
 Android restarts its recognizer after each pause and prefers on-device recognition). *Gesprek* shows what was
 heard; *Zet op zijn plek* opens the Voorstel: each sentence with its guessed place (Taken, Afspraak, Vrije tijd,
-Boodschappen, Weekmenu, Huisregel, Frictie, Idee, Doel, Ging goed, Gewoon gepraat), all ticked, a tap on the
+Boodschappen, Weekmenu, Huisregel, Frictie, Idee, Doel, Ging goed, Gewoon gepraat; *Agenda* takes dates further
+ahead too: "verlof van 3 tot 7 november", "oma is jarig op 12/12", "volgende maand op vakantie"), all ticked, a tap on the
 place moves it, *Toevoegen* runs the same tools. Sorting is local (`MeetingWords` + the capture-bar rules,
 `Orchestrator.propose`); the family's own AI can read the transcript through `weekoverleg_agenda`.
 The dashboard shows *Wat ging goed* until the meeting takes it along; "dat ging goed: …" in the capture bar adds one.

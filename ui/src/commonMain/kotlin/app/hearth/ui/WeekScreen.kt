@@ -65,6 +65,12 @@ import app.hearth.core.model.TaskKind
 import app.hearth.core.model.dayLabel
 import app.hearth.core.model.deadlinesThisWeek
 import app.hearth.core.model.dueRoutines
+import app.hearth.core.model.plannedOn
+import app.hearth.core.model.plannedToday
+import app.hearth.ui.resources.week_ahead
+import app.hearth.ui.resources.week_ahead_empty
+import app.hearth.ui.resources.week_open_tasks
+import app.hearth.ui.resources.week_recipes
 import app.hearth.core.model.oudjes
 import app.hearth.core.model.plusDays
 import app.hearth.core.model.weekdayName
@@ -148,6 +154,8 @@ class WeekCallbacks(
     val resolveFriction: (BoardItem, FrictionOutcome, String?) -> Unit,
     val setGoalStep: (BoardItem, String, Boolean) -> Unit,
     val finish: () -> Unit,
+    val goTasks: () -> Unit,
+    val goMenu: () -> Unit,
     val addWin: (String) -> Unit,
     val removeWin: (Win) -> Unit,
     val setFeeling: (Int, Member?) -> Unit,
@@ -171,18 +179,13 @@ class MeetingState(
     val voorstel: List<VoorstelRow>?,
 )
 
-enum class WeekStep(val title: StringResource) {
-    LOOK_BACK(Res.string.step_look_back),
-    MEALS(Res.string.step_meals),
-    SHOPPING(Res.string.step_shopping),
-    THIS_WEEK(Res.string.step_week),
-    OUDJES(Res.string.step_oudjes),
-    BOARD(Res.string.step_board),
-}
+/** Luister mee lives above the screens, so it keeps listening while the family looks at a list. */
+class ListenControl(val available: Boolean, val listening: Boolean, val partial: String, val toggle: () -> Unit)
 
 /**
- * The weekly meeting, about 15 minutes together: look back (celebrate) → meals → shopping → this week →
- * oudjes (pick a few of the longest-open) → frictions and goals. "Klaar" records it.
+ * The weekly meeting, about 15 minutes together, on one prepared page: what went well and how heavy it
+ * felt, the working points, this week (seven days with their meal and plans), what's coming later
+ * (verlof, trips, birthdays), what has waited longest, and the lists. "Klaar" records it.
  */
 @Composable
 fun WeekScreen(
@@ -196,94 +199,113 @@ fun WeekScreen(
     shopping: List<ShopSection>,
     today: LocalDate,
     lang: Lang,
+    wide: Boolean,
     meeting: MeetingState,
+    listen: ListenControl,
     cb: WeekCallbacks,
 ) {
-    var step by rememberSaveable { mutableStateOf(WeekStep.LOOK_BACK) }
     var finished by rememberSaveable { mutableStateOf(false) }
-    var listening by remember { mutableStateOf(false) }
-    var partial by remember { mutableStateOf("") }
     var showing by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(Unit) { cb.loadAgenda() }
-    val transcriber = rememberTranscriber(
-        language = if (lang == Lang.NL) "nl-BE" else "en-GB",
-        onLine = cb.heard,
-        onPartial = { partial = it },
-        onActive = { listening = it; if (!it) partial = "" },
-    )
 
     Column(Modifier.fillMaxSize()) {
-        Text(stringResource(Res.string.nav_week), style = MaterialTheme.typography.displaySmall)
-        val held = lastHuddle?.date?.let { stringResource(Res.string.week_last_held, dayLabel(it, today, lang).removePrefix("sinds ").removePrefix("since ")) }
-        Text(
-            listOfNotNull(stringResource(Res.string.week_subtitle), held).joinToString("  ·  "),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(16.dp))
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 16.dp)) {
-            itemsIndexed(WeekStep.entries) { i, s ->
-                ChoiceChip("${i + 1}  ${stringResource(s.title)}", s == step, { step = s; finished = false })
-            }
-        }
-        Spacer(Modifier.size(10.dp))
-        ListenBar(
-            available = transcriber.available,
-            listening = listening,
-            partial = partial,
-            lines = meeting.transcript,
-            onToggle = { if (listening) transcriber.stop() else transcriber.start() },
-            onShow = { showing = true },
-            onSort = cb.openVoorstel,
-        )
-        Spacer(Modifier.size(10.dp))
-
-        ListSurface(Modifier.weight(1f)) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
-                if (finished) {
-                    Finished(agenda, meals, meeting.huddles)
-                } else {
-                    Text(stringResource(Res.string.step_of, step.ordinal + 1, WeekStep.entries.size), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    Text(stringResource(step.title), style = MaterialTheme.typography.headlineMedium)
-                    Spacer(Modifier.size(14.dp))
-                    when (step) {
-                        WeekStep.LOOK_BACK -> {
-                            LastTime(lastHuddle, meeting.lastTranscript, onShow = { showing = false })
-                            LookBack(agenda, lastHuddle, today, lang)
-                            Spacer(Modifier.size(18.dp))
-                            WinsSection(meeting.wins, meeting.members, cb.addWin, cb.removeWin)
-                            Spacer(Modifier.size(18.dp))
-                            FeelingMeter(meeting.members, meeting.feelings, cb.setFeeling)
-                        }
-                        WeekStep.MEALS -> Meals(meals, dishes, today, lang, cb)
-                        WeekStep.SHOPPING -> ShoppingStep(shopping, cb)
-                        WeekStep.THIS_WEEK -> ThisWeek(backlog, steps, today, lang, cb)
-                        WeekStep.OUDJES -> Oudjes(backlog, today, lang, cb)
-                        WeekStep.BOARD -> BoardStep(board, heavy = meeting.feelings.any { it.value >= 4 }, cb)
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.size(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (step != WeekStep.LOOK_BACK && !finished) {
-                OutlinedButton(onClick = { step = WeekStep.entries[step.ordinal - 1] }) { Text(stringResource(Res.string.week_back)) }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(Res.string.nav_week), style = MaterialTheme.typography.displaySmall)
+                val held = lastHuddle?.date?.let { stringResource(Res.string.week_last_held, dayLabel(it, today, lang).removePrefix("sinds ").removePrefix("since ")) }
+                Text(
+                    listOfNotNull(stringResource(Res.string.week_subtitle), held).joinToString("  ·  "),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Spacer(Modifier.weight(1f))
-            when {
-                finished -> {}
-                step == WeekStep.BOARD -> Button(onClick = { if (listening) transcriber.stop(); cb.finish(); finished = true }) {
+            if (!finished) {
+                Button(onClick = { if (listen.listening) listen.toggle(); cb.finish(); finished = true }) {
                     Icon(HearthIcons.Check, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(Res.string.week_finish))
                 }
-                else -> Button(onClick = { step = WeekStep.entries[step.ordinal + 1] }) {
-                    Text(stringResource(Res.string.week_next))
-                    Spacer(Modifier.width(6.dp))
-                    Icon(HearthIcons.ChevronRight, null, modifier = Modifier.size(18.dp))
+            }
+        }
+        Spacer(Modifier.size(12.dp))
+        ListenBar(
+            available = listen.available,
+            listening = listen.listening,
+            partial = listen.partial,
+            lines = meeting.transcript,
+            onToggle = listen.toggle,
+            onShow = { showing = true },
+            onSort = cb.openVoorstel,
+        )
+        Spacer(Modifier.size(14.dp))
+
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            if (finished) {
+                ListSurface(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(24.dp)) { Finished(agenda, meals, meeting.huddles) }
+                }
+                return@Column
+            }
+            val gap = if (wide) 20.dp else 16.dp
+            val hasOudjes = oudjes(backlog).isNotEmpty()
+            val lookBack = @Composable { m: Modifier ->
+                HearthCard(stringResource(Res.string.step_look_back), HearthIcons.Sun, m) {
+                    LastTime(lastHuddle, meeting.lastTranscript, onShow = { showing = false })
+                    LookBack(agenda, lastHuddle, today, lang)
+                    Spacer(Modifier.size(14.dp))
+                    WinsSection(meeting.wins, meeting.members, cb.addWin, cb.removeWin)
+                    Spacer(Modifier.size(14.dp))
+                    FeelingMeter(meeting.members, meeting.feelings, cb.setFeeling)
                 }
             }
+            val workingPoints = @Composable { m: Modifier ->
+                HearthCard(stringResource(Res.string.step_board), HearthIcons.Bolt, m) {
+                    BoardStep(board, heavy = meeting.feelings.any { it.value >= 4 }, cb)
+                }
+            }
+            val thisWeek = @Composable { m: Modifier ->
+                HearthCard(stringResource(Res.string.step_week), HearthIcons.Calendar, m, action = { CardAction(stringResource(Res.string.week_recipes), cb.goMenu, compact = true) }) {
+                    Days(backlog, meals, dishes, today, lang, cb)
+                    Spacer(Modifier.size(10.dp))
+                    ThisWeek(backlog, steps, today, lang, cb)
+                }
+            }
+            val ahead = @Composable { m: Modifier ->
+                HearthCard(stringResource(Res.string.week_ahead), HearthIcons.Later, m) { Ahead(backlog, today, lang) }
+            }
+            val waiting = @Composable { m: Modifier ->
+                HearthCard(stringResource(Res.string.step_oudjes), HearthIcons.Inbox, m) { Oudjes(backlog, today, lang, cb) }
+            }
+            val lists = @Composable { m: Modifier ->
+                HearthCard(stringResource(Res.string.step_shopping), HearthIcons.Cart, m) {
+                    ShoppingStep(shopping, cb)
+                    CardAction(stringResource(Res.string.week_open_tasks), cb.goTasks)
+                }
+            }
+            if (wide) {
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                        lookBack(Modifier.fillMaxWidth())
+                        workingPoints(Modifier.fillMaxWidth())
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                        thisWeek(Modifier.fillMaxWidth())
+                        ahead(Modifier.fillMaxWidth())
+                        if (hasOudjes) waiting(Modifier.fillMaxWidth())
+                        lists(Modifier.fillMaxWidth())
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                    lookBack(Modifier.fillMaxWidth())
+                    thisWeek(Modifier.fillMaxWidth())
+                    ahead(Modifier.fillMaxWidth())
+                    workingPoints(Modifier.fillMaxWidth())
+                    if (hasOudjes) waiting(Modifier.fillMaxWidth())
+                    lists(Modifier.fillMaxWidth())
+                }
+            }
+            Spacer(Modifier.size(16.dp))
         }
     }
     when (showing) {
@@ -293,6 +315,81 @@ fun WeekScreen(
     }
     meeting.voorstel?.let { rows ->
         VoorstelSheet(rows, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.addVoorstel, cb.closeVoorstel)
+    }
+}
+
+/** Seven days at a glance: the meal (tap to plan) and what has that day. */
+@Composable
+private fun Days(backlog: List<BacklogItem>, meals: List<Meal>, dishes: List<Meal>, today: LocalDate, lang: Lang, cb: WeekCallbacks) {
+    var editing by remember { mutableStateOf<LocalDate?>(null) }
+    var removing by remember { mutableStateOf<Meal?>(null) }
+    (0 until 7).map { today.plusDays(it) }.forEach { day ->
+        val meal = meals.firstOrNull { it.date == day.toString() }
+        val planned = if (day == today) plannedToday(backlog, today) else plannedOn(backlog, day)
+        Row(
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable { editing = day }.padding(horizontal = 6.dp, vertical = 8.dp),
+        ) {
+            Text(
+                dayName(day, today, lang),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (day.dayOfWeek == DayOfWeek.SATURDAY || day.dayOfWeek == DayOfWeek.SUNDAY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.width(124.dp).padding(top = 2.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(HearthIcons.Restaurant, null, tint = if (meal == null) MaterialTheme.colorScheme.primary else Section.SHOPPING.style().ink, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        meal?.dish ?: stringResource(Res.string.meal_add),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (meal == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (meal != null) DeleteButton({ removing = meal })
+                }
+                if (planned.isNotEmpty()) {
+                    Text(
+                        planned.joinToString("  ·  ") { it.text },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 24.dp, top = 2.dp),
+                    )
+                }
+            }
+        }
+    }
+    editing?.let { day ->
+        MealDialog(day, today, lang, meals.firstOrNull { it.date == day.toString() }, dishes, onSave = { dish, ingredients -> cb.planMeal(day, dish, ingredients) }) { editing = null }
+    }
+    removing?.let { meal ->
+        ConfirmDialog(stringResource(Res.string.delete_confirm, meal.dish), stringResource(Res.string.meal_remove_body), onYes = { cb.removeMeal(meal) }) { removing = null }
+    }
+}
+
+/** Vooruitblik: what already has a day after this week (verlof, trips, birthdays, appointments). */
+@Composable
+private fun Ahead(backlog: List<BacklogItem>, today: LocalDate, lang: Lang) {
+    val later = backlog.filter { it.plan == Plan.DAY && !it.isStep && (it.localDate?.let { d -> d >= today.plusDays(7) } ?: false) }
+        .sortedBy { it.date }.take(8)
+    if (later.isEmpty()) {
+        EmptyHint(stringResource(Res.string.week_ahead_empty))
+        return
+    }
+    later.forEach { item ->
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp)) {
+            val d = item.localDate!!
+            Text(
+                "${weekdayName(d.dayOfWeek, lang, short = true)} ${d.day}/${d.month.ordinal + 1}",
+                style = MaterialTheme.typography.labelLarge,
+                color = item.section.style().ink,
+                modifier = Modifier.width(96.dp),
+            )
+            Text(item.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        }
     }
 }
 
@@ -351,49 +448,6 @@ private fun LookBack(agenda: WeekAgenda?, last: Huddle?, today: LocalDate, lang:
                 Text(win.text, style = MaterialTheme.typography.bodyMedium)
             }
         }
-    }
-}
-
-// ---------- 2. meals ----------
-
-@Composable
-private fun Meals(meals: List<Meal>, dishes: List<Meal>, today: LocalDate, lang: Lang, cb: WeekCallbacks) {
-    var editing by remember { mutableStateOf<LocalDate?>(null) }
-    var removing by remember { mutableStateOf<Meal?>(null) }
-    Text(stringResource(Res.string.step_meals_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Spacer(Modifier.size(10.dp))
-    (0 until 7).map { today.plusDays(it) }.forEach { day ->
-        val meal = meals.firstOrNull { it.date == day.toString() }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable { editing = day }.heightIn(min = 60.dp).padding(horizontal = 6.dp),
-        ) {
-            Text(
-                dayName(day, today, lang),
-                style = MaterialTheme.typography.labelLarge,
-                color = if (day.dayOfWeek == DayOfWeek.SATURDAY || day.dayOfWeek == DayOfWeek.SUNDAY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(110.dp),
-            )
-            if (meal == null) {
-                Icon(HearthIcons.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(Res.string.meal_add), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-            } else {
-                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
-                    Text(meal.dish, style = MaterialTheme.typography.bodyLarge)
-                    if (meal.ingredients.isNotEmpty()) {
-                        Text(meal.ingredients.joinToString(", "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-                DeleteButton({ removing = meal })
-            }
-        }
-    }
-    editing?.let { day ->
-        MealDialog(day, today, lang, meals.firstOrNull { it.date == day.toString() }, dishes, onSave = { dish, ingredients -> cb.planMeal(day, dish, ingredients) }) { editing = null }
-    }
-    removing?.let { meal ->
-        ConfirmDialog(stringResource(Res.string.delete_confirm, meal.dish), stringResource(Res.string.meal_remove_body), onYes = { cb.removeMeal(meal) }) { removing = null }
     }
 }
 

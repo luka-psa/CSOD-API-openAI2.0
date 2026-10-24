@@ -46,6 +46,7 @@ object MeetingWords {
             WIN.any { it in t } -> Place.WIN
             IDEA.any { it in t } -> Place.IDEA
             FRICTION.any { it in t } -> Place.FRICTION
+            AGENDA.any { it in t } -> Place.EVENT
             FREE.any { it in t } -> Place.FREE_TIME
             SHOPPING.any { it in t } -> Place.SHOPPING
             else -> when (KeywordRouter.section(sentence)) {
@@ -102,6 +103,11 @@ object MeetingWords {
     private val FRICTION = listOf(
         "erger me", "ergert", "stoort", "frustr", "irritant", "ergerlijk", "lastig dat", "altijd weer", "nooit",
         "annoy", "bugs me", "drives me", "always", "never",
+    )
+    /** Things on the calendar later: leave, trips, birthdays, parties. */
+    private val AGENDA = listOf(
+        "verlof", "vakantie", "op reis", "weekendje", "citytrip", "uitstap", "verjaardag", "jarig", "feest", "trouw", "communie", "kamp",
+        "holiday", "vacation", "on leave", "annual leave", "trip to", "birthday", "party", "wedding", "camp",
     )
     private val FREE = listOf(
         "vrije tijd", "uitrusten", "rust nemen", "niks plannen", "niets plannen", "niks doen", "vrij houden", "uitslapen", "iets leuks", "date", "filmavond",

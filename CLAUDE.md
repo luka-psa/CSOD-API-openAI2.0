@@ -119,9 +119,10 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   saved on purpose (`isRecipe`, notes = how we made it, an optional photo) or
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
-- **Weekoverleg:** Terugblik (*Wat ging goed* = wins, *Hoe zwaar* = week feeling
-  1–5 per person) → Maaltijden → Boodschappen → Deze week → *Oudjes*
-  (the longest-open unplanned items, a few picked each week) → Werkbord; *Klaar*
+- **Weekoverleg:** one prepared page: Terugblik (*Wat ging goed* = wins, *Hoe zwaar* =
+  week feeling 1–5 per person), Werkbord, Deze week (7 days with meal and plans),
+  *Vooruitblik* (dates after this week: verlof, trips), *Oudjes* (the longest-open
+  unplanned items, a few picked each week), Boodschappen; *Klaar*
   records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting
   (the *transcript* lasts until the next meeting); *Zet op zijn plek* opens the
   *Voorstel* (each sentence → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers

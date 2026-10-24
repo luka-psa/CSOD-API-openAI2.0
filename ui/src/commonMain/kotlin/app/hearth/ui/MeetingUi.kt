@@ -58,6 +58,8 @@ import app.hearth.ui.resources.listen_lines
 import app.hearth.ui.resources.listen_on
 import app.hearth.ui.resources.listen_start
 import app.hearth.ui.resources.listen_stop
+import app.hearth.ui.resources.listen_running
+import app.hearth.ui.resources.listen_back
 import app.hearth.ui.resources.place_event
 import app.hearth.ui.resources.place_free
 import app.hearth.ui.resources.place_friction
@@ -136,6 +138,29 @@ fun ListenBar(
             Spacer(Modifier.width(6.dp))
             TextButton(onClick = onToggle) { Text(stringResource(Res.string.listen_stop)) }
         }
+    }
+}
+
+/** On other screens while Luister mee runs: it's still listening, and one tap goes back to the meeting. */
+@Composable
+fun ListenPill(lines: Int, partial: String, onBack: () -> Unit, onStop: () -> Unit, modifier: Modifier = Modifier) {
+    val ink = Section.PROTECTED_TIME.style()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.clip(RoundedCornerShape(24.dp)).background(ink.tint).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+    ) {
+        Icon(HearthIcons.Mic, null, tint = ink.ink, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(Res.string.listen_running), style = MaterialTheme.typography.titleSmall, color = ink.ink)
+            Text(
+                if (partial.isNotBlank()) "“$partial”" else pluralStringResource(Res.plurals.listen_lines, lines, lines),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+        }
+        TextButton(onClick = onBack) { Text(stringResource(Res.string.listen_back)) }
+        TextButton(onClick = onStop) { Text(stringResource(Res.string.listen_stop)) }
     }
 }
 

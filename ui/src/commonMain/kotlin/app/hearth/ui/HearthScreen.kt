@@ -124,6 +124,17 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     var planning by remember { mutableStateOf<BacklogItem?>(null) }
     var conversation by remember { mutableStateOf(false) }
 
+    // Luister mee: hoisted here so it keeps listening while the meeting looks at a list.
+    var listening by remember { mutableStateOf(false) }
+    var partial by remember { mutableStateOf("") }
+    val transcriber = rememberTranscriber(
+        language = if (lang == Lang.NL) "nl-BE" else "en-GB",
+        onLine = viewModel::heard,
+        onPartial = { partial = it },
+        onActive = { listening = it; if (!it) partial = "" },
+    )
+    val listen = ListenControl(transcriber.available, listening, partial) { if (listening) transcriber.stop() else transcriber.start() }
+
     val counts = mapOf(
         Destination.TASKS to dontForget(backlog, today).size,
         Destination.BOARD to board.count { it.isWorkingPoint && it.isOpen },
@@ -160,8 +171,9 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                             ),
                         )
                         Destination.WEEK -> WeekScreen(
-                            agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang,
+                            agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
                             MeetingState(wins, feelings, members, transcript, lastTranscript, huddles, voorstel),
+                            listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
                                 planMeal = viewModel::planMeal,
@@ -173,6 +185,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 resolveFriction = viewModel::resolveFriction,
                                 setGoalStep = viewModel::setGoalStep,
                                 finish = viewModel::finishWeekoverleg,
+                                goTasks = { tab = TaskTab.WEEK; destination = Destination.TASKS },
+                                goMenu = { destination = Destination.MENU },
                                 addWin = viewModel::addWin,
                                 removeWin = viewModel::removeWin,
                                 setFeeling = { v, m -> viewModel.setFeeling(v, m) },
@@ -248,6 +262,10 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+                if (listening && destination != Destination.WEEK) {
+                    ListenPill(transcript.size, partial, onBack = { destination = Destination.WEEK }, onStop = { transcriber.stop() }, modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp).align(Alignment.CenterHorizontally))
+                    Spacer(Modifier.height(10.dp))
+                }
                 mcpPending.firstOrNull()?.let { p ->
                     McpAsk(p.question, onYes = { viewModel.answerMcp(p, true) }, onNo = { viewModel.answerMcp(p, false) }, modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp).align(Alignment.CenterHorizontally))
                     Spacer(Modifier.height(10.dp))

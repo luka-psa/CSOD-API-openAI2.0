@@ -24,6 +24,9 @@ object KeywordRouter {
         Section.APPOINTMENT to listOf(
             "tandarts", "dokter", "huisarts", "osteopaat", "kine", "kinesist", "kapper", "afspraak", "autokeuring", "keuring",
             "oogarts", "dierenarts", "dentist", "doctor", "appointment", "hairdresser", "vet", "inspection", "check-up", "checkup",
+            // Further ahead on the calendar: leave, trips, birthdays.
+            "verlof", "vakantie", "op reis", "verjaardag", "jarig", "trouwfeest", "communie",
+            "holiday", "vacation", "on leave", "birthday", "wedding",
         ),
         Section.ADMIN to listOf(
             "belasting", "belastingbrief", "verzekering", "formulier", "factuur", "facturen", "papieren", "bank", "mutualiteit",

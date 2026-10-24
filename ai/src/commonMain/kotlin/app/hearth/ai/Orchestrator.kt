@@ -268,23 +268,23 @@ class Orchestrator(
             BoardKind.IDEA -> return ToolCall.of(AddIdeaTool.NAME, AddIdeaArgs.serializer(), AddIdeaArgs(text))
             null -> {}
         }
-        return backlogCall(text, section, ctx, dayAnywhere = false).first
+        return backlogCall(text, section, ctx, fromTalk = false).first
     }
 
     /**
-     * A backlog entry (never the Werkbord). A time word plans it ("morgen", "tegen vrijdag"; in talk the
-     * day may stand anywhere), a rhythm ("om de 2 weken") makes it a routine, "dringend" flags it.
+     * A backlog entry (never the Werkbord). A time word plans it wherever it stands ("morgen", "tegen vrijdag",
+     * "op 12/12", "verlof van 3 tot 7 november"), a rhythm ("om de 2 weken") makes it a routine, "dringend" flags it.
      */
-    private fun backlogCall(text: String, section: Section, ctx: ToolContext, dayAnywhere: Boolean): Pair<ToolCall, AddToBacklogArgs> {
+    private fun backlogCall(text: String, section: Section, ctx: ToolContext, fromTalk: Boolean): Pair<ToolCall, AddToBacklogArgs> {
         val task = TaskWords.extract(text)
-        val hint = if (dayAnywhere) TimeWords.extractAnywhere(task.text, ctx.today) else TimeWords.extract(task.text, ctx.today)
+        val hint = TimeWords.extractAnywhere(task.text, ctx.today)
         val body = hint?.text ?: task.text
         var chosen = if (section == Section.OTHER) KeywordRouter.section(body) else section
         if (chosen.boardKind != null || chosen == Section.SHOPPING || chosen == Section.STOCK) chosen = Section.OTHER
         if (task.intervalDays != null && chosen.kind != TaskKind.ROUTINE) chosen = Section.CHORE
         if (task.urgent && chosen == Section.OTHER) chosen = Section.ADMIN
         val args = AddToBacklogArgs(
-            if (dayAnywhere) body.replaceFirstChar { it.uppercase() } else body, chosen,
+            if (fromTalk) body.replaceFirstChar { it.uppercase() } else body, chosen,
             hint?.whenValue ?: When.UNPLANNED, hint?.date?.toString(), hint?.finishBy ?: false,
             urgent = task.urgent, intervalDays = task.intervalDays,
         )
@@ -314,7 +314,7 @@ class Orchestrator(
         val area = AreaWords.extract(sentence)
         val body = area?.text ?: sentence.trim().trimEnd('.', '!').replaceFirstChar { it.uppercase() }
         fun backlog(section: Section): Proposal {
-            val (call, args) = backlogCall(body, section, local, dayAnywhere = true)
+            val (call, args) = backlogCall(body, section, local, fromTalk = true)
             val date = when (args.`when`) {
                 When.TODAY -> local.today
                 When.TOMORROW -> local.today.plusDays(1)

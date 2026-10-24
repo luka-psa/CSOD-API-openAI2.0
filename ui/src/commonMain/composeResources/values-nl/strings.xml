@@ -183,7 +183,7 @@
     <string name="spot_name_hint">bv. Kelder, Baby, Huisdieren</string>
     <!-- Weekoverleg -->
     <string name="nav_week">Weekoverleg</string>
-    <string name="week_subtitle">Een kwartiertje samen, stap voor stap.</string>
+    <string name="week_subtitle">Een kwartiertje samen, alles op één blad.</string>
     <string name="week_last_held">vorige keer: %1$s</string>
     <string name="step_of">Stap %1$d van %2$d</string>
     <string name="step_look_back">Terugblik</string>
@@ -343,7 +343,7 @@
     <string name="voorstel_add">Toevoegen (%1$d)</string>
     <string name="voorstel_empty">Niets nieuws om op zijn plek te zetten.</string>
     <string name="place_planning">Taken</string>
-    <string name="place_event">Afspraak</string>
+    <string name="place_event">Agenda</string>
     <string name="place_free">Vrije tijd</string>
     <string name="place_shopping">Boodschappen</string>
     <string name="place_meal">Weekmenu</string>
@@ -364,4 +364,10 @@
     <string name="last_time">Vorige keer</string>
     <string name="week_summary">Samenvatting</string>
     <string name="earlier_meetings">Eerdere weekoverleggen</string>
+    <string name="week_ahead">Vooruitblik</string>
+    <string name="week_ahead_empty">Niets met een dag na deze week. Verlof, uitstappen en verjaardagen komen hier.</string>
+    <string name="week_open_tasks">Taken openen</string>
+    <string name="week_recipes">Recepten</string>
+    <string name="listen_running">Luister mee luistert</string>
+    <string name="listen_back">Terug naar het overleg</string>
 </resources>

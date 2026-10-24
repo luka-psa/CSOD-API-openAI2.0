@@ -229,6 +229,21 @@ class OrchestratorTest {
     }
 
     @Test
+    fun `leave and birthdays go on the calendar with their date`() = runTest {
+        val saturday = nl.copy(today = kotlinx.datetime.LocalDate(2026, 10, 24))
+        offline.handle("verlof van 3 tot 7 november", saturday)
+        val heard = offline.propose(listOf("oma is jarig op 12 december en dan gaan we volgende maand op vakantie"), saturday)
+        assertEquals(
+            listOf(app.hearth.ai.route.Place.EVENT to "Oma is jarig", app.hearth.ai.route.Place.EVENT to "Gaan we op vakantie"),
+            heard.map { it.place to it.text },
+        )
+        assertEquals(listOf("2026-12-12", "2026-11-01"), heard.map { it.date.toString() })
+        val leave = inbox.openItems().single()
+        assertEquals("verlof (3/11–7/11)" to Section.APPOINTMENT, leave.text to leave.section)
+        assertEquals("2026-11-03", leave.date)
+    }
+
+    @Test
     fun `a win goes to the weekoverleg's look back`() = runTest {
         assertEquals("Mooi! Genoteerd bij wat goed ging: “Elke avond samen gegeten”", offline.handle("dat ging goed: elke avond samen gegeten", nl).text)
         assertEquals(emptyList(), inbox.openItems())

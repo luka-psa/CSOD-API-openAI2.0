@@ -190,7 +190,7 @@
     <string name="spot_name_hint">e.g. Kelder, Baby, Huisdieren</string>
     <!-- Weekoverleg -->
     <string name="nav_week">Weekly meeting</string>
-    <string name="week_subtitle">Fifteen minutes together, step by step.</string>
+    <string name="week_subtitle">A quarter of an hour together, all on one page.</string>
     <string name="week_last_held">last time: %1$s</string>
     <string name="step_of">Step %1$d of %2$d</string>
     <string name="step_look_back">Look back</string>
@@ -350,7 +350,7 @@
     <string name="voorstel_add">Add (%1$d)</string>
     <string name="voorstel_empty">Nothing new to put in place.</string>
     <string name="place_planning">Tasks</string>
-    <string name="place_event">Appointment</string>
+    <string name="place_event">Calendar</string>
     <string name="place_free">Free time</string>
     <string name="place_shopping">Shopping</string>
     <string name="place_meal">Week menu</string>
@@ -371,4 +371,10 @@
     <string name="last_time">Last time</string>
     <string name="week_summary">Summary</string>
     <string name="earlier_meetings">Earlier meetings</string>
+    <string name="week_ahead">Coming up</string>
+    <string name="week_ahead_empty">Nothing with a day after this week. Leave, trips and birthdays show here.</string>
+    <string name="week_open_tasks">Open tasks</string>
+    <string name="week_recipes">Recipes</string>
+    <string name="listen_running">Luister mee is listening</string>
+    <string name="listen_back">Back to the meeting</string>
 </resources>
