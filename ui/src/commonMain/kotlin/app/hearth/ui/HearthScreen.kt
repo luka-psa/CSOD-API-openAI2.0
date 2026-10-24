@@ -29,6 +29,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -115,6 +116,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
     val huddles by viewModel.huddles.collectAsStateWithLifecycle()
     val voorstel by viewModel.voorstel.collectAsStateWithLifecycle()
+    val heardLately by viewModel.heardLately.collectAsStateWithLifecycle()
+    val agree by viewModel.agree.collectAsStateWithLifecycle()
     val googleBusy by viewModel.googleBusy.collectAsStateWithLifecycle()
     val backupList by viewModel.backupList.collectAsStateWithLifecycle()
     val stock by viewModel.stockItems.collectAsStateWithLifecycle()
@@ -146,8 +149,9 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
 
     BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding()) {
         val wide = maxWidth >= 840.dp
+        val narrow = maxWidth < 600.dp
         val content = @Composable { modifier: Modifier ->
-            Column(modifier) {
+            Column(modifier) { CompositionLocalProvider(LocalNarrow provides narrow) {
                 AnimatedContent(destination, transitionSpec = { fadeIn() togetherWith fadeOut() }, modifier = Modifier.weight(1f)) { d ->
                     when (d) {
                         Destination.TODAY -> TodayScreen(
@@ -175,7 +179,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, meters, metersOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel),
+                            MeetingState(wins, meters, metersOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardLately, agree),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -200,6 +204,9 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 rateHabit = { i, e -> viewModel.rateHabit(i, e) },
                                 smallStep = { i, t -> viewModel.setSmallStep(i, t) },
                                 heard = viewModel::heard,
+                                addTo = { t, section -> viewModel.addTask(t, section) },
+                                prepareFinish = viewModel::prepareFinish,
+                                closeAgree = viewModel::closeAgree,
                                 clearTranscript = viewModel::clearTranscript,
                                 openVoorstel = viewModel::openVoorstel,
                                 closeVoorstel = viewModel::closeVoorstel,
@@ -289,7 +296,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                     onOpenConversation = { conversation = true },
                     modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp).align(Alignment.CenterHorizontally),
                 )
-            }
+            } }
         }
 
         if (wide) {

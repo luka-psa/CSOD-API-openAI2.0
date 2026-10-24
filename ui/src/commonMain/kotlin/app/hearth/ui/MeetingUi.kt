@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -369,6 +370,7 @@ fun WinsSection(wins: List<Win>, members: List<Member>, onAdd: (String) -> Unit,
  * The two household meters, agreed together. Hearth's guess has a ring; a tap on a step is what the family
  * agreed; "Geen akkoord" leaves it neutral. Can be switched off when it causes more friction than it helps.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MetersSection(
     on: Boolean,
@@ -391,40 +393,48 @@ fun MetersSection(
     listOf(Meter.FLOW to suggestedFlow, Meter.STRAIN to suggestedStrain).forEach { (meter, guess) ->
         val set = meters.firstOrNull { it.meter == meter }
         val ink = if (meter == Meter.FLOW) Section.CHORE.style().ink else Section.FRICTION.style().ink
-        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(meter.title(lang) + "?", style = MaterialTheme.typography.titleSmall, modifier = Modifier.width(140.dp))
-                (1..5).forEach { n ->
-                    val chosen = set != null && n <= set.value
-                    val isGuess = n == guess
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(46.dp).clip(CircleShape)
-                            .then(if (isGuess) Modifier.border(2.dp, ink.copy(alpha = 0.5f), CircleShape) else Modifier)
-                            .clickable { onSet(meter, n, guess) },
-                    ) {
-                        Icon(
-                            if (meter == Meter.FLOW) HearthIcons.Sun else HearthIcons.Bolt, n.toString(),
-                            // Not agreed yet: Hearth's guess shows faintly.
-                            tint = when {
-                                chosen -> ink
-                                set == null && n <= guess -> ink.copy(alpha = 0.35f)
-                                else -> MaterialTheme.colorScheme.outline
-                            },
-                            modifier = Modifier.size(if (chosen) 26.dp else 22.dp),
-                        )
+        // On a phone the question sits above its five steps; nothing gets squeezed into a narrow column.
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
+            val stacked = maxWidth < 520.dp
+            Column {
+                if (stacked) Text(meter.title(lang) + "?", style = MaterialTheme.typography.titleSmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!stacked) Text(meter.title(lang) + "?", style = MaterialTheme.typography.titleSmall, modifier = Modifier.width(140.dp))
+                    (1..5).forEach { n ->
+                        val chosen = set != null && n <= set.value
+                        val isGuess = n == guess
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.size(44.dp).clip(CircleShape)
+                                .then(if (isGuess) Modifier.border(2.dp, ink.copy(alpha = 0.5f), CircleShape) else Modifier)
+                                .clickable { onSet(meter, n, guess) },
+                        ) {
+                            Icon(
+                                if (meter == Meter.FLOW) HearthIcons.Sun else HearthIcons.Bolt, n.toString(),
+                                // Not agreed yet: Hearth's guess shows faintly.
+                                tint = when {
+                                    chosen -> ink
+                                    set == null && n <= guess -> ink.copy(alpha = 0.35f)
+                                    else -> MaterialTheme.colorScheme.outline
+                                },
+                                modifier = Modifier.size(if (chosen) 26.dp else 22.dp),
+                            )
+                        }
                     }
                 }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 140.dp)) {
                 val status = when {
                     set == null -> stringResource(Res.string.meters_guess, meter.word(guess, lang))
                     !set.agreed -> stringResource(Res.string.meters_neutral)
                     else -> stringResource(Res.string.meters_agreed, meter.word(set.value, lang))
                 }
-                Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                if (set == null) TextButton(onClick = { onSet(meter, guess, guess) }) { Text(stringResource(Res.string.meters_ok)) }
-                TextButton(onClick = { onSet(meter, null, guess) }) { Text(stringResource(Res.string.meters_no_agreement)) }
+                FlowRow(
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(start = if (stacked) 0.dp else 140.dp),
+                ) {
+                    Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterVertically).padding(end = 6.dp))
+                    if (set == null) TextButton(onClick = { onSet(meter, guess, guess) }) { Text(stringResource(Res.string.meters_ok)) }
+                    TextButton(onClick = { onSet(meter, null, guess) }) { Text(stringResource(Res.string.meters_no_agreement)) }
+                }
             }
         }
     }
@@ -513,22 +523,30 @@ fun AttentionList(
     }
 }
 
-/** A meeting's summary as written at Klaar. */
+/** A meeting's summary as written at Klaar: the part on the left, or above it on a phone. */
 @Composable
 fun SummaryText(summary: String) {
     val lines = summary.lines().filter { it.isNotBlank() }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        lines.forEachIndexed { i, line ->
-            val colon = line.indexOf(": ")
-            if (i == 0) {
-                Text(line, style = MaterialTheme.typography.titleMedium)
-            } else if (colon > 0) {
-                Row {
-                    Text(line.substring(0, colon), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(190.dp).padding(top = 2.dp, end = 10.dp))
-                    Text(line.substring(colon + 2), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val stacked = maxWidth < 520.dp
+        Column(verticalArrangement = Arrangement.spacedBy(if (stacked) 8.dp else 4.dp)) {
+            lines.forEachIndexed { i, line ->
+                val colon = line.indexOf(": ")
+                if (i == 0) {
+                    Text(line, style = MaterialTheme.typography.titleMedium)
+                } else if (colon > 0 && stacked) {
+                    Column {
+                        Text(line.substring(0, colon), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Text(line.substring(colon + 2), style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else if (colon > 0) {
+                    Row {
+                        Text(line.substring(0, colon), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(190.dp).padding(top = 2.dp, end = 10.dp))
+                        Text(line.substring(colon + 2), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    }
+                } else {
+                    Text(line, style = MaterialTheme.typography.bodyMedium)
                 }
-            } else {
-                Text(line, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

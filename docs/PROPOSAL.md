@@ -104,8 +104,9 @@ NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `ad
 `clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
 with the same name. · Weekoverleg: `plan_meal` (one meal per day; ingredients onto the shopping list; a known
 dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_agenda` (look back since the last
-meeting, meals, shopping, deadlines, due routines, oudjes, open frictions and ideas, wins, week feelings and the
-Luister mee transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary), `add_win`,
+meeting and wins, then every *topic* in a few words with its details, the meters' suggestions and the Luister mee
+transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary; `preview` only writes it,
+for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `set_week_meter` (FLOW / STRAIN, agreed together for the household; empty = no
 agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (worked / not yet, never who), `rate_habit` (EASY / EFFORT / HARD),
 `set_small_step` (a habit's smallest first step),
@@ -262,14 +263,18 @@ recipe). *Nieuw recept*: take or choose a photo, tell what you made (typed or wi
 ingredients fill in from the story (`RecipeWords`) and stay editable. Capture bar: "recept: pannenkoeken met
 bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 
-**Weekoverleg** (v0.7): one prepared page instead of steps, *Klaar* at the top. Left: *Terugblik* (last
-meeting's summary as "Vorige keer", what got done since, *Wat ging goed*, *Hoe zwaar*) and *Werkbord* (open
-frictions and ideas with their three outcomes, goals without a next step; after a heavy week: "Wat pakken we
-als eerste aan?"). Right: *Deze week* (seven days, each with its meal (tap to plan, X asks first) and what has
-that day, then deadlines, routines aan de beurt and a project step), *Vooruitblik* (what has a day after this
-week: verlof, trips, birthdays), *Oudjes* (only when something has waited long), *Boodschappen* (list at a
-glance, add, Voorraad nakijken, Taken openen). *Klaar* records the meeting and writes its summary (wat ging goed,
-hoe zwaar, afgesproken, besproken, nieuwe werkpunten, gepland, vrije tijd, menu).
+**Weekoverleg** (v0.10): one page built around the household's *topics* (`Topic` in `core/model/Week.kt`):
+*Vrije tijd*, *Admin*, *Grote taken*, *Huishouden & gewoontes*, *Boodschappen*, *Weekmenu*, *Afspraken*. On top
+the **Luister mee** stage: a big mic with breathing rings and moving bars while it listens, the words as they come
+in, the seven topics as a row of dots (the one the last sentence went to glows), and the last sentences each with
+its topic chip. Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
+antwoord", "3 van 7 avonden"); the tile Luister mee just heard about glows too. Tapping a tile opens its list under
+the grid (free time and admin with an add field, projects with their next step and "dit weekend", chores aan de
+beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and working points).
+Then *Terugblik* (last meeting's summary, what got done, *Wat ging goed*, the meters) and *Deze week* (7 days, what
+has that day with its section colour, the meal small underneath) and *Vooruitblik* (dates after this week). There
+are no Oudjes: what has no topic waits in Taken → Te sorteren. *Klaar* first opens *Samen akkoord?*: the summary
+(by topic) to read together, with a nudge when sentences still wait in the Voorstel; *Akkoord, klaar* records it.
 Terugblik also has *Wat ging goed* (wins, X asks first) and two household meters, *Hoe liep het?* and *Wat
 schuurde?* (on by default, can be switched off). Hearth suggests (a ring and a faint fill): Hoe liep het starts at
 "goed" because small things and good habits get forgotten, "heel goed" with plenty done and no habit asking for
@@ -282,7 +287,7 @@ the family rates each one together (*Ease*: loopt vanzelf green / vraagt moeite 
 can give it a *small step* ("Begin klein: …"). Chores get their ease from the `routine_log`; tasks from how often
 they were postponed (2× amber, 4× orange; saying a task again with a later day moves it and counts). *Vraagt aandacht*
 lists both and offers *Minder vaak* (interval ×2) or *Makkelijker maken* (an idea on the Werkbord). In Taken habits
-have their own group with a sun icon and a "Hoe loopt het?" chip; never "late". **Luister mee** (bar at the top of the page; it keeps listening while the family opens the list, the
+have their own group with a sun icon and a "Hoe loopt het?" chip; never "late". **Luister mee** (it keeps listening while the family opens the list, the
 stock or the tasks, with a small "Terug naar het overleg" bar there): continuous transcription during the meeting (Web Speech;
 Android restarts its recognizer after each pause and prefers on-device recognition). *Gesprek* shows what was
 heard; *Zet op zijn plek* opens the Voorstel: each sentence with its guessed place (Taken, Afspraak, Vrije tijd,
@@ -374,11 +379,13 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    with a next step; household members (names, colours). Capture bar: "huisregel: …", "ik erger me aan …",
    "we willen samen …", "doel: …", and spoken commands that name the place ("voeg aan de huisregels toe dat
    …", "add to goals: …", "zet … bij de projecten"): only the rest becomes the item (`AreaWords`).
-6. ✅ **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*;
+6. ✅ **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items);
    capture bar: "we eten maandag spaghetti", "vanavond eten we frietjes", "dinner on monday: pizza".
    v0.6: wat ging goed, Luister mee with a Voorstel, ideas on the Werkbord, summaries. v0.7: one prepared page,
    Vooruitblik, dates further ahead. v0.8: two household meters agreed together, house-rule check, habit health.
    v0.9: habits rated (Ease colours, small step) instead of ticked; tasks coloured by postponement.
+   v0.10: the meeting by topic (tiles), a visible Luister mee that lights up the topic, Samen akkoord? before
+   Klaar, Oudjes removed, phone layout fixes.
 7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
    icon on Vandaag): add `<relay>/mcp` once in ChatGPT/Claude and type the tablet's pairing code.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a

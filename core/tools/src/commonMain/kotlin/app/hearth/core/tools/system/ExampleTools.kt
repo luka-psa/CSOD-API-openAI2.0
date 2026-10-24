@@ -79,7 +79,7 @@ class LoadExamplesTool(
         task(e.pushed, Section.PROJECT, When.DAY, day(1))
         listOf(2, 4).forEach { n -> step { tools.planBacklogItem.run(PlanBacklogArgs(texts = listOf(e.pushed), `when` = When.DAY, date = day(n)), ctx) } }
 
-        // Vrije tijd and something still to sort (it shows under Oudjes in the weekoverleg).
+        // Vrije tijd and something still to sort (it waits in Taken → Te sorteren).
         task(e.free, Section.PROTECTED_TIME, When.DAY, day(daysUntilFriday(ctx.today)))
         task(e.toSort, Section.OTHER)
 

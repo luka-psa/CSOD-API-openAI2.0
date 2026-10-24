@@ -120,6 +120,9 @@ fun EmptyHint(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+/** True on phone-width screens, where rows drop secondary buttons so the text keeps its room. */
+val LocalNarrow = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 /** Small coloured label: the section an item belongs to. */
 @Composable
 fun SectionTag(item: BacklogItem, lang: Lang) {

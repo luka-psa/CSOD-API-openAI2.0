@@ -12,14 +12,102 @@ data class Huddle(val id: String, val heldOn: String, val createdAt: Long, val s
 }
 
 /**
- * Oudjes: what has been open the longest without a plan. A few are picked each week, so a long list
- * shrinks bit by bit instead of feeling endless.
+ * The weekoverleg's topics: one tile each, so the whole household fits on one screen and nobody has to
+ * hold it in their head. Luister mee lights up the tile a sentence lands in.
  */
-fun oudjes(items: List<BacklogItem>, count: Int = 3, skip: Int = 0): List<BacklogItem> =
-    items.filter { !it.done && !it.isStep && !it.isRoutine() && !it.waiting && (it.plan == Plan.UNPLANNED || it.plan == Plan.LATER) }
-        .sortedBy { it.createdAt }
-        .drop(skip)
-        .take(count)
+enum class Topic { FREE_TIME, ADMIN, PROJECTS, HOME, SHOPPING, MENU, AGREEMENTS }
+
+fun Topic.title(lang: Lang): String = when (this) {
+    Topic.FREE_TIME -> if (lang == Lang.NL) "Vrije tijd" else "Free time"
+    Topic.ADMIN -> "Admin"
+    Topic.PROJECTS -> if (lang == Lang.NL) "Grote taken" else "Big tasks"
+    Topic.HOME -> if (lang == Lang.NL) "Huishouden & gewoontes" else "Home & habits"
+    Topic.SHOPPING -> if (lang == Lang.NL) "Boodschappen" else "Shopping"
+    Topic.MENU -> if (lang == Lang.NL) "Weekmenu" else "Week menu"
+    Topic.AGREEMENTS -> if (lang == Lang.NL) "Afspraken" else "Agreements"
+}
+
+/** Where a section belongs in the weekoverleg; null for what still has to be sorted. */
+fun Section.topic(): Topic? = when (this) {
+    Section.PROTECTED_TIME -> Topic.FREE_TIME
+    Section.ADMIN, Section.APPOINTMENT -> Topic.ADMIN
+    Section.PROJECT -> Topic.PROJECTS
+    Section.CHORE, Section.RHYTHM, Section.HABIT -> Topic.HOME
+    Section.SHOPPING, Section.STOCK -> Topic.SHOPPING
+    Section.NOTE, Section.FRICTION, Section.GOAL, Section.IDEA -> Topic.AGREEMENTS
+    Section.OTHER -> null
+}
+
+val BacklogItem.topic: Topic? get() = if (isStep) Topic.PROJECTS else section.topic()
+
+/** Everything a topic tile looks at. */
+class WeekLook(
+    val open: List<BacklogItem>,
+    val board: List<BoardItem>,
+    val mealsPlanned: Int,
+    val shoppingOpen: Int,
+    val today: LocalDate,
+)
+
+/** A topic in a few calm words ("3 open · 1 wacht op antwoord"); never a red counter. */
+fun Topic.glance(look: WeekLook, lang: Lang): String {
+    val nl = lang == Lang.NL
+    fun count(n: Int, one: String, many: String) = "$n ${if (n == 1) one else many}"
+    val open = look.open.filter { !it.done }
+    val parts: List<String> = when (this) {
+        Topic.FREE_TIME -> {
+            val soon = open.filter { it.section == Section.PROTECTED_TIME && (it.plan == Plan.NEXT || (it.localDate?.let { d -> d < look.today.plusDays(7) } ?: false)) }
+                .sortedBy { it.date ?: "9" }
+            if (soon.isEmpty()) listOf(if (nl) "Nog niets gepland" else "Nothing planned yet")
+            else listOf(soon.first().let { f -> f.text + (f.localDate?.let { " (" + dayLabel(it, look.today, lang) + ")" } ?: "") }) +
+                listOfNotNull((soon.size - 1).takeIf { it > 0 }?.let { "+$it" })
+        }
+        Topic.ADMIN -> {
+            val admin = open.filter { it.topic == Topic.ADMIN }
+            if (admin.isEmpty()) listOf(if (nl) "Niets open. Fijn." else "Nothing open. Nice.")
+            else listOfNotNull(
+                "${admin.size} open",
+                admin.count { it.urgent }.takeIf { it > 0 }?.let { if (nl) "$it dringend" else "$it urgent" },
+                admin.count { it.waiting }.takeIf { it > 0 }?.let { if (nl) "$it wacht op antwoord" else "$it waiting for a reply" },
+            )
+        }
+        Topic.PROJECTS -> {
+            val projects = open.filter { it.section == Section.PROJECT && !it.isStep }
+            if (projects.isEmpty()) listOf(if (nl) "Geen lopende projecten" else "No running projects")
+            else listOfNotNull(
+                if (nl) "${projects.size} lopend" else "${projects.size} running",
+                projects.count { it.postponed >= 2 }.takeIf { it > 0 }?.let { if (nl) "$it vraagt aandacht" else "$it ask for attention" },
+            )
+        }
+        Topic.HOME -> {
+            val due = dueRoutines(open, look.today).filterNot { it.isHabit }
+            val hard = open.count { it.isHabit && it.ease == Ease.HARD }
+            if (due.isEmpty() && hard == 0) listOf(if (nl) "Loopt rustig" else "Running calmly")
+            else listOfNotNull(
+                due.size.takeIf { it > 0 }?.let { if (nl) "$it aan de beurt" else "$it due" },
+                hard.takeIf { it > 0 }?.let { if (nl) "$it te zwaar" else "$it too hard" },
+            )
+        }
+        Topic.SHOPPING -> listOf(
+            if (look.shoppingOpen == 0) (if (nl) "De lijst is leeg" else "The list is empty")
+            else if (nl) "${look.shoppingOpen} op de lijst" else "${look.shoppingOpen} on the list",
+        )
+        Topic.MENU -> listOf(
+            if (look.mealsPlanned == 0) (if (nl) "Nog niets gepland" else "Nothing planned yet")
+            else if (nl) "${look.mealsPlanned} van 7 avonden" else "${look.mealsPlanned} of 7 evenings",
+        )
+        Topic.AGREEMENTS -> {
+            val rules = look.board.count { it.kind == BoardKind.RULE && it.isOpen }
+            val points = look.board.count { it.isWorkingPoint && it.isOpen }
+            if (rules == 0 && points == 0) listOf(if (nl) "Nog geen afspraken" else "No agreements yet")
+            else listOfNotNull(
+                rules.takeIf { it > 0 }?.let { if (nl) count(it, "afspraak", "afspraken") else count(it, "agreement", "agreements") },
+                points.takeIf { it > 0 }?.let { if (nl) "$it te bespreken" else "$it to talk through" },
+            )
+        }
+    }
+    return parts.joinToString(" · ")
+}
 
 /** Deadlines ("klaar tegen") in the coming week, earlier ones included. */
 fun deadlinesThisWeek(items: List<BacklogItem>, today: LocalDate): List<BacklogItem> =

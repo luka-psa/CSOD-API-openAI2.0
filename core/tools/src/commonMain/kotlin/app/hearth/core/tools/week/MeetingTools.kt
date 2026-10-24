@@ -25,6 +25,8 @@ import app.hearth.core.model.isRoutine
 import app.hearth.core.model.normalizeName
 import kotlinx.datetime.LocalDate
 import app.hearth.core.model.Win
+import app.hearth.core.model.Topic
+import app.hearth.core.model.topic
 import app.hearth.core.model.dayLabel
 import app.hearth.core.model.plusDays
 import app.hearth.core.tools.Describe
@@ -342,7 +344,19 @@ class ListHuddlesTool(private val meeting: MeetingRepository) : Tool<ListHuddles
 // ---------- finish_weekoverleg ----------
 
 @Serializable
-data class HuddleResult(val huddle: Huddle, override val summary: String) : ToolResult
+data class FinishArgs(
+    @Describe("True: only write the summary so the family can read and agree on it; nothing is recorded yet.")
+    val preview: Boolean = false,
+)
+
+@Serializable
+data class HuddleResult(
+    /** The recorded meeting; null for a preview. */
+    val huddle: Huddle?,
+    override val summary: String,
+    /** The meeting's summary, one line per part ("Admin: …"). */
+    val lines: List<String> = emptyList(),
+) : ToolResult
 
 /**
  * Ends the meeting and writes its summary (kept for good): what went well, the two meters (with Hearth's
@@ -355,14 +369,15 @@ class FinishWeekoverlegTool(
     private val backlog: BacklogRepository,
     private val board: BoardRepository,
     private val settings: SettingsRepository,
-) : Tool<AgendaArgs, HuddleResult> {
+) : Tool<FinishArgs, HuddleResult> {
     override val name = NAME
-    override val description = "Mark this week's meeting as held and write its summary, so next week's look back starts from today."
-    override val argsSerializer = AgendaArgs.serializer()
+    override val description = "Mark this week's meeting as held and write its summary, so next week's look back starts from today. " +
+        "With preview, only write the summary so the family can agree on it first."
+    override val argsSerializer = FinishArgs.serializer()
     override val resultSerializer = HuddleResult.serializer()
 
     @OptIn(ExperimentalTime::class)
-    override suspend fun run(args: AgendaArgs, ctx: ToolContext): HuddleResult {
+    override suspend fun run(args: FinishArgs, ctx: ToolContext): HuddleResult {
         val last = week.last()
         val since = last?.createdAt ?: ctx.today.plusDays(-7).atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
         val names = board.allMembers().associate { it.id to it.name }
@@ -386,7 +401,7 @@ class FinishWeekoverlegTool(
             val good = wins.map { w -> w.text + (w.memberId?.let(names::get)?.let { " ($it)" } ?: "") }
             if (good.isNotEmpty() || done.isNotEmpty()) {
                 add(ctx.t("Wat ging goed: ", "What went well: ") + (good + listOfNotNull(
-                    done.size.takeIf { it > 0 }?.let { ctx.t("$it dingen gedaan", "$it things done") },
+                    done.size.takeIf { it > 0 }?.let { ctx.t("$it ${if (it == 1) "ding" else "dingen"} gedaan", "$it ${if (it == 1) "thing" else "things"} done") },
                 )).joinToString("; "))
             }
             meters.sortedBy { it.meter }.forEach { m ->
@@ -401,7 +416,7 @@ class FinishWeekoverlegTool(
             val notYet = checks.filter { !it.worked }.mapNotNull { c -> boardItems.firstOrNull { it.id == c.ruleId } }
             if (notYet.isNotEmpty()) add(ctx.t("Afspraken die nog niet liepen: ", "Agreements that didn't work yet: ") + notYet.joinToString("; ") { it.text })
             // Two meetings in a row: the agreement itself becomes a working point (maybe it asks too much).
-            notYet.filter { r -> checkedBefore.any { it.ruleId == r.id && !it.worked } }.forEach { r ->
+            if (!args.preview) notYet.filter { r -> checkedBefore.any { it.ruleId == r.id && !it.worked } }.forEach { r ->
                 board.add(BoardKind.FRICTION, ctx.t("Afspraak loopt nog niet: ${r.text}", "Agreement not working yet: ${r.text}"))
             }
             if (habits.isNotEmpty()) {
@@ -421,14 +436,15 @@ class FinishWeekoverlegTool(
                 })
             }
             if (newPoints.isNotEmpty()) add(ctx.t("Nieuwe werkpunten: ", "New working points: ") + newPoints.joinToString("; ") { it.text })
-            val free = planned.filter { it.section == Section.PROTECTED_TIME }
-            val tasks = planned - free.toSet()
-            if (tasks.isNotEmpty()) add(ctx.t("Gepland: ", "Planned: ") + tasks.joinToString("; ") { "${it.text} (${dayLabel(it.localDate!!, ctx.today, ctx.lang)})" })
-            if (free.isNotEmpty()) add(ctx.t("Vrije tijd: ", "Free time: ") + free.joinToString("; ") { "${it.text} (${dayLabel(it.localDate!!, ctx.today, ctx.lang)})" })
-            if (meals.isNotEmpty()) add(ctx.t("Op het menu: ", "On the menu: ") + meals.joinToString(", ") { it.dish })
+            // What got a day, by topic, so everyone sees where it landed.
+            planned.groupBy { it.topic }.entries.sortedBy { it.key?.ordinal ?: Int.MAX_VALUE }.forEach { (topic, items) ->
+                add((topic?.title(ctx.lang) ?: ctx.t("Gepland", "Planned")) + ": " + items.joinToString("; ") { "${it.text} (${dayLabel(it.localDate!!, ctx.today, ctx.lang)})" })
+            }
+            if (meals.isNotEmpty()) add(Topic.MENU.title(ctx.lang) + ": " + meals.joinToString(", ") { it.dish })
         }
+        if (args.preview) return HuddleResult(null, lines.joinToString("\n"), lines)
         val huddle = meeting.close(ctx.today.toString(), lines.joinToString("\n"))
-        return HuddleResult(huddle, ctx.t("Mooi weekoverleg! Jullie zijn klaar voor de week.", "Nice weekly meeting! You're set for the week."))
+        return HuddleResult(huddle, ctx.t("Mooi weekoverleg! Jullie zijn klaar voor de week.", "Nice weekly meeting! You're set for the week."), lines)
     }
 
     companion object {

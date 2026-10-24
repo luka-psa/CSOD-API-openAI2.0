@@ -10,7 +10,10 @@ import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
 import app.hearth.core.model.huddleDue
-import app.hearth.core.model.oudjes
+import app.hearth.core.model.Topic
+import app.hearth.core.model.WeekLook
+import app.hearth.core.model.glance
+import app.hearth.core.model.topic
 import app.hearth.core.model.plusDays
 import app.hearth.core.tools.HearthTools
 import app.hearth.core.tools.ToolCall
@@ -30,7 +33,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Meals, oudjes and the weekly meeting's agenda. */
+/** Meals, topics and the weekly meeting's agenda. */
 class WeekToolsTest {
     private val db = inMemoryHearthDatabase()
     private val shopping = ShoppingRepository(db)
@@ -72,16 +75,20 @@ class WeekToolsTest {
     }
 
     @Test
-    fun `oudjes are the longest open, unplanned, not routines`() = runTest {
-        listOf("Zolder opruimen", "Fotoboek maken", "Kast herschilderen", "Belastingbrief").forEach {
-            tools.registry.run(tools.addToBacklog, AddToBacklogArgs(it, Section.PROJECT), nl)
-        }
-        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Lakens", Section.CHORE, intervalDays = 14), nl)
-        tools.registry.run(tools.planBacklogItem, app.hearth.core.tools.backlog.PlanBacklogArgs(texts = listOf("fotoboek"), `when` = When.NEXT), nl)
+    fun `every item has one topic, and each tile says it in a few calm words`() = runTest {
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Verzekering bellen", Section.ADMIN, urgent = true), nl)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Filmavond", Section.PROTECTED_TIME, When.DAY, "2026-10-23"), nl)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Zolder opruimen", Section.PROJECT), nl)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Fotoboek maken"), nl)
         val open = backlog.openItems()
-        assertEquals(listOf("Zolder opruimen", "Kast herschilderen", "Belastingbrief"), oudjes(open).map { it.text })
-        assertEquals(listOf("Belastingbrief"), oudjes(open, count = 3, skip = 2).map { it.text })
-        assertEquals(Plan.NEXT, open.first { it.text == "Fotoboek maken" }.plan)
+        assertEquals(Topic.ADMIN, open.first { it.text == "Verzekering bellen" }.topic)
+        assertEquals(null, open.first { it.text == "Fotoboek maken" }.topic)
+        val look = WeekLook(open, emptyList(), mealsPlanned = 2, shoppingOpen = 0, today = LocalDate(2026, 10, 22))
+        assertEquals("1 open · 1 dringend", Topic.ADMIN.glance(look, Lang.NL))
+        assertEquals("Filmavond (morgen)", Topic.FREE_TIME.glance(look, Lang.NL))
+        assertEquals("1 lopend", Topic.PROJECTS.glance(look, Lang.NL))
+        assertEquals("2 van 7 avonden", Topic.MENU.glance(look, Lang.NL))
+        assertEquals("The list is empty", Topic.SHOPPING.glance(look, Lang.EN))
     }
 
     @Test
@@ -97,13 +104,14 @@ class WeekToolsTest {
         assertEquals(listOf("Autokeuring"), agenda.deadlines.map { it.text })
         assertEquals(listOf("Rommel in de gang"), agenda.frictions.map { it.text })
         assertEquals(
-            "1. Terugblik: 1 dingen gedaan.\n2. Maaltijden: 1 van 7 dagen gepland (Pizza).\n3. Boodschappen: 0 op de lijst.\n" +
-                "4. Deze week: deadlines Autokeuring.\n5. Oudjes: geen.\n6. Werkbord: Rommel in de gang.\nMeters (samen afspreken): hoe liep het, voorstel 4; wat schuurde, voorstel 2.",
+            "Terugblik: 1 ding gedaan.\nVrije tijd: Nog niets gepland.\nAdmin: 1 open (klaar tegen: Autokeuring).\n" +
+                "Grote taken: Geen lopende projecten.\nHuishouden & gewoontes: Loopt rustig.\nBoodschappen: De lijst is leeg.\n" +
+                "Weekmenu: 1 van 7 avonden (Pizza).\nAfspraken: 1 te bespreken (Rommel in de gang).\nMeters (samen afspreken): hoe liep het, voorstel 4; wat schuurde, voorstel 2.",
             agenda.summary,
         )
 
         assertTrue(huddleDue(week.last(), friday))
-        assertEquals("Mooi weekoverleg! Jullie zijn klaar voor de week.", tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl).summary)
+        assertEquals("Mooi weekoverleg! Jullie zijn klaar voor de week.", tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).summary)
         assertFalse(huddleDue(week.last(), friday.plusDays(3)))
         assertTrue(huddleDue(week.last(), friday.plusDays(6)))
     }

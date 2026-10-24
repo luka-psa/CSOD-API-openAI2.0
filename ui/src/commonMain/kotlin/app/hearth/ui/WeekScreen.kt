@@ -1,5 +1,22 @@
 package app.hearth.ui
 
+import app.hearth.ui.resources.day_free
+import app.hearth.ui.resources.projects_empty
+import app.hearth.ui.resources.project_add_hint
+import app.hearth.ui.resources.admin_add_hint
+import app.hearth.ui.resources.admin_empty
+import app.hearth.ui.resources.free_add_hint
+import app.hearth.ui.resources.free_empty
+import app.hearth.ui.resources.close
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.IconButton
+import app.hearth.core.model.isRoutine
+import app.hearth.core.model.topic
+import app.hearth.core.model.title
+import app.hearth.core.model.glance
+import app.hearth.core.model.WeekLook
+import app.hearth.core.model.Topic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -75,7 +92,6 @@ import app.hearth.ui.resources.week_ahead
 import app.hearth.ui.resources.week_ahead_empty
 import app.hearth.ui.resources.week_open_tasks
 import app.hearth.ui.resources.week_recipes
-import app.hearth.core.model.oudjes
 import app.hearth.core.model.plusDays
 import app.hearth.core.model.weekdayName
 import app.hearth.core.tools.backlog.When
@@ -102,8 +118,6 @@ import app.hearth.ui.resources.meal_remove_body
 import app.hearth.ui.resources.meal_title
 import app.hearth.ui.resources.nav_week
 import app.hearth.ui.resources.open_stock
-import app.hearth.ui.resources.oudje_since
-import app.hearth.ui.resources.oudjes_more
 import app.hearth.ui.resources.plan_later
 import app.hearth.ui.resources.plan_weekend
 import app.hearth.ui.resources.save
@@ -121,9 +135,6 @@ import app.hearth.ui.resources.step_look_back_week
 import app.hearth.ui.resources.step_meals
 import app.hearth.ui.resources.step_meals_hint
 import app.hearth.ui.resources.step_of
-import app.hearth.ui.resources.step_oudjes
-import app.hearth.ui.resources.step_oudjes_empty
-import app.hearth.ui.resources.step_oudjes_hint
 import app.hearth.ui.resources.step_shopping
 import app.hearth.ui.resources.step_shopping_hint
 import app.hearth.ui.resources.step_week
@@ -170,6 +181,9 @@ class WeekCallbacks(
     val rateHabit: (BacklogItem, Ease) -> Unit,
     val smallStep: (BacklogItem, String) -> Unit,
     val heard: (String) -> Unit,
+    val addTo: (String, Section) -> Unit,
+    val prepareFinish: () -> Unit,
+    val closeAgree: () -> Unit,
     val clearTranscript: () -> Unit,
     val openVoorstel: () -> Unit,
     val closeVoorstel: () -> Unit,
@@ -189,15 +203,19 @@ class MeetingState(
     val lastTranscript: List<TranscriptLine>,
     val huddles: List<Huddle>,
     val voorstel: List<VoorstelRow>?,
+    /** What Luister mee heard lately, newest first, with its topic. */
+    val heard: List<HeardLine> = emptyList(),
+    /** The summary to agree on before Klaar, while it's open. */
+    val agree: List<String>? = null,
 )
 
 /** Luister mee lives above the screens, so it keeps listening while the family looks at a list. */
 class ListenControl(val available: Boolean, val listening: Boolean, val partial: String, val toggle: () -> Unit)
 
 /**
- * The weekly meeting, about 15 minutes together, on one prepared page: what went well and how heavy it
- * felt, the working points, this week (seven days with their meal and plans), what's coming later
- * (verlof, trips, birthdays), what has waited longest, and the lists. "Klaar" records it.
+ * The weekly meeting, about 15 minutes together. Luister mee sits on top and sorts what is said into the
+ * household's topics, which are all visible at once as calm tiles (tap one to open it). Below: the look
+ * back and this week, day by day. Klaar first shows the summary to agree on.
  */
 @Composable
 fun WeekScreen(
@@ -218,12 +236,13 @@ fun WeekScreen(
 ) {
     var finished by rememberSaveable { mutableStateOf(false) }
     var showing by remember { mutableStateOf<Boolean?>(null) }
+    var open by rememberSaveable { mutableStateOf<Topic?>(null) }
     LaunchedEffect(Unit) { cb.loadAgenda() }
 
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.nav_week), style = MaterialTheme.typography.displaySmall)
+                Text(stringResource(Res.string.nav_week), style = if (wide) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium, maxLines = 1)
                 val held = lastHuddle?.date?.let { stringResource(Res.string.week_last_held, dayLabel(it, today, lang).removePrefix("sinds ").removePrefix("since ")) }
                 Text(
                     listOfNotNull(stringResource(Res.string.week_subtitle), held).joinToString("  ·  "),
@@ -232,7 +251,7 @@ fun WeekScreen(
                 )
             }
             if (!finished) {
-                Button(onClick = { if (listen.listening) listen.toggle(); cb.finish(); finished = true }) {
+                Button(onClick = cb.prepareFinish) {
                     Icon(HearthIcons.Check, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(Res.string.week_finish))
@@ -240,16 +259,6 @@ fun WeekScreen(
             }
         }
         Spacer(Modifier.size(12.dp))
-        ListenBar(
-            available = listen.available,
-            listening = listen.listening,
-            partial = listen.partial,
-            lines = meeting.transcript,
-            onToggle = listen.toggle,
-            onShow = { showing = true },
-            onSort = cb.openVoorstel,
-        )
-        Spacer(Modifier.size(14.dp))
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             if (finished) {
@@ -259,9 +268,36 @@ fun WeekScreen(
                 return@Column
             }
             val gap = if (wide) 20.dp else 16.dp
-            val hasOudjes = oudjes(backlog).isNotEmpty()
+            val lit = meeting.heard.take(2).mapNotNull { it.topic }.toSet()
+            ListenStage(
+                available = listen.available,
+                listening = listen.listening,
+                partial = listen.partial,
+                heard = meeting.heard,
+                hasLines = meeting.transcript.isNotEmpty(),
+                lit = lit,
+                lang = lang,
+                onToggle = listen.toggle,
+                onShow = { showing = true },
+                onSort = cb.openVoorstel,
+            )
+            Spacer(Modifier.size(gap))
+
+            // At a glance: every topic, a few words each. The one just heard about glows.
+            val look = WeekLook(backlog, board, meals.count { m -> runCatching { LocalDate.parse(m.date) }.getOrNull()?.let { it >= today && it < today.plusDays(7) } ?: false }, shopping.sumOf { s -> s.items.count { !it.bought } }, today)
+            TopicGrid(Topic.entries.map { it to it.glance(look, lang) }, open, lit, lang) { open = if (open == it) null else it }
+            open?.let { topic ->
+                Spacer(Modifier.size(gap))
+                HearthCard(topic.title(lang), topic.icon(), Modifier.fillMaxWidth(), action = {
+                    IconButton(onClick = { open = null }) { Icon(HearthIcons.Close, stringResource(Res.string.close), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }) {
+                    TopicDetail(topic, agenda, backlog, steps, board, meals, dishes, shopping, today, lang, meeting, cb)
+                }
+            }
+            Spacer(Modifier.size(gap))
+
             val lookBack = @Composable { m: Modifier ->
-                HearthCard(stringResource(Res.string.step_look_back), HearthIcons.Sun, m) {
+                HearthCard(stringResource(Res.string.step_look_back), HearthIcons.Heart, m) {
                     LastTime(lastHuddle, meeting.lastTranscript, onShow = { showing = false })
                     LookBack(agenda, lastHuddle, today, lang)
                     Spacer(Modifier.size(14.dp))
@@ -273,57 +309,23 @@ fun WeekScreen(
                     )
                 }
             }
-            val workingPoints = @Composable { m: Modifier ->
-                HearthCard(stringResource(Res.string.step_board), HearthIcons.Bolt, m) {
-                    RuleChecks(board.filter { it.kind == BoardKind.RULE && it.isOpen }, meeting.ruleChecks, cb.checkRule)
-                    Spacer(Modifier.size(10.dp))
-                    BoardStep(board, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
-                    Spacer(Modifier.size(10.dp))
-                    HabitsRating(backlog.filter { it.isHabit }, cb.rateHabit, cb.smallStep)
-                    Spacer(Modifier.size(10.dp))
-                    AttentionList(agenda?.needsAttention.orEmpty().map { it.item to it.ease }, cb.lessOften, cb.makeEasier, cb.smallStep)
-                }
-            }
             val thisWeek = @Composable { m: Modifier ->
-                HearthCard(stringResource(Res.string.step_week), HearthIcons.Calendar, m, action = { CardAction(stringResource(Res.string.week_recipes), cb.goMenu, compact = true) }) {
-                    Days(backlog, meals, dishes, today, lang, cb)
-                    Spacer(Modifier.size(10.dp))
-                    ThisWeek(backlog, steps, today, lang, cb)
-                }
-            }
-            val ahead = @Composable { m: Modifier ->
-                HearthCard(stringResource(Res.string.week_ahead), HearthIcons.Later, m) { Ahead(backlog, today, lang) }
-            }
-            val waiting = @Composable { m: Modifier ->
-                HearthCard(stringResource(Res.string.step_oudjes), HearthIcons.Inbox, m) { Oudjes(backlog, today, lang, cb) }
-            }
-            val lists = @Composable { m: Modifier ->
-                HearthCard(stringResource(Res.string.step_shopping), HearthIcons.Cart, m) {
-                    ShoppingStep(shopping, cb)
-                    CardAction(stringResource(Res.string.week_open_tasks), cb.goTasks)
+                Column(m, verticalArrangement = Arrangement.spacedBy(gap)) {
+                    HearthCard(stringResource(Res.string.step_week), HearthIcons.Calendar, Modifier.fillMaxWidth(), action = { CardAction(stringResource(Res.string.week_open_tasks), cb.goTasks, compact = true) }) {
+                        WeekStrip(backlog, meals, today, lang)
+                    }
+                    HearthCard(stringResource(Res.string.week_ahead), HearthIcons.Later, Modifier.fillMaxWidth()) { Ahead(backlog, today, lang) }
                 }
             }
             if (wide) {
                 Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
-                        lookBack(Modifier.fillMaxWidth())
-                        workingPoints(Modifier.fillMaxWidth())
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
-                        thisWeek(Modifier.fillMaxWidth())
-                        ahead(Modifier.fillMaxWidth())
-                        if (hasOudjes) waiting(Modifier.fillMaxWidth())
-                        lists(Modifier.fillMaxWidth())
-                    }
+                    lookBack(Modifier.weight(1f))
+                    thisWeek(Modifier.weight(1f))
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(gap)) {
                     lookBack(Modifier.fillMaxWidth())
                     thisWeek(Modifier.fillMaxWidth())
-                    ahead(Modifier.fillMaxWidth())
-                    workingPoints(Modifier.fillMaxWidth())
-                    if (hasOudjes) waiting(Modifier.fillMaxWidth())
-                    lists(Modifier.fillMaxWidth())
                 }
             }
             Spacer(Modifier.size(16.dp))
@@ -337,26 +339,132 @@ fun WeekScreen(
     meeting.voorstel?.let { rows ->
         VoorstelSheet(rows, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.addVoorstel, cb.closeVoorstel)
     }
+    meeting.agree?.let { lines ->
+        AgreeSheet(
+            lines,
+            unsorted = meeting.transcript.any { !it.sorted },
+            onSort = { cb.closeAgree(); cb.openVoorstel() },
+            onAgree = { if (listen.listening) listen.toggle(); cb.finish(); finished = true },
+            onDismiss = cb.closeAgree,
+        )
+    }
+}
+
+/** What opens under a tile: the topic's own list, with the few actions the meeting needs. */
+@Composable
+private fun TopicDetail(
+    topic: Topic,
+    agenda: WeekAgenda?,
+    backlog: List<BacklogItem>,
+    steps: List<BacklogItem>,
+    board: List<BoardItem>,
+    meals: List<Meal>,
+    dishes: List<Meal>,
+    shopping: List<ShopSection>,
+    today: LocalDate,
+    lang: Lang,
+    meeting: MeetingState,
+    cb: WeekCallbacks,
+) {
+    val mine = backlog.filter { !it.done && it.topic == topic && !it.isStep }.sortedWith(compareBy({ it.date ?: "9999" }, { it.createdAt }))
+    when (topic) {
+        Topic.FREE_TIME -> {
+            if (mine.isEmpty()) Hint(stringResource(Res.string.free_empty))
+            mine.forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}, showSection = false) }
+            Spacer(Modifier.size(10.dp))
+            AddRow(stringResource(Res.string.free_add_hint), { cb.addTo(it, Section.PROTECTED_TIME) }, muted = true)
+        }
+        Topic.ADMIN -> {
+            if (mine.isEmpty()) Hint(stringResource(Res.string.admin_empty))
+            mine.take(8).forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}) }
+            Spacer(Modifier.size(10.dp))
+            AddRow(stringResource(Res.string.admin_add_hint), { cb.addTo(it, Section.ADMIN) }, muted = true)
+        }
+        Topic.PROJECTS -> {
+            Projects(backlog, steps, today, lang, cb)
+            AttentionList(agenda?.needsAttention.orEmpty().filter { !it.item.isRoutine() }.map { it.item to it.ease }, cb.lessOften, cb.makeEasier, cb.smallStep)
+            Spacer(Modifier.size(10.dp))
+            AddRow(stringResource(Res.string.project_add_hint), { cb.addTo(it, Section.PROJECT) }, muted = true)
+        }
+        Topic.HOME -> {
+            val due = dueRoutines(backlog, today).filterNot { it.isHabit }
+            if (due.isNotEmpty()) {
+                GroupTitle(stringResource(Res.string.step_week_routines))
+                due.forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}, showSection = false) }
+                Spacer(Modifier.size(10.dp))
+            }
+            HabitsRating(backlog.filter { it.isHabit }, cb.rateHabit, cb.smallStep)
+            AttentionList(agenda?.needsAttention.orEmpty().filter { it.item.isRoutine() }.map { it.item to it.ease }, cb.lessOften, cb.makeEasier, cb.smallStep)
+            if (due.isEmpty() && backlog.none { it.isHabit }) Hint(stringResource(Res.string.step_week_calm))
+        }
+        Topic.SHOPPING -> ShoppingStep(shopping, cb)
+        Topic.MENU -> {
+            Days(meals, dishes, today, lang, cb)
+            CardAction(stringResource(Res.string.week_recipes), cb.goMenu)
+        }
+        Topic.AGREEMENTS -> {
+            RuleChecks(board.filter { it.kind == BoardKind.RULE && it.isOpen }, meeting.ruleChecks, cb.checkRule)
+            Spacer(Modifier.size(10.dp))
+            BoardStep(board, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
+        }
+    }
+}
+
+/** Deze week, day by day: what has a day, each with its section's colour. Meals live in the Weekmenu tile. */
+@Composable
+private fun WeekStrip(backlog: List<BacklogItem>, meals: List<Meal>, today: LocalDate, lang: Lang) {
+    (0 until 7).map { today.plusDays(it) }.forEach { day ->
+        val planned = if (day == today) plannedToday(backlog, today) else plannedOn(backlog, day)
+        val meal = meals.firstOrNull { it.date == day.toString() }
+        Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 7.dp)) {
+            val narrow = LocalNarrow.current
+            Text(
+                dayName(day, today, lang, short = narrow),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (day == today) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.width(if (narrow) 76.dp else 124.dp).padding(top = 2.dp),
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (planned.isEmpty()) {
+                    Text(stringResource(Res.string.day_free), style = MaterialTheme.typography.bodyMedium, color = Section.PROTECTED_TIME.style().ink)
+                }
+                planned.forEach { item ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(8.dp).background(item.section.style().ink, CircleShape))
+                        Spacer(Modifier.width(8.dp))
+                        Text(item.text, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                meal?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(HearthIcons.Restaurant, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(it.dish, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
 }
 
 /** Seven days at a glance: the meal (tap to plan) and what has that day. */
 @Composable
-private fun Days(backlog: List<BacklogItem>, meals: List<Meal>, dishes: List<Meal>, today: LocalDate, lang: Lang, cb: WeekCallbacks) {
+private fun Days(meals: List<Meal>, dishes: List<Meal>, today: LocalDate, lang: Lang, cb: WeekCallbacks) {
     var editing by remember { mutableStateOf<LocalDate?>(null) }
     var removing by remember { mutableStateOf<Meal?>(null) }
     (0 until 7).map { today.plusDays(it) }.forEach { day ->
         val meal = meals.firstOrNull { it.date == day.toString() }
-        val planned = if (day == today) plannedToday(backlog, today) else plannedOn(backlog, day)
         Row(
             verticalAlignment = Alignment.Top,
             modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable { editing = day }.padding(horizontal = 6.dp, vertical = 8.dp),
         ) {
             Text(
-                dayName(day, today, lang),
+                dayName(day, today, lang, short = LocalNarrow.current),
                 style = MaterialTheme.typography.labelLarge,
                 color = if (day.dayOfWeek == DayOfWeek.SATURDAY || day.dayOfWeek == DayOfWeek.SUNDAY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                modifier = Modifier.width(124.dp).padding(top = 2.dp),
+                modifier = Modifier.width(if (LocalNarrow.current) 76.dp else 124.dp).padding(top = 2.dp),
             )
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -369,16 +477,6 @@ private fun Days(backlog: List<BacklogItem>, meals: List<Meal>, dishes: List<Mea
                         modifier = Modifier.weight(1f),
                     )
                     if (meal != null) DeleteButton({ removing = meal })
-                }
-                if (planned.isNotEmpty()) {
-                    Text(
-                        planned.joinToString("  ·  ") { it.text },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 24.dp, top = 2.dp),
-                    )
                 }
             }
         }
@@ -472,9 +570,9 @@ private fun LookBack(agenda: WeekAgenda?, last: Huddle?, today: LocalDate, lang:
     }
 }
 
-private fun dayName(day: LocalDate, today: LocalDate, lang: Lang): String =
+private fun dayName(day: LocalDate, today: LocalDate, lang: Lang, short: Boolean = false): String =
     if (day.toEpochDays() - today.toEpochDays() < 2) dayLabel(day, today, lang).replaceFirstChar { it.uppercase() }
-    else "${weekdayName(day.dayOfWeek, lang).replaceFirstChar { it.uppercase() }} ${day.day}"
+    else "${weekdayName(day.dayOfWeek, lang, short).replaceFirstChar { it.uppercase() }} ${day.day}"
 
 /** Dish + what to buy; dishes from before fill both in one tap. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -525,77 +623,29 @@ private fun ShoppingStep(shopping: List<ShopSection>, cb: WeekCallbacks) {
     CardAction(stringResource(Res.string.open_stock), cb.goShopping)
 }
 
-// ---------- 4. this week ----------
+// ---------- grote taken ----------
 
+/** Each running project with its next step; a step without a day can go to "dit weekend". */
 @Composable
-private fun ThisWeek(backlog: List<BacklogItem>, steps: List<BacklogItem>, today: LocalDate, lang: Lang, cb: WeekCallbacks) {
-    val names = backlog.associate { it.id to it.text }
-    val deadlines = deadlinesThisWeek(backlog, today)
-    val routines = dueRoutines(backlog, today)
+private fun Projects(backlog: List<BacklogItem>, steps: List<BacklogItem>, today: LocalDate, lang: Lang, cb: WeekCallbacks) {
     val saturday = today.plusDays((DayOfWeek.SATURDAY.ordinal - today.dayOfWeek.ordinal + 7) % 7)
-    // One step per project, for the weekend: the first open one that has no day yet.
-    val projectSteps = backlog.filter { it.kind == TaskKind.PROJECT && !it.isStep }.mapNotNull { project ->
-        steps.firstOrNull { it.parentId == project.id && !it.done && it.plan != Plan.DAY } ?: project.takeIf { it.plan != Plan.DAY && steps.none { s -> s.parentId == project.id && !s.done } }
-    }
-    if (deadlines.isEmpty() && routines.isEmpty() && projectSteps.isEmpty()) {
-        Hint(stringResource(Res.string.step_week_calm))
+    val projects = backlog.filter { it.section == Section.PROJECT && !it.isStep && !it.done }
+    if (projects.isEmpty()) {
+        Hint(stringResource(Res.string.projects_empty))
         return
     }
-    if (deadlines.isNotEmpty()) {
-        GroupTitle(stringResource(Res.string.step_week_deadlines))
-        deadlines.forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}) }
-    }
-    if (routines.isNotEmpty()) {
-        GroupTitle(stringResource(Res.string.step_week_routines))
-        routines.forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}, showSection = false) }
-    }
-    if (projectSteps.isNotEmpty()) {
-        GroupTitle(stringResource(Res.string.step_week_projects))
-        projectSteps.forEach { item ->
-            BacklogRow(item, today, lang, onDone = { cb.complete(item) }, onOpen = {}, projectName = item.parentId?.let(names::get)) {
-                TextButton(onClick = { cb.plan(item, When.DAY, saturday) }) { Text(stringResource(Res.string.plan_weekend)) }
-            }
-        }
-    }
-}
-
-// ---------- 5. oudjes ----------
-
-@Composable
-private fun Oudjes(backlog: List<BacklogItem>, today: LocalDate, lang: Lang, cb: WeekCallbacks) {
-    var skip by remember { mutableIntStateOf(0) }
-    val shown = oudjes(backlog, count = 3, skip = skip)
-    Text(stringResource(Res.string.step_oudjes_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Spacer(Modifier.size(12.dp))
-    if (shown.isEmpty()) {
-        Hint(stringResource(Res.string.step_oudjes_empty))
-        return
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        shown.forEach { item ->
-            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, MaterialTheme.shapes.medium).padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTag(item, lang)
-                    val since = dateOf(item.createdAt)
-                    Text(stringResource(Res.string.oudje_since, "${since.day}/${since.month.ordinal + 1}"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.size(6.dp))
-                Text(item.text, style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.size(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { cb.plan(item, When.NEXT, null) }) { Text(stringResource(Res.string.this_week)) }
-                    OutlinedButton(onClick = { cb.plan(item, When.LATER, null); skip = skip }) { Text(stringResource(Res.string.plan_later)) }
-                    TextButton(onClick = { cb.complete(item) }) {
-                        Icon(HearthIcons.Check, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(Res.string.mark_done))
-                    }
+    projects.forEach { project ->
+        val mine = steps.filter { it.parentId == project.id }
+        val next = mine.firstOrNull { !it.done }
+        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+            BacklogRow(project, today, lang, onDone = { cb.complete(project) }, onOpen = {}, showSection = false)
+            if (next != null) {
+                BacklogRow(next, today, lang, onDone = { cb.complete(next) }, onOpen = {}, modifier = Modifier.padding(start = 24.dp), showSection = false) {
+                    if (next.plan != Plan.DAY) TextButton(onClick = { cb.plan(next, When.DAY, saturday) }) { Text(stringResource(Res.string.plan_weekend)) }
                 }
             }
         }
     }
-    Spacer(Modifier.size(12.dp))
-    TextButton(onClick = { skip += 3 }) { Text(stringResource(Res.string.oudjes_more)) }
 }
 
 // ---------- 6. Werkbord ----------

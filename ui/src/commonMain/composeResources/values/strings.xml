@@ -197,7 +197,6 @@
     <string name="step_meals">Meals</string>
     <string name="step_shopping">Shopping</string>
     <string name="step_week">This week</string>
-    <string name="step_oudjes">Oudjes</string>
     <string name="step_board">Workboard</string>
     <string name="step_look_back_since">since %1$s</string>
     <string name="step_look_back_week">this past week</string>
@@ -216,10 +215,6 @@
     <string name="step_week_routines">About time</string>
     <string name="step_week_projects">A step for the weekend</string>
     <string name="step_week_calm">A calm week ahead. Room for something fun.</string>
-    <string name="step_oudjes_hint">These have been waiting longest. Pick one or two for this week; not everything has to happen now.</string>
-    <string name="step_oudjes_empty">No oudjes. Everything has a place.</string>
-    <string name="oudje_since">since %1$s</string>
-    <string name="oudjes_more">Show others</string>
     <string name="this_week">This week</string>
     <string name="step_board_hint">What bothered someone this week? Decide together: a rule, a change, or let it go.</string>
     <string name="step_board_empty">No frictions waiting. Lovely.</string>
@@ -230,7 +225,7 @@
     <string name="week_done_recap">Done: %1$d  ·  Meals planned: %2$d</string>
     <string name="dash_tonight">Tonight</string>
     <string name="dash_huddle">Time for the weekly meeting?</string>
-    <string name="dash_huddle_body">Fifteen minutes together: meals, the week, a few oudjes.</string>
+    <string name="dash_huddle_body">Fifteen minutes together: what went well, the week, and what’s on everyone’s mind.</string>
     <string name="dash_huddle_start">Start</string>
     <plurals name="dash_board_frictions">
         <item quantity="one">%1$d point for the weekly meeting</item>
@@ -414,4 +409,20 @@
     <string name="examples_card">See how it works</string>
     <string name="examples_body">One or two examples in every section: tasks, habits, the shopping list, the week menu and the Werkbord. Change or remove them whenever you like.</string>
     <string name="examples_load">Load examples</string>
+    <string name="listen_live">Just talk. Every sentence gets a topic.</string>
+    <string name="listen_stage_hint">Tap and just talk. Hearth puts every sentence with the right topic; you check it together afterwards.</string>
+    <string name="heard_just">just heard</string>
+    <string name="agree_title">Agreed together?</string>
+    <string name="agree_hint">This goes into today’s summary. Does it feel right for everyone?</string>
+    <string name="agree_yes">Agreed, done</string>
+    <string name="agree_later">Not yet</string>
+    <string name="agree_unsorted">Some sentences from the conversation are still waiting.</string>
+    <string name="agree_empty">Nothing to sum up yet. That’s fine too.</string>
+    <string name="free_empty">Nothing planned yet. What would be nice this week?</string>
+    <string name="free_add_hint">Something fun, e.g. movie night Friday</string>
+    <string name="admin_empty">No admin open. Nice.</string>
+    <string name="admin_add_hint">Admin, e.g. call the insurance</string>
+    <string name="project_add_hint">Big task, e.g. clear the attic</string>
+    <string name="projects_empty">No running projects.</string>
+    <string name="day_free">free</string>
 </resources>

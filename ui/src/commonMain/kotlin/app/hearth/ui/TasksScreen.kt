@@ -320,7 +320,8 @@ private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCal
                 else -> {}
             }
         }
-        IconButton(onClick = { cb.open(item) }) { Icon(HearthIcons.Calendar, stringResource(Res.string.plan), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        // On a phone the row itself opens planning; the icon would only squeeze the text.
+        if (!LocalNarrow.current) IconButton(onClick = { cb.open(item) }) { Icon(HearthIcons.Calendar, stringResource(Res.string.plan), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 

@@ -44,6 +44,10 @@ import app.hearth.core.tools.system.BackupFile
 import app.hearth.ai.Orchestrator
 import app.hearth.ai.route.Place
 import app.hearth.ai.route.KeywordRouter
+import app.hearth.ai.route.MeetingWords
+import app.hearth.core.tools.week.FinishArgs
+import app.hearth.core.model.Topic
+import app.hearth.core.model.topic
 import app.hearth.core.tools.board.AddIdeaArgs
 import app.hearth.core.model.TranscriptLine
 import app.hearth.core.model.Ease
@@ -550,6 +554,38 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         say(app.tools.registry.run(app.tools.addIdea, AddIdeaArgs(it.t("Makkelijker maken: ${item.text}", "Make it easier: ${item.text}")), it).summary)
     }
 
+    /** What Luister mee heard and hasn't been put in place yet, newest first, with the topic it would go to. */
+    val heardLately: StateFlow<List<HeardLine>> = transcript
+        .map { lines -> MeetingWords.sentences(lines.filter { !it.sorted }.map { it.text }).takeLast(4).reversed().map(::heardLine) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private fun heardLine(sentence: String): HeardLine {
+        val place = MeetingWords.place(sentence, today())
+        val section = KeywordRouter.section(sentence)
+        val topic = when (place) {
+            Place.PLANNING -> section.topic()
+            Place.EVENT -> if (section == Section.APPOINTMENT || section == Section.ADMIN) Topic.ADMIN else Topic.FREE_TIME
+            Place.FREE_TIME -> Topic.FREE_TIME
+            Place.SHOPPING -> Topic.SHOPPING
+            Place.MEAL -> Topic.MENU
+            Place.HOUSE_RULE, Place.FRICTION, Place.IDEA, Place.GOAL -> Topic.AGREEMENTS
+            Place.WIN, Place.NONE -> null
+        }
+        return HeardLine(sentence, place, topic)
+    }
+
+    /** The summary the family reads and agrees on before Klaar records it. */
+    private val _agree = MutableStateFlow<List<String>?>(null)
+    val agree: StateFlow<List<String>?> = _agree.asStateFlow()
+
+    fun prepareFinish() = tool {
+        _agree.value = app.tools.registry.run(app.tools.finishWeekoverleg, FinishArgs(preview = true), it).lines
+    }
+
+    fun closeAgree() {
+        _agree.value = null
+    }
+
     /** Luister mee heard a stretch of talk. */
     fun heard(line: String) {
         if (line.isBlank()) return
@@ -610,7 +646,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     fun finishWeekoverleg() = tool {
-        val done = app.tools.registry.run(app.tools.finishWeekoverleg, AgendaArgs(), it)
+        _agree.value = null
+        val done = app.tools.registry.run(app.tools.finishWeekoverleg, FinishArgs(), it)
         _messages.update { list -> list + ChatMessage(fromUser = false, text = done.summary) }
     }
 
@@ -736,6 +773,9 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     }
 }
+
+/** A sentence Luister mee just heard, and the topic tile it lights up (null: just talk, a win, or still to sort). */
+data class HeardLine(val text: String, val place: Place, val topic: Topic?)
 
 /** One sentence of the Voorstel and whether it gets added. */
 data class VoorstelRow(val proposal: Orchestrator.Proposal, val checked: Boolean)

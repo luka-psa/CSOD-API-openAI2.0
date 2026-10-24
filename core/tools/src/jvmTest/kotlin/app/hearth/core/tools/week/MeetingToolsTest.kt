@@ -53,7 +53,8 @@ class MeetingToolsTest {
     private val backlog = BacklogRepository(db, clock)
     private val board = BoardRepository(db, clock)
     private val meeting = MeetingRepository(db, clock)
-    private val tools = HearthTools(ShoppingRepository(db), backlog, board, StockRepository(db), WeekRepository(db), SettingsRepository(db), meeting)
+    private val week = WeekRepository(db)
+    private val tools = HearthTools(ShoppingRepository(db), backlog, board, StockRepository(db), week, SettingsRepository(db), meeting)
     private val nl = ToolContext(ToolSource.UI, Lang.NL, today = LocalDate(2026, 10, 24))
 
     @AfterTest
@@ -78,7 +79,7 @@ class MeetingToolsTest {
 
         tools.registry.run(tools.setWeekMeters, WeekMetersArgs(false), nl)
         assertEquals(false, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).metersOn)
-        assertTrue("Hoe liep het" !in tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl).huddle.summary)
+        assertTrue("Hoe liep het" !in tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary)
     }
 
     @Test
@@ -88,13 +89,13 @@ class MeetingToolsTest {
         tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "schoenen", worked = false), nl)
         tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", worked = true), nl)
         assertEquals(2, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).suggestedStrain)
-        val first = tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl).huddle.summary
+        val first = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary
         assertTrue("Afspraken die nog niet liepen: Schoenen in de kast" in first, first)
         assertEquals(0, board.allItems().count { it.kind == BoardKind.FRICTION })
 
         val nextWeek = nl.copy(today = LocalDate(2026, 10, 31))
         tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "Schoenen in de kast", worked = false), nextWeek)
-        tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nextWeek)
+        tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nextWeek)
         assertEquals(listOf("Afspraak loopt nog niet: Schoenen in de kast"), board.allItems().filter { it.kind == BoardKind.FRICTION }.map { it.text })
     }
 
@@ -136,7 +137,7 @@ class MeetingToolsTest {
         val agenda = tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl)
         assertEquals(listOf("Fiets herstellen" to Ease.EFFORT), agenda.needsAttention.map { it.item.text to it.ease })
         assertEquals(listOf("Na het eten de tafel afruimen"), agenda.habits.map { it.text })
-        val summary = tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl).huddle.summary
+        val summary = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary
         assertTrue("Gewoontes: Na het eten de tafel afruimen: te zwaar (begin klein: Eigen bord naar de keuken)" in summary, summary)
         assertTrue("Vraagt aandacht: Fiets herstellen (2× verschoven)" in summary, summary)
     }
@@ -171,20 +172,20 @@ class MeetingToolsTest {
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Schoenen uit in de gang"), nl)
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Tandarts Mia", Section.APPOINTMENT, When.DAY, "2026-10-27"), nl)
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Niks plannen, uitrusten", Section.PROTECTED_TIME, When.DAY, "2026-10-25"), nl)
-        val first = tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl).huddle
+        val first = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!
         val text = first.summary
         assertTrue(text.startsWith("Weekoverleg van vandaag (24/10)"), text)
         assertTrue("Wat ging goed: De ochtenden gingen vlotter" in text, text)
         assertTrue("Hoe liep het: oké (Hearth dacht: heel goed)" in text, text)
         assertTrue("Afgesproken: Schoenen uit in de gang" in text, text)
-        assertTrue("Gepland: Tandarts Mia (dinsdag)" in text, text)
+        assertTrue("Admin: Tandarts Mia (dinsdag)" in text, text)
         assertTrue("Vrije tijd: Niks plannen, uitrusten (morgen)" in text, text)
         assertEquals(emptyList(), meeting.currentWins())
         assertEquals(listOf("we moeten de garage opruimen dit weekend"), meeting.transcriptOf(first.id).first().map { it.text })
 
         // Next week: lighter, and the old conversation goes once this meeting ends. Its summary stays.
         tools.registry.run(tools.addTranscriptLine, TranscriptLineArgs("fijn dat de garage leeg is"), nl)
-        val second = tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl.copy(today = LocalDate(2026, 10, 31))).huddle
+        val second = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl.copy(today = LocalDate(2026, 10, 31))).huddle!!
         assertEquals(emptyList(), meeting.transcriptOf(first.id).first())
         assertEquals(listOf("fijn dat de garage leeg is"), meeting.transcriptOf(second.id).first().map { it.text })
         val listed = tools.registry.run(tools.listHuddles, ListHuddlesArgs(), nl)
@@ -210,5 +211,15 @@ class MeetingToolsTest {
         tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("de was op zondag"), outcome = FrictionOutcome.RULE), nl)
         assertEquals(BoardStatus.BECAME_RULE, board.allItems().first { it.kind == BoardKind.IDEA }.status)
         assertTrue(board.allItems().any { it.kind == BoardKind.RULE && it.text == "De was op zondag" })
+    }
+
+    @Test
+    fun `a preview writes the summary to agree on without recording the meeting`() = runTest {
+        tools.registry.run(tools.addWin, AddWinArgs("Samen gegeten"), nl)
+        val preview = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(preview = true), nl)
+        assertEquals(null, preview.huddle)
+        assertTrue(preview.lines.any { it.startsWith("Wat ging goed: Samen gegeten") }, preview.summary)
+        assertEquals(1, meeting.currentWins().size)
+        assertEquals(null, week.last())
     }
 }

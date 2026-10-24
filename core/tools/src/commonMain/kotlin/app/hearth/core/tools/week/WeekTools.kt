@@ -23,7 +23,10 @@ import app.hearth.core.model.Recipe
 import app.hearth.core.model.dayLabel
 import app.hearth.core.model.deadlinesThisWeek
 import app.hearth.core.model.dueRoutines
-import app.hearth.core.model.oudjes
+import app.hearth.core.model.Topic
+import app.hearth.core.model.WeekLook
+import app.hearth.core.model.glance
+import app.hearth.core.model.title
 import app.hearth.core.model.plusDays
 import app.hearth.core.tools.Describe
 import app.hearth.core.tools.Tool
@@ -38,7 +41,7 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.serialization.Serializable
 import kotlin.time.ExperimentalTime
 
-// The Weekoverleg: meals for the week, a look back, what's on, oudjes, frictions.
+// The Weekoverleg: a look back, then the household by topic (free time, admin, big tasks, home & habits, shopping, menu, agreements).
 
 private fun parseDate(date: String?, ctx: ToolContext): LocalDate =
     date?.let { runCatching { LocalDate.parse(it.trim()) }.getOrNull() ?: throw ToolException(ctx.t("Welke dag? (bv. 2026-10-24)", "Which day? (e.g. 2026-10-24)")) }
@@ -176,7 +179,6 @@ data class WeekAgenda(
     val openShopping: Int,
     val deadlines: List<BacklogItem>,
     val dueRoutines: List<BacklogItem>,
-    val oudjes: List<BacklogItem>,
     val frictions: List<BoardItem>,
     val wins: List<Win> = emptyList(),
     /** The two household meters: on unless switched off, with Hearth's suggestions and what was agreed so far. */
@@ -192,8 +194,14 @@ data class WeekAgenda(
     val needsAttention: List<AttentionItem> = emptyList(),
     /** What Luister mee heard in this meeting so far, line by line. */
     val transcript: List<String> = emptyList(),
+    /** Each topic of the meeting in a few words, in the order the tiles show them. */
+    val topics: List<TopicLine> = emptyList(),
     override val summary: String,
 ) : ToolResult
+
+/** One tile of the weekoverleg: "Admin: 3 open · 1 wacht op antwoord". */
+@Serializable
+data class TopicLine(val topic: Topic, val title: String, val glance: String)
 
 /** Builds the agenda for the screen and for the family's AI alike. */
 class WeekoverlegAgendaTool(
@@ -206,9 +214,9 @@ class WeekoverlegAgendaTool(
 ) : Tool<AgendaArgs, WeekAgenda> {
     override val name = NAME
     override val description =
-        "The agenda for the weekly meeting (weekoverleg): what got done since last time, meals for the week, the " +
-            "shopping list, deadlines and routines this week, oudjes (longest open, pick a few), open frictions and ideas, " +
-            "what went well, how heavy the week felt, and the conversation Luister mee heard (sort it into the right tools)."
+        "The agenda for the weekly meeting (weekoverleg): what got done since last time and what went well, then " +
+            "the household by topic (free time, admin, big tasks, home & habits, shopping, week menu, agreements), the two " +
+            "household meters, and the conversation Luister mee heard (sort it into the right tools)."
     override val argsSerializer = AgendaArgs.serializer()
     override val resultSerializer = WeekAgenda.serializer()
 
@@ -223,7 +231,6 @@ class WeekoverlegAgendaTool(
         val openShopping = shopping.openItems().size
         val deadlines = deadlinesThisWeek(open, ctx.today)
         val routines = dueRoutines(open, ctx.today)
-        val old = oudjes(open)
         val frictions = board.allItems().filter { it.isWorkingPoint && it.isOpen }
         val wins = meeting.currentWins()
         val metersOn = metersOn(settings)
@@ -236,29 +243,32 @@ class WeekoverlegAgendaTool(
         val suggestedStrain = strainSuggestion(newFrictions, ruleChecks.count { !it.worked })
         val transcript = meeting.currentTranscript().map { it.text }
 
+        val look = WeekLook(open, board.allItems(), meals.size, openShopping, ctx.today)
+        val topics = Topic.entries.map { TopicLine(it, it.title(ctx.lang), it.glance(look, ctx.lang)) }
         val summary = buildList {
-            add(ctx.t("1. Terugblik: ${done.size} dingen gedaan", "1. Look back: ${done.size} things done") +
+            add(ctx.t("Terugblik: ${done.size} ${if (done.size == 1) "ding" else "dingen"} gedaan", "Look back: ${done.size} ${if (done.size == 1) "thing" else "things"} done") +
                 (if (boardWins.isNotEmpty()) ctx.t(", ${boardWins.size} op het werkbord", ", ${boardWins.size} on the board") else "") +
                 (if (wins.isNotEmpty()) ctx.t(". Wat ging goed: ", ". What went well: ") + wins.joinToString(", ") { it.text } else "") + ".")
-            add(ctx.t("2. Maaltijden: ${meals.size} van 7 dagen gepland", "2. Meals: ${meals.size} of 7 days planned") +
-                (if (meals.isNotEmpty()) " (" + meals.joinToString(", ") { it.dish } + ")" else "") + ".")
-            add(ctx.t("3. Boodschappen: $openShopping op de lijst.", "3. Shopping: $openShopping on the list."))
-            add(ctx.t("4. Deze week: ", "4. This week: ") +
-                listOfNotNull(
-                    deadlines.takeIf { it.isNotEmpty() }?.let { ctx.t("deadlines ", "deadlines ") + it.joinToString(", ") { d -> d.text } },
-                    routines.takeIf { it.isNotEmpty() }?.let { ctx.t("aan de beurt ", "due ") + it.joinToString(", ") { r -> r.text } },
-                ).joinToString("; ").ifEmpty { ctx.t("rustig", "calm") } + ".")
-            add(ctx.t("5. Oudjes: ", "5. Oudjes: ") + old.joinToString(", ") { it.text }.ifEmpty { ctx.t("geen", "none") } + ".")
-            add(ctx.t("6. Werkbord: ", "6. Board: ") + frictions.joinToString(", ") { it.text }.ifEmpty { ctx.t("geen frictie", "no frictions") } + ".")
-            if (habits.isNotEmpty()) add(ctx.t("Gewoontes (hoe zwaar, samen zeggen): ", "Habits (how hard, say together): ") +
-                habits.joinToString(", ") { h -> h.text + (h.ease?.let { " – " + easeWord(it, ctx) } ?: "") } + ".")
-            if (attention.isNotEmpty()) add(ctx.t("Vraagt aandacht: ", "Asks for attention: ") + attention.joinToString(", ") { attentionText(it.item, it.ease, ctx) } + ".")
+            topics.forEach { t ->
+                val extra = when (t.topic) {
+                    Topic.ADMIN -> deadlines.takeIf { it.isNotEmpty() }?.let { ctx.t(" (klaar tegen: ", " (finish by: ") + it.joinToString(", ") { d -> d.text } + ")" }
+                    Topic.HOME -> listOfNotNull(
+                        routines.filterNot { it.isHabit }.takeIf { it.isNotEmpty() }?.let { ctx.t("aan de beurt: ", "due: ") + it.joinToString(", ") { r -> r.text } },
+                        habits.takeIf { it.isNotEmpty() }?.let { ctx.t("gewoontes (hoe zwaar, samen zeggen): ", "habits (how hard, say together): ") + it.joinToString(", ") { h -> h.text + (h.ease?.let { e -> " – " + easeWord(e, ctx) } ?: "") } },
+                        attention.takeIf { it.isNotEmpty() }?.let { ctx.t("vraagt aandacht: ", "asks for attention: ") + it.joinToString(", ") { a -> attentionText(a.item, a.ease, ctx) } },
+                    ).takeIf { it.isNotEmpty() }?.joinToString("; ", " (", ")")
+                    Topic.MENU -> meals.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { m -> m.dish } + ")" }
+                    Topic.AGREEMENTS -> frictions.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { f -> f.text } + ")" }
+                    else -> null
+                }
+                add("${t.title}: ${t.glance}${extra.orEmpty()}.")
+            }
             if (metersOn) add(ctx.t("Meters (samen afspreken): hoe liep het, voorstel ", "Meters (agree together): how it ran, suggested ") + suggestedFlow +
                 ctx.t("; wat schuurde, voorstel ", "; what rubbed, suggested ") + suggestedStrain + ".")
             if (transcript.isNotEmpty()) add(ctx.t("Gesprek (Luister mee):\n", "Conversation (Luister mee):\n") + transcript.joinToString("\n") { "- $it" })
         }.joinToString("\n")
 
-        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, old, frictions, wins, metersOn, suggestedFlow, suggestedStrain, meters, ruleChecks, habits, attention, transcript, summary)
+        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, frictions, wins, metersOn, suggestedFlow, suggestedStrain, meters, ruleChecks, habits, attention, transcript, topics, summary)
     }
 
     companion object {
