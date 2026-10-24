@@ -207,7 +207,7 @@ class CheckHouseRuleTool(private val meeting: MeetingRepository, private val boa
             ?: throw ToolException(ctx.t("Welke huisregel?", "Which house rule?"))
         val check = meeting.setRuleCheck(rule.id, args.worked)
         val summary = if (args.worked) ctx.t("Fijn: “${rule.text}” liep.", "Nice: “${rule.text}” worked.")
-        else ctx.t("“${rule.text}” liep nog niet. Misschien mag de afspraak eenvoudiger.", "“${rule.text}” didn't work yet. Maybe the agreement can be simpler.")
+        else ctx.t("“${rule.text}” liep nog niet. Misschien mag de huisregel eenvoudiger.", "“${rule.text}” didn't work yet. Maybe the agreement can be simpler.")
         return CheckHouseRuleResult(check, summary)
     }
 
@@ -414,10 +414,10 @@ class FinishWeekoverlegTool(
                 add(meterTitle(m.meter, ctx) + ": " + meterWord(m.meter, m.value, ctx) + note)
             }
             val notYet = checks.filter { !it.worked }.mapNotNull { c -> boardItems.firstOrNull { it.id == c.ruleId } }
-            if (notYet.isNotEmpty()) add(ctx.t("Afspraken die nog niet liepen: ", "Agreements that didn't work yet: ") + notYet.joinToString("; ") { it.text })
+            if (notYet.isNotEmpty()) add(ctx.t("Huisregels die nog niet liepen: ", "House rules that didn't work yet: ") + notYet.joinToString("; ") { it.text })
             // Two meetings in a row: the agreement itself becomes a working point (maybe it asks too much).
             if (!args.preview) notYet.filter { r -> checkedBefore.any { it.ruleId == r.id && !it.worked } }.forEach { r ->
-                board.add(BoardKind.FRICTION, ctx.t("Afspraak loopt nog niet: ${r.text}", "Agreement not working yet: ${r.text}"))
+                board.add(BoardKind.FRICTION, ctx.t("Huisregel loopt nog niet: ${r.text}", "House rule not working yet: ${r.text}"))
             }
             if (habits.isNotEmpty()) {
                 add(ctx.t("Gewoontes: ", "Habits: ") + habits.sortedBy { it.ease }.joinToString("; ") { h ->
@@ -425,7 +425,7 @@ class FinishWeekoverlegTool(
                 })
             }
             if (attention.isNotEmpty()) add(ctx.t("Vraagt aandacht: ", "Asks for attention: ") + attention.joinToString("; ") { (item, ease) -> attentionText(item, ease, ctx) })
-            if (rules.isNotEmpty()) add(ctx.t("Afgesproken: ", "Agreed: ") + rules.joinToString("; ") { it.text })
+            if (rules.isNotEmpty()) add(ctx.t("Nieuwe huisregels: ", "New house rules: ") + rules.joinToString("; ") { it.text })
             if (decided.isNotEmpty()) {
                 add(ctx.t("Besproken: ", "Talked through: ") + decided.joinToString("; ") { d ->
                     d.text + " → " + when (d.status) {

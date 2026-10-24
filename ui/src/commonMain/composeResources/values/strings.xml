@@ -143,7 +143,7 @@
     <string name="friction_to_rule">Make a rule</string>
     <string name="friction_to_change">Change it</string>
     <string name="friction_let_go">Let go</string>
-    <string name="friction_rule_title">Which rule do we agree on?</string>
+    <string name="friction_rule_title">Which house rule do we make?</string>
     <string name="friction_change_title">What will we change?</string>
     <string name="friction_text_hint">In a few words</string>
     <string name="resolved_title">Sorted out</string>
@@ -165,8 +165,8 @@
     <string name="cancel">Cancel</string>
     <string name="days_ago">%1$d days ago</string>
     <string name="today_word">today</string>
-    <string name="dash_board">Our agreements</string>
-    <string name="dash_board_empty">No agreements yet. Add one on the workboard.</string>
+    <string name="dash_board">Our house rules</string>
+    <string name="dash_board_empty">No house rules yet. Add one on the workboard.</string>
     <string name="kind_friction">Friction</string>
     <string name="kind_goal">Goal</string>
     <string name="listening">Listening…</string>
@@ -382,7 +382,7 @@
     <string name="meters_off">The meters are off.</string>
     <string name="meters_switch_on">Switch on</string>
     <string name="meters_switch_off">Switch the meters off</string>
-    <string name="rules_check_title">How did the agreements go?</string>
+    <string name="rules_check_title">How did the house rules go?</string>
     <string name="rule_worked">Went well</string>
     <string name="rule_not_yet">Not yet</string>
     <string name="habits_attention">Habits asking for attention</string>

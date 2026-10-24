@@ -136,7 +136,7 @@
     <string name="friction_to_rule">Wordt huisregel</string>
     <string name="friction_to_change">Veranderen</string>
     <string name="friction_let_go">Loslaten</string>
-    <string name="friction_rule_title">Welke afspraak maken we?</string>
+    <string name="friction_rule_title">Welke huisregel maken we?</string>
     <string name="friction_change_title">Wat veranderen we?</string>
     <string name="friction_text_hint">In een paar woorden</string>
     <string name="resolved_title">Opgelost</string>
@@ -158,8 +158,8 @@
     <string name="cancel">Annuleer</string>
     <string name="days_ago">%1$d dagen geleden</string>
     <string name="today_word">vandaag</string>
-    <string name="dash_board">Onze afspraken</string>
-    <string name="dash_board_empty">Nog geen afspraken. Voeg er een toe op het werkbord.</string>
+    <string name="dash_board">Onze huisregels</string>
+    <string name="dash_board_empty">Nog geen huisregels. Voeg er een toe op het werkbord.</string>
     <string name="kind_friction">Frictie</string>
     <string name="kind_goal">Doel</string>
     <string name="listening">Ik luister…</string>
@@ -375,7 +375,7 @@
     <string name="meters_off">De meters staan uit.</string>
     <string name="meters_switch_on">Aanzetten</string>
     <string name="meters_switch_off">Meters uitzetten</string>
-    <string name="rules_check_title">Hoe liepen de afspraken?</string>
+    <string name="rules_check_title">Hoe liepen de huisregels?</string>
     <string name="rule_worked">Liep goed</string>
     <string name="rule_not_yet">Liep nog niet</string>
     <string name="habits_attention">Gewoontes die aandacht vragen</string>

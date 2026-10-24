@@ -125,7 +125,7 @@ class AddHouseRuleTool(private val repo: BoardRepository) : Tool<AddHouseRuleArg
     override val resultSerializer = BoardItemResult.serializer()
 
     override suspend fun run(args: AddHouseRuleArgs, ctx: ToolContext): BoardItemResult {
-        val text = stripBoardPrefix(args.text).ifEmpty { throw ToolException(ctx.t("Welke afspraak?", "Which agreement?")) }
+        val text = stripBoardPrefix(args.text).ifEmpty { throw ToolException(ctx.t("Welke huisregel?", "Which house rule?")) }
         val (item, added) = repo.add(BoardKind.RULE, text)
         return BoardItemResult(item, added, if (added) ctx.t("Nieuwe huisregel: “${item.text}”", "New house rule: “${item.text}”") else ctx.t("Die huisregel staat er al.", "That house rule is already there."))
     }

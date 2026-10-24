@@ -15,16 +15,17 @@ data class Huddle(val id: String, val heldOn: String, val createdAt: Long, val s
  * The weekoverleg's topics: one tile each, so the whole household fits on one screen and nobody has to
  * hold it in their head. Luister mee lights up the tile a sentence lands in.
  */
-enum class Topic { FREE_TIME, ADMIN, PROJECTS, HOME, SHOPPING, MENU, AGREEMENTS }
+enum class Topic { FREE_TIME, ADMIN, PROJECTS, HOME, SHOPPING, MENU, BOARD }
 
 fun Topic.title(lang: Lang): String = when (this) {
     Topic.FREE_TIME -> if (lang == Lang.NL) "Vrije tijd" else "Free time"
-    Topic.ADMIN -> "Admin"
+    Topic.ADMIN -> if (lang == Lang.NL) "Admin & afspraken" else "Admin & appointments"
     Topic.PROJECTS -> if (lang == Lang.NL) "Grote taken" else "Big tasks"
     Topic.HOME -> if (lang == Lang.NL) "Huishouden & gewoontes" else "Home & habits"
     Topic.SHOPPING -> if (lang == Lang.NL) "Boodschappen" else "Shopping"
     Topic.MENU -> if (lang == Lang.NL) "Weekmenu" else "Week menu"
-    Topic.AGREEMENTS -> if (lang == Lang.NL) "Afspraken" else "Agreements"
+    // The Werkbord: what rubs, and the house rules that make it easier.
+    Topic.BOARD -> if (lang == Lang.NL) "Frictie & huisregels" else "Frictions & house rules"
 }
 
 /** Where a section belongs in the weekoverleg; null for what still has to be sorted. */
@@ -34,7 +35,7 @@ fun Section.topic(): Topic? = when (this) {
     Section.PROJECT -> Topic.PROJECTS
     Section.CHORE, Section.RHYTHM, Section.HABIT -> Topic.HOME
     Section.SHOPPING, Section.STOCK -> Topic.SHOPPING
-    Section.NOTE, Section.FRICTION, Section.GOAL, Section.IDEA -> Topic.AGREEMENTS
+    Section.NOTE, Section.FRICTION, Section.GOAL, Section.IDEA -> Topic.BOARD
     Section.OTHER -> null
 }
 
@@ -96,12 +97,12 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
             if (look.mealsPlanned == 0) (if (nl) "Nog niets gepland" else "Nothing planned yet")
             else if (nl) "${look.mealsPlanned} van 7 avonden" else "${look.mealsPlanned} of 7 evenings",
         )
-        Topic.AGREEMENTS -> {
+        Topic.BOARD -> {
             val rules = look.board.count { it.kind == BoardKind.RULE && it.isOpen }
             val points = look.board.count { it.isWorkingPoint && it.isOpen }
-            if (rules == 0 && points == 0) listOf(if (nl) "Nog geen afspraken" else "No agreements yet")
+            if (rules == 0 && points == 0) listOf(if (nl) "Nog geen huisregels" else "No house rules yet")
             else listOfNotNull(
-                rules.takeIf { it > 0 }?.let { if (nl) count(it, "afspraak", "afspraken") else count(it, "agreement", "agreements") },
+                rules.takeIf { it > 0 }?.let { if (nl) count(it, "huisregel", "huisregels") else count(it, "house rule", "house rules") },
                 points.takeIf { it > 0 }?.let { if (nl) "$it te bespreken" else "$it to talk through" },
             )
         }
@@ -163,7 +164,7 @@ fun flowSuggestion(done: Int, wins: Int, needingAttention: Int): Int = when {
     else -> 4
 }
 
-/** Wat schuurde: from frictions noted this week and agreements that didn't work yet (at most two of each count). */
+/** Wat schuurde: from frictions noted this week and house rules that didn't work yet (at most two of each count). */
 fun strainSuggestion(newFrictions: Int, rulesNotYet: Int): Int =
     (1 + minOf(newFrictions, 2) + minOf(rulesNotYet, 2)).coerceIn(1, 5)
 

@@ -402,7 +402,7 @@ private fun TopicDetail(
             Days(meals, dishes, today, lang, cb)
             CardAction(stringResource(Res.string.week_recipes), cb.goMenu)
         }
-        Topic.AGREEMENTS -> {
+        Topic.BOARD -> {
             RuleChecks(board.filter { it.kind == BoardKind.RULE && it.isOpen }, meeting.ruleChecks, cb.checkRule)
             Spacer(Modifier.size(10.dp))
             BoardStep(board, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)

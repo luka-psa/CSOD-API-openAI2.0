@@ -264,13 +264,13 @@ ingredients fill in from the story (`RecipeWords`) and stay editable. Capture ba
 bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 
 **Weekoverleg** (v0.10): one page built around the household's *topics* (`Topic` in `core/model/Week.kt`):
-*Vrije tijd*, *Admin*, *Grote taken*, *Huishouden & gewoontes*, *Boodschappen*, *Weekmenu*, *Afspraken*. On top
+*Vrije tijd*, *Admin & afspraken*, *Grote taken*, *Huishouden & gewoontes*, *Boodschappen*, *Weekmenu*, *Frictie & huisregels*. On top
 the **Luister mee** stage: a big mic with breathing rings and moving bars while it listens, the words as they come
 in, the seven topics as a row of dots (the one the last sentence went to glows), and the last sentences each with
 its topic chip. Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
 antwoord", "3 van 7 avonden"); the tile Luister mee just heard about glows too. Tapping a tile opens its list under
 the grid (free time and admin with an add field, projects with their next step and "dit weekend", chores aan de
-beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and working points).
+beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and frictions). In Dutch *afspraken* always means appointments; house rules are *huisregels*.
 Then *Terugblik* (last meeting's summary, what got done, *Wat ging goed*, the meters) and *Deze week* (7 days, what
 has that day with its section colour, the meal small underneath) and *Vooruitblik* (dates after this week). There
 are no Oudjes: what has no topic waits in Taken → Te sorteren. *Klaar* first opens *Samen akkoord?*: the summary
@@ -280,8 +280,8 @@ schuurde?* (on by default, can be switched off). Hearth suggests (a ring and a f
 "goed" because small things and good habits get forgotten, "heel goed" with plenty done and no habit asking for
 attention, never below 3 (`flowSuggestion`); Wat schuurde rises with new frictions and agreements that didn't work
 (`strainSuggestion`). The family agrees with a tap, picks another step together, or taps *Geen akkoord* (neutral).
-The summary shows Hearth's guess when the family saw it differently. The Werkbord card starts with *Hoe liepen de
-afspraken?* (per house rule: Liep goed / Liep nog niet, never who); a rule that didn't work two meetings in a row
+The summary shows Hearth's guess when the family saw it differently. The Frictie & huisregels tile starts with *Hoe liepen de
+huisregels?* (per house rule: Liep goed / Liep nog niet, never who); a rule that didn't work two meetings in a row
 comes back as a friction ("Afspraak loopt nog niet: …"). *Gewoontes* (Atomic Habits): habits are not ticked off;
 the family rates each one together (*Ease*: loopt vanzelf green / vraagt moeite amber / te zwaar orange, never red) and
 can give it a *small step* ("Begin klein: …"). Chores get their ease from the `routine_log`; tasks from how often

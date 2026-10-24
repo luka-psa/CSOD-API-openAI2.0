@@ -13,13 +13,15 @@ data class AreaHint(val section: Section, val text: String)
 object AreaWords {
     // Longest names first, so "huisregels" wins over "huis".
     private val areas: List<Pair<Section, List<String>>> = listOf(
-        Section.NOTE to listOf("huisregels", "huisregel", "huis regels", "huis regel", "regels", "afspraken", "house rules", "house rule", "houserules", "rules", "house"),
+        Section.NOTE to listOf("huisregels", "huisregel", "huis regels", "huis regel", "regels", "house rules", "house rule", "houserules", "rules", "house"),
         Section.FRICTION to listOf("ergernissen", "fricties", "frictie", "irritaties", "frictions", "friction", "annoyances"),
         Section.GOAL to listOf("doelen", "doel", "goals", "goal"),
         Section.IDEA to listOf("ideeën", "ideeen", "idee", "verbeteringen", "ideas", "idea"),
         Section.PROJECT to listOf("projecten", "project", "projects"),
         Section.CHORE to listOf("huishoudtaken", "gewoontes", "gewoonte", "ritme", "routines", "routine", "habits", "chores"),
         Section.ADMIN to listOf("administratie", "admin", "paperwork"),
+        // "Afspraken" are appointments (the dentist), never house rules.
+        Section.APPOINTMENT to listOf("afspraken", "appointments"),
         Section.OTHER to listOf("takenlijst", "taken", "backlog", "to do list", "to-do list", "todo list", "to do", "to-do", "tasks"),
     )
 

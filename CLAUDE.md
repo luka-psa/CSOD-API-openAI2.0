@@ -124,12 +124,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   saved on purpose (`isRecipe`, notes = how we made it, an optional photo) or
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
-- **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Admin*, *Grote taken*, *Huishouden &
-  gewoontes*, *Boodschappen*, *Weekmenu*, *Afspraken*): each a calm tile with a *glance*,
+- **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Admin & afspraken* (appointments), *Grote taken*,
+  *Huishouden & gewoontes*, *Boodschappen*, *Weekmenu*, *Frictie & huisregels*): each a calm tile with a *glance*,
   tap to open its list. Terugblik (*Wat ging goed* = wins; two household
   *meters*, *Hoe liep het* (FLOW) and *Wat schuurde* (STRAIN), suggested by Hearth and
   agreed together, *Geen akkoord* = neutral; never per person, can be switched off),
-  *Hoe liepen de afspraken?* (Liep goed / Liep nog niet, never who) under Afspraken,
+  *Hoe liepen de huisregels?* (Liep goed / Liep nog niet, never who) under Frictie & huisregels,
   Deze week (7 days, plans with their colour, the meal small underneath),
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
   *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each sentence

@@ -90,13 +90,13 @@ class MeetingToolsTest {
         tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", worked = true), nl)
         assertEquals(2, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).suggestedStrain)
         val first = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary
-        assertTrue("Afspraken die nog niet liepen: Schoenen in de kast" in first, first)
+        assertTrue("Huisregels die nog niet liepen: Schoenen in de kast" in first, first)
         assertEquals(0, board.allItems().count { it.kind == BoardKind.FRICTION })
 
         val nextWeek = nl.copy(today = LocalDate(2026, 10, 31))
         tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "Schoenen in de kast", worked = false), nextWeek)
         tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nextWeek)
-        assertEquals(listOf("Afspraak loopt nog niet: Schoenen in de kast"), board.allItems().filter { it.kind == BoardKind.FRICTION }.map { it.text })
+        assertEquals(listOf("Huisregel loopt nog niet: Schoenen in de kast"), board.allItems().filter { it.kind == BoardKind.FRICTION }.map { it.text })
     }
 
     @Test
@@ -177,8 +177,8 @@ class MeetingToolsTest {
         assertTrue(text.startsWith("Weekoverleg van vandaag (24/10)"), text)
         assertTrue("Wat ging goed: De ochtenden gingen vlotter" in text, text)
         assertTrue("Hoe liep het: oké (Hearth dacht: heel goed)" in text, text)
-        assertTrue("Afgesproken: Schoenen uit in de gang" in text, text)
-        assertTrue("Admin: Tandarts Mia (dinsdag)" in text, text)
+        assertTrue("Nieuwe huisregels: Schoenen uit in de gang" in text, text)
+        assertTrue("Admin & afspraken: Tandarts Mia (dinsdag)" in text, text)
         assertTrue("Vrije tijd: Niks plannen, uitrusten (morgen)" in text, text)
         assertEquals(emptyList(), meeting.currentWins())
         assertEquals(listOf("we moeten de garage opruimen dit weekend"), meeting.transcriptOf(first.id).first().map { it.text })

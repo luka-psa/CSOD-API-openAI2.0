@@ -14,6 +14,7 @@ class AreaWordsTest {
             "Voeg een item toe aan de huisregels: schoenen uit in de gang" to AreaHint(Section.NOTE, "Schoenen uit in de gang"),
             "add a item to house that we have to bring our plates to the kitchen" to AreaHint(Section.NOTE, "We have to bring our plates to the kitchen"),
             "add to house rules that phones stay downstairs at night" to AreaHint(Section.NOTE, "Phones stay downstairs at night"),
+            "zet bij de afspraken tandarts voor Mia" to AreaHint(Section.APPOINTMENT, "Tandarts voor Mia"),
             "nieuwe huisregel: geen schermen aan tafel" to AreaHint(Section.NOTE, "Geen schermen aan tafel"),
             "zet bij de ergernissen dat de vaatwasser nooit leeg is" to AreaHint(Section.FRICTION, "De vaatwasser is nooit leeg"),
             "nieuw doel samen elke week gaan wandelen" to AreaHint(Section.GOAL, "Samen elke week gaan wandelen"),

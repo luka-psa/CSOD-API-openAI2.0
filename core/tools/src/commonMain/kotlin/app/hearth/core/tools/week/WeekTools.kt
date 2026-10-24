@@ -215,7 +215,7 @@ class WeekoverlegAgendaTool(
     override val name = NAME
     override val description =
         "The agenda for the weekly meeting (weekoverleg): what got done since last time and what went well, then " +
-            "the household by topic (free time, admin, big tasks, home & habits, shopping, week menu, agreements), the two " +
+            "the household by topic (free time, admin & appointments, big tasks, home & habits, shopping, week menu, frictions & house rules), the two " +
             "household meters, and the conversation Luister mee heard (sort it into the right tools)."
     override val argsSerializer = AgendaArgs.serializer()
     override val resultSerializer = WeekAgenda.serializer()
@@ -258,7 +258,7 @@ class WeekoverlegAgendaTool(
                         attention.takeIf { it.isNotEmpty() }?.let { ctx.t("vraagt aandacht: ", "asks for attention: ") + it.joinToString(", ") { a -> attentionText(a.item, a.ease, ctx) } },
                     ).takeIf { it.isNotEmpty() }?.joinToString("; ", " (", ")")
                     Topic.MENU -> meals.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { m -> m.dish } + ")" }
-                    Topic.AGREEMENTS -> frictions.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { f -> f.text } + ")" }
+                    Topic.BOARD -> frictions.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { f -> f.text } + ")" }
                     else -> null
                 }
                 add("${t.title}: ${t.glance}${extra.orEmpty()}.")

@@ -441,7 +441,7 @@ fun MetersSection(
     TextButton(onClick = { onSwitch(false) }) { Text(stringResource(Res.string.meters_switch_off), color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }
 
-/** "Hoe liepen de afspraken?": per house rule, for the household. Never who. */
+/** "Hoe liepen de huisregels?": per house rule, for the household. Never who. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RuleChecks(rules: List<BoardItem>, checks: List<RuleCheck>, onCheck: (BoardItem, Boolean) -> Unit) {
