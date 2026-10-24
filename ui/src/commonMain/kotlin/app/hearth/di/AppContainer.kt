@@ -19,6 +19,7 @@ import app.hearth.core.data.backup.BackupRepository
 import app.hearth.core.model.nowMillis
 import app.hearth.core.tools.system.GoogleSettings
 import app.hearth.core.tools.system.NoArgs
+import app.hearth.core.tools.system.LoadExamplesTool
 import app.hearth.google.DriveBackupStore
 import app.hearth.google.GoogleAuth
 import app.hearth.google.GoogleCalendarApi
@@ -35,6 +36,7 @@ import app.hearth.core.tools.ToolSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 /**
@@ -44,7 +46,13 @@ import kotlinx.coroutines.launch
  * The tablet's own chat runs locally (rules + keyword sorter). The family's AI (ChatGPT or Claude,
  * on their own subscription) reaches the same tools over MCP.
  */
-class AppContainer(db: HearthDatabase, val lang: Lang, val googleAuth: GoogleAuth = NoGoogleAuth) {
+class AppContainer(
+    db: HearthDatabase,
+    val lang: Lang,
+    val googleAuth: GoogleAuth = NoGoogleAuth,
+    /** The web preview starts with examples, so a first visit shows how it works. */
+    examplesOnFirstRun: Boolean = false,
+) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val shopping = ShoppingRepository(db)
@@ -75,11 +83,22 @@ class AppContainer(db: HearthDatabase, val lang: Lang, val googleAuth: GoogleAut
 
     fun context(source: ToolSource) = ToolContext(source = source, lang = lang)
 
-    init {
-        appScope.launch {
-            shopping.ensureDefaultShops(lang)
-            stock.ensureDefaults(lang) { shopping.shopIdFor(it) }
+    /**
+     * Done once the defaults (and, on a first web visit, the examples) are in. The web waits for it before
+     * showing the screen: its database driver can stall when a screen query is cancelled mid-write.
+     */
+    val ready = appScope.async {
+        shopping.ensureDefaultShops(lang)
+        stock.ensureDefaults(lang) { shopping.shopIdFor(it) }
+        if (examplesOnFirstRun && settings.currentValue(LoadExamplesTool.LOADED) == null && backlog.openItems().isEmpty()) {
+            runCatching { tools.registry.run(tools.loadExamples, NoArgs(), context(ToolSource.UI)) }
         }
+    }
+
+    /** The tablet offers examples in Koppelingen; the web preview already starts with them. */
+    val offersExamples = !examplesOnFirstRun
+
+    init {
         // Connected only while it's switched on; the client reconnects by itself.
         appScope.launch { settings.connection.collect { c -> relay.connect(if (c.enabled) c.tabletUrl else null) } }
         if (googleAuth.available) keepGoogleUpToDate()

@@ -215,6 +215,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 showCode = viewModel::showPairingCode,
                                 hideCode = viewModel::hidePairingCode,
                                 unlink = viewModel::unlinkApp,
+                                loadExamples = if (viewModel.offersExamples) viewModel::loadExamples else null,
                             ),
                             google, viewModel.googleAvailable, googleBusy, backupList,
                             GoogleCallbacks(

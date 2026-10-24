@@ -410,4 +410,8 @@
     <string name="attention_hint">Keeps slipping or being postponed? Make it smaller, easier or less often.</string>
     <string name="ease_rate">How is it going?</string>
     <string name="group_habits">Habits</string>
+    <string name="examples_title">Examples</string>
+    <string name="examples_card">See how it works</string>
+    <string name="examples_body">One or two examples in every section: tasks, habits, the shopping list, the week menu and the Werkbord. Change or remove them whenever you like.</string>
+    <string name="examples_load">Load examples</string>
 </resources>

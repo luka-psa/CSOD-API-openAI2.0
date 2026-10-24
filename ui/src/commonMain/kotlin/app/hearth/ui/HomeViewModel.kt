@@ -194,6 +194,11 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(enabled, relayUrl), it)
     }
 
+    val offersExamples = app.offersExamples
+
+    /** One or two examples in every section, to see how Hearth works. */
+    fun loadExamples() = tool { say(app.tools.registry.run(app.tools.loadExamples, NoArgs(), it).summary) }
+
     fun showPairingCode() = app.relay.requestPairingCode()
     fun hidePairingCode() = app.relay.hidePairingCode()
 

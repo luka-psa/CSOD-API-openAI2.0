@@ -403,4 +403,8 @@
     <string name="attention_hint">Glipt het weg of wordt het steeds verschoven? Maak het kleiner, makkelijker of minder vaak.</string>
     <string name="ease_rate">Hoe loopt het?</string>
     <string name="group_habits">Gewoontes</string>
+    <string name="examples_title">Voorbeelden</string>
+    <string name="examples_card">Kijk hoe het werkt</string>
+    <string name="examples_body">Een of twee voorbeelden in elk onderdeel: taken, gewoontes, de boodschappenlijst, het weekmenu en het Werkbord. Pas ze aan of haal ze weg wanneer je wilt.</string>
+    <string name="examples_load">Voorbeelden laden</string>
 </resources>

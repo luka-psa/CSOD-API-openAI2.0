@@ -37,13 +37,13 @@ import kotlin.test.assertTrue
 
 /**
  * The whole path: the tablet connects to a running relay and shows a pairing code, an "AI app" logs in
- * with it (OAuth + PKCE) and calls a tool, Hearth answers. Runs only when HEARTH_RELAY_URL points at a
+ * with it (OAuth + PKCE) and calls a tool, Hearth answers. Runs only when HEARTH_E2E_RELAY_URL points at a
  * relay (e.g. Miniflare).
  */
 class RelayEndToEndTest {
     @Test
     fun `an AI app links with a pairing code and its MCP call reaches the tablet`() = runBlocking {
-        val relay = System.getenv("HEARTH_RELAY_URL") ?: return@runBlocking
+        val relay = System.getenv("HEARTH_E2E_RELAY_URL") ?: return@runBlocking
         val db = inMemoryHearthDatabase()
         val shopping = ShoppingRepository(db)
         shopping.ensureDefaultShops(Lang.NL)

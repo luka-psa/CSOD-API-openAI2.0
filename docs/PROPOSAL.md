@@ -116,6 +116,8 @@ agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (
 `set_recipe_photo` (tablet only). Stock: `move_stock_item`, `remove_storage_spot` ⚠.
 Google (tablet only, opt-in, see `docs/GOOGLE.md`): `set_google_sync`, `backup_now`, `list_backups`,
 `restore_backup` ⚠, `sync_calendar`.
+Examples (tablet only): `load_examples` puts one or two items in every section through the normal tools (Koppelingen →
+Voorbeelden laden). The web preview loads them on a first visit, before the screen shows.
 
 The full target list:
 

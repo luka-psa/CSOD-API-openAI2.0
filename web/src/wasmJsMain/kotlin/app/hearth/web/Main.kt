@@ -13,17 +13,22 @@ import app.hearth.ui.HomeViewModel
 import app.hearth.ui.theme.HearthTheme
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 
 /** Browser entry point: same database, tools, parser and screens as the tablet app. */
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     val lang = Lang.fromTag(window.navigator.language)
-    val container = AppContainer(openHearthDatabase(), lang, WebGoogleAuth(GOOGLE_WEB_CLIENT_ID))
-    document.getElementById("loading")?.remove()
-    ComposeViewport(document.body!!) {
-        HearthTheme {
-            val viewModel = viewModel { HomeViewModel(container) }
-            HearthScreen(viewModel = viewModel, lang = lang, dimmed = false)
+    val container = AppContainer(openHearthDatabase(), lang, WebGoogleAuth(GOOGLE_WEB_CLIENT_ID), examplesOnFirstRun = true)
+    MainScope().launch {
+        container.ready.await()
+        document.getElementById("loading")?.remove()
+        ComposeViewport(document.body!!) {
+            HearthTheme {
+                val viewModel = viewModel { HomeViewModel(container) }
+                HearthScreen(viewModel = viewModel, lang = lang, dimmed = false)
+            }
         }
     }
 }

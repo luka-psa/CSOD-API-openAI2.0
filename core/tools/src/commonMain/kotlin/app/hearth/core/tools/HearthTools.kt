@@ -154,6 +154,7 @@ class HearthTools(
     val listBackups = ListBackupsTool(backupStore)
     val restoreBackup = backups?.let { RestoreBackupTool(it, backupStore) }
     val syncCalendar = SyncCalendarTool(backlog, calendarApi, settings)
+    val loadExamples = app.hearth.core.tools.system.LoadExamplesTool(this, settings)
 
     val registry = ToolRegistry(
         listOf(
@@ -166,7 +167,7 @@ class HearthTools(
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
             addWin, removeWin, setWeekMeter, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, clearTranscript, listHuddles, addIdea,
             saveRecipe, listRecipes, removeRecipe, setRecipePhoto,
-            saveConnection, setGoogleSync, listBackups, syncCalendar,
+            saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples,
         ) + listOfNotNull(backupNow, restoreBackup),
     )
 }

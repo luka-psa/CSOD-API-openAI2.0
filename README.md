@@ -29,7 +29,8 @@ For a stable public link, set **Vercel → Project → Settings → Git → Prod
 `hearth-web`. Otherwise `hearth-web` deploys as a preview, which Vercel shows only to people
 logged in to your Vercel team.
 
-Each browser keeps its own data (stored in the browser's private file system).
+Each browser keeps its own data (stored in the browser's private file system). A first visit starts with
+one or two examples in every section, to show how it works.
 Works in current Chrome, Edge, Firefox and Safari.
 
 ## Get the app on the tablet

@@ -50,5 +50,5 @@ cd relay && npm install && npm test
 ```
 
 The Kotlin end-to-end test (`mcp/src/jvmTest/.../RelayEndToEndTest.kt`) runs the real tablet client
-against a live relay when `HEARTH_RELAY_URL` is set, e.g. a Miniflare server on `http://127.0.0.1:8787`:
+against a live relay when `HEARTH_E2E_RELAY_URL` is set (not `HEARTH_RELAY_URL`, which only bakes the address into the builds), e.g. a Miniflare server on `http://127.0.0.1:8787`:
 pairing code, OAuth login, a tool call, unlink.

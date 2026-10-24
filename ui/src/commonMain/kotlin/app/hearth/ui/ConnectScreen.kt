@@ -48,6 +48,10 @@ import app.hearth.ui.resources.Res
 import app.hearth.ui.resources.connect_activity
 import app.hearth.ui.resources.connect_ai
 import app.hearth.ui.resources.connect_google
+import app.hearth.ui.resources.examples_body
+import app.hearth.ui.resources.examples_card
+import app.hearth.ui.resources.examples_load
+import app.hearth.ui.resources.examples_title
 import app.hearth.ui.resources.connect_address
 import app.hearth.ui.resources.connect_advanced
 import app.hearth.ui.resources.connect_advanced_body
@@ -87,6 +91,8 @@ class ConnectCallbacks(
     val showCode: () -> Unit,
     val hideCode: () -> Unit,
     val unlink: (appId: String) -> Unit,
+    /** Null when examples aren't offered here (the web preview starts with them). */
+    val loadExamples: (() -> Unit)? = null,
 )
 
 /**
@@ -151,6 +157,14 @@ fun ConnectScreen(
             AdvancedCard(connection, cb)
             SectionTitle(stringResource(Res.string.connect_google))
             GoogleCards(google, googleAvailable, googleBusy, backups, googleCb)
+            cb.loadExamples?.let { load ->
+                SectionTitle(stringResource(Res.string.examples_title))
+                HearthCard(stringResource(Res.string.examples_card), HearthIcons.Idea, Modifier.fillMaxWidth()) {
+                    Text(stringResource(Res.string.examples_body), style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.size(10.dp))
+                    FilledTonalButton(onClick = load) { Text(stringResource(Res.string.examples_load)) }
+                }
+            }
         }
     }
     unlinking?.let { app ->
