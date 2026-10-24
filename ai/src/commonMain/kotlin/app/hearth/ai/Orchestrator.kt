@@ -36,6 +36,7 @@ import app.hearth.ai.route.TimeWords
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.TaskKind
 import app.hearth.core.model.boardKind
+import app.hearth.ai.route.AreaWords
 import app.hearth.core.tools.board.AddGoalArgs
 import app.hearth.core.tools.board.AddGoalTool
 import app.hearth.core.tools.board.AddHouseRuleArgs
@@ -81,6 +82,11 @@ class Orchestrator(
                 val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
                 return runCalls(listOf(ToolCall.of(SaveRecipeTool.NAME, SaveRecipeArgs.serializer(), SaveRecipeArgs(hint.name, hint.ingredients, hint.notes))), local)
             }
+        }
+        // "voeg aan de huisregels toe dat …": the person named the place; only the rest becomes the item.
+        AreaWords.extract(text)?.let { hint ->
+            val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
+            return runCalls(listOf(captureCall(hint.text, hint.section, local)), local)
         }
         // "we eten vrijdag spaghetti": the meal plan (its ingredients go onto the list).
         MealWords.extract(text, ctx.today)?.let { hint ->

@@ -173,7 +173,8 @@
     <string name="stop_listening">Stop listening</string>
     <string name="voice_check">Is this right?</string>
     <string name="voice_add">Add</string>
-    <string name="voice_clear">Clear</string>
+    <string name="voice_clear">Start over</string>
+    <string name="voice_more">Tap the mic to say more.</string>
     <!-- Stock -->
     <string name="tab_list">List</string>
     <string name="stock_title">Stock</string>

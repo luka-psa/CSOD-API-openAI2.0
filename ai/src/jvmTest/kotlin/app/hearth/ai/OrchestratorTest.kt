@@ -213,6 +213,22 @@ class OrchestratorTest {
     }
 
     @Test
+    fun `a spoken command names the place and only the rest becomes the item`() = runTest {
+        assertEquals(
+            "Nieuwe huisregel: “We brengen onze borden naar de keuken”",
+            offline.handle("Voeg aan de huisregels toe dat we onze borden naar de keuken brengen", nl).text,
+        )
+        offline.handle("add a item to house that we have to bring our plates to the kitchen", nl)
+        assertEquals(
+            listOf("We brengen onze borden naar de keuken", "We have to bring our plates to the kitchen"),
+            board.allItems().sortedBy { it.createdAt }.map { it.text },
+        )
+        offline.handle("zet fiets maken bij de projecten", nl)
+        assertEquals(listOf("Fiets maken" to Section.PROJECT), inbox.openItems().map { it.text to it.section })
+        assertEquals(emptyList(), shopping.openItems())
+    }
+
+    @Test
     fun `stock words mark the stock, or put it on the list when we don't keep it`() = runTest {
         app.hearth.core.data.food.StockRepository(db).let { stock ->
             shopping.ensureDefaultShops(Lang.NL)

@@ -166,7 +166,8 @@
     <string name="stop_listening">Stop met luisteren</string>
     <string name="voice_check">Klopt dit?</string>
     <string name="voice_add">Toevoegen</string>
-    <string name="voice_clear">Wis</string>
+    <string name="voice_clear">Opnieuw</string>
+    <string name="voice_more">Tik op de micro om verder te praten.</string>
     <!-- Stock -->
     <string name="tab_list">Lijst</string>
     <string name="stock_title">Voorraad</string>

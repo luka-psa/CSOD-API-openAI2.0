@@ -5,7 +5,7 @@ package app.hearth.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
-/** Uses the browser's Web Speech API (Chrome, Edge, Safari) with live, interim results. */
+/** Uses the browser's Web Speech API (Chrome, Edge, Safari) with live, interim results; pauses don't end it, a tap does. */
 @Composable
 actual fun VoiceButton(
     language: String,
@@ -34,15 +34,15 @@ private fun startSpeech(lang: String, onPartial: (String) -> Unit, onFinal: (Str
         const r = new Recognition();
         r.lang = lang;
         r.interimResults = true;
-        r.continuous = false;
+        r.continuous = true;
         r.maxAlternatives = 1;
         let text = '';
         r.onresult = (e) => {
             text = '';
-            let final = false;
+            let final = true;
             for (let i = 0; i < e.results.length; i++) {
-                text += e.results[i][0].transcript;
-                final = e.results[i].isFinal;
+                text += (text ? ' ' : '') + e.results[i][0].transcript.trim();
+                final = final && e.results[i].isFinal;
             }
             if (final) onFinal(text.trim()); else onPartial(text.trim());
         };

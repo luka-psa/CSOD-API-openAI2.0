@@ -73,6 +73,7 @@ import app.hearth.ui.resources.stop_listening
 import app.hearth.ui.resources.voice_add
 import app.hearth.ui.resources.voice_check
 import app.hearth.ui.resources.voice_clear
+import app.hearth.ui.resources.voice_more
 import app.hearth.ui.resources.yes
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -93,8 +94,9 @@ fun CaptureBar(
 ) {
     var input by rememberSaveable { mutableStateOf("") }
     var listening by remember { mutableStateOf(false) }
-    // Spoken words wait in the field until the person says "yes, add it".
+    // Spoken words wait in the field until the person says "yes, add it". Talking again adds to them.
     var heard by remember { mutableStateOf(false) }
+    var spokenBefore by remember { mutableStateOf("") }
     var speechLang by rememberSaveable { mutableStateOf(speechLanguage) }
     val last = messages.lastOrNull()?.takeIf { !it.fromUser }
     var showReply by remember { mutableStateOf(false) }
@@ -111,7 +113,7 @@ fun CaptureBar(
             VoiceCheck(
                 text = input,
                 onAdd = { onSend(input); input = ""; heard = false },
-                onClear = { input = ""; heard = false },
+                onClear = { input = ""; heard = false; spokenBefore = "" },
             )
         }
         AnimatedVisibility(!heard && showReply && last != null, enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
@@ -155,25 +157,40 @@ fun CaptureBar(
                     VoiceButton(
                         language = speechLang,
                         listening = listening,
-                        onListening = { listening = it; if (it) { input = ""; heard = false } },
-                        onPartial = { input = it },
-                        onFinal = { input = it; heard = it.isNotBlank() },
+                        onListening = {
+                            listening = it
+                            if (it) spokenBefore = if (heard) input.trim() else "" else heard = input.isNotBlank()
+                        },
+                        onPartial = { input = joinSpoken(spokenBefore, it) },
+                        onFinal = { input = joinSpoken(spokenBefore, it); heard = input.isNotBlank() },
                     )
                     Spacer(Modifier.size(6.dp))
+                    // Spoken words are added from the "Klopt dit?" card; here they can be wiped to start over.
+                    val wipe = heard || listening
                     FilledIconButton(
-                        onClick = send,
+                        onClick = if (wipe) ({ input = ""; heard = false; spokenBefore = "" }) else send,
                         enabled = input.isNotBlank(),
                         modifier = Modifier.size(52.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.onBackground,
                             contentColor = MaterialTheme.colorScheme.surface,
                         ),
-                    ) { Icon(HearthIcons.Send, stringResource(Res.string.send), modifier = Modifier.size(22.dp)) }
+                    ) {
+                        Icon(
+                            if (wipe) HearthIcons.Delete else HearthIcons.Send,
+                            stringResource(if (wipe) Res.string.voice_clear else Res.string.send),
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+/** A second take continues the first: "melk" + "en eieren" = "melk en eieren". */
+internal fun joinSpoken(before: String, now: String): String =
+    listOf(before.trim(), now.trim()).filter { it.isNotEmpty() }.joinToString(" ")
 
 /** Ember mic; while listening it turns dark with a soft ring, and tapping stops. */
 @Composable
@@ -221,6 +238,7 @@ private fun VoiceCheck(text: String, onAdd: () -> Unit, onClear: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(Res.string.voice_check), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                 Text("“$text”", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.surface)
+                Text(stringResource(Res.string.voice_more), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
             }
             Spacer(Modifier.size(10.dp))
             OutlinedButton(onClick = onClear) { Text(stringResource(Res.string.voice_clear), color = MaterialTheme.colorScheme.surface) }

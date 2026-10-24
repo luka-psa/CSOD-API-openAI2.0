@@ -335,7 +335,8 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    "elke week", "dringend".
 5. ✅ **Werkbord**: house rules, frictions (→ rule / change / let go), personal, couple and family goals
    with a next step; household members (names, colours). Capture bar: "huisregel: …", "ik erger me aan …",
-   "we willen samen …", "doel: …".
+   "we willen samen …", "doel: …", and spoken commands that name the place ("voeg aan de huisregels toe dat
+   …", "add to goals: …", "zet … bij de projecten"): only the rest becomes the item (`AreaWords`).
 6. ✅ **Weekoverleg**: guided weekly meeting with meal planner (dishes → shopping items) and *Oudjes*;
    capture bar: "we eten maandag spaghetti", "vanavond eten we frietjes", "dinner on monday: pizza".
 7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
