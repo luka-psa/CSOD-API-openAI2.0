@@ -2,6 +2,7 @@ package app.hearth.core.model
 
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toLocalDateTime
 
 // What the dashboard shows, as plain functions so the screen, the tools and MCP all agree.
 
@@ -99,3 +100,38 @@ fun lastDoneLabel(item: BacklogItem, today: LocalDate, lang: Lang): String {
         else -> if (nl) "${days / 30} maanden geleden" else "${days / 30} months ago"
     }
 }
+
+/**
+ * How easy a habit is to keep up, from when it was actually done. In the spirit of Atomic Habits: a habit
+ * that keeps slipping isn't a failure of the people, it asks to be made smaller, easier or less often.
+ * Never "late", never red.
+ */
+enum class HabitHealth {
+    /** Too new to say (less than two rounds old). */
+    NEW,
+    /** Done about as often as its rhythm asks. */
+    EASY,
+    /** Done much less often than its rhythm: worth a look in the weekoverleg. */
+    NEEDS_ATTENTION,
+}
+
+/**
+ * [doneDays]: when it was done; [addedOn]: when it became a habit. Looks back over four weeks (or three
+ * rounds for slow rhythms); "easy" is at least 60% of the rounds and not two rounds behind right now.
+ */
+fun BacklogItem.habitHealth(doneDays: List<LocalDate>, addedOn: LocalDate, today: LocalDate): HabitHealth {
+    val interval = intervalDays?.takeIf { it > 0 } ?: return HabitHealth.NEW
+    val age = (today.toEpochDays() - addedOn.toEpochDays()).toInt()
+    if (age < interval * 2) return HabitHealth.NEW
+    val span = minOf(age, maxOf(28, interval * 3))
+    val from = today.plusDays(-span)
+    val expected = span.toDouble() / interval
+    val done = doneDays.count { it > from && it <= today }
+    val behind = (daysSinceDone(today) ?: span).toDouble() / interval
+    return if (done >= expected * 0.6 && behind < 2) HabitHealth.EASY else HabitHealth.NEEDS_ATTENTION
+}
+
+/** The local day a moment fell on. */
+@OptIn(kotlin.time.ExperimentalTime::class)
+fun dayOf(millis: Long): LocalDate =
+    kotlin.time.Instant.fromEpochMilliseconds(millis).toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date

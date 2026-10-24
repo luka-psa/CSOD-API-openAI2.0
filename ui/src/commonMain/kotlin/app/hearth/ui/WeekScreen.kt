@@ -48,7 +48,9 @@ import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Huddle
 import app.hearth.core.model.Member
 import app.hearth.core.model.TranscriptLine
-import app.hearth.core.model.WeekFeeling
+import app.hearth.core.model.Meter
+import app.hearth.core.model.MeterValue
+import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.Win
 import app.hearth.ai.route.Place
 import app.hearth.ui.resources.earlier_meetings
@@ -158,7 +160,11 @@ class WeekCallbacks(
     val goMenu: () -> Unit,
     val addWin: (String) -> Unit,
     val removeWin: (Win) -> Unit,
-    val setFeeling: (Int, Member?) -> Unit,
+    val setMeter: (Meter, Int?, Int?) -> Unit,
+    val setMetersOn: (Boolean) -> Unit,
+    val checkRule: (BoardItem, Boolean) -> Unit,
+    val lessOften: (BacklogItem) -> Unit,
+    val makeEasier: (BacklogItem) -> Unit,
     val heard: (String) -> Unit,
     val clearTranscript: () -> Unit,
     val openVoorstel: () -> Unit,
@@ -171,7 +177,9 @@ class WeekCallbacks(
 /** The Weekoverleg's own notes: the look back, Luister mee and the summaries. */
 class MeetingState(
     val wins: List<Win>,
-    val feelings: List<WeekFeeling>,
+    val meters: List<MeterValue>,
+    val metersOn: Boolean,
+    val ruleChecks: List<RuleCheck>,
     val members: List<Member>,
     val transcript: List<TranscriptLine>,
     val lastTranscript: List<TranscriptLine>,
@@ -255,12 +263,19 @@ fun WeekScreen(
                     Spacer(Modifier.size(14.dp))
                     WinsSection(meeting.wins, meeting.members, cb.addWin, cb.removeWin)
                     Spacer(Modifier.size(14.dp))
-                    FeelingMeter(meeting.members, meeting.feelings, cb.setFeeling)
+                    MetersSection(
+                        meeting.metersOn, meeting.meters, agenda?.suggestedFlow ?: 4, agenda?.suggestedStrain ?: 1, lang,
+                        onSet = cb.setMeter, onSwitch = cb.setMetersOn,
+                    )
                 }
             }
             val workingPoints = @Composable { m: Modifier ->
                 HearthCard(stringResource(Res.string.step_board), HearthIcons.Bolt, m) {
-                    BoardStep(board, heavy = meeting.feelings.any { it.value >= 4 }, cb)
+                    RuleChecks(board.filter { it.kind == BoardKind.RULE && it.isOpen }, meeting.ruleChecks, cb.checkRule)
+                    Spacer(Modifier.size(10.dp))
+                    BoardStep(board, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
+                    Spacer(Modifier.size(10.dp))
+                    HabitsAttention(agenda?.habitsNeedingAttention.orEmpty(), lang, cb.lessOften, cb.makeEasier)
                 }
             }
             val thisWeek = @Composable { m: Modifier ->

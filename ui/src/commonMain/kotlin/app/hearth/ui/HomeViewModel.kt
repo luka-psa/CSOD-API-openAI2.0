@@ -46,7 +46,17 @@ import app.hearth.ai.route.Place
 import app.hearth.ai.route.KeywordRouter
 import app.hearth.core.tools.board.AddIdeaArgs
 import app.hearth.core.model.TranscriptLine
-import app.hearth.core.model.WeekFeeling
+import app.hearth.core.model.HabitHealth
+import app.hearth.core.model.Meter
+import app.hearth.core.model.MeterValue
+import app.hearth.core.model.RuleCheck
+import app.hearth.core.model.dayOf
+import app.hearth.core.model.habitHealth
+import app.hearth.core.model.isRoutine
+import app.hearth.core.tools.week.CheckHouseRuleArgs
+import app.hearth.core.tools.week.SetWeekMetersTool
+import app.hearth.core.tools.week.WeekMeterArgs
+import app.hearth.core.tools.week.WeekMetersArgs
 import app.hearth.core.model.Win
 import app.hearth.core.tools.ToolOutcome
 import app.hearth.core.tools.week.AddWinArgs
@@ -54,7 +64,6 @@ import app.hearth.core.tools.week.ClearTranscriptArgs
 import app.hearth.core.tools.week.MarkSortedArgs
 import app.hearth.core.tools.week.RemoveWinArgs
 import app.hearth.core.tools.week.TranscriptLineArgs
-import app.hearth.core.tools.week.WeekFeelingArgs
 import app.hearth.core.tools.system.GoogleSettings
 import app.hearth.core.tools.system.NoArgs
 import app.hearth.core.tools.system.RestoreBackupArgs
@@ -131,6 +140,17 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     val backlog: StateFlow<List<BacklogItem>> =
         app.backlog.open.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** How easily each habit runs (Atomic Habits): a colour on the routine, never "late". */
+    @OptIn(ExperimentalCoroutinesApi::class, kotlin.time.ExperimentalTime::class)
+    val habits: StateFlow<Map<String, HabitHealth>> = today
+        .flatMapLatest { d ->
+            combine(app.backlog.open, app.backlog.routineLogs(d.plusDays(-120).toString())) { items, logs ->
+                items.filter { it.isRoutine() && it.intervalDays != null }
+                    .associate { it.id to it.habitHealth(logs[it.id].orEmpty(), dayOf(it.createdAt), d) }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** The coming seven days of meals, from today. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -469,7 +489,10 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     // ---- Weekoverleg: what went well, how heavy, Luister mee ----
 
     val wins: StateFlow<List<Win>> = app.meeting.wins.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val feelings: StateFlow<List<WeekFeeling>> = app.meeting.feelings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val meters: StateFlow<List<MeterValue>> = app.meeting.meters.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val ruleChecks: StateFlow<List<RuleCheck>> = app.meeting.ruleChecks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val metersOn: StateFlow<Boolean> = app.settings.value(SetWeekMetersTool.METERS_SETTING).map { it != "false" }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
     val transcript: StateFlow<List<TranscriptLine>> = app.meeting.transcript.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val huddles: StateFlow<List<Huddle>> = app.meeting.huddles().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -487,8 +510,29 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Only after the person confirmed on screen. */
     fun removeWin(win: Win) = tool { app.tools.registry.run(app.tools.removeWin, RemoveWinArgs(win.id), it, confirmed = true) }
 
-    fun setFeeling(value: Int, member: Member?) = tool {
-        app.tools.registry.run(app.tools.setWeekFeeling, WeekFeelingArgs(value, member?.id), it)
+    /** Agreed together; null = no agreement, so neutral. */
+    fun setMeter(meter: Meter, value: Int?, suggested: Int?) = tool {
+        app.tools.registry.run(app.tools.setWeekMeter, WeekMeterArgs(meter, value, suggested), it)
+    }
+
+    fun setMetersOn(on: Boolean) = tool { app.tools.registry.run(app.tools.setWeekMeters, WeekMetersArgs(on), it) }
+
+    /** Did a house rule work this week? Then the suggestion for "wat schuurde" follows. */
+    fun checkRule(rule: BoardItem, worked: Boolean) = tool {
+        app.tools.registry.run(app.tools.checkHouseRule, CheckHouseRuleArgs(ruleId = rule.id, worked = worked), it)
+        _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it)
+    }
+
+    /** A habit that asks for attention: half as often… */
+    fun lessOften(item: BacklogItem) = tool {
+        val days = (item.intervalDays ?: 7) * 2
+        say(app.tools.registry.run(app.tools.setRoutineInterval, SetRoutineIntervalArgs(itemIds = listOf(item.id), days = days), it).summary)
+        _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it)
+    }
+
+    /** …or onto the Werkbord as an idea: how could this be smaller or easier? */
+    fun makeEasier(item: BacklogItem) = tool {
+        say(app.tools.registry.run(app.tools.addIdea, AddIdeaArgs(it.t("Makkelijker maken: ${item.text}", "Make it easier: ${item.text}")), it).summary)
     }
 
     /** Luister mee heard a stretch of talk. */

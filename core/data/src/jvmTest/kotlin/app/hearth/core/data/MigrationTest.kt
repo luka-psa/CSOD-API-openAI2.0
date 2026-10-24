@@ -80,6 +80,29 @@ class MigrationTest {
         assertEquals(listOf("we eten woensdag curry" to false), lines.map { it.text to it.sorted })
     }
 
+    @Test
+    fun v10WinsSurviveAndHabitsStartTheirHistory() = runTest {
+        val file = File(createTempDirectory("hearth").toFile(), "hearth.db")
+        create(file, 10) { connection ->
+            connection.execSQL(
+                "INSERT INTO reflection (id, kind, text, value, memberId, huddleId, createdAt, updatedAt) " +
+                    "VALUES ('w1', 'WIN', 'Samen gewandeld', NULL, NULL, NULL, 1, 1)",
+            )
+        }
+        val db = Room.databaseBuilder<HearthDatabase>(file.absolutePath).setDriver(BundledSQLiteDriver()).build()
+        val meeting = app.hearth.core.data.week.MeetingRepository(db)
+        val backlog = BacklogRepository(db)
+        val wins = meeting.currentWins().map { it.text }
+        meeting.setMeter(app.hearth.core.model.Meter.FLOW, null, 5)
+        val meters = meeting.currentMeters()
+        val logs = backlog.routineLogsSince("2000-01-01")
+        db.close()
+
+        assertEquals(listOf("Samen gewandeld"), wins)
+        assertEquals(listOf(Triple(3, 5, false)), meters.map { Triple(it.value, it.suggested, it.agreed) })
+        assertEquals(emptyMap(), logs)
+    }
+
     /** Builds a v2 database exactly as the v2 schema export describes it, with one inbox item. */
     private fun createV2(file: File) = create(file, 2) { connection ->
         connection.execSQL(

@@ -99,7 +99,9 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   read "sinds dinsdag", never "late".
 - **Task kinds** (`TaskKind`, derived from the section): *Ritme & gewoontes*
   (CHORE/RHYTHM/HABIT: interval + lastDone; done = "logged today", it comes
-  back; states NEW/FRESH/SOON/DUE, shown as "aan de beurt", never "late"),
+  back; states NEW/FRESH/SOON/DUE, shown as "aan de beurt", never "late"; *habit
+  health* EASY (green) / NEEDS_ATTENTION (amber, "vraagt aandacht": make it smaller,
+  easier or less often), from the `routine_log`),
   *Admin* (ADMIN/APPOINTMENT: *urgent*, deadline, *waiting for a reply* with a
   follow-up day), *Projecten* (PROJECT: *steps* via `parentId`, a day or "dit
   weekend"), *Te sorteren* (everything else).
@@ -119,8 +121,11 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   saved on purpose (`isRecipe`, notes = how we made it, an optional photo) or
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
-- **Weekoverleg:** one prepared page: Terugblik (*Wat ging goed* = wins, *Hoe zwaar* =
-  week feeling 1–5 per person), Werkbord, Deze week (7 days with meal and plans),
+- **Weekoverleg:** one prepared page: Terugblik (*Wat ging goed* = wins; two household
+  *meters*, *Hoe liep het* (FLOW) and *Wat schuurde* (STRAIN), suggested by Hearth and
+  agreed together, *Geen akkoord* = neutral; never per person, can be switched off),
+  Werkbord (*Hoe liepen de afspraken?*: Liep goed / Liep nog niet, never who; *Gewoontes
+  die aandacht vragen*), Deze week (7 days with meal and plans),
   *Vooruitblik* (dates after this week: verlof, trips), *Oudjes* (the longest-open
   unplanned items, a few picked each week), Boodschappen; *Klaar*
   records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting

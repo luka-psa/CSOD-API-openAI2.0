@@ -36,8 +36,8 @@ import androidx.sqlite.execSQL
  * SQLite-in-a-web-worker in the browser (`openHearthDatabase()`), in-memory on the JVM for tests.
  */
 @Database(
-    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class, MealEntity::class, DishEntity::class, HuddleEntity::class, SettingEntity::class, RecipePhotoEntity::class, app.hearth.core.data.week.ReflectionEntity::class, app.hearth.core.data.week.TranscriptLineEntity::class],
-    version = 10,
+    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class, MealEntity::class, DishEntity::class, HuddleEntity::class, SettingEntity::class, RecipePhotoEntity::class, app.hearth.core.data.week.ReflectionEntity::class, app.hearth.core.data.week.TranscriptLineEntity::class, app.hearth.core.data.backlog.RoutineLogEntity::class],
+    version = 11,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -49,6 +49,7 @@ import androidx.sqlite.execSQL
         AutoMigration(from = 7, to = 8),
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
+        AutoMigration(from = 10, to = 11),
     ],
 )
 @ConstructedBy(HearthDatabaseConstructor::class)

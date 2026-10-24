@@ -25,7 +25,9 @@ import app.hearth.core.tools.week.FinishWeekoverlegTool
 import app.hearth.core.tools.week.ListHuddlesTool
 import app.hearth.core.tools.week.MarkTranscriptSortedTool
 import app.hearth.core.tools.week.RemoveWinTool
-import app.hearth.core.tools.week.SetWeekFeelingTool
+import app.hearth.core.tools.week.CheckHouseRuleTool
+import app.hearth.core.tools.week.SetWeekMeterTool
+import app.hearth.core.tools.week.SetWeekMetersTool
 import app.hearth.core.tools.week.ListMealPlanTool
 import app.hearth.core.tools.week.PlanMealTool
 import app.hearth.core.tools.week.ListRecipesTool
@@ -77,7 +79,7 @@ class HearthTools(
     stock: StockRepository,
     week: WeekRepository,
     settings: SettingsRepository,
-    /** The Weekoverleg's notes (wins, week feelings, Luister mee, summaries). */
+    /** The Weekoverleg's notes (wins, meters, house-rule check, Luister mee, summaries). */
     meeting: MeetingRepository,
     /** The household as one file; with [backupStore] and [calendarApi] for the opt-in Google features. */
     backups: BackupRepository? = null,
@@ -126,11 +128,13 @@ class HearthTools(
     val planMeal = PlanMealTool(week, addShoppingItem)
     val listMealPlan = ListMealPlanTool(week)
     val removeMeal = RemoveMealTool(week)
-    val weekoverlegAgenda = WeekoverlegAgendaTool(week, backlog, board, shopping, meeting)
-    val finishWeekoverleg = FinishWeekoverlegTool(week, meeting, backlog, board)
+    val weekoverlegAgenda = WeekoverlegAgendaTool(week, backlog, board, shopping, meeting, settings)
+    val finishWeekoverleg = FinishWeekoverlegTool(week, meeting, backlog, board, settings)
     val addWin = AddWinTool(meeting, board)
     val removeWin = RemoveWinTool(meeting)
-    val setWeekFeeling = SetWeekFeelingTool(meeting, board)
+    val setWeekMeter = SetWeekMeterTool(meeting)
+    val setWeekMeters = SetWeekMetersTool(settings)
+    val checkHouseRule = CheckHouseRuleTool(meeting, board)
     val addTranscriptLine = AddTranscriptLineTool(meeting)
     val clearTranscript = ClearTranscriptTool(meeting)
     val markTranscriptSorted = MarkTranscriptSortedTool(meeting)
@@ -156,7 +160,7 @@ class HearthTools(
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
-            addWin, removeWin, setWeekFeeling, addTranscriptLine, markTranscriptSorted, clearTranscript, listHuddles, addIdea,
+            addWin, removeWin, setWeekMeter, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, clearTranscript, listHuddles, addIdea,
             saveRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection, setGoogleSync, listBackups, syncCalendar,
         ) + listOfNotNull(backupNow, restoreBackup),

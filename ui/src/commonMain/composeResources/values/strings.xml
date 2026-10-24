@@ -377,4 +377,23 @@
     <string name="week_recipes">Recipes</string>
     <string name="listen_running">Luister mee is listening</string>
     <string name="listen_back">Back to the meeting</string>
+    <string name="meters_title">Agree together</string>
+    <string name="meters_hint">Hearth suggests (the ring), you decide together. No agreement? Then it stays neutral; that’s an answer too.</string>
+    <string name="meters_guess">Hearth thinks: %1$s</string>
+    <string name="meters_agreed">Agreed: %1$s</string>
+    <string name="meters_neutral">No agreement: neutral</string>
+    <string name="meters_ok">That’s right</string>
+    <string name="meters_no_agreement">No agreement</string>
+    <string name="meters_off">The meters are off.</string>
+    <string name="meters_switch_on">Switch on</string>
+    <string name="meters_switch_off">Switch the meters off</string>
+    <string name="rules_check_title">How did the agreements go?</string>
+    <string name="rule_worked">Went well</string>
+    <string name="rule_not_yet">Not yet</string>
+    <string name="habits_attention">Habits asking for attention</string>
+    <string name="habits_attention_hint">Not happening often? Make it smaller, easier or less often, rather than trying harder.</string>
+    <string name="habit_less_often">Less often</string>
+    <string name="habit_easier">Make it easier</string>
+    <string name="habit_easy">runs easily</string>
+    <string name="habits_attention_short">asks attention</string>
 </resources>

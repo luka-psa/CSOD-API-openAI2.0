@@ -107,7 +107,10 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val pairingCode by viewModel.pairingCode.collectAsStateWithLifecycle()
     val google by viewModel.google.collectAsStateWithLifecycle()
     val wins by viewModel.wins.collectAsStateWithLifecycle()
-    val feelings by viewModel.feelings.collectAsStateWithLifecycle()
+    val meters by viewModel.meters.collectAsStateWithLifecycle()
+    val metersOn by viewModel.metersOn.collectAsStateWithLifecycle()
+    val ruleChecks by viewModel.ruleChecks.collectAsStateWithLifecycle()
+    val habits by viewModel.habits.collectAsStateWithLifecycle()
     val transcript by viewModel.transcript.collectAsStateWithLifecycle()
     val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
     val huddles by viewModel.huddles.collectAsStateWithLifecycle()
@@ -172,7 +175,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, feelings, members, transcript, lastTranscript, huddles, voorstel),
+                            MeetingState(wins, meters, metersOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -189,7 +192,11 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 goMenu = { destination = Destination.MENU },
                                 addWin = viewModel::addWin,
                                 removeWin = viewModel::removeWin,
-                                setFeeling = { v, m -> viewModel.setFeeling(v, m) },
+                                setMeter = { m, v, g -> viewModel.setMeter(m, v, g) },
+                                setMetersOn = viewModel::setMetersOn,
+                                checkRule = { r, w -> viewModel.checkRule(r, w) },
+                                lessOften = viewModel::lessOften,
+                                makeEasier = viewModel::makeEasier,
                                 heard = viewModel::heard,
                                 clearTranscript = viewModel::clearTranscript,
                                 openVoorstel = viewModel::openVoorstel,
@@ -234,7 +241,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                             ),
                         )
                         Destination.TASKS -> TasksScreen(
-                            backlog, steps, today, lang, tab, { tab = it },
+                            backlog, steps, today, lang, tab, { tab = it }, habits,
                             TaskCallbacks(
                                 complete = viewModel::complete,
                                 reopen = viewModel::reopen,

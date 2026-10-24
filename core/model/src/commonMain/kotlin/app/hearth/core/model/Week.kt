@@ -37,15 +37,71 @@ fun huddleDue(last: Huddle?, today: LocalDate): Boolean {
 data class Win(val id: String, val text: String, val memberId: String?, val huddleId: String?, val createdAt: Long)
 
 /**
- * How heavy the week felt for someone (1 = light, 5 = heavy), asked in the look back. [memberId] null:
- * the household as a whole. Never shown as a score to beat; only "lighter than last time".
- */
-@Serializable
-data class WeekFeeling(val id: String, val value: Int, val memberId: String?, val huddleId: String?, val createdAt: Long)
-
-/**
  * One thing said during Luister mee (what the recognizer heard between two pauses). The lines of the
  * last meeting stay readable until the next meeting ends; its summary stays for good.
  */
 @Serializable
 data class TranscriptLine(val id: String, val text: String, val huddleId: String?, val createdAt: Long, val sorted: Boolean = false)
+
+/**
+ * The two meters of the weekoverleg, agreed together for the household (never per person, never about
+ * someone): how the week ran, and what rubbed. Hearth suggests, the family decides; no agreement = 3.
+ */
+enum class Meter {
+    /** Hoe liep het? 1 moeizaam … 5 heel goed. */
+    FLOW,
+    /** Wat schuurde? 1 niets … 5 veel. */
+    STRAIN,
+}
+
+/** A meter as the family set it, with what Hearth had suggested ([agreed] false: no consensus, so neutral). */
+@Serializable
+data class MeterValue(val meter: Meter, val value: Int, val suggested: Int?, val agreed: Boolean, val huddleId: String?)
+
+/** Whether a house rule worked this week. Household-level: it never says who. */
+@Serializable
+data class RuleCheck(val ruleId: String, val worked: Boolean, val huddleId: String?)
+
+/** The value used when the family doesn't agree. */
+const val NEUTRAL_METER = 3
+
+/**
+ * Hoe liep het: starts at "goed" (4) because the small things and good habits are always forgotten; "heel goed"
+ * with plenty done or celebrated and no habit asking for attention; never suggested below 3.
+ */
+fun flowSuggestion(done: Int, wins: Int, habitsNeedingAttention: Int): Int = when {
+    done + wins * 2 >= 12 && habitsNeedingAttention == 0 -> 5
+    done + wins == 0 && habitsNeedingAttention > 1 -> 3
+    else -> 4
+}
+
+/** Wat schuurde: from frictions noted this week and agreements that didn't work yet (at most two of each count). */
+fun strainSuggestion(newFrictions: Int, rulesNotYet: Int): Int =
+    (1 + minOf(newFrictions, 2) + minOf(rulesNotYet, 2)).coerceIn(1, 5)
+
+/** "Hoe liep het" / "Wat schuurde". */
+fun Meter.title(lang: Lang): String = when (this) {
+    Meter.FLOW -> if (lang == Lang.NL) "Hoe liep het" else "How it ran"
+    Meter.STRAIN -> if (lang == Lang.NL) "Wat schuurde" else "What rubbed"
+}
+
+/** A meter's value in words; kind on purpose (no "bad", no "fail"). */
+fun Meter.word(value: Int, lang: Lang): String {
+    val nl = lang == Lang.NL
+    return when (this) {
+        Meter.FLOW -> when (value) {
+            1 -> if (nl) "moeizaam" else "hard going"
+            2 -> if (nl) "wat stroef" else "a bit stiff"
+            3 -> if (nl) "oké" else "okay"
+            4 -> if (nl) "goed" else "good"
+            else -> if (nl) "heel goed" else "very good"
+        }
+        Meter.STRAIN -> when (value) {
+            1 -> if (nl) "niets" else "nothing"
+            2 -> if (nl) "een beetje" else "a little"
+            3 -> if (nl) "wat" else "some"
+            4 -> if (nl) "best veel" else "quite a lot"
+            else -> if (nl) "veel" else "a lot"
+        }
+    }
+}

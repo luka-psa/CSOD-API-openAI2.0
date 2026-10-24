@@ -44,15 +44,39 @@ import app.hearth.core.model.Lang
 import app.hearth.core.model.Member
 import app.hearth.core.model.Section
 import app.hearth.core.model.TranscriptLine
-import app.hearth.core.model.WeekFeeling
+import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.BoardItem
+import app.hearth.core.model.HabitHealth
+import app.hearth.core.model.Meter
+import app.hearth.core.model.MeterValue
+import app.hearth.core.model.RuleCheck
+import app.hearth.core.model.intervalLabel
+import app.hearth.core.model.title
+import app.hearth.core.model.word
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import app.hearth.ui.resources.habit_easier
+import app.hearth.ui.resources.habit_less_often
+import app.hearth.ui.resources.habits_attention
+import app.hearth.ui.resources.habits_attention_hint
+import app.hearth.ui.resources.meters_agreed
+import app.hearth.ui.resources.meters_guess
+import app.hearth.ui.resources.meters_hint
+import app.hearth.ui.resources.meters_neutral
+import app.hearth.ui.resources.meters_no_agreement
+import app.hearth.ui.resources.meters_off
+import app.hearth.ui.resources.meters_ok
+import app.hearth.ui.resources.meters_switch_off
+import app.hearth.ui.resources.meters_switch_on
+import app.hearth.ui.resources.meters_title
+import app.hearth.ui.resources.rule_not_yet
+import app.hearth.ui.resources.rule_worked
+import app.hearth.ui.resources.rules_check_title
 import app.hearth.core.model.Win
 import app.hearth.core.model.dayLabel
 import app.hearth.ui.resources.Res
 import app.hearth.ui.resources.conversation_show
-import app.hearth.ui.resources.feeling_heavy
-import app.hearth.ui.resources.feeling_light
-import app.hearth.ui.resources.feeling_title
-import app.hearth.ui.resources.feeling_us
 import app.hearth.ui.resources.listen_hint
 import app.hearth.ui.resources.listen_lines
 import app.hearth.ui.resources.listen_on
@@ -334,36 +358,129 @@ fun WinsSection(wins: List<Win>, members: List<Member>, onAdd: (String) -> Unit,
     removing?.let { w -> ConfirmDialog(stringResource(Res.string.win_remove), w.text, onYes = { onRemove(w) }) { removing = null } }
 }
 
-/** "Hoe zwaar voelde de week?": five flames per person (or one row for the household). */
+/**
+ * The two household meters, agreed together. Hearth's guess has a ring; a tap on a step is what the family
+ * agreed; "Geen akkoord" leaves it neutral. Can be switched off when it causes more friction than it helps.
+ */
 @Composable
-fun FeelingMeter(members: List<Member>, feelings: List<WeekFeeling>, onSet: (Int, Member?) -> Unit) {
-    GroupTitle(stringResource(Res.string.feeling_title))
-    val people: List<Member?> = members.ifEmpty { listOf(null) }
-    people.forEach { member ->
-        val value = feelings.firstOrNull { it.memberId == member?.id }?.value
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 10.dp, top = 2.dp, bottom = 2.dp)) {
-            if (member != null) MemberDot(member)
-            Spacer(Modifier.width(10.dp))
-            Text(member?.name ?: stringResource(Res.string.feeling_us), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(110.dp))
-            Text(stringResource(Res.string.feeling_light), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.width(6.dp))
-            (1..5).forEach { n ->
-                val on = value != null && n <= value
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(48.dp).clip(CircleShape).clickable { onSet(n, member) },
-                ) {
-                    Icon(
-                        HearthIcons.Flame, n.toString(),
-                        tint = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(if (on) 32.dp else 28.dp),
-                    )
+fun MetersSection(
+    on: Boolean,
+    meters: List<MeterValue>,
+    suggestedFlow: Int,
+    suggestedStrain: Int,
+    lang: Lang,
+    onSet: (Meter, Int?, Int?) -> Unit,
+    onSwitch: (Boolean) -> Unit,
+) {
+    if (!on) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(Res.string.meters_off), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            TextButton(onClick = { onSwitch(true) }) { Text(stringResource(Res.string.meters_switch_on)) }
+        }
+        return
+    }
+    GroupTitle(stringResource(Res.string.meters_title))
+    Text(stringResource(Res.string.meters_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 6.dp))
+    listOf(Meter.FLOW to suggestedFlow, Meter.STRAIN to suggestedStrain).forEach { (meter, guess) ->
+        val set = meters.firstOrNull { it.meter == meter }
+        val ink = if (meter == Meter.FLOW) Section.CHORE.style().ink else Section.FRICTION.style().ink
+        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(meter.title(lang) + "?", style = MaterialTheme.typography.titleSmall, modifier = Modifier.width(140.dp))
+                (1..5).forEach { n ->
+                    val chosen = set != null && n <= set.value
+                    val isGuess = n == guess
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(46.dp).clip(CircleShape)
+                            .then(if (isGuess) Modifier.border(2.dp, ink.copy(alpha = 0.5f), CircleShape) else Modifier)
+                            .clickable { onSet(meter, n, guess) },
+                    ) {
+                        Icon(
+                            if (meter == Meter.FLOW) HearthIcons.Sun else HearthIcons.Bolt, n.toString(),
+                            // Not agreed yet: Hearth's guess shows faintly.
+                            tint = when {
+                                chosen -> ink
+                                set == null && n <= guess -> ink.copy(alpha = 0.35f)
+                                else -> MaterialTheme.colorScheme.outline
+                            },
+                            modifier = Modifier.size(if (chosen) 26.dp else 22.dp),
+                        )
+                    }
                 }
             }
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(Res.string.feeling_heavy), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 140.dp)) {
+                val status = when {
+                    set == null -> stringResource(Res.string.meters_guess, meter.word(guess, lang))
+                    !set.agreed -> stringResource(Res.string.meters_neutral)
+                    else -> stringResource(Res.string.meters_agreed, meter.word(set.value, lang))
+                }
+                Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                if (set == null) TextButton(onClick = { onSet(meter, guess, guess) }) { Text(stringResource(Res.string.meters_ok)) }
+                TextButton(onClick = { onSet(meter, null, guess) }) { Text(stringResource(Res.string.meters_no_agreement)) }
+            }
         }
     }
+    TextButton(onClick = { onSwitch(false) }) { Text(stringResource(Res.string.meters_switch_off), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+}
+
+/** "Hoe liepen de afspraken?": per house rule, for the household. Never who. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun RuleChecks(rules: List<BoardItem>, checks: List<RuleCheck>, onCheck: (BoardItem, Boolean) -> Unit) {
+    if (rules.isEmpty()) return
+    GroupTitle(stringResource(Res.string.rules_check_title))
+    rules.forEach { rule ->
+        val check = checks.firstOrNull { it.ruleId == rule.id }
+        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(HearthIcons.Rule, null, tint = Section.NOTE.style().ink, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(rule.text, style = MaterialTheme.typography.bodyLarge)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 24.dp, top = 4.dp)) {
+                ChoiceChip(stringResource(Res.string.rule_worked), check?.worked == true, { onCheck(rule, true) }, icon = HearthIcons.Check)
+                ChoiceChip(stringResource(Res.string.rule_not_yet), check?.worked == false, { onCheck(rule, false) })
+            }
+        }
+    }
+}
+
+/**
+ * Habits done much less often than their rhythm asks. Atomic Habits: make it smaller, easier or less
+ * often, rather than trying harder.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun HabitsAttention(habits: List<BacklogItem>, lang: Lang, onLessOften: (BacklogItem) -> Unit, onEasier: (BacklogItem) -> Unit) {
+    if (habits.isEmpty()) return
+    GroupTitle(stringResource(Res.string.habits_attention))
+    Text(stringResource(Res.string.habits_attention_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
+    habits.forEach { habit ->
+        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                HabitDot(HabitHealth.NEEDS_ATTENTION)
+                Spacer(Modifier.width(10.dp))
+                Text(habit.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(intervalLabel(habit.intervalDays, lang), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 20.dp, top = 4.dp)) {
+                ChoiceChip(stringResource(Res.string.habit_less_often), false, { onLessOften(habit) }, icon = HearthIcons.Later)
+                ChoiceChip(stringResource(Res.string.habit_easier), false, { onEasier(habit) }, icon = HearthIcons.Idea)
+            }
+        }
+    }
+}
+
+/** A habit's colour: green runs easily, amber asks for attention. Never red. */
+@Composable
+fun HabitDot(health: HabitHealth?) {
+    val color = when (health) {
+        HabitHealth.EASY -> MaterialTheme.colorScheme.secondary
+        HabitHealth.NEEDS_ATTENTION -> Section.RHYTHM.style().ink
+        else -> return
+    }
+    Box(Modifier.size(10.dp).background(color, CircleShape))
 }
 
 /** A meeting's summary as written at Klaar. */
@@ -377,7 +494,7 @@ fun SummaryText(summary: String) {
                 Text(line, style = MaterialTheme.typography.titleMedium)
             } else if (colon > 0) {
                 Row {
-                    Text(line.substring(0, colon), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(140.dp).padding(top = 2.dp))
+                    Text(line.substring(0, colon), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(190.dp).padding(top = 2.dp, end = 10.dp))
                     Text(line.substring(colon + 2), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 }
             } else {

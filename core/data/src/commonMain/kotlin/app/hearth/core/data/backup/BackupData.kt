@@ -8,6 +8,7 @@ import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.data.LONG_TRANSACTIONS
 import app.hearth.core.data.backlog.BacklogEntity
+import app.hearth.core.data.backlog.RoutineLogEntity
 import app.hearth.core.data.board.BoardEntity
 import app.hearth.core.data.board.MemberEntity
 import app.hearth.core.data.food.ShopEntity
@@ -47,6 +48,7 @@ data class HearthBackup(
     val photos: List<BackupPhoto> = emptyList(),
     val reflections: List<ReflectionEntity> = emptyList(),
     val transcript: List<TranscriptLineEntity> = emptyList(),
+    val routineLogs: List<RoutineLogEntity> = emptyList(),
 ) {
     /** How much is in it, for "12 taken, 30 boodschappen…" style summaries. */
     val itemCount: Int get() = backlog.size + shoppingItems.size + board.size + stockItems.size + meals.size + dishes.size
@@ -75,6 +77,7 @@ interface BackupDao {
     @Query("SELECT * FROM recipe_photo") suspend fun photos(): List<RecipePhotoEntity>
     @Query("SELECT * FROM reflection") suspend fun reflections(): List<ReflectionEntity>
     @Query("SELECT * FROM transcript_line") suspend fun transcript(): List<TranscriptLineEntity>
+    @Query("SELECT * FROM routine_log") suspend fun routineLogs(): List<RoutineLogEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putShops(rows: List<ShopEntity>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putShoppingItems(rows: List<ShoppingItemEntity>)
@@ -90,6 +93,7 @@ interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putPhotos(rows: List<RecipePhotoEntity>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putReflections(rows: List<ReflectionEntity>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putTranscript(rows: List<TranscriptLineEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putRoutineLogs(rows: List<RoutineLogEntity>)
 
     // Children before parents, so foreign keys never point at nothing.
     @Query("DELETE FROM shopping_item") suspend fun clearShoppingItems()
@@ -105,6 +109,7 @@ interface BackupDao {
     @Query("DELETE FROM huddle") suspend fun clearHuddles()
     @Query("DELETE FROM reflection") suspend fun clearReflections()
     @Query("DELETE FROM transcript_line") suspend fun clearTranscript()
+    @Query("DELETE FROM routine_log") suspend fun clearRoutineLogs()
     @Query("DELETE FROM setting WHERE key NOT IN (:keep)") suspend fun clearSettingsExcept(keep: List<String>)
 }
 
@@ -135,6 +140,7 @@ class BackupRepository(
         photos = dao.photos().map { BackupPhoto(it.recipeKey, Base64.encode(it.jpeg), it.updatedAt) },
         reflections = dao.reflections(),
         transcript = dao.transcript(),
+        routineLogs = dao.routineLogs(),
     )
 
     suspend fun exportJson(): String = JSON.encodeToString(HearthBackup.serializer(), export())
@@ -172,6 +178,7 @@ class BackupRepository(
         dao.clearHuddles()
         dao.clearReflections()
         dao.clearTranscript()
+        dao.clearRoutineLogs()
         dao.clearSettingsExcept(SettingsRepository.DEVICE_ONLY.toList())
 
         dao.putShops(backup.shops)
@@ -189,11 +196,12 @@ class BackupRepository(
         dao.putSettings(local)
         dao.putReflections(backup.reflections)
         dao.putTranscript(backup.transcript)
+        dao.putRoutineLogs(backup.routineLogs)
         dao.putPhotos(backup.photos.map { RecipePhotoEntity(it.recipeKey, Base64.decode(it.jpegBase64), it.updatedAt) })
     }
 
     companion object {
-        const val DATABASE_VERSION = 10
+        const val DATABASE_VERSION = 11
         private const val LOCAL_FIRST = "google."
         val JSON = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     }

@@ -5,7 +5,11 @@ import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.data.week.WeekRepository
-import app.hearth.core.model.WeekFeeling
+import app.hearth.core.data.settings.SettingsRepository
+import app.hearth.core.model.MeterValue
+import app.hearth.core.model.RuleCheck
+import app.hearth.core.model.flowSuggestion
+import app.hearth.core.model.strainSuggestion
 import app.hearth.core.model.Win
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
@@ -169,7 +173,15 @@ data class WeekAgenda(
     val oudjes: List<BacklogItem>,
     val frictions: List<BoardItem>,
     val wins: List<Win> = emptyList(),
-    val feelings: List<WeekFeeling> = emptyList(),
+    /** The two household meters: on unless switched off, with Hearth's suggestions and what was agreed so far. */
+    val metersOn: Boolean = true,
+    val suggestedFlow: Int = 4,
+    val suggestedStrain: Int = 1,
+    val meters: List<MeterValue> = emptyList(),
+    /** House rules checked this meeting (worked / not yet), never who. */
+    val ruleChecks: List<RuleCheck> = emptyList(),
+    /** Habits done much less often than their rhythm: make them smaller, easier or less often. */
+    val habitsNeedingAttention: List<BacklogItem> = emptyList(),
     /** What Luister mee heard in this meeting so far, line by line. */
     val transcript: List<String> = emptyList(),
     override val summary: String,
@@ -182,6 +194,7 @@ class WeekoverlegAgendaTool(
     private val board: BoardRepository,
     private val shopping: ShoppingRepository,
     private val meeting: MeetingRepository,
+    private val settings: SettingsRepository,
 ) : Tool<AgendaArgs, WeekAgenda> {
     override val name = NAME
     override val description =
@@ -205,7 +218,13 @@ class WeekoverlegAgendaTool(
         val old = oudjes(open)
         val frictions = board.allItems().filter { it.isWorkingPoint && it.isOpen }
         val wins = meeting.currentWins()
-        val feelings = meeting.currentFeelings()
+        val metersOn = metersOn(settings)
+        val meters = meeting.currentMeters()
+        val ruleChecks = meeting.currentRuleChecks()
+        val habits = habitsNeedingAttention(backlog, ctx.today)
+        val newFrictions = frictions.count { it.kind == BoardKind.FRICTION && it.createdAt >= since }
+        val suggestedFlow = flowSuggestion(done.size, wins.size, habits.size)
+        val suggestedStrain = strainSuggestion(newFrictions, ruleChecks.count { !it.worked })
         val transcript = meeting.currentTranscript().map { it.text }
 
         val summary = buildList {
@@ -222,10 +241,13 @@ class WeekoverlegAgendaTool(
                 ).joinToString("; ").ifEmpty { ctx.t("rustig", "calm") } + ".")
             add(ctx.t("5. Oudjes: ", "5. Oudjes: ") + old.joinToString(", ") { it.text }.ifEmpty { ctx.t("geen", "none") } + ".")
             add(ctx.t("6. Werkbord: ", "6. Board: ") + frictions.joinToString(", ") { it.text }.ifEmpty { ctx.t("geen frictie", "no frictions") } + ".")
+            if (habits.isNotEmpty()) add(ctx.t("Gewoontes die aandacht vragen: ", "Habits asking for attention: ") + habits.joinToString(", ") { it.text } + ".")
+            if (metersOn) add(ctx.t("Meters (samen afspreken): hoe liep het, voorstel ", "Meters (agree together): how it ran, suggested ") + suggestedFlow +
+                ctx.t("; wat schuurde, voorstel ", "; what rubbed, suggested ") + suggestedStrain + ".")
             if (transcript.isNotEmpty()) add(ctx.t("Gesprek (Luister mee):\n", "Conversation (Luister mee):\n") + transcript.joinToString("\n") { "- $it" })
         }.joinToString("\n")
 
-        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, old, frictions, wins, feelings, transcript, summary)
+        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, old, frictions, wins, metersOn, suggestedFlow, suggestedStrain, meters, ruleChecks, habits, transcript, summary)
     }
 
     companion object {

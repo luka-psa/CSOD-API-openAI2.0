@@ -370,4 +370,23 @@
     <string name="week_recipes">Recepten</string>
     <string name="listen_running">Luister mee luistert</string>
     <string name="listen_back">Terug naar het overleg</string>
+    <string name="meters_title">Samen afspreken</string>
+    <string name="meters_hint">Hearth stelt voor (de ring), jullie beslissen samen. Geen akkoord? Dan blijft het neutraal; ook dat is een antwoord.</string>
+    <string name="meters_guess">Hearth denkt: %1$s</string>
+    <string name="meters_agreed">Afgesproken: %1$s</string>
+    <string name="meters_neutral">Geen akkoord: neutraal</string>
+    <string name="meters_ok">Klopt</string>
+    <string name="meters_no_agreement">Geen akkoord</string>
+    <string name="meters_off">De meters staan uit.</string>
+    <string name="meters_switch_on">Aanzetten</string>
+    <string name="meters_switch_off">Meters uitzetten</string>
+    <string name="rules_check_title">Hoe liepen de afspraken?</string>
+    <string name="rule_worked">Liep goed</string>
+    <string name="rule_not_yet">Liep nog niet</string>
+    <string name="habits_attention">Gewoontes die aandacht vragen</string>
+    <string name="habits_attention_hint">Lukt het niet vaak? Maak het kleiner, makkelijker of minder vaak, in plaats van harder te proberen.</string>
+    <string name="habit_less_often">Minder vaak</string>
+    <string name="habit_easier">Makkelijker maken</string>
+    <string name="habit_easy">loopt vanzelf</string>
+    <string name="habits_attention_short">vraagt aandacht</string>
 </resources>

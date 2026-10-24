@@ -1,6 +1,7 @@
 package app.hearth.core.data.backlog
 
 import kotlinx.serialization.Serializable
+import kotlinx.datetime.LocalDate
 import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Entity
@@ -46,6 +47,18 @@ data class BacklogEntity(
     )
 }
 
+/** One time a habit (routine) was done. Only used to see how easily a habit runs. */
+@Entity(tableName = "routine_log", indices = [Index("itemId"), Index("day")])
+@Serializable
+data class RoutineLogEntity(
+    @PrimaryKey val id: String,
+    val itemId: String,
+    /** ISO date. */
+    val day: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+)
+
 @Dao
 interface BacklogDao {
     @Query("SELECT * FROM backlog_item WHERE done = 0 ORDER BY createdAt")
@@ -68,6 +81,15 @@ interface BacklogDao {
 
     @Query("SELECT * FROM backlog_item WHERE done = 0 ORDER BY createdAt")
     suspend fun open(): List<BacklogEntity>
+
+    @Insert
+    suspend fun insertLog(log: RoutineLogEntity)
+
+    @Query("SELECT * FROM routine_log WHERE day >= :fromDay")
+    fun observeLogs(fromDay: String): Flow<List<RoutineLogEntity>>
+
+    @Query("SELECT * FROM routine_log WHERE day >= :fromDay")
+    suspend fun logsSince(fromDay: String): List<RoutineLogEntity>
 
     @Query("SELECT * FROM backlog_item WHERE done = 0 AND normalizedText = :normalizedText AND parentId IS :parentId LIMIT 1")
     suspend fun findOpen(normalizedText: String, parentId: String?): BacklogEntity?
@@ -170,8 +192,21 @@ class BacklogRepository(
 
     /** A routine was done on [day]: it stays in the list and comes back after its interval. */
     suspend fun logRoutine(ids: List<String>, day: String) {
-        if (ids.isNotEmpty()) dao.logRoutine(ids, day, clock())
+        if (ids.isEmpty()) return
+        val now = clock()
+        db.withWriteTransaction {
+            dao.logRoutine(ids, day, now)
+            // Kept so Hearth can see which habits run easily and which ask for attention.
+            ids.forEach { dao.insertLog(RoutineLogEntity(newId(), it, day, now, now)) }
+        }
     }
+
+    /** When each habit was done since [fromDay] (ISO), by item id. */
+    fun routineLogs(fromDay: String): Flow<Map<String, List<LocalDate>>> = dao.observeLogs(fromDay).map { toDays(it) }
+    suspend fun routineLogsSince(fromDay: String): Map<String, List<LocalDate>> = toDays(dao.logsSince(fromDay))
+
+    private fun toDays(rows: List<RoutineLogEntity>) =
+        rows.groupBy { it.itemId }.mapValues { (_, list) -> list.mapNotNull { runCatching { LocalDate.parse(it.day) }.getOrNull() } }
 
     suspend fun setInterval(ids: List<String>, days: Int?) {
         if (ids.isNotEmpty()) dao.setInterval(ids, days, clock())

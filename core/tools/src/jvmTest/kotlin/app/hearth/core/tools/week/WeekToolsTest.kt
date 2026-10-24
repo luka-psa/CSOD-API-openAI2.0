@@ -98,7 +98,7 @@ class WeekToolsTest {
         assertEquals(listOf("Rommel in de gang"), agenda.frictions.map { it.text })
         assertEquals(
             "1. Terugblik: 1 dingen gedaan.\n2. Maaltijden: 1 van 7 dagen gepland (Pizza).\n3. Boodschappen: 0 op de lijst.\n" +
-                "4. Deze week: deadlines Autokeuring.\n5. Oudjes: geen.\n6. Werkbord: Rommel in de gang.",
+                "4. Deze week: deadlines Autokeuring.\n5. Oudjes: geen.\n6. Werkbord: Rommel in de gang.\nMeters (samen afspreken): hoe liep het, voorstel 4; wat schuurde, voorstel 2.",
             agenda.summary,
         )
 

@@ -10,6 +10,12 @@ import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.data.week.WeekRepository
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.BoardStatus
+import app.hearth.core.model.HabitHealth
+import app.hearth.core.model.Meter
+import app.hearth.core.model.flowSuggestion
+import app.hearth.core.model.habitHealth
+import app.hearth.core.model.plusDays
+import app.hearth.core.model.strainSuggestion
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Section
 import app.hearth.core.tools.HearthTools
@@ -51,18 +57,74 @@ class MeetingToolsTest {
     fun tearDown() = db.close()
 
     @Test
-    fun `wins and how heavy the week felt, per person`() = runTest {
-        tools.registry.run(tools.addMember, AddMemberArgs("Sam"), nl)
-        tools.registry.run(tools.addMember, AddMemberArgs("Lies"), nl)
+    fun `wins, and two meters agreed together or left neutral`() = runTest {
         assertEquals(
             "Mooi! Genoteerd bij wat goed ging: “Elke avond samen gegeten”",
             tools.registry.run(tools.addWin, AddWinArgs("elke avond samen gegeten"), nl).summary,
         )
-        tools.registry.run(tools.setWeekFeeling, WeekFeelingArgs(4, "Sam"), nl)
-        assertEquals("Sam: vrij licht. Dank je om het te zeggen.", tools.registry.run(tools.setWeekFeeling, WeekFeelingArgs(2, "Sam"), nl).summary)
-        tools.registry.run(tools.setWeekFeeling, WeekFeelingArgs(3, "Lies"), nl)
-        assertEquals(listOf(2, 3), meeting.currentFeelings().map { it.value })
-        assertFailsWith<ToolException> { tools.registry.run(tools.setWeekFeeling, WeekFeelingArgs(7), nl) }
+        val agenda = tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl)
+        assertTrue(agenda.metersOn)
+        assertEquals(4 to 1, agenda.suggestedFlow to agenda.suggestedStrain)
+        assertEquals("Hoe liep het: goed. Samen afgesproken.", tools.registry.run(tools.setWeekMeter, WeekMeterArgs(Meter.FLOW, 4, suggested = 4), nl).summary)
+        assertEquals(
+            "Wat schuurde: geen akkoord, dus neutraal. Ook dat is een antwoord.",
+            tools.registry.run(tools.setWeekMeter, WeekMeterArgs(Meter.STRAIN, null, suggested = 1), nl).summary,
+        )
+        assertEquals(listOf(Meter.FLOW to 4, Meter.STRAIN to 3), meeting.currentMeters().map { it.meter to it.value })
+        assertFailsWith<ToolException> { tools.registry.run(tools.setWeekMeter, WeekMeterArgs(Meter.FLOW, 7), nl) }
+
+        tools.registry.run(tools.setWeekMeters, WeekMetersArgs(false), nl)
+        assertEquals(false, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).metersOn)
+        assertTrue("Hoe liep het" !in tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl).huddle.summary)
+    }
+
+    @Test
+    fun `an agreement that doesn't work twice becomes a working point, never naming anyone`() = runTest {
+        tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Schoenen in de kast"), nl)
+        tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Wie kookt, wast niet af"), nl)
+        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "schoenen", worked = false), nl)
+        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", worked = true), nl)
+        assertEquals(2, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).suggestedStrain)
+        val first = tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl).huddle.summary
+        assertTrue("Afspraken die nog niet liepen: Schoenen in de kast" in first, first)
+        assertEquals(0, board.allItems().count { it.kind == BoardKind.FRICTION })
+
+        val nextWeek = nl.copy(today = LocalDate(2026, 10, 31))
+        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "Schoenen in de kast", worked = false), nextWeek)
+        tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nextWeek)
+        assertEquals(listOf("Afspraak loopt nog niet: Schoenen in de kast"), board.allItems().filter { it.kind == BoardKind.FRICTION }.map { it.text })
+    }
+
+    @Test
+    fun `a habit that keeps slipping asks for attention, not blame`() = runTest {
+        val today = app.hearth.core.model.today()
+        tick = app.hearth.core.model.nowMillis() - 40L * 86_400_000L
+        val ctx = nl.copy(today = today)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Planten water geven", Section.CHORE, intervalDays = 3), ctx)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Lakens verversen", Section.CHORE, intervalDays = 14), ctx)
+        tick = app.hearth.core.model.nowMillis()
+        // Sheets: every two weeks, as asked. Plants: once in four weeks, every three days was asked.
+        val sheets = backlog.openItems().first { it.text == "Lakens verversen" }
+        val plants = backlog.openItems().first { it.text == "Planten water geven" }
+        backlog.logRoutine(listOf(sheets.id), today.plusDays(-15).toString())
+        backlog.logRoutine(listOf(sheets.id), today.plusDays(-1).toString())
+        backlog.logRoutine(listOf(plants.id), today.plusDays(-20).toString())
+        val agenda = tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), ctx)
+        assertEquals(listOf("Planten water geven"), agenda.habitsNeedingAttention.map { it.text })
+        assertEquals(4, agenda.suggestedFlow)
+    }
+
+    @Test
+    fun `habit health reads the rhythm, and new habits get time`() {
+        val today = LocalDate(2026, 10, 24)
+        val weekly = app.hearth.core.model.BacklogItem("1", "Badkamer", Section.CHORE, createdAt = 0, intervalDays = 7, lastDone = "2026-10-20")
+        val days = listOf(-4, -11, -18, -25).map { today.plusDays(it) }
+        assertEquals(HabitHealth.EASY, weekly.habitHealth(days, today.plusDays(-60), today))
+        assertEquals(HabitHealth.NEEDS_ATTENTION, weekly.copy(lastDone = "2026-10-03").habitHealth(listOf(today.plusDays(-21)), today.plusDays(-60), today))
+        assertEquals(HabitHealth.NEW, weekly.habitHealth(emptyList(), today.plusDays(-5), today))
+        assertEquals(5, flowSuggestion(done = 10, wins = 2, habitsNeedingAttention = 0))
+        assertEquals(3, flowSuggestion(done = 0, wins = 0, habitsNeedingAttention = 2))
+        assertEquals(5, strainSuggestion(newFrictions = 4, rulesNotYet = 3))
     }
 
     @Test
@@ -73,7 +135,7 @@ class MeetingToolsTest {
         assertTrue("Gesprek (Luister mee)" in agenda.summary)
 
         tools.registry.run(tools.addWin, AddWinArgs("De ochtenden gingen vlotter"), nl)
-        tools.registry.run(tools.setWeekFeeling, WeekFeelingArgs(4), nl)
+        tools.registry.run(tools.setWeekMeter, WeekMeterArgs(Meter.FLOW, 3, suggested = 5), nl)
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Schoenen uit in de gang"), nl)
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Tandarts Mia", Section.APPOINTMENT, When.DAY, "2026-10-27"), nl)
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Niks plannen, uitrusten", Section.PROTECTED_TIME, When.DAY, "2026-10-25"), nl)
@@ -81,7 +143,7 @@ class MeetingToolsTest {
         val text = first.summary
         assertTrue(text.startsWith("Weekoverleg van vandaag (24/10)"), text)
         assertTrue("Wat ging goed: De ochtenden gingen vlotter" in text, text)
-        assertTrue("Hoe zwaar: vrij zwaar" in text, text)
+        assertTrue("Hoe liep het: oké (Hearth dacht: heel goed)" in text, text)
         assertTrue("Afgesproken: Schoenen uit in de gang" in text, text)
         assertTrue("Gepland: Tandarts Mia (dinsdag)" in text, text)
         assertTrue("Vrije tijd: Niks plannen, uitrusten (morgen)" in text, text)
@@ -90,9 +152,7 @@ class MeetingToolsTest {
 
         // Next week: lighter, and the old conversation goes once this meeting ends. Its summary stays.
         tools.registry.run(tools.addTranscriptLine, TranscriptLineArgs("fijn dat de garage leeg is"), nl)
-        tools.registry.run(tools.setWeekFeeling, WeekFeelingArgs(2), nl.copy(today = LocalDate(2026, 10, 31)))
         val second = tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl.copy(today = LocalDate(2026, 10, 31))).huddle
-        assertTrue("(lichter dan vorige keer)" in second.summary, second.summary)
         assertEquals(emptyList(), meeting.transcriptOf(first.id).first())
         assertEquals(listOf("fijn dat de garage leeg is"), meeting.transcriptOf(second.id).first().map { it.text })
         val listed = tools.registry.run(tools.listHuddles, ListHuddlesArgs(), nl)

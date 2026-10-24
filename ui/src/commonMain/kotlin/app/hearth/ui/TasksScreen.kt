@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -35,6 +36,8 @@ import app.hearth.core.model.Plan
 import app.hearth.core.model.RoutineState
 import app.hearth.core.model.Section
 import app.hearth.core.model.TaskKind
+import app.hearth.core.model.HabitHealth
+import app.hearth.ui.resources.habits_attention_short
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.routineState
 import app.hearth.ui.resources.Res
@@ -92,6 +95,7 @@ fun TasksScreen(
     lang: Lang,
     tab: TaskTab,
     onTab: (TaskTab) -> Unit,
+    habits: Map<String, HabitHealth>,
     callbacks: TaskCallbacks,
 ) {
     val names = backlog.associate { it.id to it.text }
@@ -124,7 +128,7 @@ fun TasksScreen(
         val body = Modifier.fillMaxWidth().weight(1f)
         when (tab) {
             TaskTab.ROUTINES -> AddAndList(stringResource(Res.string.add_routine_hint), { callbacks.add(it, Section.CHORE) }, body) {
-                routineList(routines, today, lang, callbacks)
+                routineList(routines, today, lang, callbacks, habits)
             }
             TaskTab.ADMIN -> AddAndList(stringResource(Res.string.add_admin_hint), { callbacks.add(it, Section.ADMIN) }, body) {
                 adminList(admin, today, lang, callbacks)
@@ -161,7 +165,7 @@ private fun AddAndList(hint: String, onAdd: (String) -> Unit, modifier: Modifier
 // ---------- routines ----------
 
 /** About time · On track · No rhythm yet. The tick logs "done today"; the routine stays. */
-private fun LazyListScope.routineList(routines: List<BacklogItem>, today: LocalDate, lang: Lang, cb: TaskCallbacks) {
+private fun LazyListScope.routineList(routines: List<BacklogItem>, today: LocalDate, lang: Lang, cb: TaskCallbacks, habits: Map<String, HabitHealth>) {
     if (routines.isEmpty()) {
         item { EmptyHint0(Res.string.empty_routines) }
         return
@@ -169,9 +173,9 @@ private fun LazyListScope.routineList(routines: List<BacklogItem>, today: LocalD
     val due = routines.filter { it.intervalDays != null && it.routineState(today).let { s -> s == RoutineState.DUE || s == RoutineState.NEW } }
     val noRhythm = routines.filter { it.intervalDays == null }
     val onTrack = routines - due.toSet() - noRhythm.toSet()
-    group(Res.string.group_due, due.sortedBy { it.intervalDays }, today, lang, cb)
-    group(Res.string.group_on_track, onTrack.sortedBy { it.daysSinceRatio(today) }.reversed(), today, lang, cb)
-    group(Res.string.group_no_rhythm, noRhythm, today, lang, cb)
+    group(Res.string.group_due, due.sortedBy { it.intervalDays }, today, lang, cb, habits)
+    group(Res.string.group_on_track, onTrack.sortedBy { it.daysSinceRatio(today) }.reversed(), today, lang, cb, habits)
+    group(Res.string.group_no_rhythm, noRhythm, today, lang, cb, habits)
 }
 
 private fun BacklogItem.daysSinceRatio(today: LocalDate): Double {
@@ -264,16 +268,23 @@ private fun LazyListScope.group(
     today: LocalDate,
     lang: Lang,
     cb: TaskCallbacks,
+    habits: Map<String, HabitHealth> = emptyMap(),
 ) {
     if (items.isEmpty()) return
     item(key = "h-$title") { GroupTitle(stringResource(title)) }
-    items(items, key = { it.id }) { item -> PlanRow(item, today, lang, cb, Modifier.animateItem()) }
+    items(items, key = { it.id }) { item -> PlanRow(item, today, lang, cb, Modifier.animateItem(), habits[item.id]) }
 }
 
 /** A row with a routine's state pill ("aan de beurt") and a plan button. */
 @Composable
-private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCallbacks, modifier: Modifier) {
+private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCallbacks, modifier: Modifier, habit: HabitHealth? = null) {
     BacklogRow(item, today, lang, onDone = { cb.complete(item) }, onOpen = { cb.open(item) }, modifier = modifier, showSection = !item.isRoutine(), onDelete = { cb.delete(item) }) {
+        // Atomic Habits: green runs easily, amber asks to be made smaller, easier or less often.
+        if (habit == HabitHealth.NEEDS_ATTENTION) StatePill(stringResource(Res.string.habits_attention_short), strong = false)
+        else if (habit == HabitHealth.EASY) {
+            HabitDot(habit)
+            Spacer(Modifier.width(8.dp))
+        }
         if (item.isRoutine() && item.plan != Plan.DAY) {
             when (item.routineState(today)) {
                 RoutineState.DUE -> StatePill(stringResource(Res.string.routine_due), strong = true)
