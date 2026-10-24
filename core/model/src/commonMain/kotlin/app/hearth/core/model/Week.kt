@@ -69,9 +69,9 @@ const val NEUTRAL_METER = 3
  * Hoe liep het: starts at "goed" (4) because the small things and good habits are always forgotten; "heel goed"
  * with plenty done or celebrated and no habit asking for attention; never suggested below 3.
  */
-fun flowSuggestion(done: Int, wins: Int, habitsNeedingAttention: Int): Int = when {
-    done + wins * 2 >= 12 && habitsNeedingAttention == 0 -> 5
-    done + wins == 0 && habitsNeedingAttention > 1 -> 3
+fun flowSuggestion(done: Int, wins: Int, needingAttention: Int): Int = when {
+    done + wins * 2 >= 12 && needingAttention == 0 -> 5
+    done + wins == 0 && needingAttention > 1 -> 3
     else -> 4
 }
 

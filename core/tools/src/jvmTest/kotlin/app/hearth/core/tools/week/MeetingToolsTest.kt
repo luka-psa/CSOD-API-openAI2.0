@@ -10,10 +10,13 @@ import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.data.week.WeekRepository
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.BoardStatus
-import app.hearth.core.model.HabitHealth
+import app.hearth.core.model.Ease
+import app.hearth.core.model.easeNow
+import app.hearth.core.tools.backlog.PlanBacklogArgs
+import app.hearth.core.tools.backlog.RateHabitArgs
+import app.hearth.core.tools.backlog.SmallStepArgs
 import app.hearth.core.model.Meter
 import app.hearth.core.model.flowSuggestion
-import app.hearth.core.model.habitHealth
 import app.hearth.core.model.plusDays
 import app.hearth.core.model.strainSuggestion
 import app.hearth.core.model.Lang
@@ -96,7 +99,7 @@ class MeetingToolsTest {
     }
 
     @Test
-    fun `a habit that keeps slipping asks for attention, not blame`() = runTest {
+    fun `a chore that keeps slipping asks for attention, not blame`() = runTest {
         val today = app.hearth.core.model.today()
         tick = app.hearth.core.model.nowMillis() - 40L * 86_400_000L
         val ctx = nl.copy(today = today)
@@ -110,20 +113,49 @@ class MeetingToolsTest {
         backlog.logRoutine(listOf(sheets.id), today.plusDays(-1).toString())
         backlog.logRoutine(listOf(plants.id), today.plusDays(-20).toString())
         val agenda = tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), ctx)
-        assertEquals(listOf("Planten water geven"), agenda.habitsNeedingAttention.map { it.text })
+        assertEquals(listOf("Planten water geven" to Ease.EFFORT), agenda.needsAttention.map { it.item.text to it.ease })
         assertEquals(4, agenda.suggestedFlow)
     }
 
     @Test
-    fun `habit health reads the rhythm, and new habits get time`() {
+    fun `habits are rated together and get a small first step, tasks count their postponements`() = runTest {
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Na het eten de tafel afruimen", Section.HABIT), nl)
+        assertEquals(
+            "“Na het eten de tafel afruimen” is te zwaar. Wat is een kleinere eerste stap?",
+            tools.registry.run(tools.rateHabit, RateHabitArgs(texts = listOf("tafel afruimen"), ease = Ease.HARD), nl).summary,
+        )
+        assertEquals("Begin klein: “Eigen bord naar de keuken”.", tools.registry.run(tools.setSmallStep, SmallStepArgs(texts = listOf("tafel afruimen"), step = "eigen bord naar de keuken"), nl).summary)
+        val habit = backlog.openItems().single()
+        assertEquals(Ease.HARD to "Eigen bord naar de keuken", habit.ease to habit.smallStep)
+
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Fiets herstellen", Section.PROJECT, When.DAY, "2026-10-26"), nl)
+        tools.registry.run(tools.planBacklogItem, PlanBacklogArgs(texts = listOf("fiets"), `when` = When.DAY, date = "2026-10-29"), nl)
+        tools.registry.run(tools.planBacklogItem, PlanBacklogArgs(texts = listOf("fiets"), `when` = When.LATER), nl)
+        tools.registry.run(tools.planBacklogItem, PlanBacklogArgs(texts = listOf("fiets"), `when` = When.DAY, date = "2026-11-02"), nl)
+        assertEquals(2, backlog.openItems().first { it.text == "Fiets herstellen" }.postponed)
+        val agenda = tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl)
+        assertEquals(listOf("Fiets herstellen" to Ease.EFFORT), agenda.needsAttention.map { it.item.text to it.ease })
+        assertEquals(listOf("Na het eten de tafel afruimen"), agenda.habits.map { it.text })
+        val summary = tools.registry.run(tools.finishWeekoverleg, AgendaArgs(), nl).huddle.summary
+        assertTrue("Gewoontes: Na het eten de tafel afruimen: te zwaar (begin klein: Eigen bord naar de keuken)" in summary, summary)
+        assertTrue("Vraagt aandacht: Fiets herstellen (2× verschoven)" in summary, summary)
+    }
+
+    @Test
+    fun `colours read the right signal for each kind`() {
         val today = LocalDate(2026, 10, 24)
-        val weekly = app.hearth.core.model.BacklogItem("1", "Badkamer", Section.CHORE, createdAt = 0, intervalDays = 7, lastDone = "2026-10-20")
+        val chore = app.hearth.core.model.BacklogItem("1", "Badkamer", Section.CHORE, createdAt = 0, intervalDays = 7, lastDone = "2026-10-20")
         val days = listOf(-4, -11, -18, -25).map { today.plusDays(it) }
-        assertEquals(HabitHealth.EASY, weekly.habitHealth(days, today.plusDays(-60), today))
-        assertEquals(HabitHealth.NEEDS_ATTENTION, weekly.copy(lastDone = "2026-10-03").habitHealth(listOf(today.plusDays(-21)), today.plusDays(-60), today))
-        assertEquals(HabitHealth.NEW, weekly.habitHealth(emptyList(), today.plusDays(-5), today))
-        assertEquals(5, flowSuggestion(done = 10, wins = 2, habitsNeedingAttention = 0))
-        assertEquals(3, flowSuggestion(done = 0, wins = 0, habitsNeedingAttention = 2))
+        assertEquals(Ease.EASY, chore.easeNow(days, today.plusDays(-60), today))
+        assertEquals(Ease.EFFORT, chore.copy(lastDone = "2026-10-03").easeNow(listOf(today.plusDays(-21)), today.plusDays(-60), today))
+        assertEquals(null, chore.easeNow(emptyList(), today.plusDays(-5), today))
+        val habit = app.hearth.core.model.BacklogItem("2", "Na het eten afruimen", Section.HABIT, createdAt = 0)
+        assertEquals(null, habit.easeNow(emptyList(), today, today))
+        assertEquals(Ease.HARD, habit.copy(ease = Ease.HARD).easeNow(emptyList(), today, today))
+        val task = app.hearth.core.model.BacklogItem("3", "Belastingbrief", Section.ADMIN, createdAt = 0)
+        assertEquals(listOf(null, Ease.EFFORT, Ease.HARD), listOf(1, 3, 4).map { task.copy(postponed = it).easeNow(emptyList(), today, today) })
+        assertEquals(5, flowSuggestion(done = 10, wins = 2, needingAttention = 0))
+        assertEquals(3, flowSuggestion(done = 0, wins = 0, needingAttention = 2))
         assertEquals(5, strainSuggestion(newFrictions = 4, rulesNotYet = 3))
     }
 

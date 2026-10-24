@@ -46,12 +46,14 @@ import app.hearth.ai.route.Place
 import app.hearth.ai.route.KeywordRouter
 import app.hearth.core.tools.board.AddIdeaArgs
 import app.hearth.core.model.TranscriptLine
-import app.hearth.core.model.HabitHealth
+import app.hearth.core.model.Ease
+import app.hearth.core.model.easeNow
+import app.hearth.core.tools.backlog.RateHabitArgs
+import app.hearth.core.tools.backlog.SmallStepArgs
 import app.hearth.core.model.Meter
 import app.hearth.core.model.MeterValue
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.dayOf
-import app.hearth.core.model.habitHealth
 import app.hearth.core.model.isRoutine
 import app.hearth.core.tools.week.CheckHouseRuleArgs
 import app.hearth.core.tools.week.SetWeekMetersTool
@@ -141,13 +143,12 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val backlog: StateFlow<List<BacklogItem>> =
         app.backlog.open.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** How easily each habit runs (Atomic Habits): a colour on the routine, never "late". */
+    /** The colour of each open item: habits as the family rated them, chores from their history, tasks from postponing. */
     @OptIn(ExperimentalCoroutinesApi::class, kotlin.time.ExperimentalTime::class)
-    val habits: StateFlow<Map<String, HabitHealth>> = today
+    val ease: StateFlow<Map<String, Ease>> = today
         .flatMapLatest { d ->
             combine(app.backlog.open, app.backlog.routineLogs(d.plusDays(-120).toString())) { items, logs ->
-                items.filter { it.isRoutine() && it.intervalDays != null }
-                    .associate { it.id to it.habitHealth(logs[it.id].orEmpty(), dayOf(it.createdAt), d) }
+                items.mapNotNull { item -> item.easeNow(logs[item.id].orEmpty(), dayOf(item.createdAt), d)?.let { item.id to it } }.toMap()
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
@@ -527,6 +528,15 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun lessOften(item: BacklogItem) = tool {
         val days = (item.intervalDays ?: 7) * 2
         say(app.tools.registry.run(app.tools.setRoutineInterval, SetRoutineIntervalArgs(itemIds = listOf(item.id), days = days), it).summary)
+        _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it)
+    }
+
+    fun rateHabit(item: BacklogItem, ease: Ease) = tool {
+        say(app.tools.registry.run(app.tools.rateHabit, RateHabitArgs(itemIds = listOf(item.id), ease = ease), it).summary)
+    }
+
+    fun setSmallStep(item: BacklogItem, step: String) = tool {
+        say(app.tools.registry.run(app.tools.setSmallStep, SmallStepArgs(itemIds = listOf(item.id), step = step), it).summary)
         _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it)
     }
 

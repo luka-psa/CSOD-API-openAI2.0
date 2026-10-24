@@ -107,7 +107,8 @@ dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_
 meeting, meals, shopping, deadlines, due routines, oudjes, open frictions and ideas, wins, week feelings and the
 Luister mee transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary), `add_win`,
 `remove_win` ⚠ (tablet), `set_week_meter` (FLOW / STRAIN, agreed together for the household; empty = no
-agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (worked / not yet, never who),
+agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (worked / not yet, never who), `rate_habit` (EASY / EFFORT / HARD),
+`set_small_step` (a habit's smallest first step),
 `list_huddles`
 (summaries), `add_transcript_line` / `mark_transcript_sorted` (tablet), `clear_transcript` ⚠ (tablet),
 `add_idea` (Werkbord; decided with `resolve_friction` like a friction). · Recipes:
@@ -193,7 +194,8 @@ adds `reflection` (WIN with text / FEELING with value 1–5, memberId, huddleId 
 `transcript_line` (text, sorted, huddleId), `Huddle.summary`, and `BoardKind.IDEA`. A meeting's transcript is
 deleted when the next meeting ends; summaries stay. v11 adds `routine_log` (habit id, day) and
 `reflection.suggested`; meters are FLOW / STRAIN rows, house-rule checks RULE_CHECK rows (v0.6's per-person FEELING
-rows are no longer used). Auto-migrations v1→v11 keep every household's data.
+rows are no longer used). v12 adds `backlog_item.postponed` (moved to a later day, Later or To plan), `ease`
+(the family's rating of a habit) and `smallStep`. Auto-migrations v1→v12 keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
@@ -273,10 +275,12 @@ attention, never below 3 (`flowSuggestion`); Wat schuurde rises with new frictio
 (`strainSuggestion`). The family agrees with a tap, picks another step together, or taps *Geen akkoord* (neutral).
 The summary shows Hearth's guess when the family saw it differently. The Werkbord card starts with *Hoe liepen de
 afspraken?* (per house rule: Liep goed / Liep nog niet, never who); a rule that didn't work two meetings in a row
-comes back as a friction ("Afspraak loopt nog niet: …"). *Gewoontes die aandacht vragen* (Atomic Habits): habits
-done much less often than their rhythm (`habitHealth`, from the `routine_log`) offer *Minder vaak* (interval ×2) or
-*Makkelijker maken* (an idea on the Werkbord). In Taken a habit shows a green dot when it runs easily and an amber
-"vraagt aandacht" pill otherwise; never red, never "late". **Luister mee** (bar at the top of the page; it keeps listening while the family opens the list, the
+comes back as a friction ("Afspraak loopt nog niet: …"). *Gewoontes* (Atomic Habits): habits are not ticked off;
+the family rates each one together (*Ease*: loopt vanzelf green / vraagt moeite amber / te zwaar orange, never red) and
+can give it a *small step* ("Begin klein: …"). Chores get their ease from the `routine_log`; tasks from how often
+they were postponed (2× amber, 4× orange; saying a task again with a later day moves it and counts). *Vraagt aandacht*
+lists both and offers *Minder vaak* (interval ×2) or *Makkelijker maken* (an idea on the Werkbord). In Taken habits
+have their own group with a sun icon and a "Hoe loopt het?" chip; never "late". **Luister mee** (bar at the top of the page; it keeps listening while the family opens the list, the
 stock or the tasks, with a small "Terug naar het overleg" bar there): continuous transcription during the meeting (Web Speech;
 Android restarts its recognizer after each pause and prefers on-device recognition). *Gesprek* shows what was
 heard; *Zet op zijn plek* opens the Voorstel: each sentence with its guessed place (Taken, Afspraak, Vrije tijd,
@@ -372,6 +376,7 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    capture bar: "we eten maandag spaghetti", "vanavond eten we frietjes", "dinner on monday: pizza".
    v0.6: wat ging goed, Luister mee with a Voorstel, ideas on the Werkbord, summaries. v0.7: one prepared page,
    Vooruitblik, dates further ahead. v0.8: two household meters agreed together, house-rule check, habit health.
+   v0.9: habits rated (Ease colours, small step) instead of ticked; tasks coloured by postponement.
 7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
    icon on Vandaag): add `<relay>/mcp` once in ChatGPT/Claude and type the tablet's pairing code.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a

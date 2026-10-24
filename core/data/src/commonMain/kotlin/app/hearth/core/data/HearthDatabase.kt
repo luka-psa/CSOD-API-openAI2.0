@@ -37,7 +37,7 @@ import androidx.sqlite.execSQL
  */
 @Database(
     entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class, MealEntity::class, DishEntity::class, HuddleEntity::class, SettingEntity::class, RecipePhotoEntity::class, app.hearth.core.data.week.ReflectionEntity::class, app.hearth.core.data.week.TranscriptLineEntity::class, app.hearth.core.data.backlog.RoutineLogEntity::class],
-    version = 11,
+    version = 12,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -50,6 +50,7 @@ import androidx.sqlite.execSQL
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
         AutoMigration(from = 10, to = 11),
+        AutoMigration(from = 11, to = 12),
     ],
 )
 @ConstructedBy(HearthDatabaseConstructor::class)

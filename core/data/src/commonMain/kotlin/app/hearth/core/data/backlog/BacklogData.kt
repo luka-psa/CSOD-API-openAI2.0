@@ -12,6 +12,7 @@ import androidx.room3.Query
 import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.Ease
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
 import app.hearth.core.model.newId
@@ -40,10 +41,13 @@ data class BacklogEntity(
     val intervalDays: Int? = null,
     val lastDone: String? = null,
     val parentId: String? = null,
+    @ColumnInfo(defaultValue = "0") val postponed: Int = 0,
+    @ColumnInfo(defaultValue = "NULL") val ease: Ease? = null,
+    @ColumnInfo(defaultValue = "NULL") val smallStep: String? = null,
 ) {
     fun toModel() = BacklogItem(
         id, text, section, plan, plannedDate, finishBy, done, createdAt, addedById,
-        urgent, waiting, intervalDays, lastDone, parentId,
+        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep,
     )
 }
 
@@ -84,6 +88,15 @@ interface BacklogDao {
 
     @Insert
     suspend fun insertLog(log: RoutineLogEntity)
+
+    @Query("UPDATE backlog_item SET postponed = postponed + 1, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun addPostponed(ids: List<String>, now: Long)
+
+    @Query("UPDATE backlog_item SET ease = :ease, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setEase(ids: List<String>, ease: Ease?, now: Long)
+
+    @Query("UPDATE backlog_item SET smallStep = :step, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setSmallStep(ids: List<String>, step: String?, now: Long)
 
     @Query("SELECT * FROM routine_log WHERE day >= :fromDay")
     fun observeLogs(fromDay: String): Flow<List<RoutineLogEntity>>
@@ -177,8 +190,27 @@ class BacklogRepository(
             entity.toModel() to true
         }
 
+    /** Plans items; a day pushed back (a later day, Later, or unplanned again) counts as postponed. */
     suspend fun plan(ids: List<String>, plan: Plan, date: String?, finishBy: Boolean) {
-        if (ids.isNotEmpty()) dao.plan(ids, plan, date, finishBy, clock())
+        if (ids.isEmpty()) return
+        val now = clock()
+        db.withWriteTransaction {
+            val pushed = dao.byIds(ids).filter { old ->
+                val oldDay = old.plannedDate
+                old.plan == Plan.DAY && oldDay != null &&
+                    (plan == Plan.LATER || plan == Plan.UNPLANNED || (plan == Plan.DAY && date != null && date > oldDay))
+            }
+            dao.plan(ids, plan, date, finishBy, now)
+            if (pushed.isNotEmpty()) dao.addPostponed(pushed.map { it.id }, now)
+        }
+    }
+
+    suspend fun setEase(ids: List<String>, ease: Ease?) {
+        if (ids.isNotEmpty()) dao.setEase(ids, ease, clock())
+    }
+
+    suspend fun setSmallStep(ids: List<String>, step: String?) {
+        if (ids.isNotEmpty()) dao.setSmallStep(ids, step?.trim()?.ifEmpty { null }, clock())
     }
 
     suspend fun setDone(ids: List<String>, done: Boolean) {

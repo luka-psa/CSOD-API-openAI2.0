@@ -49,6 +49,8 @@ import app.hearth.core.model.Huddle
 import app.hearth.core.model.Member
 import app.hearth.core.model.TranscriptLine
 import app.hearth.core.model.Meter
+import app.hearth.core.model.Ease
+import app.hearth.core.model.isHabit
 import app.hearth.core.model.MeterValue
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.Win
@@ -165,6 +167,8 @@ class WeekCallbacks(
     val checkRule: (BoardItem, Boolean) -> Unit,
     val lessOften: (BacklogItem) -> Unit,
     val makeEasier: (BacklogItem) -> Unit,
+    val rateHabit: (BacklogItem, Ease) -> Unit,
+    val smallStep: (BacklogItem, String) -> Unit,
     val heard: (String) -> Unit,
     val clearTranscript: () -> Unit,
     val openVoorstel: () -> Unit,
@@ -275,7 +279,9 @@ fun WeekScreen(
                     Spacer(Modifier.size(10.dp))
                     BoardStep(board, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
                     Spacer(Modifier.size(10.dp))
-                    HabitsAttention(agenda?.habitsNeedingAttention.orEmpty(), lang, cb.lessOften, cb.makeEasier)
+                    HabitsRating(backlog.filter { it.isHabit }, cb.rateHabit, cb.smallStep)
+                    Spacer(Modifier.size(10.dp))
+                    AttentionList(agenda?.needsAttention.orEmpty().map { it.item to it.ease }, cb.lessOften, cb.makeEasier, cb.smallStep)
                 }
             }
             val thisWeek = @Composable { m: Modifier ->

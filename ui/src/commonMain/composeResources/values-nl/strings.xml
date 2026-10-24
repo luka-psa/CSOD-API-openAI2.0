@@ -389,4 +389,18 @@
     <string name="habit_easier">Makkelijker maken</string>
     <string name="habit_easy">loopt vanzelf</string>
     <string name="habits_attention_short">vraagt aandacht</string>
+    <string name="ease_easy">loopt vanzelf</string>
+    <string name="ease_effort">vraagt moeite</string>
+    <string name="ease_hard">te zwaar</string>
+    <string name="ease_postponed">%1$d× verschoven</string>
+    <string name="small_step_line">Begin klein: %1$s</string>
+    <string name="small_step_add">Kleinere eerste stap…</string>
+    <string name="small_step_title">Wat is een kleinere eerste stap?</string>
+    <string name="small_step_hint">bv. alleen je eigen bord naar de keuken</string>
+    <string name="habits_title">Gewoontes: hoe zwaar zijn ze?</string>
+    <string name="habits_hint">Gewoontes vink je niet af. Zeg samen hoe ze lopen; is er een te zwaar, begin dan kleiner.</string>
+    <string name="attention_title">Vraagt aandacht</string>
+    <string name="attention_hint">Glipt het weg of wordt het steeds verschoven? Maak het kleiner, makkelijker of minder vaak.</string>
+    <string name="ease_rate">Hoe loopt het?</string>
+    <string name="group_habits">Gewoontes</string>
 </resources>

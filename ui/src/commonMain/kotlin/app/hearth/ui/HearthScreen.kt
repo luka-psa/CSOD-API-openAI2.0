@@ -110,7 +110,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val meters by viewModel.meters.collectAsStateWithLifecycle()
     val metersOn by viewModel.metersOn.collectAsStateWithLifecycle()
     val ruleChecks by viewModel.ruleChecks.collectAsStateWithLifecycle()
-    val habits by viewModel.habits.collectAsStateWithLifecycle()
+    val ease by viewModel.ease.collectAsStateWithLifecycle()
     val transcript by viewModel.transcript.collectAsStateWithLifecycle()
     val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
     val huddles by viewModel.huddles.collectAsStateWithLifecycle()
@@ -197,6 +197,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 checkRule = { r, w -> viewModel.checkRule(r, w) },
                                 lessOften = viewModel::lessOften,
                                 makeEasier = viewModel::makeEasier,
+                                rateHabit = { i, e -> viewModel.rateHabit(i, e) },
+                                smallStep = { i, t -> viewModel.setSmallStep(i, t) },
                                 heard = viewModel::heard,
                                 clearTranscript = viewModel::clearTranscript,
                                 openVoorstel = viewModel::openVoorstel,
@@ -241,7 +243,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                             ),
                         )
                         Destination.TASKS -> TasksScreen(
-                            backlog, steps, today, lang, tab, { tab = it }, habits,
+                            backlog, steps, today, lang, tab, { tab = it }, ease,
                             TaskCallbacks(
                                 complete = viewModel::complete,
                                 reopen = viewModel::reopen,
@@ -249,6 +251,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 add = viewModel::addTask,
                                 addStep = viewModel::addStep,
                                 delete = { deleting = it },
+                                rateHabit = { i, e -> viewModel.rateHabit(i, e) },
+                                smallStep = { i, t -> viewModel.setSmallStep(i, t) },
                             ),
                         )
                         Destination.SHOPPING -> ShoppingScreen(

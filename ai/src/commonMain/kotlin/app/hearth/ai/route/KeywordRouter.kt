@@ -62,6 +62,7 @@ object KeywordRouter {
         Section.FRICTION to listOf("frictie", "ergernis", "friction"),
         Section.GOAL to listOf("doel", "goal"),
         Section.IDEA to listOf("idee", "verbetering", "idea"),
+        Section.HABIT to listOf("gewoonte", "habit"),
     )
 
     fun section(text: String): Section {
@@ -69,6 +70,13 @@ object KeywordRouter {
         prefixes.firstOrNull { (_, words) -> words.any { start.startsWith("$it:") } }?.let { return it.first }
         val t = " ${text.lowercase()} "
         return keywords.firstOrNull { (_, words) -> words.any { it in t } }?.first ?: Section.OTHER
+    }
+
+    /** The text after a "gewoonte: …"-style prefix, or the text itself. */
+    fun withoutPrefix(text: String): String {
+        val t = text.trim()
+        val word = prefixes.flatMap { it.second }.firstOrNull { t.lowercase().startsWith("$it:") } ?: return t
+        return t.substring(word.length + 1).trim().ifEmpty { t }
     }
 
     /** "samen", "met z’n twee" → the couple; "ik wil" → personal; otherwise the family. */

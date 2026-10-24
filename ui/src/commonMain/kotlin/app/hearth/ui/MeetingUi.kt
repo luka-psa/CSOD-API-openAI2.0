@@ -46,20 +46,27 @@ import app.hearth.core.model.Section
 import app.hearth.core.model.TranscriptLine
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
-import app.hearth.core.model.HabitHealth
+import app.hearth.core.model.Ease
+import app.hearth.core.model.isRoutine
 import app.hearth.core.model.Meter
 import app.hearth.core.model.MeterValue
 import app.hearth.core.model.RuleCheck
-import app.hearth.core.model.intervalLabel
 import app.hearth.core.model.title
 import app.hearth.core.model.word
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import app.hearth.ui.resources.habit_easier
+import app.hearth.ui.resources.attention_hint
+import app.hearth.ui.resources.attention_title
+import app.hearth.ui.resources.ease_postponed
+import app.hearth.ui.resources.habits_hint
+import app.hearth.ui.resources.habits_title
+import app.hearth.ui.resources.small_step_add
+import app.hearth.ui.resources.small_step_hint
+import app.hearth.ui.resources.small_step_line
+import app.hearth.ui.resources.small_step_title
 import app.hearth.ui.resources.habit_less_often
-import app.hearth.ui.resources.habits_attention
-import app.hearth.ui.resources.habits_attention_hint
 import app.hearth.ui.resources.meters_agreed
 import app.hearth.ui.resources.meters_guess
 import app.hearth.ui.resources.meters_hint
@@ -446,41 +453,64 @@ fun RuleChecks(rules: List<BoardItem>, checks: List<RuleCheck>, onCheck: (BoardI
     }
 }
 
-/**
- * Habits done much less often than their rhythm asks. Atomic Habits: make it smaller, easier or less
- * often, rather than trying harder.
- */
+/** "Gewoontes: hoe zwaar zijn ze?": each habit rated together, with a smaller first step when it's hard. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HabitsAttention(habits: List<BacklogItem>, lang: Lang, onLessOften: (BacklogItem) -> Unit, onEasier: (BacklogItem) -> Unit) {
+fun HabitsRating(habits: List<BacklogItem>, onRate: (BacklogItem, Ease) -> Unit, onSmallStep: (BacklogItem, String) -> Unit) {
     if (habits.isEmpty()) return
-    GroupTitle(stringResource(Res.string.habits_attention))
-    Text(stringResource(Res.string.habits_attention_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
+    var asking by remember { mutableStateOf<BacklogItem?>(null) }
+    GroupTitle(stringResource(Res.string.habits_title))
+    Text(stringResource(Res.string.habits_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
     habits.forEach { habit ->
-        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                HabitDot(HabitHealth.NEEDS_ATTENTION)
-                Spacer(Modifier.width(10.dp))
-                Text(habit.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Text(intervalLabel(habit.intervalDays, lang), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 20.dp, top = 4.dp)) {
-                ChoiceChip(stringResource(Res.string.habit_less_often), false, { onLessOften(habit) }, icon = HearthIcons.Later)
-                ChoiceChip(stringResource(Res.string.habit_easier), false, { onEasier(habit) }, icon = HearthIcons.Idea)
+        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
+            Text(habit.text, style = MaterialTheme.typography.bodyLarge)
+            habit.smallStep?.let { Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink) }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                Ease.entries.forEach { ease ->
+                    if (habit.ease == ease) EasePill(ease) else ChoiceChip(stringResource(ease.label()), false, { onRate(habit, ease) })
+                }
+                if (habit.ease != null && habit.ease != Ease.EASY) TextButton(onClick = { asking = habit }) { Text(stringResource(Res.string.small_step_add)) }
             }
         }
     }
+    asking?.let { h ->
+        TextDialog(stringResource(Res.string.small_step_title), stringResource(Res.string.small_step_hint), onDone = { t, _ -> onSmallStep(h, t) }) { asking = null }
+    }
 }
 
-/** A habit's colour: green runs easily, amber asks for attention. Never red. */
+/** Chores that slip and tasks that keep being postponed: smaller, easier or less often. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HabitDot(health: HabitHealth?) {
-    val color = when (health) {
-        HabitHealth.EASY -> MaterialTheme.colorScheme.secondary
-        HabitHealth.NEEDS_ATTENTION -> Section.RHYTHM.style().ink
-        else -> return
+fun AttentionList(
+    items: List<Pair<BacklogItem, Ease>>,
+    onLessOften: (BacklogItem) -> Unit,
+    onEasier: (BacklogItem) -> Unit,
+    onSmallStep: (BacklogItem, String) -> Unit,
+) {
+    if (items.isEmpty()) return
+    var asking by remember { mutableStateOf<BacklogItem?>(null) }
+    GroupTitle(stringResource(Res.string.attention_title))
+    Text(stringResource(Res.string.attention_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
+    items.forEach { (item, ease) ->
+        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(item.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                EasePill(ease, if (item.postponed >= 2 && !item.isRoutine()) stringResource(Res.string.ease_postponed, item.postponed) else null)
+            }
+            item.smallStep?.let { Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink) }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                if (item.isRoutine()) {
+                    ChoiceChip(stringResource(Res.string.habit_less_often), false, { onLessOften(item) }, icon = HearthIcons.Later)
+                    ChoiceChip(stringResource(Res.string.habit_easier), false, { onEasier(item) }, icon = HearthIcons.Idea)
+                } else {
+                    ChoiceChip(stringResource(Res.string.small_step_add), false, { asking = item }, icon = HearthIcons.Next)
+                }
+            }
+        }
     }
-    Box(Modifier.size(10.dp).background(color, CircleShape))
+    asking?.let { t ->
+        TextDialog(stringResource(Res.string.small_step_title), stringResource(Res.string.small_step_hint), onDone = { s, _ -> onSmallStep(t, s) }) { asking = null }
+    }
 }
 
 /** A meeting's summary as written at Klaar. */

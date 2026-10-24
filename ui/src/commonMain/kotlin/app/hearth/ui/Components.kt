@@ -49,6 +49,12 @@ import androidx.compose.material3.IconButton
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.Ease
+import app.hearth.core.model.isHabit
+import app.hearth.ui.resources.ease_easy
+import app.hearth.ui.resources.ease_effort
+import app.hearth.ui.resources.ease_hard
+import app.hearth.ui.resources.small_step_line
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
@@ -188,6 +194,8 @@ fun statusText(item: BacklogItem, today: LocalDate, lang: Lang): String? {
             if (nl) "wacht op antwoord" else "waiting for a reply",
             item.localDate?.let { (if (nl) "opvolgen " else "follow up ") + dayLabel(it, today, lang) },
         ).joinToString(" · ")
+        // Habits are lived, not ticked: no "done" language.
+        item.isHabit && item.plan != Plan.DAY -> item.intervalDays?.let { intervalLabel(it, lang) }
         item.isRoutine() && item.plan != Plan.DAY -> "${intervalLabel(item.intervalDays, lang)} · ${lastDoneLabel(item, today, lang)}"
         else -> planText(item, today, lang)
     }
@@ -227,7 +235,14 @@ fun BacklogRow(
             .heightIn(min = 64.dp)
             .padding(end = 4.dp),
     ) {
-        RoundCheck(checked = item.done, onClick = onDone)
+        // Habits are lived, not ticked off.
+        if (item.isHabit) {
+            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                Icon(HearthIcons.Sun, null, tint = Section.HABIT.style().ink, modifier = Modifier.size(20.dp))
+            }
+        } else {
+            RoundCheck(checked = item.done, onClick = onDone)
+        }
         Spacer(Modifier.width(6.dp))
         Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -246,10 +261,41 @@ fun BacklogRow(
                     Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            item.smallStep?.let {
+                Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink)
+            }
         }
         trailing?.invoke()
         if (onDelete != null) DeleteButton(onDelete)
     }
+}
+
+/** How much something asks: green, amber or orange, with a word. Never red. */
+@Composable
+fun EasePill(ease: Ease, label: String? = null, onClick: (() -> Unit)? = null) {
+    val (ink, tint) = easeColors(ease)
+    Text(
+        label ?: stringResource(ease.label()),
+        style = MaterialTheme.typography.labelMedium,
+        color = ink,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(tint)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    )
+}
+
+fun Ease.label() = when (this) {
+    Ease.EASY -> Res.string.ease_easy
+    Ease.EFFORT -> Res.string.ease_effort
+    Ease.HARD -> Res.string.ease_hard
+}
+
+/** Green runs easily, amber takes effort, orange is too much. */
+@Composable
+fun easeColors(ease: Ease): Pair<Color, Color> = when (ease) {
+    Ease.EASY -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.secondaryContainer
+    Ease.EFFORT -> Section.RHYTHM.style().ink to Section.RHYTHM.style().tint
+    Ease.HARD -> Section.PROJECT.style().ink to Section.PROJECT.style().tint
 }
 
 /** The quiet X at the end of a line. It always asks before anything goes. */

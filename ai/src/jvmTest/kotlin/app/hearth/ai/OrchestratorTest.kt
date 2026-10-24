@@ -149,6 +149,22 @@ class OrchestratorTest {
     }
 
     @Test
+    fun `a gewoonte prefix files a habit without the word`() = runTest {
+        offline.handle("gewoonte: na het eten de tafel afruimen", nl)
+        val item = inbox.openItems().single()
+        assertEquals(Section.HABIT, item.section)
+        assertEquals("na het eten de tafel afruimen", item.text)
+    }
+
+    @Test
+    fun `saying a task again with a later day moves it and counts the push`() = runTest {
+        offline.handle("fiets herstellen morgen", nl)
+        offline.handle("fiets herstellen volgende week", nl)
+        val item = inbox.openItems().single()
+        assertEquals(1, item.postponed)
+    }
+
+    @Test
     fun `offline questions show what is open`() = runTest {
         offline.handle("melk", nl)
         offline.handle("autokeuring", nl)

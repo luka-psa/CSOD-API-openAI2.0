@@ -98,10 +98,13 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   (unplanned), *Next up*, a *Day* (do on / *finish by*), *Later*. Earlier days
   read "sinds dinsdag", never "late".
 - **Task kinds** (`TaskKind`, derived from the section): *Ritme & gewoontes*
-  (CHORE/RHYTHM/HABIT: interval + lastDone; done = "logged today", it comes
-  back; states NEW/FRESH/SOON/DUE, shown as "aan de beurt", never "late"; *habit
-  health* EASY (green) / NEEDS_ATTENTION (amber, "vraagt aandacht": make it smaller,
-  easier or less often), from the `routine_log`),
+  (CHORE/RHYTHM: interval + lastDone; done = "logged today", it comes
+  back; states NEW/FRESH/SOON/DUE, shown as "aan de beurt", never "late".
+  HABIT/RHYTHM are *habits*: never ticked off, rated together instead ("Hoe loopt
+  het?"): *Ease* EASY "loopt vanzelf" (green) / EFFORT "vraagt moeite" (amber) /
+  HARD "te zwaar" (orange, never red) with an optional *small step* ("Begin klein").
+  A chore's ease comes from the `routine_log`; a task's from how often it was
+  *postponed* (2× amber, 4× orange)),
   *Admin* (ADMIN/APPOINTMENT: *urgent*, deadline, *waiting for a reply* with a
   follow-up day), *Projecten* (PROJECT: *steps* via `parentId`, a day or "dit
   weekend"), *Te sorteren* (everything else).

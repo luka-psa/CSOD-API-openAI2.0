@@ -49,6 +49,12 @@ data class BacklogItem(
     val lastDone: String? = null,
     /** Set for a project step: the id of its project. */
     val parentId: String? = null,
+    /** How often its day was pushed back (later day, Later, or unplanned again). */
+    val postponed: Int = 0,
+    /** Habits: how hard it is, as the family says. */
+    val ease: Ease? = null,
+    /** A smaller first step for when it's hard ("Begin klein: …"). */
+    val smallStep: String? = null,
 ) {
     val localDate: LocalDate? get() = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
     val lastDoneDate: LocalDate? get() = lastDone?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

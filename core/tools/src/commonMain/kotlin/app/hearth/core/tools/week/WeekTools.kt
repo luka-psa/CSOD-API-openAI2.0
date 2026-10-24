@@ -7,6 +7,8 @@ import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.data.week.WeekRepository
 import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.model.MeterValue
+import app.hearth.core.model.Ease
+import app.hearth.core.model.isHabit
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.flowSuggestion
 import app.hearth.core.model.strainSuggestion
@@ -157,6 +159,10 @@ class RemoveMealTool(private val week: WeekRepository) : Tool<RemoveMealArgs, Me
 
 // ---------- weekoverleg_agenda ----------
 
+/** Something that asks for attention, with its colour. */
+@Serializable
+data class AttentionItem(val item: BacklogItem, val ease: Ease)
+
 @Serializable
 class AgendaArgs
 
@@ -180,8 +186,10 @@ data class WeekAgenda(
     val meters: List<MeterValue> = emptyList(),
     /** House rules checked this meeting (worked / not yet), never who. */
     val ruleChecks: List<RuleCheck> = emptyList(),
-    /** Habits done much less often than their rhythm: make them smaller, easier or less often. */
-    val habitsNeedingAttention: List<BacklogItem> = emptyList(),
+    /** All habits with how hard they are (the family's rating; unrated ones too, to rate in the meeting). */
+    val habits: List<BacklogItem> = emptyList(),
+    /** Chores that slip and tasks that keep being postponed, with their colour: make them smaller or easier. */
+    val needsAttention: List<AttentionItem> = emptyList(),
     /** What Luister mee heard in this meeting so far, line by line. */
     val transcript: List<String> = emptyList(),
     override val summary: String,
@@ -221,9 +229,10 @@ class WeekoverlegAgendaTool(
         val metersOn = metersOn(settings)
         val meters = meeting.currentMeters()
         val ruleChecks = meeting.currentRuleChecks()
-        val habits = habitsNeedingAttention(backlog, ctx.today)
+        val habits = open.filter { it.isHabit }
+        val attention = needingAttention(backlog, ctx.today).map { (item, ease) -> AttentionItem(item, ease) }
         val newFrictions = frictions.count { it.kind == BoardKind.FRICTION && it.createdAt >= since }
-        val suggestedFlow = flowSuggestion(done.size, wins.size, habits.size)
+        val suggestedFlow = flowSuggestion(done.size, wins.size, attention.size + habits.count { it.ease == Ease.HARD })
         val suggestedStrain = strainSuggestion(newFrictions, ruleChecks.count { !it.worked })
         val transcript = meeting.currentTranscript().map { it.text }
 
@@ -241,13 +250,15 @@ class WeekoverlegAgendaTool(
                 ).joinToString("; ").ifEmpty { ctx.t("rustig", "calm") } + ".")
             add(ctx.t("5. Oudjes: ", "5. Oudjes: ") + old.joinToString(", ") { it.text }.ifEmpty { ctx.t("geen", "none") } + ".")
             add(ctx.t("6. Werkbord: ", "6. Board: ") + frictions.joinToString(", ") { it.text }.ifEmpty { ctx.t("geen frictie", "no frictions") } + ".")
-            if (habits.isNotEmpty()) add(ctx.t("Gewoontes die aandacht vragen: ", "Habits asking for attention: ") + habits.joinToString(", ") { it.text } + ".")
+            if (habits.isNotEmpty()) add(ctx.t("Gewoontes (hoe zwaar, samen zeggen): ", "Habits (how hard, say together): ") +
+                habits.joinToString(", ") { h -> h.text + (h.ease?.let { " – " + easeWord(it, ctx) } ?: "") } + ".")
+            if (attention.isNotEmpty()) add(ctx.t("Vraagt aandacht: ", "Asks for attention: ") + attention.joinToString(", ") { attentionText(it.item, it.ease, ctx) } + ".")
             if (metersOn) add(ctx.t("Meters (samen afspreken): hoe liep het, voorstel ", "Meters (agree together): how it ran, suggested ") + suggestedFlow +
                 ctx.t("; wat schuurde, voorstel ", "; what rubbed, suggested ") + suggestedStrain + ".")
             if (transcript.isNotEmpty()) add(ctx.t("Gesprek (Luister mee):\n", "Conversation (Luister mee):\n") + transcript.joinToString("\n") { "- $it" })
         }.joinToString("\n")
 
-        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, old, frictions, wins, metersOn, suggestedFlow, suggestedStrain, meters, ruleChecks, habits, transcript, summary)
+        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, old, frictions, wins, metersOn, suggestedFlow, suggestedStrain, meters, ruleChecks, habits, attention, transcript, summary)
     }
 
     companion object {

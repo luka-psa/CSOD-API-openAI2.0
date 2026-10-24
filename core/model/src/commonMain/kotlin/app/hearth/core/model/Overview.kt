@@ -102,33 +102,49 @@ fun lastDoneLabel(item: BacklogItem, today: LocalDate, lang: Lang): String {
 }
 
 /**
- * How easy a habit is to keep up, from when it was actually done. In the spirit of Atomic Habits: a habit
- * that keeps slipping isn't a failure of the people, it asks to be made smaller, easier or less often.
- * Never "late", never red.
+ * How much something asks of the household, as a colour (never red, never "late"). Atomic Habits: when
+ * something is hard, make it smaller, easier or less often rather than trying harder.
  */
-enum class HabitHealth {
-    /** Too new to say (less than two rounds old). */
-    NEW,
-    /** Done about as often as its rhythm asks. */
+enum class Ease {
+    /** Loopt vanzelf (green). */
     EASY,
-    /** Done much less often than its rhythm: worth a look in the weekoverleg. */
-    NEEDS_ATTENTION,
+    /** Vraagt moeite (amber): a smaller first step may help. */
+    EFFORT,
+    /** Te zwaar (orange): make it smaller or split it up. */
+    HARD,
 }
 
+/** Habits and rhythms are lived, not ticked off: how hard they are is what the family says ([BacklogItem.ease]). */
+val BacklogItem.isHabit: Boolean get() = !isStep && (section == Section.HABIT || section == Section.RHYTHM)
+
 /**
- * [doneDays]: when it was done; [addedOn]: when it became a habit. Looks back over four weeks (or three
- * rounds for slow rhythms); "easy" is at least 60% of the rounds and not two rounds behind right now.
+ * The colour right now. Habits: the family's own rating. Chores (ticked off now and then): from when they
+ * were actually done ([doneDays]; [addedOn] = when it got its rhythm). Tasks: from how often their day was
+ * pushed back. Null: nothing to say (new, or simply fine).
  */
-fun BacklogItem.habitHealth(doneDays: List<LocalDate>, addedOn: LocalDate, today: LocalDate): HabitHealth {
-    val interval = intervalDays?.takeIf { it > 0 } ?: return HabitHealth.NEW
+fun BacklogItem.easeNow(doneDays: List<LocalDate>, addedOn: LocalDate, today: LocalDate): Ease? = when {
+    isHabit -> ease
+    isRoutine() -> choreEase(doneDays, addedOn, today)
+    postponed >= 4 -> Ease.HARD
+    postponed >= 2 -> Ease.EFFORT
+    else -> null
+}
+
+/** A chore over four weeks (or three rounds): done at least 60% of the rounds and not two rounds behind = easy. */
+private fun BacklogItem.choreEase(doneDays: List<LocalDate>, addedOn: LocalDate, today: LocalDate): Ease? {
+    val interval = intervalDays?.takeIf { it > 0 } ?: return null
     val age = (today.toEpochDays() - addedOn.toEpochDays()).toInt()
-    if (age < interval * 2) return HabitHealth.NEW
+    if (age < interval * 2) return null
     val span = minOf(age, maxOf(28, interval * 3))
     val from = today.plusDays(-span)
     val expected = span.toDouble() / interval
     val done = doneDays.count { it > from && it <= today }
     val behind = (daysSinceDone(today) ?: span).toDouble() / interval
-    return if (done >= expected * 0.6 && behind < 2) HabitHealth.EASY else HabitHealth.NEEDS_ATTENTION
+    return when {
+        done >= expected * 0.6 && behind < 2 -> Ease.EASY
+        behind >= 4 && done == 0 -> Ease.HARD
+        else -> Ease.EFFORT
+    }
 }
 
 /** The local day a moment fell on. */

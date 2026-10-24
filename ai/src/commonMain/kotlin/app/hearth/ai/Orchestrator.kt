@@ -278,8 +278,9 @@ class Orchestrator(
     private fun backlogCall(text: String, section: Section, ctx: ToolContext, fromTalk: Boolean): Pair<ToolCall, AddToBacklogArgs> {
         val task = TaskWords.extract(text)
         val hint = TimeWords.extractAnywhere(task.text, ctx.today)
-        val body = hint?.text ?: task.text
-        var chosen = if (section == Section.OTHER) KeywordRouter.section(body) else section
+        val said = hint?.text ?: task.text
+        var chosen = if (section == Section.OTHER) KeywordRouter.section(said) else section
+        val body = KeywordRouter.withoutPrefix(said)
         if (chosen.boardKind != null || chosen == Section.SHOPPING || chosen == Section.STOCK) chosen = Section.OTHER
         if (task.intervalDays != null && chosen.kind != TaskKind.ROUTINE) chosen = Section.CHORE
         if (task.urgent && chosen == Section.OTHER) chosen = Section.ADMIN

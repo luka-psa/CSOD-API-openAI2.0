@@ -139,6 +139,11 @@ class AddToBacklogTool(private val repo: BacklogRepository, private val board: B
                 else -> ""
             } + if (item.urgent) ctx.t(" · dringend", " · urgent") else ""
             ctx.t("Op de backlog: “${item.text}” ($label)$whenText", "On the backlog: “${item.text}” ($label)$whenText")
+        } else if (args.`when` != When.UNPLANNED && (item.plan != plan || item.date != date?.toString())) {
+            // Said again with another day: it moves (a later day counts as postponed).
+            repo.plan(listOf(item.id), plan, date?.toString(), args.finishBy && date != null)
+            val moved = repo.itemsByIds(listOf(item.id)).first()
+            return AddToBacklogResult(moved, false, ctx.t("“${moved.text}” staat nu op ${planLabel(moved, ctx)}.", "“${moved.text}” is now ${planLabel(moved, ctx)}."))
         } else {
             ctx.t("Staat al op de backlog: “${item.text}”", "Already on the backlog: “${item.text}”")
         }

@@ -4,6 +4,7 @@ import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.model.boardKind
 import app.hearth.core.model.stripBoardPrefix
+import app.hearth.core.model.Ease
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
 import app.hearth.core.model.TaskKind
@@ -218,5 +219,79 @@ class AddProjectStepTool(private val repo: BacklogRepository) : Tool<AddProjectS
 
     companion object {
         const val NAME = "add_project_step"
+    }
+}
+
+// ---------- rate_habit ----------
+
+@Serializable
+data class RateHabitArgs(
+    @Describe("Ids of habits.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of habits, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("EASY (loopt vanzelf), EFFORT (vraagt moeite) or HARD (te zwaar: make it smaller).")
+    val ease: Ease,
+)
+
+/**
+ * Habits are lived, not ticked off; the family says how hard one is. Atomic Habits: a hard habit asks for a
+ * smaller first step, not more effort.
+ */
+class RateHabitTool(private val repo: BacklogRepository) : Tool<RateHabitArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description =
+        "Say how hard a habit is for the household: EASY, EFFORT or HARD. Shown as a colour (never red); a hard " +
+            "habit gets a smaller first step (set_small_step)."
+    override val argsSerializer = RateHabitArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: RateHabitArgs, ctx: ToolContext): BacklogItemsResult {
+        val found = repo.find(args.itemIds, args.texts).ifEmpty { notFound(ctx) }
+        repo.setEase(found.map { it.id }, args.ease)
+        val names = found.joinToString(", ") { "“${it.text}”" }
+        val summary = when (args.ease) {
+            Ease.EASY -> ctx.t("$names loopt vanzelf. Mooi.", "$names runs easily. Nice.")
+            Ease.EFFORT -> ctx.t("$names vraagt moeite. Een kleinere eerste stap kan helpen.", "$names takes effort. A smaller first step can help.")
+            Ease.HARD -> ctx.t("$names is te zwaar. Wat is een kleinere eerste stap?", "$names is too much. What's a smaller first step?")
+        }
+        return BacklogItemsResult(found.map { it.copy(ease = args.ease) }, summary)
+    }
+
+    companion object {
+        const val NAME = "rate_habit"
+    }
+}
+
+// ---------- set_small_step ----------
+
+@Serializable
+data class SmallStepArgs(
+    @Describe("Ids of habits or tasks.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("A smaller first step, e.g. 'twee minuten opruimen na het eten'. Empty removes it.")
+    val step: String = "",
+)
+
+/** "Begin klein: …": the smallest version of a habit or a task that keeps getting pushed back. */
+class SetSmallStepTool(private val repo: BacklogRepository) : Tool<SmallStepArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description = "Give a hard habit, or a task that keeps being postponed, a smaller first step to start with."
+    override val argsSerializer = SmallStepArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: SmallStepArgs, ctx: ToolContext): BacklogItemsResult {
+        val found = repo.find(args.itemIds, args.texts).ifEmpty { notFound(ctx) }
+        val step = args.step.trim().replaceFirstChar { it.uppercase() }.ifEmpty { null }
+        repo.setSmallStep(found.map { it.id }, step)
+        val summary = if (step == null) ctx.t("Kleine stap weggehaald.", "Small step removed.")
+        else ctx.t("Begin klein: “$step”.", "Start small: “$step”.")
+        return BacklogItemsResult(found.map { it.copy(smallStep = step) }, summary)
+    }
+
+    companion object {
+        const val NAME = "set_small_step"
     }
 }

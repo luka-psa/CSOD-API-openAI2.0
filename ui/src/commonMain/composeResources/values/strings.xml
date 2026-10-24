@@ -396,4 +396,18 @@
     <string name="habit_easier">Make it easier</string>
     <string name="habit_easy">runs easily</string>
     <string name="habits_attention_short">asks attention</string>
+    <string name="ease_easy">runs easily</string>
+    <string name="ease_effort">takes effort</string>
+    <string name="ease_hard">too much</string>
+    <string name="ease_postponed">postponed %1$d×</string>
+    <string name="small_step_line">Start small: %1$s</string>
+    <string name="small_step_add">Smaller first step…</string>
+    <string name="small_step_title">What’s a smaller first step?</string>
+    <string name="small_step_hint">e.g. just your own plate to the kitchen</string>
+    <string name="habits_title">Habits: how hard are they?</string>
+    <string name="habits_hint">Habits aren’t ticked off. Say together how they go; when one is hard, start smaller.</string>
+    <string name="attention_title">Asks for attention</string>
+    <string name="attention_hint">Keeps slipping or being postponed? Make it smaller, easier or less often.</string>
+    <string name="ease_rate">How is it going?</string>
+    <string name="group_habits">Habits</string>
 </resources>

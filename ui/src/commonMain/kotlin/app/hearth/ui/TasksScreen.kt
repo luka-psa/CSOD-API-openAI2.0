@@ -27,6 +27,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,8 +45,14 @@ import app.hearth.core.model.Plan
 import app.hearth.core.model.RoutineState
 import app.hearth.core.model.Section
 import app.hearth.core.model.TaskKind
-import app.hearth.core.model.HabitHealth
-import app.hearth.ui.resources.habits_attention_short
+import app.hearth.core.model.Ease
+import app.hearth.ui.resources.small_step_add
+import app.hearth.ui.resources.ease_rate
+import app.hearth.ui.resources.group_habits
+import app.hearth.ui.resources.small_step_hint
+import app.hearth.ui.resources.small_step_title
+import app.hearth.ui.resources.ease_postponed
+import app.hearth.core.model.isHabit
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.routineState
 import app.hearth.ui.resources.Res
@@ -84,6 +99,8 @@ class TaskCallbacks(
     val addStep: (BacklogItem, String) -> Unit,
     /** Asks first (the screen shows a confirm), then deletes. */
     val delete: (BacklogItem) -> Unit,
+    val rateHabit: (BacklogItem, Ease) -> Unit = { _, _ -> },
+    val smallStep: (BacklogItem, String) -> Unit = { _, _ -> },
 )
 
 /** Routines & habits · Admin · Projects · Week · To sort: each kind of work in the list that suits it. */
@@ -95,9 +112,10 @@ fun TasksScreen(
     lang: Lang,
     tab: TaskTab,
     onTab: (TaskTab) -> Unit,
-    habits: Map<String, HabitHealth>,
+    habits: Map<String, Ease>,
     callbacks: TaskCallbacks,
 ) {
+    CompositionLocalProvider(LocalEase provides habits) {
     val names = backlog.associate { it.id to it.text }
     val routines = backlog.filter { it.isRoutine() }
     val admin = backlog.filter { !it.isStep && it.kind == TaskKind.ADMIN }
@@ -149,6 +167,7 @@ fun TasksScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -165,14 +184,17 @@ private fun AddAndList(hint: String, onAdd: (String) -> Unit, modifier: Modifier
 // ---------- routines ----------
 
 /** About time · On track · No rhythm yet. The tick logs "done today"; the routine stays. */
-private fun LazyListScope.routineList(routines: List<BacklogItem>, today: LocalDate, lang: Lang, cb: TaskCallbacks, habits: Map<String, HabitHealth>) {
+private fun LazyListScope.routineList(routines: List<BacklogItem>, today: LocalDate, lang: Lang, cb: TaskCallbacks, habits: Map<String, Ease>) {
     if (routines.isEmpty()) {
         item { EmptyHint0(Res.string.empty_routines) }
         return
     }
-    val due = routines.filter { it.intervalDays != null && it.routineState(today).let { s -> s == RoutineState.DUE || s == RoutineState.NEW } }
-    val noRhythm = routines.filter { it.intervalDays == null }
-    val onTrack = routines - due.toSet() - noRhythm.toSet()
+    // Habits first, in their own group: rated together, never ticked off.
+    group(Res.string.group_habits, routines.filter { it.isHabit }, today, lang, cb, habits)
+    val ticked = routines.filterNot { it.isHabit }
+    val due = ticked.filter { it.intervalDays != null && it.routineState(today).let { s -> s == RoutineState.DUE || s == RoutineState.NEW } }
+    val noRhythm = ticked.filter { it.intervalDays == null }
+    val onTrack = ticked - due.toSet() - noRhythm.toSet()
     group(Res.string.group_due, due.sortedBy { it.intervalDays }, today, lang, cb, habits)
     group(Res.string.group_on_track, onTrack.sortedBy { it.daysSinceRatio(today) }.reversed(), today, lang, cb, habits)
     group(Res.string.group_no_rhythm, noRhythm, today, lang, cb, habits)
@@ -225,6 +247,9 @@ private fun ProjectBlock(project: BacklogItem, steps: List<BacklogItem>, today: 
                 Text(project.text, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (project.urgent) UrgentTag(lang)
+                    // Pushed back a few times: a softer colour, a hint to make the first step smaller.
+                    val pushed = if (project.postponed >= 4) Ease.HARD else if (project.postponed >= 2) Ease.EFFORT else null
+                    pushed?.let { EasePill(it, stringResource(Res.string.ease_postponed, project.postponed)) }
                     statusText(project, today, lang)?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
                         if (steps.isEmpty()) stringResource(Res.string.no_steps) else stringResource(Res.string.steps_progress, done, steps.size),
@@ -268,7 +293,7 @@ private fun LazyListScope.group(
     today: LocalDate,
     lang: Lang,
     cb: TaskCallbacks,
-    habits: Map<String, HabitHealth> = emptyMap(),
+    habits: Map<String, Ease> = emptyMap(),
 ) {
     if (items.isEmpty()) return
     item(key = "h-$title") { GroupTitle(stringResource(title)) }
@@ -277,13 +302,16 @@ private fun LazyListScope.group(
 
 /** A row with a routine's state pill ("aan de beurt") and a plan button. */
 @Composable
-private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCallbacks, modifier: Modifier, habit: HabitHealth? = null) {
+private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCallbacks, modifier: Modifier, given: Ease? = null) {
+    val ease = given ?: LocalEase.current[item.id]
     BacklogRow(item, today, lang, onDone = { cb.complete(item) }, onOpen = { cb.open(item) }, modifier = modifier, showSection = !item.isRoutine(), onDelete = { cb.delete(item) }) {
-        // Atomic Habits: green runs easily, amber asks to be made smaller, easier or less often.
-        if (habit == HabitHealth.NEEDS_ATTENTION) StatePill(stringResource(Res.string.habits_attention_short), strong = false)
-        else if (habit == HabitHealth.EASY) {
-            HabitDot(habit)
-            Spacer(Modifier.width(8.dp))
+        // Atomic Habits: green runs easily, amber takes effort, orange is too much (make it smaller). Never red.
+        if (item.isHabit) {
+            EaseMenu(item, cb)
+            Spacer(Modifier.width(6.dp))
+        } else if (ease != null && ease != Ease.EASY) {
+            EasePill(ease, if (item.postponed >= 2 && !item.isRoutine()) stringResource(Res.string.ease_postponed, item.postponed) else null)
+            Spacer(Modifier.width(6.dp))
         }
         if (item.isRoutine() && item.plan != Plan.DAY) {
             when (item.routineState(today)) {
@@ -293,6 +321,29 @@ private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCal
             }
         }
         IconButton(onClick = { cb.open(item) }) { Icon(HearthIcons.Calendar, stringResource(Res.string.plan), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/** Each open item's colour, for every list on this screen. */
+private val LocalEase = staticCompositionLocalOf<Map<String, Ease>> { emptyMap() }
+
+/** A habit's colour, set together: tap to change it or to give it a smaller first step. */
+@Composable
+private fun EaseMenu(item: BacklogItem, cb: TaskCallbacks) {
+    var open by remember { mutableStateOf(false) }
+    var asking by remember { mutableStateOf(false) }
+    Box {
+        val ease = item.ease
+        if (ease == null) ChoiceChip(stringResource(Res.string.ease_rate), false, { open = true }) else EasePill(ease, onClick = { open = true })
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            Ease.entries.forEach { e ->
+                DropdownMenuItem(text = { Text(stringResource(e.label())) }, onClick = { open = false; cb.rateHabit(item, e) })
+            }
+            DropdownMenuItem(text = { Text(stringResource(Res.string.small_step_add)) }, onClick = { open = false; asking = true })
+        }
+    }
+    if (asking) {
+        TextDialog(stringResource(Res.string.small_step_title), stringResource(Res.string.small_step_hint), onDone = { t, _ -> cb.smallStep(item, t) }) { asking = false }
     }
 }
 

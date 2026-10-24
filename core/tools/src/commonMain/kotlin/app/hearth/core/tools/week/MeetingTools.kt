@@ -12,14 +12,15 @@ import app.hearth.core.model.Section
 import app.hearth.core.model.TranscriptLine
 import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.model.BacklogItem
-import app.hearth.core.model.HabitHealth
+import app.hearth.core.model.Ease
+import app.hearth.core.model.easeNow
+import app.hearth.core.model.isHabit
 import app.hearth.core.model.Meter
 import app.hearth.core.model.title
 import app.hearth.core.model.word
 import app.hearth.core.model.MeterValue
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.dayOf
-import app.hearth.core.model.habitHealth
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.normalizeName
 import kotlinx.datetime.LocalDate
@@ -213,11 +214,27 @@ class CheckHouseRuleTool(private val meeting: MeetingRepository, private val boa
     }
 }
 
-/** Habits done much less often than their rhythm asks (see [habitHealth]). */
-internal suspend fun habitsNeedingAttention(backlog: BacklogRepository, today: LocalDate): List<BacklogItem> {
+/**
+ * What asks for attention (not the family's own habit ratings): chores done much less often than their
+ * rhythm, and tasks whose day keeps being pushed back. Each with its colour.
+ */
+internal suspend fun needingAttention(backlog: BacklogRepository, today: LocalDate): List<Pair<BacklogItem, Ease>> {
     val logs = backlog.routineLogsSince(today.plusDays(-120).toString())
-    return backlog.openItems().filter { it.isRoutine() && it.intervalDays != null }
-        .filter { it.habitHealth(logs[it.id].orEmpty(), dayOf(it.createdAt), today) == HabitHealth.NEEDS_ATTENTION }
+    return backlog.openItems().filter { !it.isHabit && !it.isStep }
+        .mapNotNull { item -> item.easeNow(logs[item.id].orEmpty(), dayOf(item.createdAt), today)?.takeIf { it != Ease.EASY }?.let { item to it } }
+}
+
+/** "Fietsen 3× verschoven" / "Planten water geven vraagt moeite". */
+internal fun attentionText(item: BacklogItem, ease: Ease, ctx: ToolContext): String = when {
+    item.postponed >= 2 && !item.isRoutine() -> ctx.t("${item.text} (${item.postponed}× verschoven)", "${item.text} (postponed ${item.postponed}×)")
+    ease == Ease.HARD -> ctx.t("${item.text} (te zwaar)", "${item.text} (too much)")
+    else -> ctx.t("${item.text} (vraagt moeite)", "${item.text} (takes effort)")
+}
+
+internal fun easeWord(ease: Ease, ctx: ToolContext) = when (ease) {
+    Ease.EASY -> ctx.t("loopt vanzelf", "runs easily")
+    Ease.EFFORT -> ctx.t("vraagt moeite", "takes effort")
+    Ease.HARD -> ctx.t("te zwaar", "too much")
 }
 
 // ---------- Luister mee ----------
@@ -353,7 +370,8 @@ class FinishWeekoverlegTool(
         val meters = if (metersOn(settings)) meeting.currentMeters() else emptyList()
         val checks = meeting.currentRuleChecks()
         val checkedBefore = last?.let { meeting.ruleChecksOf(it.id) }.orEmpty()
-        val habits = habitsNeedingAttention(backlog, ctx.today)
+        val attention = needingAttention(backlog, ctx.today)
+        val habits = backlog.openItems().filter { it.isHabit && it.ease != null }
         val done = backlog.doneItemsSince(since)
         val boardItems = board.allItems()
         val rules = boardItems.filter { it.kind == BoardKind.RULE && it.isOpen && it.createdAt >= since }
@@ -386,7 +404,12 @@ class FinishWeekoverlegTool(
             notYet.filter { r -> checkedBefore.any { it.ruleId == r.id && !it.worked } }.forEach { r ->
                 board.add(BoardKind.FRICTION, ctx.t("Afspraak loopt nog niet: ${r.text}", "Agreement not working yet: ${r.text}"))
             }
-            if (habits.isNotEmpty()) add(ctx.t("Gewoontes die aandacht vragen: ", "Habits asking for attention: ") + habits.joinToString("; ") { it.text })
+            if (habits.isNotEmpty()) {
+                add(ctx.t("Gewoontes: ", "Habits: ") + habits.sortedBy { it.ease }.joinToString("; ") { h ->
+                    "${h.text}: ${easeWord(h.ease!!, ctx)}" + (h.smallStep?.let { ctx.t(" (begin klein: $it)", " (start small: $it)") } ?: "")
+                })
+            }
+            if (attention.isNotEmpty()) add(ctx.t("Vraagt aandacht: ", "Asks for attention: ") + attention.joinToString("; ") { (item, ease) -> attentionText(item, ease, ctx) })
             if (rules.isNotEmpty()) add(ctx.t("Afgesproken: ", "Agreed: ") + rules.joinToString("; ") { it.text })
             if (decided.isNotEmpty()) {
                 add(ctx.t("Besproken: ", "Talked through: ") + decided.joinToString("; ") { d ->

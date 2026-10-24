@@ -55,6 +55,8 @@ import app.hearth.core.tools.board.RemoveMemberTool
 import app.hearth.core.tools.board.ResolveFrictionTool
 import app.hearth.core.tools.board.SetGoalStepTool
 import app.hearth.core.tools.backlog.AddProjectStepTool
+import app.hearth.core.tools.backlog.RateHabitTool
+import app.hearth.core.tools.backlog.SetSmallStepTool
 import app.hearth.core.tools.backlog.AddToBacklogTool
 import app.hearth.core.tools.backlog.CompleteBacklogItemTool
 import app.hearth.core.tools.backlog.ListBacklogTool
@@ -112,6 +114,8 @@ class HearthTools(
     val waitForReply = WaitForReplyTool(backlog)
     val moveBacklogItem = MoveBacklogItemTool(backlog, board)
     val addProjectStep = AddProjectStepTool(backlog)
+    val rateHabit = RateHabitTool(backlog)
+    val setSmallStep = SetSmallStepTool(backlog)
 
     val addMember = AddMemberTool(board)
     val removeMember = RemoveMemberTool(board)
@@ -156,7 +160,7 @@ class HearthTools(
             addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem, clearBoughtItems,
             listStock, addStockItem, addStorageSpot, setStockState, removeStockItem, moveStockItem, removeStorageSpot,
             addToBacklog, listBacklog, planBacklogItem, completeBacklogItem, reopenBacklogItem, removeBacklogItem,
-            setRoutineInterval, markUrgent, waitForReply, moveBacklogItem, addProjectStep,
+            setRoutineInterval, markUrgent, waitForReply, moveBacklogItem, addProjectStep, rateHabit, setSmallStep,
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
