@@ -114,13 +114,11 @@ import app.hearth.core.tools.backlog.When
 import app.hearth.core.tools.board.FrictionOutcome
 import app.hearth.core.tools.week.WeekAgenda
 import app.hearth.ui.resources.Res
+import app.hearth.ui.resources.rules_review_note
 import app.hearth.ui.resources.cancel
 import app.hearth.ui.resources.delete_confirm
-import app.hearth.ui.resources.friction_change_title
 import app.hearth.ui.resources.friction_let_go
 import app.hearth.ui.resources.friction_rule_title
-import app.hearth.ui.resources.friction_to_change
-import app.hearth.ui.resources.friction_to_rule
 import app.hearth.ui.resources.goal_step_add
 import app.hearth.ui.resources.goal_step_title
 import app.hearth.ui.resources.goal_step_to_week
@@ -174,7 +172,8 @@ class WeekCallbacks(
     val goShopping: () -> Unit,
     val plan: (BacklogItem, When, LocalDate?) -> Unit,
     val complete: (BacklogItem) -> Unit,
-    val resolveFriction: (BoardItem, FrictionOutcome, String?) -> Unit,
+    val resolveFriction: (BoardItem, FrictionWrite) -> Unit,
+    val markFriction: (BoardItem, app.hearth.core.model.FrictionDirection?) -> Unit,
     val setGoalStep: (BoardItem, String, Boolean) -> Unit,
     val addGoal: (String) -> Unit,
     val achieveGoal: (BoardItem) -> Unit,
@@ -185,7 +184,7 @@ class WeekCallbacks(
     val removeWin: (Win) -> Unit,
     val setMeter: (Meter, Int?, Int?) -> Unit,
     val setMetersOn: (Boolean) -> Unit,
-    val checkRule: (BoardItem, Boolean) -> Unit,
+    val checkRule: (BoardItem, Ease) -> Unit,
     val lessOften: (BacklogItem) -> Unit,
     val makeEasier: (BacklogItem) -> Unit,
     val rateHabit: (BacklogItem, Ease) -> Unit,
@@ -314,6 +313,17 @@ fun WeekScreen(
                     LookBack(agenda, lastHuddle, today, lang)
                     Spacer(Modifier.size(14.dp))
                     WinsSection(meeting.wins, meeting.members, cb.addWin, cb.removeWin)
+                    Spacer(Modifier.size(6.dp))
+                    // How the routines and house rules went, together, on one scale.
+                    ReviewSection(
+                        routines = backlog.filter { it.isHabit && !it.done }.sortedBy { it.anchor?.ordinal ?: Int.MAX_VALUE },
+                        rules = board.filter { it.kind == BoardKind.RULE && it.isOpen },
+                        checks = meeting.ruleChecks,
+                        lang = lang,
+                        onRateRoutine = cb.rateHabit,
+                        onRateRule = cb.checkRule,
+                        onSmallStep = cb.smallStep,
+                    )
                     Spacer(Modifier.size(14.dp))
                     MetersSection(
                         meeting.metersOn, meeting.meters, agenda?.suggestedFlow ?: 4, agenda?.suggestedStrain ?: 1, lang,
@@ -418,11 +428,12 @@ private fun TopicDetail(
             Days(meals, dishes, today, lang, cb)
             CardAction(stringResource(Res.string.week_recipes), cb.goMenu)
         }
-        Topic.FRICTION -> BoardStep(board, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
+        Topic.FRICTION -> BoardStep(board, backlog.filter { it.isRoutine() && !it.done }, meeting.members, lang, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
         Topic.RULES -> {
             val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
             if (rules.isEmpty()) Hint(stringResource(Res.string.rules_empty))
-            RuleChecks(rules, meeting.ruleChecks, cb.checkRule)
+            else Text(stringResource(Res.string.rules_review_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            rules.forEachIndexed { i, rule -> NumberedLine(i + 1, rule.text, Topic.RULES) }
             Spacer(Modifier.size(10.dp))
             AddRow(stringResource(Res.string.rules_add_hint), cb.addRule, muted = true)
         }
@@ -430,8 +441,9 @@ private fun TopicDetail(
 }
 
 /**
- * Ritmes & routines, laid out per moment of the day in the order the day goes. Habits are rated (never
- * ticked); a chore with a fixed moment can be logged for today. Each routine can move to another moment.
+ * Ritmes & routines, laid out per moment of the day in the order the day goes. Habits show how they go (rated in
+ * the Terugblik, never ticked); a chore with a fixed moment can be logged for today. Each routine can move to
+ * another moment.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -460,9 +472,8 @@ private fun RhythmBoard(routines: List<BacklogItem>, steps: Map<String, List<Bac
                 item.smallStep?.let { Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink) }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                     if (item.isHabit) {
-                        Ease.entries.forEach { ease ->
-                            if (item.ease == ease) EasePill(ease) else ChoiceChip(stringResource(ease.label()), false, { cb.rateHabit(item, ease) })
-                        }
+                        // Rated together in the Terugblik; here it only shows how it goes.
+                        item.ease?.let { EasePill(it) }
                         if (item.ease != null && item.ease != Ease.EASY) TextButton(onClick = { asking = item }) { Text(stringResource(Res.string.small_step_add)) }
                     } else {
                         ChoiceChip(stringResource(Res.string.mark_done), false, { cb.complete(item) }, icon = HearthIcons.Check)
@@ -733,39 +744,33 @@ private fun Projects(backlog: List<BacklogItem>, steps: List<BacklogItem>, today
 
 // ---------- 6. Werkbord ----------
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BoardStep(board: List<BoardItem>, heavy: Boolean, cb: WeekCallbacks) {
-    var asking by remember { mutableStateOf<Pair<BoardItem, FrictionOutcome?>?>(null) }
+private fun BoardStep(board: List<BoardItem>, routines: List<BacklogItem>, members: List<Member>, lang: Lang, heavy: Boolean, cb: WeekCallbacks) {
     val frictions = board.filter { it.isWorkingPoint && it.isOpen }
+    val byId = members.associateBy { it.id }
     Text(stringResource(Res.string.step_board_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if (heavy && frictions.isNotEmpty()) {
         Spacer(Modifier.size(10.dp))
         Hint(stringResource(Res.string.feeling_heavy_hint))
     }
-    Spacer(Modifier.size(12.dp))
+    Spacer(Modifier.size(6.dp))
     if (frictions.isEmpty()) Hint(stringResource(Res.string.step_board_empty))
-    frictions.forEach { f ->
-        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val idea = f.kind == BoardKind.IDEA
-                Icon(if (idea) HearthIcons.Idea else Topic.FRICTION.icon(), null, tint = Topic.FRICTION.style().ink, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(f.text, style = MaterialTheme.typography.bodyLarge)
-            }
-            Spacer(Modifier.size(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChoiceChip(stringResource(Res.string.friction_to_rule), false, { asking = f to FrictionOutcome.RULE }, icon = HearthIcons.Rule)
-                ChoiceChip(stringResource(Res.string.friction_to_change), false, { asking = f to FrictionOutcome.CHANGE }, icon = HearthIcons.Next)
-                ChoiceChip(stringResource(Res.string.friction_let_go), false, { cb.resolveFriction(f, FrictionOutcome.LET_GO, null) })
-            }
-        }
+    // Still to talk about first; those with a direction chosen wait to be written.
+    frictions.sortedBy { it.direction != null }.forEach { f ->
+        FrictionRow(f, f.memberId?.let(byId::get), routines, lang, FrictionActions(cb.markFriction, cb.resolveFriction))
     }
-    asking?.let { (item, outcome) ->
-        when (outcome) {
-            FrictionOutcome.RULE -> TextDialog(stringResource(Res.string.friction_rule_title), item.text, onDone = { t, _ -> cb.resolveFriction(item, FrictionOutcome.RULE, t.ifBlank { null }) }) { asking = null }
-            else -> TextDialog(stringResource(Res.string.friction_change_title), item.text, onDone = { t, _ -> cb.resolveFriction(item, FrictionOutcome.CHANGE, t.ifBlank { null }) }) { asking = null }
+}
+
+/** "1. Schoenen uit in de gang": a numbered line in its topic's colour. */
+@Composable
+internal fun NumberedLine(n: Int, text: String, topic: Topic) {
+    val s = topic.style()
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 4.dp)) {
+        Box(Modifier.size(28.dp).background(s.tint, CircleShape), contentAlignment = Alignment.Center) {
+            Text("$n", style = MaterialTheme.typography.labelLarge, color = s.ink)
         }
+        Spacer(Modifier.width(12.dp))
+        Text(text, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

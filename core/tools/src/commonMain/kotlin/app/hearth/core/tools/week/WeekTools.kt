@@ -266,7 +266,11 @@ class WeekoverlegAgendaTool(
                     ).takeIf { it.isNotEmpty() }?.joinToString("; ", " (", ")")
                     Topic.MENU -> meals.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { m -> m.dish } + ")" }
                     Topic.GOALS -> goals.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { g -> g.text + (g.nextStep?.let { n -> ctx.t(" – volgende stap: ", " – next step: ") + n } ?: "") } + ")" }
-                    Topic.FRICTION -> frictions.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { f -> f.text } + ")" }
+                    Topic.FRICTION -> frictions.takeIf { it.isNotEmpty() }?.let {
+                        " (" + it.joinToString(", ") { f -> f.text + (f.direction?.let { d -> " → " + app.hearth.core.tools.board.directionWords(d, ctx) } ?: "") } + ")"
+                    }
+                    Topic.RULES -> ruleChecks.mapNotNull { c -> board.allItems().firstOrNull { it.id == c.ruleId }?.let { it.text + ": " + easeWord(c.ease, ctx) } }
+                        .takeIf { it.isNotEmpty() }?.joinToString(", ", " (", ")")
                     else -> null
                 }
                 add("${t.title}: ${t.glance}${extra.orEmpty()}.")

@@ -130,8 +130,15 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
             else if (nl) "${look.mealsPlanned} van 7 avonden" else "${look.mealsPlanned} of 7 evenings",
         )
         Topic.FRICTION -> {
-            val points = look.board.count { it.isWorkingPoint && it.isOpen }
-            listOf(if (points == 0) (if (nl) "Niets dat schuurt" else "Nothing rubbing") else if (nl) "$points te bespreken" else "$points to talk through")
+            val points = look.board.filter { it.isWorkingPoint && it.isOpen }
+            // Talked through but not written yet ("huisregel te maken") counts apart from what's still to discuss.
+            val chosen = points.count { it.direction != null }
+            val open = points.size - chosen
+            if (points.isEmpty()) listOf(if (nl) "Niets dat schuurt" else "Nothing rubbing")
+            else listOfNotNull(
+                open.takeIf { it > 0 }?.let { if (nl) "$it te bespreken" else "$it to talk through" },
+                chosen.takeIf { it > 0 }?.let { if (nl) "$it te maken" else "$it to write" },
+            )
         }
         Topic.RULES -> {
             val rules = look.board.count { it.kind == BoardKind.RULE && it.isOpen }
@@ -178,9 +185,14 @@ enum class Meter {
 @Serializable
 data class MeterValue(val meter: Meter, val value: Int, val suggested: Int?, val agreed: Boolean, val huddleId: String?)
 
-/** Whether a house rule worked this week. Household-level: it never says who. */
+/**
+ * How a house rule went this week, on the same scale as the routines: loopt vanzelf, vraagt moeite, te zwaar.
+ * Household-level: it never says who. Two meetings in a row "te zwaar" and it comes back as a friction.
+ */
 @Serializable
-data class RuleCheck(val ruleId: String, val worked: Boolean, val huddleId: String?)
+data class RuleCheck(val ruleId: String, val ease: Ease, val huddleId: String?) {
+    val worked: Boolean get() = ease != Ease.HARD
+}
 
 /** The value used when the family doesn't agree. */
 const val NEUTRAL_METER = 3

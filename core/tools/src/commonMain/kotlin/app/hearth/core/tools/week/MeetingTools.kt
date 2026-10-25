@@ -6,6 +6,7 @@ import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.data.week.WeekRepository
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.BoardStatus
+import app.hearth.core.model.FrictionDirection
 import app.hearth.core.model.Huddle
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
@@ -183,19 +184,22 @@ data class CheckHouseRuleArgs(
     val ruleId: String? = null,
     @Describe("Its words, when the id isn't known.")
     val rule: String? = null,
-    @Describe("True: it worked this week. False: it didn't work yet.")
-    val worked: Boolean,
+    @Describe("How it went this week, like the routines: EASY (loopt vanzelf), EFFORT (vraagt moeite) or HARD (te zwaar).")
+    val ease: Ease? = null,
+    @Describe("Older form: true = it worked (EASY), false = it didn't work yet (HARD). Use ease instead.")
+    val worked: Boolean? = null,
 )
 
 @Serializable
 data class CheckHouseRuleResult(val check: RuleCheck, override val summary: String) : ToolResult
 
-/** Did an agreement work this week? For the household: it never says who. */
+/** How did an agreement go this week? Same scale as the routines; for the household, it never says who. */
 class CheckHouseRuleTool(private val meeting: MeetingRepository, private val board: BoardRepository) : Tool<CheckHouseRuleArgs, CheckHouseRuleResult> {
     override val name = NAME
     override val description =
-        "In the weekoverleg: say whether a house rule worked this week (for the household, never who). A rule that " +
-            "doesn't work two meetings in a row comes back as a working point: maybe the agreement needs changing."
+        "In the weekoverleg's look back: say how a house rule went this week, like the routines: loopt vanzelf, vraagt " +
+            "moeite or te zwaar (for the household, never who). A rule that is too much two meetings in a row comes back " +
+            "as a working point: maybe the agreement needs changing."
     override val argsSerializer = CheckHouseRuleArgs.serializer()
     override val resultSerializer = CheckHouseRuleResult.serializer()
 
@@ -205,9 +209,14 @@ class CheckHouseRuleTool(private val meeting: MeetingRepository, private val boa
         val rule = rules.firstOrNull { it.id == args.ruleId }
             ?: key?.let { k -> rules.firstOrNull { normalizeName(it.text) == k } ?: rules.firstOrNull { normalizeName(it.text).contains(k) } }
             ?: throw ToolException(ctx.t("Welke huisregel?", "Which house rule?"))
-        val check = meeting.setRuleCheck(rule.id, args.worked)
-        val summary = if (args.worked) ctx.t("Fijn: “${rule.text}” liep.", "Nice: “${rule.text}” worked.")
-        else ctx.t("“${rule.text}” liep nog niet. Misschien mag de huisregel eenvoudiger.", "“${rule.text}” didn't work yet. Maybe the agreement can be simpler.")
+        val ease = args.ease ?: args.worked?.let { if (it) Ease.EASY else Ease.HARD }
+            ?: throw ToolException(ctx.t("Hoe liep “${rule.text}”: vanzelf, met moeite, of te zwaar?", "How did “${rule.text}” go: easily, with effort, or too much?"))
+        val check = meeting.setRuleCheck(rule.id, ease)
+        val summary = when (ease) {
+            Ease.EASY -> ctx.t("Fijn: “${rule.text}” loopt vanzelf.", "Nice: “${rule.text}” runs by itself.")
+            Ease.EFFORT -> ctx.t("“${rule.text}” vraagt moeite. Wat zou het makkelijker maken?", "“${rule.text}” takes effort. What would make it easier?")
+            Ease.HARD -> ctx.t("“${rule.text}” is te zwaar. Misschien mag de huisregel eenvoudiger.", "“${rule.text}” is too much. Maybe the agreement can be simpler.")
+        }
         return CheckHouseRuleResult(check, summary)
     }
 
@@ -413,14 +422,16 @@ class FinishWeekoverlegTool(
                 }
                 add(meterTitle(m.meter, ctx) + ": " + meterWord(m.meter, m.value, ctx) + note)
             }
+            // How the agreements went, like the routines below; the hardest first.
+            val rated = checks.sortedByDescending { it.ease }.mapNotNull { c -> boardItems.firstOrNull { it.id == c.ruleId }?.let { it to c.ease } }
+            if (rated.isNotEmpty()) add(ctx.t("Huisregels: ", "House rules: ") + rated.joinToString("; ") { (r, e) -> "${r.text}: ${easeWord(e, ctx)}" })
             val notYet = checks.filter { !it.worked }.mapNotNull { c -> boardItems.firstOrNull { it.id == c.ruleId } }
-            if (notYet.isNotEmpty()) add(ctx.t("Huisregels die nog niet liepen: ", "House rules that didn't work yet: ") + notYet.joinToString("; ") { it.text })
             // Two meetings in a row: the agreement itself becomes a working point (maybe it asks too much).
             if (!args.preview) notYet.filter { r -> checkedBefore.any { it.ruleId == r.id && !it.worked } }.forEach { r ->
                 board.add(BoardKind.FRICTION, ctx.t("Huisregel loopt nog niet: ${r.text}", "House rule not working yet: ${r.text}"))
             }
             if (habits.isNotEmpty()) {
-                add(ctx.t("Gewoontes: ", "Habits: ") + habits.sortedBy { it.ease }.joinToString("; ") { h ->
+                add(Topic.RHYTHM.title(ctx.lang) + ": " + habits.sortedBy { it.ease }.joinToString("; ") { h ->
                     "${h.text}: ${easeWord(h.ease!!, ctx)}" + (h.smallStep?.let { ctx.t(" (begin klein: $it)", " (start small: $it)") } ?: "")
                 })
             }
@@ -430,12 +441,16 @@ class FinishWeekoverlegTool(
                 add(ctx.t("Besproken: ", "Talked through: ") + decided.joinToString("; ") { d ->
                     d.text + " → " + when (d.status) {
                         BoardStatus.BECAME_RULE -> ctx.t("huisregel", "house rule")
-                        BoardStatus.BECAME_CHANGE -> ctx.t("we veranderen het", "we change it")
+                        BoardStatus.BECAME_CHANGE -> ctx.t("een taak", "a task")
+                        BoardStatus.BECAME_ROUTINE -> if (d.direction == FrictionDirection.CHANGE_ROUTINE) ctx.t("routine aangepast", "routine adjusted") else ctx.t("een routine", "a routine")
                         else -> ctx.t("losgelaten", "let go")
                     }
                 })
             }
-            if (newPoints.isNotEmpty()) add(ctx.t("Nieuwe werkpunten: ", "New working points: ") + newPoints.joinToString("; ") { it.text })
+            // Decided what it needs, still to be written in our own words.
+            val chosen = boardItems.filter { it.isWorkingPoint && it.isOpen && it.direction != null }
+            if (chosen.isNotEmpty()) add(ctx.t("Nog te doen: ", "Still to do: ") + chosen.joinToString("; ") { "${it.text} → ${app.hearth.core.tools.board.directionWords(it.direction!!, ctx)}" })
+            newPoints.filter { it.direction == null }.takeIf { it.isNotEmpty() }?.let { points -> add(ctx.t("Nieuwe werkpunten: ", "New working points: ") + points.joinToString("; ") { it.text }) }
             // What got a day, by topic, so everyone sees where it landed.
             planned.groupBy { it.topic }.entries.sortedBy { it.key?.ordinal ?: Int.MAX_VALUE }.forEach { (topic, items) ->
                 add((topic?.title(ctx.lang) ?: ctx.t("Gepland", "Planned")) + ": " + items.joinToString("; ") { "${it.text} (${dayLabel(it.localDate!!, ctx.today, ctx.lang)})" })

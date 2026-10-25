@@ -96,8 +96,10 @@ ALL, TODAY, NEXT, UNPLANNED, WEEK, DONT_FORGET, ROUTINES_DUE, ROUTINES, ADMIN, P
 steps along), `reopen_backlog_item`, `remove_backlog_item` ⚠ (a project's steps go too),
 `set_routine_interval`, `mark_urgent`, `wait_for_reply` (follow-up day), `move_backlog_item`,
 `add_project_step` (creates the project if needed) · Werkbord: `add_member`, `remove_member` ⚠,
-`add_house_rule`, `log_friction`, `add_goal` (FAMILY/COUPLE/PERSONAL), `list_board`, `resolve_friction`
-(RULE → a house rule, CHANGE → a backlog item as next up, LET_GO), `set_goal_step` (optionally onto the
+`add_house_rule`, `log_friction`, `add_goal` (FAMILY/COUPLE/PERSONAL), `list_board`, `mark_friction` (what it
+needs: RULE, NEW_ROUTINE, CHANGE_ROUTINE, TASK; it stays open, labelled), `resolve_friction` (in the family's own
+words: RULE → a house rule, CHANGE → a task as next up, ROUTINE → a new routine with its moment, ROUTINE_CHANGE →
+a step and/or another moment for an existing routine, LET_GO), `set_goal_step` (optionally onto the
 backlog as next up), `achieve_goal`, `remove_board_item` ⚠. `add_to_backlog` / `move_backlog_item` with
 NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `add_stock_item`, `add_storage_spot`,
 `set_stock_state` (LOW/OUT → a linked shopping item, once; IN_STOCK takes it off), `remove_stock_item` ⚠,
@@ -108,7 +110,7 @@ meeting and wins, then every *topic* in a few words with its details, the meters
 transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `set_week_meter` (FLOW / STRAIN, agreed together for the household; empty = no
-agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (worked / not yet, never who), `rate_habit` (EASY / EFFORT / HARD),
+agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (EASY / EFFORT / HARD like the routines, never who), `rate_habit` (EASY / EFFORT / HARD),
 `import_recipe` (a link: the page's schema.org JSON-LD becomes a Recipe with ingredients, numbered steps and
 "Bron: …" as notes, and its photo; the web preview fetches through the relay's `/page` (only JSON-LD and
 og:image come back) and `/image` (images only, max 3 MB)), `set_small_step` (a habit's smallest first step), `add_routine` (a routine with its steps in order: the evening
@@ -256,7 +258,9 @@ follow-up day, do on / finish by (admin); next, this weekend, a day, later (proj
 to move between kinds.
 
 **Werkbord**: who lives here (name chips with a colour), then three columns: *Huisregels* (numbered),
-*Frictie* (each with Wordt huisregel · Veranderen · Loslaten; sorted-out ones stay visible as wins) and
+*Frictie & ideeën* (each one first gets what it needs, "Wat is er nodig?": Huisregel · Nieuwe routine · Routine
+aanpassen · Taak met focus · Loslaten; a chosen one shows "Huisregel te maken" in the colour of where it goes, with
+"Schrijf de huisregel" to word it now or later; sorted-out ones stay visible as wins) and
 *Doelen* (Gezin · Samen · per person, each with one small next step that can go onto "volgende"; reached
 goals stay as wins). The dashboard shows *Huisregels*: three house rules and how many frictions wait
 for the weekoverleg.
@@ -296,9 +300,11 @@ schuurde?* (on by default, can be switched off). Hearth suggests (a ring and a f
 "goed" because small things and good habits get forgotten, "heel goed" with plenty done and no habit asking for
 attention, never below 3 (`flowSuggestion`); Wat schuurde rises with new frictions and agreements that didn't work
 (`strainSuggestion`). The family agrees with a tap, picks another step together, or taps *Geen akkoord* (neutral).
-The summary shows Hearth's guess when the family saw it differently. The Frictie & huisregels tile starts with *Hoe liepen de
-huisregels?* (per house rule: Liep goed / Liep nog niet, never who); a rule that didn't work two meetings in a row
-comes back as a friction ("Afspraak loopt nog niet: …"). *Gewoontes* (Atomic Habits): habits are not ticked off;
+The summary shows Hearth's guess when the family saw it differently. Terugblik (v0.16) has *Hoe lopen de ritmes en
+huisregels?*: every routine (in the order of the day) and every house rule on one scale, loopt vanzelf / vraagt
+moeite / te zwaar, never who, with a smaller first step right there; a rule that is too much two meetings in a row
+comes back as a friction ("Huisregel loopt nog niet: …"). The Ritmes and Huisregels tiles show how they go and
+point to the Terugblik. *Gewoontes* (Atomic Habits): habits are not ticked off;
 the family rates each one together (*Ease*: loopt vanzelf green / vraagt moeite amber / te zwaar orange, never red) and
 can give it a *small step* ("Begin klein: …"). Chores get their ease from the `routine_log`; tasks from how often
 they were postponed (2× amber, 4× orange; saying a task again with a later day moves it and counts). *Vraagt aandacht*
@@ -410,6 +416,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.16: Terugblik rates every routine and house rule on one scale; frictions first get what they need
+   (huisregel, nieuwe routine, routine aanpassen, taak met focus, loslaten), then are written in the family's own
+   words (`mark_friction`, `board_item.direction`, DB v14).
    v0.15: one topic, one look (name, icon, colour) on every screen; Taken as a dashboard of topic panels;
    Doelen as a weekoverleg tile; forms ask before typed text goes (Verder typen / Weggooien); Dutch copy
    without English words (Paperassen, Taken, einddatum, koppelserver); user journeys in `docs/JOURNEYS.md`.

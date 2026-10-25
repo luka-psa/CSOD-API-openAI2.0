@@ -86,11 +86,15 @@ class MeetingToolsTest {
     fun `an agreement that doesn't work twice becomes a working point, never naming anyone`() = runTest {
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Schoenen in de kast"), nl)
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Wie kookt, wast niet af"), nl)
-        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "schoenen", worked = false), nl)
+        // The same three steps as the routines; the older yes/no form still works.
+        assertEquals("“Schoenen in de kast” is te zwaar. Misschien mag de huisregel eenvoudiger.",
+            tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "schoenen", ease = Ease.HARD), nl).summary)
         tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", worked = true), nl)
         assertEquals(2, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).suggestedStrain)
+        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", ease = Ease.EFFORT), nl)
+        assertEquals(listOf(Ease.HARD, Ease.EFFORT), meeting.currentRuleChecks().map { it.ease })
         val first = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary
-        assertTrue("Huisregels die nog niet liepen: Schoenen in de kast" in first, first)
+        assertTrue("Huisregels: Schoenen in de kast: te zwaar; Wie kookt, wast niet af: vraagt moeite" in first, first)
         assertEquals(0, board.allItems().count { it.kind == BoardKind.FRICTION })
 
         val nextWeek = nl.copy(today = LocalDate(2026, 10, 31))
@@ -138,7 +142,7 @@ class MeetingToolsTest {
         assertEquals(listOf("Fiets herstellen" to Ease.EFFORT), agenda.needsAttention.map { it.item.text to it.ease })
         assertEquals(listOf("Na het eten de tafel afruimen"), agenda.habits.map { it.text })
         val summary = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary
-        assertTrue("Gewoontes: Na het eten de tafel afruimen: te zwaar (begin klein: Eigen bord naar de keuken)" in summary, summary)
+        assertTrue("Ritmes & routines: Na het eten de tafel afruimen: te zwaar (begin klein: Eigen bord naar de keuken)" in summary, summary)
         assertTrue("Vraagt aandacht: Fiets herstellen (2× verschoven)" in summary, summary)
     }
 

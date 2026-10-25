@@ -10,6 +10,7 @@ import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
+import app.hearth.core.model.Ease
 import app.hearth.core.model.Huddle
 import app.hearth.core.model.Meter
 import app.hearth.core.model.MeterValue
@@ -46,8 +47,8 @@ data class ReflectionEntity(
 
     /** FLOW / STRAIN rows: [text] is "agreed" or "neutral". */
     fun toMeter() = MeterValue(Meter.valueOf(kind), value ?: NEUTRAL_METER, suggested, text == AGREED, huddleId)
-    /** RULE_CHECK rows: [text] is the rule's id, [value] 1 when it worked. */
-    fun toRuleCheck() = RuleCheck(text, value == 1, huddleId)
+    /** RULE_CHECK rows: [text] is the rule's id; [value] 1 = loopt vanzelf, 2 = vraagt moeite, 0 = te zwaar (older rows: 1 worked, 0 not). */
+    fun toRuleCheck() = RuleCheck(text, when (value) { 1 -> Ease.EASY; 2 -> Ease.EFFORT; else -> Ease.HARD }, huddleId)
 
     companion object {
         const val WIN = "WIN"
@@ -175,11 +176,12 @@ class MeetingRepository(
         entity.toMeter()
     }
 
-    /** Whether a house rule worked this week; saying it again replaces it. */
-    suspend fun setRuleCheck(ruleId: String, worked: Boolean): RuleCheck = db.withWriteTransaction {
+    /** How a house rule went this week; saying it again replaces it. */
+    suspend fun setRuleCheck(ruleId: String, ease: Ease): RuleCheck = db.withWriteTransaction {
         val now = clock()
         val old = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.RULE_CHECK && it.text == ruleId }
-        val entity = ReflectionEntity(old?.id ?: newId(), ReflectionEntity.RULE_CHECK, ruleId, if (worked) 1 else 0, null, null, old?.createdAt ?: now, now)
+        val value = when (ease) { Ease.EASY -> 1; Ease.EFFORT -> 2; Ease.HARD -> 0 }
+        val entity = ReflectionEntity(old?.id ?: newId(), ReflectionEntity.RULE_CHECK, ruleId, value, null, null, old?.createdAt ?: now, now)
         dao.putReflection(entity)
         entity.toRuleCheck()
     }

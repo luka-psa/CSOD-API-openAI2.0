@@ -95,12 +95,15 @@ progress and next step. Pushed back often? It turns amber, then orange: make the
 
 **J8. "Het weekoverleg."** Once a week, about 15 minutes, together. Vandaag suggests it near the weekend.
 Luister mee on top (each sentence lands on a tile, which lights up); the ten tiles are the same topics as
-everywhere, tap one for its list. Terugblik (wat ging goed, the two meters, the huisregels), Deze week,
-Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
+everywhere, tap one for its list. Terugblik: wat ging goed, *Hoe lopen de ritmes en huisregels?* (each one on
+the same scale, loopt vanzelf / vraagt moeite / te zwaar, with a smaller first step right there), and the two
+meters. Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
 
 **J9. "Iets schuurt."** Note it on the Werkbord or say "frictie: …". In the weekoverleg (Frictie & ideeën)
-decide together: wordt huisregel, veranderen (it becomes a task) or loslaten; all three are good outcomes.
-Huisregels show on Vandaag and get a calm check each week (liep goed / liep nog niet, never who).
+choose together what it needs, in one tap: a huisregel, a nieuwe routine, a routine aanpassen, a taak met focus,
+or loslaten. It then shows "Huisregel te maken" in the colour of where it goes. Someone writes it in their own
+words, right away or later ("De vaatwasser is nooit leeg" becomes "Wie het laatst eet, zet hem aan"). Every
+outcome is good. Huisregels show on Vandaag and get a calm check each week in the Terugblik (never who).
 
 **J10. "Een doel."** Add it on the Werkbord (gezin, samen or persoonlijk). In the weekoverleg (Doelen) pick
 one small next step, optionally as Volgende on Taken. Reached: tick it, it moves to "Samen bereikt".

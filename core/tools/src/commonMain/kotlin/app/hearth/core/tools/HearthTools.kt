@@ -130,7 +130,8 @@ class HearthTools(
     val addGoal = AddGoalTool(board)
     val addIdea = AddIdeaTool(board)
     val listBoard = ListBoardTool(board)
-    val resolveFriction = ResolveFrictionTool(board, backlog)
+    val resolveFriction = ResolveFrictionTool(board, backlog, addRoutine)
+    val markFriction = app.hearth.core.tools.board.MarkFrictionTool(board)
     val setGoalStep = SetGoalStepTool(board, backlog)
     val achieveGoal = AchieveGoalTool(board)
     val removeBoardItem = RemoveBoardItemTool(board)
@@ -170,7 +171,7 @@ class HearthTools(
             listStock, addStockItem, addStorageSpot, setStockState, removeStockItem, moveStockItem, removeStorageSpot,
             addToBacklog, listBacklog, planBacklogItem, completeBacklogItem, reopenBacklogItem, removeBacklogItem,
             setRoutineInterval, markUrgent, waitForReply, moveBacklogItem, addProjectStep, rateHabit, setSmallStep, setAnchor, addRoutine,
-            addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, setGoalStep,
+            addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, markFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
             addWin, removeWin, setWeekMeter, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, clearTranscript, listHuddles, addIdea,

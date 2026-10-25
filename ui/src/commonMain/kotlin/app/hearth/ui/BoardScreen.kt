@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.BoardStatus
+import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.FrictionDirection
 import app.hearth.core.model.GoalScope
 import app.hearth.core.model.Member
 import app.hearth.core.model.Section
@@ -56,18 +58,16 @@ import app.hearth.ui.resources.discard_keep
 import app.hearth.ui.resources.discard_title
 import app.hearth.ui.resources.discard_yes
 import app.hearth.ui.resources.became_change
+import app.hearth.ui.resources.became_routine
 import app.hearth.ui.resources.became_rule
 import app.hearth.ui.resources.board_subtitle
 import app.hearth.ui.resources.cancel
 import app.hearth.ui.resources.days_ago
 import app.hearth.ui.resources.delete_confirm
 import app.hearth.ui.resources.delete_confirm_body
-import app.hearth.ui.resources.friction_change_title
 import app.hearth.ui.resources.friction_let_go
 import app.hearth.ui.resources.friction_rule_title
 import app.hearth.ui.resources.friction_text_hint
-import app.hearth.ui.resources.friction_to_change
-import app.hearth.ui.resources.friction_to_rule
 import app.hearth.ui.resources.frictions_add_hint
 import app.hearth.ui.resources.frictions_empty
 import app.hearth.ui.resources.frictions_hint
@@ -105,16 +105,17 @@ class BoardCallbacks(
     val removeMember: (Member) -> Unit,
     val addRule: (String) -> Unit,
     val logFriction: (String) -> Unit,
-    val resolveFriction: (BoardItem, FrictionOutcome, String?) -> Unit,
+    val resolveFriction: (BoardItem, FrictionWrite) -> Unit,
+    val markFriction: (BoardItem, FrictionDirection?) -> Unit,
     val addGoal: (String, GoalScope, Member?) -> Unit,
     val setGoalStep: (BoardItem, String, Boolean) -> Unit,
     val achieveGoal: (BoardItem) -> Unit,
     val delete: (BoardItem) -> Unit,
 )
 
-/** Who lives here, then three columns: Huisregels · Frictie · Doelen. */
+/** Who lives here, then three columns: Huisregels · Frictie & ideeën · Doelen. [routines] are the ones a friction can change. */
 @Composable
-fun BoardScreen(items: List<BoardItem>, members: List<Member>, wide: Boolean, cb: BoardCallbacks) {
+fun BoardScreen(items: List<BoardItem>, members: List<Member>, routines: List<BacklogItem>, wide: Boolean, cb: BoardCallbacks) {
     var deleting by remember { mutableStateOf<BoardItem?>(null) }
     var removing by remember { mutableStateOf<Member?>(null) }
     var asking by remember { mutableStateOf<Ask?>(null) }
@@ -131,7 +132,7 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, wide: Boolean, cb
         Spacer(Modifier.size(18.dp))
 
         val rulesCard = @Composable { m: Modifier -> RulesCard(rules, m, cb, onOpen = { deleting = it }) }
-        val frictionsCard = @Composable { m: Modifier -> FrictionsCard(frictions, members, m, cb, onAsk = { asking = it }, onOpen = { deleting = it }) }
+        val frictionsCard = @Composable { m: Modifier -> FrictionsCard(frictions, members, routines, m, cb, onOpen = { deleting = it }) }
         val goalsCard = @Composable { m: Modifier -> GoalsCard(goals, members, m, cb, onAsk = { asking = it }, onOpen = { deleting = it }) }
         if (wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -151,8 +152,6 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, wide: Boolean, cb
     asking?.let { ask ->
         when (ask) {
             Ask.Member -> TextDialog(stringResource(Res.string.member_add), stringResource(Res.string.member_name_hint), onDone = { text, _ -> cb.addMember(text) }) { asking = null }
-            is Ask.Rule -> TextDialog(stringResource(Res.string.friction_rule_title), ask.friction.text, onDone = { text, _ -> cb.resolveFriction(ask.friction, FrictionOutcome.RULE, text.ifBlank { null }) }) { asking = null }
-            is Ask.Change -> TextDialog(stringResource(Res.string.friction_change_title), ask.friction.text, onDone = { text, _ -> cb.resolveFriction(ask.friction, FrictionOutcome.CHANGE, text.ifBlank { null }) }) { asking = null }
             is Ask.Step -> TextDialog(
                 stringResource(Res.string.goal_step_title), stringResource(Res.string.friction_text_hint),
                 toggle = stringResource(Res.string.goal_step_to_week),
@@ -171,8 +170,6 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, wide: Boolean, cb
 /** What a dialog is asking for. */
 private sealed interface Ask {
     data object Member : Ask
-    data class Rule(val friction: BoardItem) : Ask
-    data class Change(val friction: BoardItem) : Ask
     data class Step(val goal: BoardItem) : Ask
 }
 
@@ -233,45 +230,27 @@ private fun RulesCard(rules: List<BoardItem>, modifier: Modifier, cb: BoardCallb
 
 // ---------- frictions ----------
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FrictionsCard(frictions: List<BoardItem>, members: List<Member>, modifier: Modifier, cb: BoardCallbacks, onAsk: (Ask) -> Unit, onOpen: (BoardItem) -> Unit) {
-    val open = frictions.filter { it.isOpen }
+private fun FrictionsCard(frictions: List<BoardItem>, members: List<Member>, routines: List<BacklogItem>, modifier: Modifier, cb: BoardCallbacks, onOpen: (BoardItem) -> Unit) {
+    val open = frictions.filter { it.isOpen }.sortedBy { it.direction != null }
     val resolved = frictions.filterNot { it.isOpen }.sortedByDescending { it.closedAt ?: 0 }
     val byId = members.associateBy { it.id }
-    TopicCard(Topic.FRICTION, LocalLang.current, modifier) {
+    val lang = LocalLang.current
+    TopicCard(Topic.FRICTION, lang, modifier) {
         AddRow(stringResource(Res.string.frictions_add_hint), cb.logFriction, muted = true, compact = true)
         Spacer(Modifier.size(8.dp))
         if (open.isEmpty()) EmptyHint(stringResource(Res.string.frictions_empty))
         else Text(stringResource(Res.string.frictions_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
         open.forEach { f ->
-            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 4.dp)) {
-                    f.memberId?.let(byId::get)?.let { MemberDot(it); Spacer(Modifier.width(10.dp)) }
-                    if (f.kind == BoardKind.IDEA) {
-                        Icon(HearthIcons.Idea, null, tint = Topic.FRICTION.style().ink, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(f.text, style = MaterialTheme.typography.bodyLarge)
-                        Text(ago(f.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    DeleteButton({ onOpen(f) })
-                }
-                Spacer(Modifier.size(6.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ChoiceChip(stringResource(Res.string.friction_to_rule), false, { onAsk(Ask.Rule(f)) }, icon = HearthIcons.Rule)
-                    ChoiceChip(stringResource(Res.string.friction_to_change), false, { onAsk(Ask.Change(f)) }, icon = HearthIcons.Next)
-                    ChoiceChip(stringResource(Res.string.friction_let_go), false, { cb.resolveFriction(f, FrictionOutcome.LET_GO, null) })
-                }
-            }
+            FrictionRow(f, f.memberId?.let(byId::get), routines, lang, FrictionActions(cb.markFriction, cb.resolveFriction), caption = ago(f.createdAt), onDelete = { onOpen(f) })
         }
-        if (resolved.isNotEmpty()) {
+    if (resolved.isNotEmpty()) {
             GroupTitle(stringResource(Res.string.resolved_title))
             resolved.take(5).forEach { f ->
                 val outcome = when (f.status) {
                     BoardStatus.BECAME_RULE -> stringResource(Res.string.became_rule)
                     BoardStatus.BECAME_CHANGE -> stringResource(Res.string.became_change)
+                    BoardStatus.BECAME_ROUTINE -> stringResource(Res.string.became_routine)
                     else -> stringResource(Res.string.let_go)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp)) {

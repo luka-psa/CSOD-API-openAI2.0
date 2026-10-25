@@ -1,6 +1,7 @@
 package app.hearth.ui
 
 import app.hearth.core.model.GoalScope
+import app.hearth.core.model.isRoutine
 import app.hearth.core.model.isRoutineStep
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.key
@@ -204,6 +205,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 plan = { item, w, d -> viewModel.plan(item, w, d) },
                                 complete = viewModel::complete,
                                 resolveFriction = viewModel::resolveFriction,
+                                markFriction = viewModel::markFriction,
                                 setGoalStep = viewModel::setGoalStep,
                                 addGoal = { viewModel.addGoal(it, GoalScope.FAMILY, null) },
                                 achieveGoal = viewModel::achieveGoal,
@@ -214,7 +216,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 removeWin = viewModel::removeWin,
                                 setMeter = { m, v, g -> viewModel.setMeter(m, v, g) },
                                 setMetersOn = viewModel::setMetersOn,
-                                checkRule = { r, w -> viewModel.checkRule(r, w) },
+                                checkRule = { r, e -> viewModel.checkRule(r, e) },
                                 lessOften = viewModel::lessOften,
                                 makeEasier = viewModel::makeEasier,
                                 rateHabit = { i, e -> viewModel.rateHabit(i, e) },
@@ -256,13 +258,14 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             ),
                         )
                         Destination.BOARD -> BoardScreen(
-                            board, members, wide,
+                            board, members, backlog.filter { it.isRoutine() && !it.done }, wide,
                             BoardCallbacks(
                                 addMember = viewModel::addMember,
                                 removeMember = viewModel::removeMember,
                                 addRule = viewModel::addRule,
                                 logFriction = viewModel::logFriction,
                                 resolveFriction = viewModel::resolveFriction,
+                                markFriction = viewModel::markFriction,
                                 addGoal = viewModel::addGoal,
                                 setGoalStep = viewModel::setGoalStep,
                                 achieveGoal = viewModel::achieveGoal,

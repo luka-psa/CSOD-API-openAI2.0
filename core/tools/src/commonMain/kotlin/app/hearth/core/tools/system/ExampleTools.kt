@@ -95,6 +95,8 @@ class LoadExamplesTool(
         // Werkbord.
         e.rules.forEach { step { tools.addHouseRule.run(AddHouseRuleArgs(it), ctx) } }
         step { tools.logFriction.run(LogFrictionArgs(e.friction, e.members[1]), ctx) }
+        // Talked through already: it needs a house rule, still to be written in their own words.
+        step { tools.markFriction.run(app.hearth.core.tools.board.MarkFrictionArgs(texts = listOf(e.friction), direction = app.hearth.core.model.FrictionDirection.RULE), ctx) }
         step { tools.addGoal.run(AddGoalArgs(e.goal, GoalScope.COUPLE, nextStep = e.goalStep), ctx) }
         step { tools.addIdea.run(AddIdeaArgs(e.idea, e.members[0]), ctx) }
 

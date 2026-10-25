@@ -5,7 +5,12 @@ import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.inMemoryHearthDatabase
 import app.hearth.core.model.BoardKind
+import app.hearth.core.model.Anchor
 import app.hearth.core.model.BoardStatus
+import app.hearth.core.model.FrictionDirection
+import app.hearth.core.model.Topic
+import app.hearth.core.model.WeekLook
+import app.hearth.core.model.glance
 import app.hearth.core.model.GoalScope
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
@@ -15,6 +20,7 @@ import app.hearth.core.tools.ToolCall
 import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolOutcome
 import app.hearth.core.tools.ToolSource
+import app.hearth.core.tools.backlog.AddRoutineArgs
 import app.hearth.core.tools.backlog.AddToBacklogArgs
 import app.hearth.core.tools.backlog.MoveBacklogArgs
 import kotlinx.coroutines.test.runTest
@@ -41,6 +47,56 @@ class BoardToolsTest {
         assertEquals("Nieuwe huisregel: “Geen schermen na 20u”", tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("huisregel: geen schermen na 20u"), nl).summary)
         assertEquals("Die huisregel staat er al.", tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Geen schermen na 20u"), nl).summary)
         assertEquals(1, board.allItems().size)
+    }
+
+    @Test
+    fun `the meeting chooses what a friction needs, then writes it in its own words`() = runTest {
+        tools.registry.run(tools.logFriction, LogFrictionArgs("De vaatwasser is nooit leeg"), nl)
+        tools.registry.run(tools.logFriction, LogFrictionArgs("We vergeten de tassen"), nl)
+        tools.registry.run(tools.logFriction, LogFrictionArgs("’s Ochtends is het altijd haasten"), nl)
+        tools.registry.run(tools.addRoutine, AddRoutineArgs("Avondroutine", listOf("Koken", "Pyjama"), Anchor.EVENING), nl)
+
+        // One tap: what it needs. It stays open, labelled, until someone words it.
+        assertEquals(
+            "“De vaatwasser is nooit leeg”: huisregel te maken. Schrijf het in jullie eigen woorden wanneer jullie willen.",
+            tools.registry.run(tools.markFriction, MarkFrictionArgs(texts = listOf("vaatwasser"), direction = FrictionDirection.RULE), nl).summary,
+        )
+        tools.registry.run(tools.markFriction, MarkFrictionArgs(texts = listOf("tassen"), direction = FrictionDirection.CHANGE_ROUTINE), nl)
+        tools.registry.run(tools.markFriction, MarkFrictionArgs(texts = listOf("haasten"), direction = FrictionDirection.NEW_ROUTINE), nl)
+        val marked = board.allItems().filter { it.kind == BoardKind.FRICTION }
+        assertEquals(listOf(FrictionDirection.RULE, FrictionDirection.CHANGE_ROUTINE, FrictionDirection.NEW_ROUTINE), marked.map { it.direction })
+        assertTrue(marked.all { it.isOpen })
+        assertEquals("3 te maken", Topic.FRICTION.glance(WeekLook(emptyList(), marked, 0, 0, LocalDate(2026, 10, 22)), Lang.NL))
+        assertTrue("De vaatwasser is nooit leeg · huisregel te maken" in tools.registry.run(tools.listBoard, ListBoardArgs(), nl).summary)
+
+        // Worded differently from the complaint.
+        tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("vaatwasser"), outcome = FrictionOutcome.RULE, text = "Wie het laatst eet, zet hem aan"), nl)
+        assertEquals(
+            "“We vergeten de tassen”: “Avondroutine” past zich aan (stap erbij: Tassen bij de deur)",
+            tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("tassen"), outcome = FrictionOutcome.ROUTINE_CHANGE, routine = "avondroutine", text = "Tassen bij de deur"), nl).summary,
+        )
+        assertEquals(
+            "“’s Ochtends is het altijd haasten” wordt een routine: “Ochtendroutine” (ochtend)",
+            tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("haasten"), outcome = FrictionOutcome.ROUTINE, text = "Ochtendroutine", anchor = Anchor.MORNING), nl).summary,
+        )
+        val avond = backlog.openItems().first { it.text == "Avondroutine" }
+        assertEquals(listOf("Koken", "Pyjama", "Tassen bij de deur"), backlog.stepsOf(listOf(avond.id)).map { it.text })
+        assertEquals(Anchor.MORNING, backlog.openItems().first { it.text == "Ochtendroutine" }.anchor)
+        val after = board.allItems().filter { it.kind == BoardKind.FRICTION }
+        assertEquals(listOf(BoardStatus.BECAME_RULE, BoardStatus.BECAME_ROUTINE, BoardStatus.BECAME_ROUTINE), after.map { it.status })
+        assertEquals(avond.id, after[1].linkedId)
+    }
+
+    @Test
+    fun `changing a routine needs the routine and what changes`() = runTest {
+        tools.registry.run(tools.logFriction, LogFrictionArgs("We vergeten de tassen"), nl)
+        val noRoutine = runCatching { tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("tassen"), outcome = FrictionOutcome.ROUTINE_CHANGE), nl) }
+        assertEquals("Welke routine passen we aan?", noRoutine.exceptionOrNull()?.message)
+        tools.registry.run(tools.addRoutine, AddRoutineArgs("Avondroutine", anchor = Anchor.EVENING), nl)
+        val nothing = runCatching { tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("tassen"), outcome = FrictionOutcome.ROUTINE_CHANGE, routine = "avondroutine"), nl) }
+        assertEquals("Wat verandert er: een stap erbij, of een ander moment?", nothing.exceptionOrNull()?.message)
+        tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("tassen"), outcome = FrictionOutcome.ROUTINE_CHANGE, routine = "avondroutine", anchor = Anchor.BEDTIME), nl)
+        assertEquals(Anchor.BEDTIME, backlog.openItems().first { it.text == "Avondroutine" }.anchor)
     }
 
     @Test

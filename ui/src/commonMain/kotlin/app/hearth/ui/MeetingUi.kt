@@ -61,8 +61,6 @@ import app.hearth.ui.resources.habit_easier
 import app.hearth.ui.resources.attention_hint
 import app.hearth.ui.resources.attention_title
 import app.hearth.ui.resources.ease_postponed
-import app.hearth.ui.resources.habits_hint
-import app.hearth.ui.resources.habits_title
 import app.hearth.ui.resources.small_step_add
 import app.hearth.ui.resources.small_step_hint
 import app.hearth.ui.resources.small_step_line
@@ -78,9 +76,10 @@ import app.hearth.ui.resources.meters_ok
 import app.hearth.ui.resources.meters_switch_off
 import app.hearth.ui.resources.meters_switch_on
 import app.hearth.ui.resources.meters_title
-import app.hearth.ui.resources.rule_not_yet
-import app.hearth.ui.resources.rule_worked
-import app.hearth.ui.resources.rules_check_title
+import app.hearth.ui.resources.review_title
+import app.hearth.ui.resources.review_hint
+import app.hearth.ui.resources.review_empty
+import app.hearth.ui.resources.anchor_none
 import app.hearth.core.model.Win
 import app.hearth.core.model.dayLabel
 import app.hearth.ui.resources.Res
@@ -443,45 +442,66 @@ fun MetersSection(
     TextButton(onClick = { onSwitch(false) }) { Text(stringResource(Res.string.meters_switch_off), color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }
 
-/** "Hoe liepen de huisregels?": per house rule, for the household. Never who. */
+/**
+ * Terugblik: "Hoe lopen de ritmes en huisregels?" Every routine (in the order of the day) and every house rule on the
+ * same scale, decided together: loopt vanzelf, vraagt moeite, te zwaar. Never who. Not running easily? A smaller first
+ * step, right there. A house rule that is too much two meetings in a row comes back as a friction.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RuleChecks(rules: List<BoardItem>, checks: List<RuleCheck>, onCheck: (BoardItem, Boolean) -> Unit) {
-    if (rules.isEmpty()) return
-    GroupTitle(stringResource(Res.string.rules_check_title))
-    rules.forEach { rule ->
-        val check = checks.firstOrNull { it.ruleId == rule.id }
-        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(HearthIcons.Rule, null, tint = Section.NOTE.style().ink, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(rule.text, style = MaterialTheme.typography.bodyLarge)
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 24.dp, top = 4.dp)) {
-                ChoiceChip(stringResource(Res.string.rule_worked), check?.worked == true, { onCheck(rule, true) }, icon = HearthIcons.Check)
-                ChoiceChip(stringResource(Res.string.rule_not_yet), check?.worked == false, { onCheck(rule, false) })
+fun ReviewSection(
+    routines: List<BacklogItem>,
+    rules: List<BoardItem>,
+    checks: List<RuleCheck>,
+    lang: Lang,
+    onRateRoutine: (BacklogItem, Ease) -> Unit,
+    onRateRule: (BoardItem, Ease) -> Unit,
+    onSmallStep: (BacklogItem, String) -> Unit,
+) {
+    var asking by remember { mutableStateOf<BacklogItem?>(null) }
+    GroupTitle(stringResource(Res.string.review_title))
+    Text(stringResource(Res.string.review_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
+    if (routines.isEmpty() && rules.isEmpty()) {
+        Text(stringResource(Res.string.review_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, top = 4.dp))
+        return
+    }
+
+    @Composable
+    fun Heading(topic: Topic) = Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp, top = 10.dp, bottom = 2.dp)) {
+        Icon(topic.icon(), null, tint = topic.style().ink, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(topic.title(lang), style = MaterialTheme.typography.labelLarge, color = topic.style().ink)
+    }
+
+    @Composable
+    fun Scale(current: Ease?, onRate: (Ease) -> Unit, extra: @Composable () -> Unit = {}) =
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+            Ease.entries.forEach { ease -> if (current == ease) EasePill(ease) else ChoiceChip(stringResource(ease.label()), false, { onRate(ease) }) }
+            extra()
+        }
+
+    if (routines.isNotEmpty()) {
+        Heading(Topic.RHYTHM)
+        routines.forEach { r ->
+            Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
+                Text(r.text, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    listOfNotNull(r.anchor?.title(lang), r.smallStep?.let { stringResource(Res.string.small_step_line, it) }).joinToString("  ·  ").ifEmpty { stringResource(Res.string.anchor_none) },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (r.smallStep != null) Topic.RHYTHM.style().ink else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Scale(r.ease, { onRateRoutine(r, it) }) {
+                    if (r.ease != null && r.ease != Ease.EASY) TextButton(onClick = { asking = r }) { Text(stringResource(Res.string.small_step_add)) }
+                }
             }
         }
     }
-}
-
-/** "Gewoontes: hoe zwaar zijn ze?": each habit rated together, with a smaller first step when it's hard. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun HabitsRating(habits: List<BacklogItem>, onRate: (BacklogItem, Ease) -> Unit, onSmallStep: (BacklogItem, String) -> Unit) {
-    if (habits.isEmpty()) return
-    var asking by remember { mutableStateOf<BacklogItem?>(null) }
-    GroupTitle(stringResource(Res.string.habits_title))
-    Text(stringResource(Res.string.habits_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
-    habits.forEach { habit ->
-        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
-            Text(habit.text, style = MaterialTheme.typography.bodyLarge)
-            habit.smallStep?.let { Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink) }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                Ease.entries.forEach { ease ->
-                    if (habit.ease == ease) EasePill(ease) else ChoiceChip(stringResource(ease.label()), false, { onRate(habit, ease) })
-                }
-                if (habit.ease != null && habit.ease != Ease.EASY) TextButton(onClick = { asking = habit }) { Text(stringResource(Res.string.small_step_add)) }
+    if (rules.isNotEmpty()) {
+        Heading(Topic.RULES)
+        rules.forEach { rule ->
+            Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
+                Text(rule.text, style = MaterialTheme.typography.bodyLarge)
+                Scale(checks.firstOrNull { it.ruleId == rule.id }?.ease, { onRateRule(rule, it) })
             }
         }
     }

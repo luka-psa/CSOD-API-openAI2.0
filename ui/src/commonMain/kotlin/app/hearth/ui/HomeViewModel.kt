@@ -32,6 +32,7 @@ import app.hearth.core.tools.board.FrictionOutcome
 import app.hearth.core.tools.board.LogFrictionArgs
 import app.hearth.core.tools.board.RemoveMemberArgs
 import app.hearth.core.tools.board.ResolveFrictionArgs
+import app.hearth.core.tools.board.MarkFrictionArgs
 import app.hearth.core.tools.board.SetGoalStepArgs
 import app.hearth.core.tools.backlog.AddProjectStepArgs
 import app.hearth.core.tools.backlog.AddToBacklogArgs
@@ -52,6 +53,7 @@ import app.hearth.ai.route.KeywordRouter
 import app.hearth.ai.route.MeetingWords
 import app.hearth.core.tools.week.FinishArgs
 import app.hearth.core.model.Topic
+import app.hearth.core.model.FrictionDirection
 import app.hearth.core.model.topic
 import app.hearth.core.tools.board.AddIdeaArgs
 import app.hearth.core.model.TranscriptLine
@@ -555,8 +557,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun setMetersOn(on: Boolean) = tool { app.tools.registry.run(app.tools.setWeekMeters, WeekMetersArgs(on), it) }
 
     /** Did a house rule work this week? Then the suggestion for "wat schuurde" follows. */
-    fun checkRule(rule: BoardItem, worked: Boolean) = tool {
-        app.tools.registry.run(app.tools.checkHouseRule, CheckHouseRuleArgs(ruleId = rule.id, worked = worked), it)
+    fun checkRule(rule: BoardItem, ease: Ease) = tool {
+        app.tools.registry.run(app.tools.checkHouseRule, CheckHouseRuleArgs(ruleId = rule.id, ease = ease), it)
         _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it)
     }
 
@@ -709,8 +711,18 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
-    fun resolveFriction(item: BoardItem, outcome: FrictionOutcome, text: String? = null) = tool {
-        app.tools.registry.run(app.tools.resolveFriction, ResolveFrictionArgs(itemIds = listOf(item.id), outcome = outcome, text = text), it)
+    /** Written in the family's own words: a house rule, a routine (new or changed), a task, or let go. */
+    fun resolveFriction(item: BoardItem, write: FrictionWrite) = tool {
+        val args = ResolveFrictionArgs(
+            itemIds = listOf(item.id), outcome = write.outcome, text = write.text, section = write.section,
+            routine = write.routine?.id, anchor = write.anchor,
+        )
+        say(app.tools.registry.run(app.tools.resolveFriction, args, it).summary)
+    }
+
+    /** What a friction needs, chosen together in one tap; null puts it back to "te bespreken". */
+    fun markFriction(item: BoardItem, direction: FrictionDirection?) = tool {
+        app.tools.registry.run(app.tools.markFriction, MarkFrictionArgs(itemIds = listOf(item.id), direction = direction), it)
     }
 
     fun addGoal(text: String, scope: GoalScope, member: Member?) {

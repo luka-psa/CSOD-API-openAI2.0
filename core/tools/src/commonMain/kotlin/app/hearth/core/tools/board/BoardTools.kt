@@ -4,7 +4,14 @@ import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
+import app.hearth.core.model.Anchor
 import app.hearth.core.model.BoardStatus
+import app.hearth.core.model.FrictionDirection
+import app.hearth.core.model.isRoutine
+import app.hearth.core.model.title
+import app.hearth.core.tools.backlog.AddRoutineArgs
+import app.hearth.core.tools.backlog.AddRoutineTool
+import app.hearth.core.tools.backlog.find
 import app.hearth.core.model.GoalScope
 import app.hearth.core.model.Member
 import app.hearth.core.model.Plan
@@ -262,7 +269,8 @@ class ListBoardTool(private val repo: BoardRepository) : Tool<ListBoardArgs, Boa
             title + ":\n" + ofKind.joinToString("\n") { item ->
                 val who = item.memberId?.let(names::get)?.let { " ($it)" } ?: ""
                 val step = item.nextStep?.let { ctx.t(" · volgende stap: $it", " · next step: $it") } ?: ""
-                "- ${item.text}$who$step"
+                val needs = item.direction?.let { " · " + directionWords(it, ctx) } ?: ""
+                "- ${item.text}$who$step$needs"
             }
         }.joinToString("\n")
         return BoardItemsResult(items, summary)
@@ -275,7 +283,8 @@ class ListBoardTool(private val repo: BoardRepository) : Tool<ListBoardArgs, Boa
 
 // ---------- resolve_friction ----------
 
-enum class FrictionOutcome { RULE, CHANGE, LET_GO }
+/** RULE, CHANGE (a task), ROUTINE (a new routine), ROUTINE_CHANGE (adjust one) or LET_GO. */
+enum class FrictionOutcome { RULE, CHANGE, LET_GO, ROUTINE, ROUTINE_CHANGE }
 
 @Serializable
 data class ResolveFrictionArgs(
@@ -283,18 +292,33 @@ data class ResolveFrictionArgs(
     val itemIds: List<String> = emptyList(),
     @Describe("Texts of frictions, when ids are not known.")
     val texts: List<String> = emptyList(),
-    @Describe("RULE (we agree on a house rule), CHANGE (we change something: a task or project), LET_GO.")
+    @Describe(
+        "RULE (we agree on a house rule), CHANGE (a task with focus: paperwork or a big task, as next up), ROUTINE " +
+            "(a new routine), ROUTINE_CHANGE (adjust an existing routine: a step and/or another moment) or LET_GO.",
+    )
     val outcome: FrictionOutcome,
-    @Describe("For RULE: the rule's words. For CHANGE: what we'll do. Defaults to the friction's text.")
+    @Describe(
+        "In the family's own words, usually phrased differently from the friction. RULE: the rule. CHANGE: the task. " +
+            "ROUTINE: the routine's name. ROUTINE_CHANGE: a step to add (optional). Defaults to the friction's text, except for ROUTINE_CHANGE.",
+    )
     val text: String? = null,
-    @Describe("For CHANGE: PROJECT (default), ADMIN or CHORE.")
+    @Describe("For CHANGE: ADMIN (paperassen), PROJECT (grote taak, default) or CHORE.")
     val section: Section = Section.PROJECT,
+    @Describe("For ROUTINE_CHANGE: the routine to adjust (its name or id).")
+    val routine: String? = null,
+    @Describe("For ROUTINE and ROUTINE_CHANGE: the moment of the day (MORNING, AFTERNOON, DINNER, EVENING, BEDTIME).")
+    val anchor: Anchor? = null,
 )
 
-class ResolveFrictionTool(private val repo: BoardRepository, private val backlog: BacklogRepository) : Tool<ResolveFrictionArgs, BoardItemsResult> {
+class ResolveFrictionTool(
+    private val repo: BoardRepository,
+    private val backlog: BacklogRepository,
+    private val addRoutine: AddRoutineTool,
+) : Tool<ResolveFrictionArgs, BoardItemsResult> {
     override val name = NAME
     override val description =
-        "Decide what to do about a friction or an idea: make it a house rule, turn it into a change (lands on the backlog as next up), or let it go."
+        "Decide what to do about a friction or an idea, in the family's own words: a house rule, a task with focus (next up), " +
+            "a new routine, a change to a routine, or let it go."
     override val argsSerializer = ResolveFrictionArgs.serializer()
     override val resultSerializer = BoardItemsResult.serializer()
 
@@ -302,6 +326,15 @@ class ResolveFrictionTool(private val repo: BoardRepository, private val backlog
         val frictions = (repo.find(args.itemIds, args.texts, BoardKind.FRICTION) + repo.find(args.itemIds, args.texts, BoardKind.IDEA))
             .filter { it.isOpen }.distinctBy { it.id }.ifEmpty { notFound(ctx) }
         val custom = args.text?.let(::stripBoardPrefix)?.ifEmpty { null }
+        // Which routine changes, found once for all frictions.
+        val routine = if (args.outcome != FrictionOutcome.ROUTINE_CHANGE) null else {
+            val ref = args.routine?.trim()?.ifEmpty { null } ?: throw ToolException(ctx.t("Welke routine passen we aan?", "Which routine do we adjust?"))
+            backlog.find(listOf(ref), listOf(ref)).firstOrNull { it.isRoutine() }
+                ?: throw ToolException(ctx.t("Die routine vind ik niet. Kies er een uit Ritmes & routines.", "I can't find that routine. Pick one from Rhythms & routines."))
+        }
+        if (routine != null && custom == null && args.anchor == null) {
+            throw ToolException(ctx.t("Wat verandert er: een stap erbij, of een ander moment?", "What changes: an extra step, or another moment?"))
+        }
         val lines = frictions.map { friction ->
             val words = custom ?: friction.text
             when (args.outcome) {
@@ -316,6 +349,22 @@ class ResolveFrictionTool(private val repo: BoardRepository, private val backlog
                     repo.close(friction.id, BoardStatus.BECAME_CHANGE, task.id)
                     ctx.t("“${friction.text}”: we pakken het aan. “${task.text}” staat bij volgende.", "“${friction.text}”: we're on it. “${task.text}” is next up.")
                 }
+                FrictionOutcome.ROUTINE -> {
+                    val made = addRoutine.run(AddRoutineArgs(words, anchor = args.anchor), ctx).item
+                    repo.close(friction.id, BoardStatus.BECAME_ROUTINE, made.id)
+                    val moment = made.anchor?.let { " (${it.title(ctx.lang).lowercase()})" } ?: ""
+                    ctx.t("“${friction.text}” wordt een routine: “${made.text}”$moment", "“${friction.text}” becomes a routine: “${made.text}”$moment")
+                }
+                FrictionOutcome.ROUTINE_CHANGE -> {
+                    val r = routine!!
+                    addRoutine.run(AddRoutineArgs(r.text, steps = listOfNotNull(custom), anchor = args.anchor, section = r.section), ctx)
+                    repo.close(friction.id, BoardStatus.BECAME_ROUTINE, r.id)
+                    val what = listOfNotNull(
+                        custom?.let { ctx.t("stap erbij: $it", "new step: $it") },
+                        args.anchor?.let { ctx.t("nu ", "now ") + it.title(ctx.lang).lowercase() },
+                    ).joinToString(", ")
+                    ctx.t("“${friction.text}”: “${r.text}” past zich aan ($what)", "“${friction.text}”: “${r.text}” changes ($what)")
+                }
                 FrictionOutcome.LET_GO -> {
                     repo.close(friction.id, BoardStatus.LET_GO)
                     ctx.t("“${friction.text}” laten we los. Ook dat is een keuze.", "Letting “${friction.text}” go. That's a choice too.")
@@ -325,6 +374,7 @@ class ResolveFrictionTool(private val repo: BoardRepository, private val backlog
         val status = when (args.outcome) {
             FrictionOutcome.RULE -> BoardStatus.BECAME_RULE
             FrictionOutcome.CHANGE -> BoardStatus.BECAME_CHANGE
+            FrictionOutcome.ROUTINE, FrictionOutcome.ROUTINE_CHANGE -> BoardStatus.BECAME_ROUTINE
             FrictionOutcome.LET_GO -> BoardStatus.LET_GO
         }
         return BoardItemsResult(frictions.map { it.copy(status = status) }, lines.joinToString("\n"))
@@ -332,6 +382,59 @@ class ResolveFrictionTool(private val repo: BoardRepository, private val backlog
 
     companion object {
         const val NAME = "resolve_friction"
+    }
+}
+
+// ---------- mark_friction ----------
+
+@Serializable
+data class MarkFrictionArgs(
+    @Describe("Ids of frictions or ideas.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Their texts, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe(
+        "What it needs: RULE (a house rule to write), NEW_ROUTINE, CHANGE_ROUTINE (adjust an existing routine) or TASK " +
+            "(a task with focus). Empty: back to 'still to talk about'.",
+    )
+    val direction: FrictionDirection? = null,
+)
+
+/** "Huisregel te maken", "routine aan te passen": the words for a direction, in chat and summaries. */
+internal fun directionWords(direction: FrictionDirection, ctx: ToolContext): String = when (direction) {
+    FrictionDirection.RULE -> ctx.t("huisregel te maken", "house rule to write")
+    FrictionDirection.NEW_ROUTINE -> ctx.t("nieuwe routine te maken", "new routine to make")
+    FrictionDirection.CHANGE_ROUTINE -> ctx.t("routine aan te passen", "routine to adjust")
+    FrictionDirection.TASK -> ctx.t("taak te maken", "task to make")
+}
+
+/**
+ * The meeting decides what a friction needs in one tap, before anyone words it: the rule or routine is usually
+ * phrased differently from the complaint. It stays open, with its direction, until it's written (resolve_friction).
+ */
+class MarkFrictionTool(private val repo: BoardRepository) : Tool<MarkFrictionArgs, BoardItemsResult> {
+    override val name = NAME
+    override val description =
+        "In the weekoverleg: choose what a friction or idea needs, before anyone words it: a house rule to write, a new " +
+            "routine, a change to a routine, or a task with focus. It stays open with that label until resolve_friction " +
+            "writes it in the family's own words."
+    override val argsSerializer = MarkFrictionArgs.serializer()
+    override val resultSerializer = BoardItemsResult.serializer()
+
+    override suspend fun run(args: MarkFrictionArgs, ctx: ToolContext): BoardItemsResult {
+        val frictions = (repo.find(args.itemIds, args.texts, BoardKind.FRICTION) + repo.find(args.itemIds, args.texts, BoardKind.IDEA))
+            .filter { it.isOpen }.distinctBy { it.id }.ifEmpty { notFound(ctx) }
+        repo.setDirection(frictions.map { it.id }, args.direction)
+        val summary = when (val d = args.direction) {
+            null -> ctx.t("${quoted(frictions)} staat weer bij te bespreken.", "${quoted(frictions)} is back to talk about.")
+            else -> ctx.t("${quoted(frictions)}: ${directionWords(d, ctx)}. Schrijf het in jullie eigen woorden wanneer jullie willen.",
+                "${quoted(frictions)}: ${directionWords(d, ctx)}. Write it in your own words whenever you like.")
+        }
+        return BoardItemsResult(frictions.map { it.copy(direction = args.direction) }, summary)
+    }
+
+    companion object {
+        const val NAME = "mark_friction"
     }
 }
 

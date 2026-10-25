@@ -121,9 +121,13 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   durations), *Grote taken*. The selectors live in
   `core/model/Overview.kt` so the screen, tools and MCP agree.
 - **Werkbord** (`board_item`, not the backlog): *Huisregel* (RULE), *Frictie*
-  (FRICTION → wordt huisregel / veranderen / loslaten; all three are good
-  outcomes), *Doel* (GOAL, scope gezin / samen / persoonlijk, one small *next
-  step*), *Idee* (IDEA: a way to make it easier; decided like a friction).
+  (FRICTION, talked through in two moves: first the meeting chooses what it needs in one tap,
+  its *direction* (`FrictionDirection`, `mark_friction`): *huisregel te maken*, *nieuwe routine*,
+  *routine aanpassen* (a step and/or another moment), *taak met focus* (paperassen or a grote
+  taak, as next up), or *loslaten*; then someone writes it in their own words, now or later
+  (`resolve_friction`; the friction is a reminder, never the wording); every outcome is good),
+  *Doel* (GOAL, scope gezin / samen / persoonlijk, one small *next step*), *Idee* (IDEA: a way to
+  make it easier; decided like a friction).
   *Member*: a person with a colour.
 - **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
   and onto the list, bought = IN_STOCK again. Voice never adds on its own: the
@@ -148,7 +152,9 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   tap to open its list. Terugblik (*Wat ging goed* = wins; two household
   *meters*, *Hoe liep het* (FLOW) and *Wat schuurde* (STRAIN), suggested by Hearth and
   agreed together, *Geen akkoord* = neutral; never per person, can be switched off),
-  *Hoe liepen de huisregels?* (Liep goed / Liep nog niet, never who) under Huisregels,
+  *Hoe lopen de ritmes en huisregels?* (every routine, in the order of the day, and every house rule on
+  one scale: loopt vanzelf / vraagt moeite / te zwaar, never who; a smaller first step right there; a rule
+  that is too much two meetings in a row comes back as a friction),
   Deze week (7 days, plans with their colour, the meal small underneath),
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
   *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each sentence

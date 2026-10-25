@@ -29,6 +29,8 @@ enum class BoardStatus {
     BECAME_RULE,
     /** A friction that became a change: a project or task on the backlog. */
     BECAME_CHANGE,
+    /** A friction that became a new routine, or a change to one ([BoardItem.linkedId] = the routine). */
+    BECAME_ROUTINE,
     /** A friction we decided to let go. That's a fine outcome too. */
     LET_GO,
     /** A goal reached. */
@@ -37,6 +39,22 @@ enum class BoardStatus {
 
 /** Whose goal: the family, the two of us, or one person ([BoardItem.memberId]). */
 enum class GoalScope { FAMILY, COUPLE, PERSONAL }
+
+/**
+ * What a friction needs, chosen together before anyone words it: the rule or routine is usually phrased
+ * differently from the friction ("de vaatwasser is nooit leeg" becomes "wie het laatst eet, zet hem aan"). A
+ * friction with a direction stays open until that is written.
+ */
+enum class FrictionDirection {
+    /** Huisregel te maken. */
+    RULE,
+    /** Nieuwe routine te maken. */
+    NEW_ROUTINE,
+    /** Een routine aan te passen (a step, another moment). */
+    CHANGE_ROUTINE,
+    /** Een taak met focus: paperassen or a grote taak, as next up. */
+    TASK,
+}
 
 @Serializable
 data class BoardItem(
@@ -53,6 +71,8 @@ data class BoardItem(
     val linkedId: String? = null,
     val createdAt: Long,
     val closedAt: Long? = null,
+    /** Friction or idea: what it needs, once chosen; it stays open until that's done. */
+    val direction: FrictionDirection? = null,
 ) {
     val isOpen: Boolean get() = status == BoardStatus.OPEN
     /** Frictions and ideas are both working points for the weekoverleg. */

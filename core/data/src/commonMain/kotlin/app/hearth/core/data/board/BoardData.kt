@@ -1,6 +1,7 @@
 package app.hearth.core.data.board
 
 import kotlinx.serialization.Serializable
+import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.Index
@@ -12,6 +13,7 @@ import app.hearth.core.data.HearthDatabase
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.BoardStatus
+import app.hearth.core.model.FrictionDirection
 import app.hearth.core.model.GoalScope
 import app.hearth.core.model.MEMBER_COLORS
 import app.hearth.core.model.Member
@@ -49,8 +51,9 @@ data class BoardEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val closedAt: Long?,
+    @ColumnInfo(defaultValue = "NULL") val direction: FrictionDirection? = null,
 ) {
-    fun toModel() = BoardItem(id, kind, text, status, memberId, scope, nextStep, linkedId, createdAt, closedAt)
+    fun toModel() = BoardItem(id, kind, text, status, memberId, scope, nextStep, linkedId, createdAt, closedAt, direction)
 }
 
 @Dao
@@ -88,6 +91,9 @@ interface BoardDao {
 
     @Query("UPDATE board_item SET nextStep = :nextStep, linkedId = :linkedId, updatedAt = :now WHERE id = :id")
     suspend fun setNextStep(id: String, nextStep: String?, linkedId: String?, now: Long)
+
+    @Query("UPDATE board_item SET direction = :direction, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setDirection(ids: List<String>, direction: FrictionDirection?, now: Long)
 
     @Query("UPDATE board_item SET memberId = NULL, scope = CASE WHEN scope = 'PERSONAL' THEN 'FAMILY' ELSE scope END WHERE memberId = :memberId")
     suspend fun forgetMember(memberId: String)
@@ -150,6 +156,11 @@ class BoardRepository(
     }
 
     suspend fun setNextStep(id: String, nextStep: String?, linkedId: String?) = board.setNextStep(id, nextStep, linkedId, clock())
+
+    /** What a friction needs (null: still to talk about). */
+    suspend fun setDirection(ids: List<String>, direction: FrictionDirection?) {
+        if (ids.isNotEmpty()) board.setDirection(ids, direction, clock())
+    }
 
     suspend fun delete(ids: List<String>) {
         if (ids.isNotEmpty()) board.delete(ids)
