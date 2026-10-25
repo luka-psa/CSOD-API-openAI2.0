@@ -12,8 +12,8 @@ android {
         applicationId = "app.hearth"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.10.0"
+        versionCode = 11
+        versionName = "0.11.0"
     }
 
     // One fixed key for every build, so a new APK installs over the old one and the family's data stays.

@@ -227,6 +227,8 @@ fun BacklogRow(
     projectName: String? = null,
     showSection: Boolean = true,
     onDelete: (() -> Unit)? = null,
+    /** Shown under the text, for a chip that would squeeze it on a phone. */
+    below: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
@@ -267,6 +269,7 @@ fun BacklogRow(
             item.smallStep?.let {
                 Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink)
             }
+            below?.invoke()
         }
         trailing?.invoke()
         if (onDelete != null) DeleteButton(onDelete)

@@ -5,6 +5,8 @@ import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.model.boardKind
 import app.hearth.core.model.stripBoardPrefix
 import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.Anchor
+import app.hearth.core.model.title
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
 import app.hearth.core.model.dayLabel
@@ -99,6 +101,8 @@ data class AddToBacklogArgs(
     val urgent: Boolean = false,
     @Describe("For a routine (CHORE, RHYTHM, HABIT): roughly every how many days, e.g. 7 or 14. Leave empty when unknown.")
     val intervalDays: Int? = null,
+    @Describe("For a routine with a moment of the day: MORNING, AFTERNOON (after school), DINNER (around dinner), EVENING or BEDTIME.")
+    val anchor: Anchor? = null,
 )
 
 @Serializable
@@ -126,16 +130,19 @@ class AddToBacklogTool(private val repo: BacklogRepository, private val board: B
             return AddToBacklogResult(shown, added, if (added) ctx.t("Op het werkbord: “${entry.text}” ($label)", "On the board: “${entry.text}” ($label)") else ctx.t("Staat al op het werkbord: “${entry.text}”", "Already on the board: “${entry.text}”"))
         }
         val (plan, date) = resolve(args.`when`, args.date, ctx)
-        val interval = args.intervalDays?.takeIf { it > 0 && args.section.kind == TaskKind.ROUTINE }
+        val routine = args.section.kind == TaskKind.ROUTINE
+        val anchor = args.anchor?.takeIf { routine }
+        // A routine with a moment of the day comes back daily unless said otherwise.
+        val interval = (args.intervalDays ?: if (anchor != null) 1 else null)?.takeIf { it > 0 && routine }
         val (item, added) = repo.add(
             text, args.section, plan, date?.toString(), args.finishBy && date != null, ctx.actorMemberId,
-            urgent = args.urgent, intervalDays = interval,
+            urgent = args.urgent, intervalDays = interval, anchor = anchor,
         )
         val label = item.section.label(ctx.lang)
         val summary = if (added) {
             val whenText = when {
                 item.plan != Plan.UNPLANNED -> " · ${planLabel(item, ctx)}"
-                item.isRoutine() -> " · ${intervalLabel(item.intervalDays, ctx.lang)}"
+                item.isRoutine() -> (item.anchor?.let { " · ${it.title(ctx.lang).lowercase()}" } ?: "") + " · ${intervalLabel(item.intervalDays, ctx.lang)}"
                 else -> ""
             } + if (item.urgent) ctx.t(" · dringend", " · urgent") else ""
             ctx.t("Op de backlog: “${item.text}” ($label)$whenText", "On the backlog: “${item.text}” ($label)$whenText")

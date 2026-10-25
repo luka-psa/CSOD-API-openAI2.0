@@ -53,6 +53,8 @@ object HearthIcons {
             "M19,15h-4c0,1.66 -1.35,3 -3,3s-3,-1.34 -3,-3H4.99V5H19V15z",
     )
     val Board = icon("M3,13h8V3H3v10zM3,21h8v-6H3v6zM13,21h8V11h-8v10zM13,3v6h8V3h-8z")
+    /** Rhythms and routines: what comes back at its moment of the day. */
+    val Repeat = icon("M7,7h10v3l4,-4 -4,-4v3H5v6h2V7zM17,17H7v-3l-4,4 4,4v-3h12v-6h-2v4z")
     val Bolt = icon("M7,2v11h3v9l7,-12h-4l4,-8z")
     val Star = icon("M12,17.27L18.18,21l-1.64,-7.03L22,9.24l-7.19,-0.61L12,2 9.19,8.63 2,9.24l5.46,4.73L5.82,21z")
     val Rule = icon(

@@ -89,6 +89,18 @@ class WeekToolsTest {
         assertEquals("1 lopend", Topic.PROJECTS.glance(look, Lang.NL))
         assertEquals("2 van 7 avonden", Topic.MENU.glance(look, Lang.NL))
         assertEquals("The list is empty", Topic.SHOPPING.glance(look, Lang.EN))
+
+        // A chore with a fixed moment belongs to the rhythm of the day; one without stays household.
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Afwassen", Section.CHORE, anchor = app.hearth.core.model.Anchor.DINNER), nl)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Lakens verversen", Section.CHORE, intervalDays = 14), nl)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Tassen klaarzetten", Section.HABIT), nl)
+        val afwassen = backlog.openItems().first { it.text == "Afwassen" }
+        assertEquals(Topic.RHYTHM, afwassen.topic)
+        assertEquals(1, afwassen.intervalDays)
+        assertEquals(Topic.HOME, backlog.openItems().first { it.text == "Lakens verversen" }.topic)
+        tools.registry.run(tools.setAnchor, app.hearth.core.tools.backlog.SetAnchorArgs(texts = listOf("tassen"), anchor = app.hearth.core.model.Anchor.EVENING), nl)
+        val later = WeekLook(backlog.openItems(), emptyList(), 0, 0, LocalDate(2026, 10, 22))
+        assertEquals("2 routines · over 2 momenten", Topic.RHYTHM.glance(later, Lang.NL))
     }
 
     @Test
@@ -105,8 +117,9 @@ class WeekToolsTest {
         assertEquals(listOf("Rommel in de gang"), agenda.frictions.map { it.text })
         assertEquals(
             "Terugblik: 1 ding gedaan.\nVrije tijd: Nog niets gepland.\nAdmin & afspraken: 1 open (klaar tegen: Autokeuring).\n" +
-                "Grote taken: Geen lopende projecten.\nHuishouden & gewoontes: Loopt rustig.\nBoodschappen: De lijst is leeg.\n" +
-                "Weekmenu: 1 van 7 avonden (Pizza).\nFrictie & huisregels: 1 te bespreken (Rommel in de gang).\nMeters (samen afspreken): hoe liep het, voorstel 4; wat schuurde, voorstel 2.",
+                "Grote taken: Geen lopende projecten.\nHuishouden: Nog geen huishoudtaken.\nRitmes & routines: Nog geen ritme.\n" +
+                "Boodschappen: De lijst is leeg.\nWeekmenu: 1 van 7 avonden (Pizza).\nFrictie & ideeën: 1 te bespreken (Rommel in de gang).\n" +
+                "Huisregels: Nog geen huisregels.\nMeters (samen afspreken): hoe liep het, voorstel 4; wat schuurde, voorstel 2.",
             agenda.summary,
         )
 

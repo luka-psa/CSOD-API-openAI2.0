@@ -23,6 +23,20 @@ enum class Plan {
 }
 
 /**
+ * A moment of the day a routine hangs on, never a clock time: the morning routine, "na het eten",
+ * the bedtime routine. Routines with a moment are laid out per moment, in the order they happen.
+ */
+enum class Anchor { MORNING, AFTERNOON, DINNER, EVENING, BEDTIME }
+
+fun Anchor.title(lang: Lang): String = when (this) {
+    Anchor.MORNING -> if (lang == Lang.NL) "Ochtend" else "Morning"
+    Anchor.AFTERNOON -> if (lang == Lang.NL) "Na school" else "After school"
+    Anchor.DINNER -> if (lang == Lang.NL) "Rond het eten" else "Around dinner"
+    Anchor.EVENING -> if (lang == Lang.NL) "Avond" else "Evening"
+    Anchor.BEDTIME -> if (lang == Lang.NL) "Slapengaan" else "Bedtime"
+}
+
+/**
  * Anything that still needs doing, from any section, until that section has its own home
  * (appointments, projects, chores...). Nothing a person says is ever lost: it lands here.
  */
@@ -55,6 +69,8 @@ data class BacklogItem(
     val ease: Ease? = null,
     /** A smaller first step for when it's hard ("Begin klein: …"). */
     val smallStep: String? = null,
+    /** The moment of the day a routine belongs to ("na het eten"); null: whenever it fits. */
+    val anchor: Anchor? = null,
 ) {
     val localDate: LocalDate? get() = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
     val lastDoneDate: LocalDate? get() = lastDone?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

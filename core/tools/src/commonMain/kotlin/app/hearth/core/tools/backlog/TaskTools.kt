@@ -5,6 +5,8 @@ import app.hearth.core.data.board.BoardRepository
 import app.hearth.core.model.boardKind
 import app.hearth.core.model.stripBoardPrefix
 import app.hearth.core.model.Ease
+import app.hearth.core.model.title
+import app.hearth.core.model.Anchor
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
 import app.hearth.core.model.TaskKind
@@ -260,6 +262,41 @@ class RateHabitTool(private val repo: BacklogRepository) : Tool<RateHabitArgs, B
 
     companion object {
         const val NAME = "rate_habit"
+    }
+}
+
+// ---------- set_anchor ----------
+
+@Serializable
+data class SetAnchorArgs(
+    @Describe("Ids of routines.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of routines, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("MORNING, AFTERNOON (after school), DINNER (around dinner), EVENING or BEDTIME. Empty: whenever it fits.")
+    val anchor: Anchor? = null,
+)
+
+/** Hangs a routine on a moment of the day, so the morning and evening routines can be laid out in order. */
+class SetAnchorTool(private val repo: BacklogRepository) : Tool<SetAnchorArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description =
+        "Put a routine (habit, rhythm or chore) on a moment of the day: the morning routine, after school, around " +
+            "dinner, the evening or bedtime. Never a clock time."
+    override val argsSerializer = SetAnchorArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: SetAnchorArgs, ctx: ToolContext): BacklogItemsResult {
+        val found = repo.find(args.itemIds, args.texts).filter { it.isRoutine() }.ifEmpty { notFound(ctx) }
+        repo.setAnchor(found.map { it.id }, args.anchor)
+        val names = found.joinToString(", ") { "“${it.text}”" }
+        val summary = args.anchor?.let { ctx.t("$names hoort nu bij ${it.title(ctx.lang).lowercase()}.", "$names now belongs to ${it.title(ctx.lang).lowercase()}.") }
+            ?: ctx.t("$names past nu wanneer het uitkomt.", "$names now fits whenever it suits.")
+        return BacklogItemsResult(found.map { it.copy(anchor = args.anchor) }, summary)
+    }
+
+    companion object {
+        const val NAME = "set_anchor"
     }
 }
 

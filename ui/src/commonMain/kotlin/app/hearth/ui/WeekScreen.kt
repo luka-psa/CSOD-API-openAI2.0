@@ -1,5 +1,19 @@
 package app.hearth.ui
 
+import app.hearth.ui.resources.small_step_hint
+import app.hearth.ui.resources.small_step_title
+import app.hearth.ui.resources.small_step_add
+import app.hearth.ui.resources.small_step_line
+import app.hearth.ui.resources.anchor_none
+import app.hearth.ui.resources.rules_add_hint
+import app.hearth.ui.resources.rules_empty
+import app.hearth.ui.resources.rhythm_empty
+import app.hearth.ui.resources.rhythm_add_hint
+import app.hearth.ui.resources.home_add_hint
+import app.hearth.ui.resources.home_empty
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import app.hearth.core.model.Anchor
 import app.hearth.ui.resources.day_free
 import app.hearth.ui.resources.projects_empty
 import app.hearth.ui.resources.project_add_hint
@@ -182,6 +196,8 @@ class WeekCallbacks(
     val smallStep: (BacklogItem, String) -> Unit,
     val heard: (String) -> Unit,
     val addTo: (String, Section) -> Unit,
+    val addRule: (String) -> Unit,
+    val setAnchor: (BacklogItem, Anchor?) -> Unit,
     val prepareFinish: () -> Unit,
     val closeAgree: () -> Unit,
     val clearTranscript: () -> Unit,
@@ -387,25 +403,86 @@ private fun TopicDetail(
             AddRow(stringResource(Res.string.project_add_hint), { cb.addTo(it, Section.PROJECT) }, muted = true)
         }
         Topic.HOME -> {
-            val due = dueRoutines(backlog, today).filterNot { it.isHabit }
-            if (due.isNotEmpty()) {
-                GroupTitle(stringResource(Res.string.step_week_routines))
-                due.forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}, showSection = false) }
-                Spacer(Modifier.size(10.dp))
-            }
-            HabitsRating(backlog.filter { it.isHabit }, cb.rateHabit, cb.smallStep)
-            AttentionList(agenda?.needsAttention.orEmpty().filter { it.item.isRoutine() }.map { it.item to it.ease }, cb.lessOften, cb.makeEasier, cb.smallStep)
-            if (due.isEmpty() && backlog.none { it.isHabit }) Hint(stringResource(Res.string.step_week_calm))
+            val due = dueRoutines(backlog, today).filter { it.topic == Topic.HOME }
+            if (due.isEmpty()) Hint(stringResource(Res.string.home_empty))
+            due.forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}, showSection = false) }
+            AttentionList(agenda?.needsAttention.orEmpty().filter { it.item.topic == Topic.HOME }.map { it.item to it.ease }, cb.lessOften, cb.makeEasier, cb.smallStep)
+            Spacer(Modifier.size(10.dp))
+            AddRow(stringResource(Res.string.home_add_hint), { cb.addTo(it, Section.CHORE) }, muted = true)
+        }
+        Topic.RHYTHM -> {
+            RhythmBoard(backlog.filter { !it.done && it.topic == Topic.RHYTHM }, lang, cb)
+            AttentionList(agenda?.needsAttention.orEmpty().filter { it.item.topic == Topic.RHYTHM }.map { it.item to it.ease }, cb.lessOften, cb.makeEasier, cb.smallStep)
+            Spacer(Modifier.size(10.dp))
+            AddRow(stringResource(Res.string.rhythm_add_hint), { cb.addTo(it, Section.RHYTHM) }, muted = true)
         }
         Topic.SHOPPING -> ShoppingStep(shopping, cb)
         Topic.MENU -> {
             Days(meals, dishes, today, lang, cb)
             CardAction(stringResource(Res.string.week_recipes), cb.goMenu)
         }
-        Topic.BOARD -> {
-            RuleChecks(board.filter { it.kind == BoardKind.RULE && it.isOpen }, meeting.ruleChecks, cb.checkRule)
+        Topic.FRICTION -> BoardStep(board, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
+        Topic.RULES -> {
+            val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
+            if (rules.isEmpty()) Hint(stringResource(Res.string.rules_empty))
+            RuleChecks(rules, meeting.ruleChecks, cb.checkRule)
             Spacer(Modifier.size(10.dp))
-            BoardStep(board, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
+            AddRow(stringResource(Res.string.rules_add_hint), cb.addRule, muted = true)
+        }
+    }
+}
+
+/**
+ * Ritmes & routines, laid out per moment of the day in the order the day goes. Habits are rated (never
+ * ticked); a chore with a fixed moment can be logged for today. Each routine can move to another moment.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RhythmBoard(routines: List<BacklogItem>, lang: Lang, cb: WeekCallbacks) {
+    var asking by remember { mutableStateOf<BacklogItem?>(null) }
+    if (routines.isEmpty()) {
+        Hint(stringResource(Res.string.rhythm_empty))
+        return
+    }
+    (Anchor.entries.map { it as Anchor? } + null).forEach { moment ->
+        val mine = routines.filter { it.anchor == moment }
+        if (mine.isEmpty()) return@forEach
+        GroupTitle(moment?.title(lang) ?: stringResource(Res.string.anchor_none))
+        mine.forEach { item ->
+            Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(item.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    MomentMenu(item, lang) { cb.setAnchor(item, it) }
+                }
+                item.smallStep?.let { Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink) }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    if (item.isHabit) {
+                        Ease.entries.forEach { ease ->
+                            if (item.ease == ease) EasePill(ease) else ChoiceChip(stringResource(ease.label()), false, { cb.rateHabit(item, ease) })
+                        }
+                        if (item.ease != null && item.ease != Ease.EASY) TextButton(onClick = { asking = item }) { Text(stringResource(Res.string.small_step_add)) }
+                    } else {
+                        ChoiceChip(stringResource(Res.string.mark_done), false, { cb.complete(item) }, icon = HearthIcons.Check)
+                    }
+                }
+            }
+        }
+    }
+    asking?.let { h ->
+        TextDialog(stringResource(Res.string.small_step_title), stringResource(Res.string.small_step_hint), onDone = { t, _ -> cb.smallStep(h, t) }) { asking = null }
+    }
+}
+
+/** The moment chip: tap to move a routine to another moment of the day. */
+@Composable
+private fun MomentMenu(item: BacklogItem, lang: Lang, onPick: (Anchor?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        ChoiceChip(item.anchor?.title(lang) ?: stringResource(Res.string.anchor_none), false, { open = true }, icon = HearthIcons.Repeat)
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            (Anchor.entries.map { it as Anchor? } + null).forEach { a ->
+                DropdownMenuItem(text = { Text(a?.title(lang) ?: stringResource(Res.string.anchor_none)) }, onClick = { open = false; onPick(a) })
+            }
         }
     }
 }

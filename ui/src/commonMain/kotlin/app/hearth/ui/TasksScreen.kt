@@ -1,5 +1,7 @@
 package app.hearth.ui
 
+import app.hearth.core.model.title
+import app.hearth.core.model.Anchor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -189,9 +191,12 @@ private fun LazyListScope.routineList(routines: List<BacklogItem>, today: LocalD
         item { EmptyHint0(Res.string.empty_routines) }
         return
     }
-    // Habits first, in their own group: rated together, never ticked off.
-    group(Res.string.group_habits, routines.filter { it.isHabit }, today, lang, cb, habits)
-    val ticked = routines.filterNot { it.isHabit }
+    // Laid out per moment of the day, in the order the day goes: the morning routine first.
+    Anchor.entries.forEach { a -> group(a.title(lang), routines.filter { it.anchor == a }, today, lang, cb, habits) }
+    val loose = routines.filter { it.anchor == null }
+    // Habits without a moment, in their own group: rated together, never ticked off.
+    group(Res.string.group_habits, loose.filter { it.isHabit }, today, lang, cb, habits)
+    val ticked = loose.filterNot { it.isHabit }
     val due = ticked.filter { it.intervalDays != null && it.routineState(today).let { s -> s == RoutineState.DUE || s == RoutineState.NEW } }
     val noRhythm = ticked.filter { it.intervalDays == null }
     val onTrack = ticked - due.toSet() - noRhythm.toSet()
@@ -288,6 +293,19 @@ private fun ProjectBlock(project: BacklogItem, steps: List<BacklogItem>, today: 
 // ---------- shared ----------
 
 private fun LazyListScope.group(
+    title: String,
+    items: List<BacklogItem>,
+    today: LocalDate,
+    lang: Lang,
+    cb: TaskCallbacks,
+    habits: Map<String, Ease> = emptyMap(),
+) {
+    if (items.isEmpty()) return
+    item(key = "h-$title") { GroupTitle(title) }
+    items(items, key = { it.id }) { item -> PlanRow(item, today, lang, cb, Modifier.animateItem(), habits[item.id]) }
+}
+
+private fun LazyListScope.group(
     title: org.jetbrains.compose.resources.StringResource,
     items: List<BacklogItem>,
     today: LocalDate,
@@ -304,9 +322,14 @@ private fun LazyListScope.group(
 @Composable
 private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCallbacks, modifier: Modifier, given: Ease? = null) {
     val ease = given ?: LocalEase.current[item.id]
-    BacklogRow(item, today, lang, onDone = { cb.complete(item) }, onOpen = { cb.open(item) }, modifier = modifier, showSection = !item.isRoutine(), onDelete = { cb.delete(item) }) {
+    val narrow = LocalNarrow.current
+    BacklogRow(
+        item, today, lang, onDone = { cb.complete(item) }, onOpen = { cb.open(item) }, modifier = modifier, showSection = !item.isRoutine(), onDelete = { cb.delete(item) },
+        // On a phone the habit's chip goes under its name, so the name keeps its room.
+        below = if (narrow && item.isHabit) ({ EaseMenu(item, cb) }) else null,
+    ) {
         // Atomic Habits: green runs easily, amber takes effort, orange is too much (make it smaller). Never red.
-        if (item.isHabit) {
+        if (item.isHabit && !narrow) {
             EaseMenu(item, cb)
             Spacer(Modifier.width(6.dp))
         } else if (ease != null && ease != Ease.EASY) {

@@ -13,6 +13,7 @@ import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Ease
+import app.hearth.core.model.Anchor
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
 import app.hearth.core.model.newId
@@ -44,10 +45,11 @@ data class BacklogEntity(
     @ColumnInfo(defaultValue = "0") val postponed: Int = 0,
     @ColumnInfo(defaultValue = "NULL") val ease: Ease? = null,
     @ColumnInfo(defaultValue = "NULL") val smallStep: String? = null,
+    @ColumnInfo(defaultValue = "NULL") val anchor: Anchor? = null,
 ) {
     fun toModel() = BacklogItem(
         id, text, section, plan, plannedDate, finishBy, done, createdAt, addedById,
-        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep,
+        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep, anchor,
     )
 }
 
@@ -94,6 +96,9 @@ interface BacklogDao {
 
     @Query("UPDATE backlog_item SET ease = :ease, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setEase(ids: List<String>, ease: Ease?, now: Long)
+
+    @Query("UPDATE backlog_item SET anchor = :anchor, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setAnchor(ids: List<String>, anchor: Anchor?, now: Long)
 
     @Query("UPDATE backlog_item SET smallStep = :step, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setSmallStep(ids: List<String>, step: String?, now: Long)
@@ -177,6 +182,7 @@ class BacklogRepository(
         urgent: Boolean = false,
         intervalDays: Int? = null,
         parentId: String? = null,
+        anchor: Anchor? = null,
     ): Pair<BacklogItem, Boolean> =
         db.withWriteTransaction {
             val key = normalizeName(text)
@@ -184,7 +190,7 @@ class BacklogRepository(
             val now = clock()
             val entity = BacklogEntity(
                 newId(), text.trim(), key, section, plan, date, finishBy, false, null, addedById, now, now,
-                urgent = urgent, intervalDays = intervalDays, parentId = parentId,
+                urgent = urgent, intervalDays = intervalDays, parentId = parentId, anchor = anchor,
             )
             dao.insert(entity)
             entity.toModel() to true
@@ -203,6 +209,10 @@ class BacklogRepository(
             dao.plan(ids, plan, date, finishBy, now)
             if (pushed.isNotEmpty()) dao.addPostponed(pushed.map { it.id }, now)
         }
+    }
+
+    suspend fun setAnchor(ids: List<String>, anchor: Anchor?) {
+        if (ids.isNotEmpty()) dao.setAnchor(ids, anchor, clock())
     }
 
     suspend fun setEase(ids: List<String>, ease: Ease?) {

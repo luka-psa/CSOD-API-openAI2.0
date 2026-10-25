@@ -1,5 +1,7 @@
 package app.hearth.ui
 
+import app.hearth.core.tools.backlog.SetAnchorArgs
+import app.hearth.core.model.Anchor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.hearth.ai.ChatReply
@@ -425,6 +427,11 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         app.tools.registry.run(app.tools.waitForReply, WaitForReplyArgs(itemIds = listOf(item.id), followUp = followUp?.toString(), waiting = waiting), it)
     }
 
+    /** Hangs a routine on a moment of the day (null: whenever it fits). */
+    fun setAnchor(item: BacklogItem, anchor: Anchor?) = tool {
+        app.tools.registry.run(app.tools.setAnchor, SetAnchorArgs(itemIds = listOf(item.id), anchor = anchor), it)
+    }
+
     fun move(item: BacklogItem, section: Section) = tool {
         app.tools.registry.run(app.tools.moveBacklogItem, MoveBacklogArgs(itemIds = listOf(item.id), section = section), it)
     }
@@ -436,7 +443,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
             val hint = TaskWords.extract(text)
             app.tools.registry.run(
                 app.tools.addToBacklog,
-                AddToBacklogArgs(hint.text, section, urgent = hint.urgent, intervalDays = hint.intervalDays),
+                AddToBacklogArgs(hint.text, section, urgent = hint.urgent, intervalDays = hint.intervalDays, anchor = hint.anchor),
                 it,
             )
         }
@@ -563,12 +570,13 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         val place = MeetingWords.place(sentence, today())
         val section = KeywordRouter.section(sentence)
         val topic = when (place) {
-            Place.PLANNING -> section.topic()
+            Place.PLANNING -> if (TaskWords.extract(sentence).anchor != null) Topic.RHYTHM else section.topic()
             Place.EVENT -> if (section == Section.APPOINTMENT || section == Section.ADMIN) Topic.ADMIN else Topic.FREE_TIME
             Place.FREE_TIME -> Topic.FREE_TIME
             Place.SHOPPING -> Topic.SHOPPING
             Place.MEAL -> Topic.MENU
-            Place.HOUSE_RULE, Place.FRICTION, Place.IDEA, Place.GOAL -> Topic.BOARD
+            Place.HOUSE_RULE -> Topic.RULES
+            Place.FRICTION, Place.IDEA, Place.GOAL -> Topic.FRICTION
             Place.WIN, Place.NONE -> null
         }
         return HeardLine(sentence, place, topic)

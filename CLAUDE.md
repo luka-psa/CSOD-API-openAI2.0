@@ -104,7 +104,10 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   het?"): *Ease* EASY "loopt vanzelf" (green) / EFFORT "vraagt moeite" (amber) /
   HARD "te zwaar" (orange, never red) with an optional *small step* ("Begin klein").
   A chore's ease comes from the `routine_log`; a task's from how often it was
-  *postponed* (2× amber, 4× orange)),
+  *postponed* (2× amber, 4× orange). A routine can hang on an *Anchor*, a moment of the
+  day (ochtend, na school, rond het eten, avond, slapengaan; never a clock time): the
+  morning and evening routines are laid out per moment; a chore with a moment belongs
+  to the rhythm, one without to the household),
   *Admin* (ADMIN/APPOINTMENT: *urgent*, deadline, *waiting for a reply* with a
   follow-up day), *Projecten* (PROJECT: *steps* via `parentId`, a day or "dit
   weekend"), *Te sorteren* (everything else).
@@ -125,11 +128,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
 - **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Admin & afspraken* (appointments), *Grote taken*,
-  *Huishouden & gewoontes*, *Boodschappen*, *Weekmenu*, *Frictie & huisregels*): each a calm tile with a *glance*,
+  *Huishouden* (chores without a moment), *Ritmes & routines* (laid out per moment of the day), *Boodschappen*,
+  *Weekmenu*, *Frictie & ideeën*, *Huisregels*): each a calm tile with a *glance*,
   tap to open its list. Terugblik (*Wat ging goed* = wins; two household
   *meters*, *Hoe liep het* (FLOW) and *Wat schuurde* (STRAIN), suggested by Hearth and
   agreed together, *Geen akkoord* = neutral; never per person, can be switched off),
-  *Hoe liepen de huisregels?* (Liep goed / Liep nog niet, never who) under Frictie & huisregels,
+  *Hoe liepen de huisregels?* (Liep goed / Liep nog niet, never who) under Huisregels,
   Deze week (7 days, plans with their colour, the meal small underneath),
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
   *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each sentence

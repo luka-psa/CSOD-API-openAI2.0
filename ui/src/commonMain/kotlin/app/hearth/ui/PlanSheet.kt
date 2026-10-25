@@ -1,5 +1,9 @@
 package app.hearth.ui
 
+import app.hearth.ui.resources.anchor_none
+import app.hearth.ui.resources.moment_title
+import app.hearth.core.model.title
+import app.hearth.core.model.Anchor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -88,6 +92,7 @@ class PlanActions(
     val urgent: (Boolean) -> Unit,
     val waiting: (LocalDate?, Boolean) -> Unit,
     val move: (Section) -> Unit,
+    val anchor: (Anchor?) -> Unit = {},
 )
 
 private val INTERVALS = listOf(1, 7, 14, 30, 90, null)
@@ -151,6 +156,12 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
 
             when (kind) {
                 TaskKind.ROUTINE -> {
+                    // The moment of the day it belongs to: the morning routine, around dinner, bedtime.
+                    Text(stringResource(Res.string.moment_title), style = MaterialTheme.typography.titleMedium)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Anchor.entries.forEach { a -> ChoiceChip(a.title(lang), item.anchor == a, { close { actions.anchor(a) } }) }
+                        ChoiceChip(stringResource(Res.string.anchor_none), item.anchor == null, { close { actions.anchor(null) } })
+                    }
                     Text(stringResource(Res.string.how_often), style = MaterialTheme.typography.titleMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         INTERVALS.forEach { days ->

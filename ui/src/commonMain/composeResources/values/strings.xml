@@ -425,4 +425,10 @@
     <string name="project_add_hint">Big task, e.g. clear the attic</string>
     <string name="projects_empty">No running projects.</string>
     <string name="day_free">free</string>
+    <string name="moment_title">When in the day?</string>
+    <string name="anchor_none">Whenever it fits</string>
+    <string name="rhythm_empty">No rhythm yet. Say e.g. “get the bags ready in the evening”.</string>
+    <string name="rhythm_add_hint">Routine, e.g. bags ready in the evening</string>
+    <string name="home_empty">Nothing due. Nice.</string>
+    <string name="home_add_hint">Household task, e.g. sheets every 2 weeks</string>
 </resources>

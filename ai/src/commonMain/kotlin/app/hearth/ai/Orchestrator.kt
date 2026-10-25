@@ -280,14 +280,16 @@ class Orchestrator(
         val hint = TimeWords.extractAnywhere(task.text, ctx.today)
         val said = hint?.text ?: task.text
         var chosen = if (section == Section.OTHER) KeywordRouter.section(said) else section
-        val body = KeywordRouter.withoutPrefix(said)
+        val body = KeywordRouter.withoutPrefix(said).let { if (task.anchor != null) it.replaceFirstChar { c -> c.uppercase() } else it }
         if (chosen.boardKind != null || chosen == Section.SHOPPING || chosen == Section.STOCK) chosen = Section.OTHER
+        // A moment of the day makes it part of a rhythm ("'s avonds de tassen klaarzetten").
+        if (task.anchor != null && chosen.kind != TaskKind.ROUTINE) chosen = Section.RHYTHM
         if (task.intervalDays != null && chosen.kind != TaskKind.ROUTINE) chosen = Section.CHORE
         if (task.urgent && chosen == Section.OTHER) chosen = Section.ADMIN
         val args = AddToBacklogArgs(
             if (fromTalk) body.replaceFirstChar { it.uppercase() } else body, chosen,
             hint?.whenValue ?: When.UNPLANNED, hint?.date?.toString(), hint?.finishBy ?: false,
-            urgent = task.urgent, intervalDays = task.intervalDays,
+            urgent = task.urgent, intervalDays = task.intervalDays, anchor = task.anchor,
         )
         return ToolCall.of(AddToBacklogTool.NAME, AddToBacklogArgs.serializer(), args) to args
     }

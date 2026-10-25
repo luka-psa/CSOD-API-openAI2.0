@@ -205,6 +205,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 smallStep = { i, t -> viewModel.setSmallStep(i, t) },
                                 heard = viewModel::heard,
                                 addTo = { t, section -> viewModel.addTask(t, section) },
+                                addRule = viewModel::addRule,
+                                setAnchor = { i, a -> viewModel.setAnchor(i, a) },
                                 prepareFinish = viewModel::prepareFinish,
                                 closeAgree = viewModel::closeAgree,
                                 clearTranscript = viewModel::clearTranscript,
@@ -326,6 +328,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                 urgent = { viewModel.setUrgent(item, it) },
                 waiting = { d, waiting -> viewModel.waitForReply(item, d, waiting) },
                 move = { viewModel.move(item, it) },
+                anchor = { viewModel.setAnchor(item, it) },
             ),
             onDismiss = { planning = null },
         )

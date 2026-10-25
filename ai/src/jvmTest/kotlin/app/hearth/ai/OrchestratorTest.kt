@@ -153,7 +153,18 @@ class OrchestratorTest {
         offline.handle("gewoonte: na het eten de tafel afruimen", nl)
         val item = inbox.openItems().single()
         assertEquals(Section.HABIT, item.section)
-        assertEquals("na het eten de tafel afruimen", item.text)
+        assertEquals("De tafel afruimen", item.text)
+        assertEquals(app.hearth.core.model.Anchor.DINNER, item.anchor)
+    }
+
+    @Test
+    fun `a moment of the day makes it part of a rhythm`() = runTest {
+        offline.handle("’s avonds de tassen klaarzetten", nl)
+        val item = inbox.openItems().single()
+        assertEquals(Section.RHYTHM, item.section)
+        assertEquals(app.hearth.core.model.Anchor.EVENING, item.anchor)
+        assertEquals("De tassen klaarzetten", item.text)
+        assertEquals(1, item.intervalDays)
     }
 
     @Test

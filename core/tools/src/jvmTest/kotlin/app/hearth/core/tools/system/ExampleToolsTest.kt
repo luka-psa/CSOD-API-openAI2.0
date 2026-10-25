@@ -42,9 +42,11 @@ class ExampleToolsTest {
 
         val open = backlog.openItems()
         val sections = open.map { it.section }.toSet()
-        listOf(Section.CHORE, Section.HABIT, Section.ADMIN, Section.APPOINTMENT, Section.PROJECT, Section.PROTECTED_TIME, Section.OTHER)
+        listOf(Section.CHORE, Section.HABIT, Section.RHYTHM, Section.ADMIN, Section.APPOINTMENT, Section.PROJECT, Section.PROTECTED_TIME, Section.OTHER)
             .forEach { assertTrue(it in sections, "$it missing") }
-        val hard = open.single { it.text == "Elke avond de tassen klaarzetten" }
+        val hard = open.single { it.text == "De tassen klaarzetten" }
+        assertEquals(app.hearth.core.model.Anchor.EVENING, hard.anchor)
+        assertEquals(Section.CHORE, open.single { it.text == "Afwassen" }.section)
         assertEquals(Ease.HARD, hard.ease)
         assertEquals("Alleen de boekentassen bij de deur", hard.smallStep)
         assertEquals(2, open.single { it.text == "Fiets herstellen" }.postponed)

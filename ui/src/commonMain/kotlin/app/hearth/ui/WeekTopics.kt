@@ -85,9 +85,11 @@ fun Topic.style(): SectionStyle = when (this) {
     Topic.ADMIN -> Section.ADMIN
     Topic.PROJECTS -> Section.PROJECT
     Topic.HOME -> Section.CHORE
+    Topic.RHYTHM -> Section.RHYTHM
     Topic.SHOPPING -> Section.SHOPPING
-    Topic.MENU -> Section.RHYTHM
-    Topic.BOARD -> Section.FRICTION
+    Topic.MENU -> Section.APPOINTMENT
+    Topic.FRICTION -> Section.FRICTION
+    Topic.RULES -> Section.NOTE
 }.style()
 
 fun Topic.icon() = when (this) {
@@ -95,9 +97,11 @@ fun Topic.icon() = when (this) {
     Topic.ADMIN -> HearthIcons.Flag
     Topic.PROJECTS -> HearthIcons.Backlog
     Topic.HOME -> HearthIcons.Home
+    Topic.RHYTHM -> HearthIcons.Repeat
     Topic.SHOPPING -> HearthIcons.Cart
     Topic.MENU -> HearthIcons.Restaurant
-    Topic.BOARD -> HearthIcons.Bolt
+    Topic.FRICTION -> HearthIcons.Bolt
+    Topic.RULES -> HearthIcons.Rule
 }
 
 /**

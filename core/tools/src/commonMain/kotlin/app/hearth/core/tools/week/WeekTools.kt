@@ -24,6 +24,8 @@ import app.hearth.core.model.dayLabel
 import app.hearth.core.model.deadlinesThisWeek
 import app.hearth.core.model.dueRoutines
 import app.hearth.core.model.Topic
+import app.hearth.core.model.isRoutine
+import app.hearth.core.model.topic
 import app.hearth.core.model.WeekLook
 import app.hearth.core.model.glance
 import app.hearth.core.model.title
@@ -215,7 +217,7 @@ class WeekoverlegAgendaTool(
     override val name = NAME
     override val description =
         "The agenda for the weekly meeting (weekoverleg): what got done since last time and what went well, then " +
-            "the household by topic (free time, admin & appointments, big tasks, home & habits, shopping, week menu, frictions & house rules), the two " +
+            "the household by topic (free time, admin & appointments, big tasks, household, rhythms & routines by moment of the day, shopping, week menu, frictions & ideas, house rules), the two " +
             "household meters, and the conversation Luister mee heard (sort it into the right tools)."
     override val argsSerializer = AgendaArgs.serializer()
     override val resultSerializer = WeekAgenda.serializer()
@@ -252,13 +254,17 @@ class WeekoverlegAgendaTool(
             topics.forEach { t ->
                 val extra = when (t.topic) {
                     Topic.ADMIN -> deadlines.takeIf { it.isNotEmpty() }?.let { ctx.t(" (klaar tegen: ", " (finish by: ") + it.joinToString(", ") { d -> d.text } + ")" }
-                    Topic.HOME -> listOfNotNull(
-                        routines.filterNot { it.isHabit }.takeIf { it.isNotEmpty() }?.let { ctx.t("aan de beurt: ", "due: ") + it.joinToString(", ") { r -> r.text } },
-                        habits.takeIf { it.isNotEmpty() }?.let { ctx.t("gewoontes (hoe zwaar, samen zeggen): ", "habits (how hard, say together): ") + it.joinToString(", ") { h -> h.text + (h.ease?.let { e -> " – " + easeWord(e, ctx) } ?: "") } },
-                        attention.takeIf { it.isNotEmpty() }?.let { ctx.t("vraagt aandacht: ", "asks for attention: ") + it.joinToString(", ") { a -> attentionText(a.item, a.ease, ctx) } },
+                    Topic.HOME -> routines.filter { it.topic == Topic.HOME }.takeIf { it.isNotEmpty() }?.let { ctx.t(" (aan de beurt: ", " (due: ") + it.joinToString(", ") { r -> r.text } + ")" }
+                    Topic.RHYTHM -> listOfNotNull(
+                        open.filter { it.topic == Topic.RHYTHM && !it.isStep }.takeIf { it.isNotEmpty() }?.let { list ->
+                            list.groupBy { it.anchor }.entries.sortedBy { it.key?.ordinal ?: Int.MAX_VALUE }.joinToString("; ") { (a, items) ->
+                                (a?.title(ctx.lang) ?: ctx.t("Wanneer het past", "Whenever it fits")) + ": " + items.joinToString(", ") { h -> h.text + (h.ease?.let { e -> " – " + easeWord(e, ctx) } ?: "") }
+                            }
+                        },
+                        attention.filter { it.item.isRoutine() }.takeIf { it.isNotEmpty() }?.let { ctx.t("vraagt aandacht: ", "asks for attention: ") + it.joinToString(", ") { a -> attentionText(a.item, a.ease, ctx) } },
                     ).takeIf { it.isNotEmpty() }?.joinToString("; ", " (", ")")
                     Topic.MENU -> meals.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { m -> m.dish } + ")" }
-                    Topic.BOARD -> frictions.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { f -> f.text } + ")" }
+                    Topic.FRICTION -> frictions.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { f -> f.text } + ")" }
                     else -> null
                 }
                 add("${t.title}: ${t.glance}${extra.orEmpty()}.")

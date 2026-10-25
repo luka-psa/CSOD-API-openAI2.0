@@ -418,4 +418,10 @@
     <string name="project_add_hint">Grote taak, bv. zolder opruimen</string>
     <string name="projects_empty">Geen lopende projecten.</string>
     <string name="day_free">vrij</string>
+    <string name="moment_title">Wanneer op de dag?</string>
+    <string name="anchor_none">Wanneer het past</string>
+    <string name="rhythm_empty">Nog geen ritme. Zeg bv. “’s avonds de tassen klaarzetten”.</string>
+    <string name="rhythm_add_hint">Routine, bv. ’s avonds tassen klaarzetten</string>
+    <string name="home_empty">Niets aan de beurt. Fijn.</string>
+    <string name="home_add_hint">Huishoudtaak, bv. lakens om de 2 weken</string>
 </resources>

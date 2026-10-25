@@ -15,17 +15,18 @@ data class Huddle(val id: String, val heldOn: String, val createdAt: Long, val s
  * The weekoverleg's topics: one tile each, so the whole household fits on one screen and nobody has to
  * hold it in their head. Luister mee lights up the tile a sentence lands in.
  */
-enum class Topic { FREE_TIME, ADMIN, PROJECTS, HOME, SHOPPING, MENU, BOARD }
+enum class Topic { FREE_TIME, ADMIN, PROJECTS, HOME, RHYTHM, SHOPPING, MENU, FRICTION, RULES }
 
 fun Topic.title(lang: Lang): String = when (this) {
     Topic.FREE_TIME -> if (lang == Lang.NL) "Vrije tijd" else "Free time"
     Topic.ADMIN -> if (lang == Lang.NL) "Admin & afspraken" else "Admin & appointments"
     Topic.PROJECTS -> if (lang == Lang.NL) "Grote taken" else "Big tasks"
-    Topic.HOME -> if (lang == Lang.NL) "Huishouden & gewoontes" else "Home & habits"
+    Topic.HOME -> if (lang == Lang.NL) "Huishouden" else "Household"
+    Topic.RHYTHM -> if (lang == Lang.NL) "Ritmes & routines" else "Rhythms & routines"
     Topic.SHOPPING -> if (lang == Lang.NL) "Boodschappen" else "Shopping"
     Topic.MENU -> if (lang == Lang.NL) "Weekmenu" else "Week menu"
-    // The Werkbord: what rubs, and the house rules that make it easier.
-    Topic.BOARD -> if (lang == Lang.NL) "Frictie & huisregels" else "Frictions & house rules"
+    Topic.FRICTION -> if (lang == Lang.NL) "Frictie & ideeën" else "Frictions & ideas"
+    Topic.RULES -> if (lang == Lang.NL) "Huisregels" else "House rules"
 }
 
 /** Where a section belongs in the weekoverleg; null for what still has to be sorted. */
@@ -33,13 +34,20 @@ fun Section.topic(): Topic? = when (this) {
     Section.PROTECTED_TIME -> Topic.FREE_TIME
     Section.ADMIN, Section.APPOINTMENT -> Topic.ADMIN
     Section.PROJECT -> Topic.PROJECTS
-    Section.CHORE, Section.RHYTHM, Section.HABIT -> Topic.HOME
+    Section.CHORE -> Topic.HOME
+    Section.RHYTHM, Section.HABIT -> Topic.RHYTHM
     Section.SHOPPING, Section.STOCK -> Topic.SHOPPING
-    Section.NOTE, Section.FRICTION, Section.GOAL, Section.IDEA -> Topic.BOARD
+    Section.NOTE -> Topic.RULES
+    Section.FRICTION, Section.GOAL, Section.IDEA -> Topic.FRICTION
     Section.OTHER -> null
 }
 
-val BacklogItem.topic: Topic? get() = if (isStep) Topic.PROJECTS else section.topic()
+/** A chore with a fixed moment ("na het eten afwassen") belongs to the rhythm of the day, not to the household list. */
+val BacklogItem.topic: Topic? get() = when {
+    isStep -> Topic.PROJECTS
+    section == Section.CHORE && anchor != null -> Topic.RHYTHM
+    else -> section.topic()
+}
 
 /** Everything a topic tile looks at. */
 class WeekLook(
@@ -81,11 +89,22 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
             )
         }
         Topic.HOME -> {
-            val due = dueRoutines(open, look.today).filterNot { it.isHabit }
-            val hard = open.count { it.isHabit && it.ease == Ease.HARD }
-            if (due.isEmpty() && hard == 0) listOf(if (nl) "Loopt rustig" else "Running calmly")
+            val due = dueRoutines(open, look.today).filter { it.topic == Topic.HOME }
+            val chores = open.count { it.topic == Topic.HOME }
+            when {
+                chores == 0 -> listOf(if (nl) "Nog geen huishoudtaken" else "No household tasks yet")
+                due.isEmpty() -> listOf(if (nl) "Loopt rustig" else "Running calmly")
+                else -> listOf(if (nl) "${due.size} aan de beurt" else "${due.size} due")
+            }
+        }
+        Topic.RHYTHM -> {
+            val routines = open.filter { it.topic == Topic.RHYTHM && !it.isStep }
+            val hard = routines.count { it.ease == Ease.HARD }
+            val moments = routines.mapNotNull { it.anchor }.distinct().size
+            if (routines.isEmpty()) listOf(if (nl) "Nog geen ritme" else "No rhythm yet")
             else listOfNotNull(
-                due.size.takeIf { it > 0 }?.let { if (nl) "$it aan de beurt" else "$it due" },
+                count(routines.size, "routine", "routines"),
+                moments.takeIf { it > 1 }?.let { if (nl) "over $it momenten" else "across $it moments" },
                 hard.takeIf { it > 0 }?.let { if (nl) "$it te zwaar" else "$it too hard" },
             )
         }
@@ -97,14 +116,13 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
             if (look.mealsPlanned == 0) (if (nl) "Nog niets gepland" else "Nothing planned yet")
             else if (nl) "${look.mealsPlanned} van 7 avonden" else "${look.mealsPlanned} of 7 evenings",
         )
-        Topic.BOARD -> {
-            val rules = look.board.count { it.kind == BoardKind.RULE && it.isOpen }
+        Topic.FRICTION -> {
             val points = look.board.count { it.isWorkingPoint && it.isOpen }
-            if (rules == 0 && points == 0) listOf(if (nl) "Nog geen huisregels" else "No house rules yet")
-            else listOfNotNull(
-                rules.takeIf { it > 0 }?.let { if (nl) count(it, "huisregel", "huisregels") else count(it, "house rule", "house rules") },
-                points.takeIf { it > 0 }?.let { if (nl) "$it te bespreken" else "$it to talk through" },
-            )
+            listOf(if (points == 0) (if (nl) "Niets dat schuurt" else "Nothing rubbing") else if (nl) "$points te bespreken" else "$points to talk through")
+        }
+        Topic.RULES -> {
+            val rules = look.board.count { it.kind == BoardKind.RULE && it.isOpen }
+            listOf(if (rules == 0) (if (nl) "Nog geen huisregels" else "No house rules yet") else if (nl) count(rules, "huisregel", "huisregels") else count(rules, "house rule", "house rules"))
         }
     }
     return parts.joinToString(" · ")

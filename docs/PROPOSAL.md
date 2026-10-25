@@ -109,7 +109,8 @@ transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the su
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `set_week_meter` (FLOW / STRAIN, agreed together for the household; empty = no
 agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (worked / not yet, never who), `rate_habit` (EASY / EFFORT / HARD),
-`set_small_step` (a habit's smallest first step),
+`set_small_step` (a habit's smallest first step), `set_anchor` (a routine's moment of the day: MORNING, AFTERNOON,
+DINNER, EVENING, BEDTIME; `add_to_backlog` takes it too),
 `list_huddles`
 (summaries), `add_transcript_line` / `mark_transcript_sorted` (tablet), `clear_transcript` ⚠ (tablet),
 `add_idea` (Werkbord; decided with `resolve_friction` like a friction). · Recipes:
@@ -198,7 +199,7 @@ adds `reflection` (WIN with text / FEELING with value 1–5, memberId, huddleId 
 deleted when the next meeting ends; summaries stay. v11 adds `routine_log` (habit id, day) and
 `reflection.suggested`; meters are FLOW / STRAIN rows, house-rule checks RULE_CHECK rows (v0.6's per-person FEELING
 rows are no longer used). v12 adds `backlog_item.postponed` (moved to a later day, Later or To plan), `ease`
-(the family's rating of a habit) and `smallStep`. Auto-migrations v1→v12 keep every household's data.
+(the family's rating of a habit) and `smallStep`. v13 adds `backlog_item.anchor` (a routine's moment of the day). Auto-migrations v1→v13 keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
@@ -264,7 +265,7 @@ ingredients fill in from the story (`RecipeWords`) and stay editable. Capture ba
 bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 
 **Weekoverleg** (v0.10): one page built around the household's *topics* (`Topic` in `core/model/Week.kt`):
-*Vrije tijd*, *Admin & afspraken*, *Grote taken*, *Huishouden & gewoontes*, *Boodschappen*, *Weekmenu*, *Frictie & huisregels*. On top
+*Vrije tijd*, *Admin & afspraken*, *Grote taken*, *Huishouden*, *Ritmes & routines*, *Boodschappen*, *Weekmenu*, *Frictie & ideeën*, *Huisregels*. On top
 the **Luister mee** stage: a big mic with breathing rings and moving bars while it listens, the words as they come
 in, the seven topics as a row of dots (the one the last sentence went to glows), and the last sentences each with
 its topic chip. Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
@@ -385,7 +386,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    Vooruitblik, dates further ahead. v0.8: two household meters agreed together, house-rule check, habit health.
    v0.9: habits rated (Ease colours, small step) instead of ticked; tasks coloured by postponement.
    v0.10: the meeting by topic (tiles), a visible Luister mee that lights up the topic, Samen akkoord? before
-   Klaar, Oudjes removed, phone layout fixes.
+   Klaar, Oudjes removed, phone layout fixes. v0.11: moments of the day (*Anchor*): Ritmes & routines laid out
+   per moment (capture bar: "’s avonds de tassen klaarzetten", "na het eten afwassen", "voor het slapen
+   voorlezen"), apart from Huishouden; Frictie & ideeën and Huisregels as separate tiles.
 7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
    icon on Vandaag): add `<relay>/mcp` once in ChatGPT/Claude and type the tablet's pairing code.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a

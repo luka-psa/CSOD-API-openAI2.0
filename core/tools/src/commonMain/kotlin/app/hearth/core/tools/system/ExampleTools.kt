@@ -2,6 +2,7 @@ package app.hearth.core.tools.system
 
 import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.model.Ease
+import app.hearth.core.model.Anchor
 import app.hearth.core.model.GoalScope
 import app.hearth.core.model.Section
 import app.hearth.core.model.StockState
@@ -61,8 +62,12 @@ class LoadExamplesTool(
         // Ritme & gewoontes: chores come back; habits are rated, never ticked off.
         task(e.chores[0], Section.CHORE, interval = 14)
         task(e.chores[1], Section.CHORE, interval = 4)
-        task(e.habits[0], Section.HABIT, interval = 1)
-        task(e.habits[1], Section.HABIT, interval = 1)
+        // Ritmes & routines: laid out per moment of the day (the morning routine, around dinner, the evening).
+        step { tools.addToBacklog.run(AddToBacklogArgs(e.morning, Section.HABIT, anchor = Anchor.MORNING), ctx) }
+        step { tools.addToBacklog.run(AddToBacklogArgs(e.habits[0], Section.HABIT, anchor = Anchor.DINNER), ctx) }
+        step { tools.addToBacklog.run(AddToBacklogArgs(e.dishes, Section.CHORE, anchor = Anchor.DINNER), ctx) }
+        step { tools.addToBacklog.run(AddToBacklogArgs(e.habits[1], Section.HABIT, anchor = Anchor.EVENING), ctx) }
+        step { tools.addToBacklog.run(AddToBacklogArgs(e.bedtime, Section.RHYTHM, anchor = Anchor.BEDTIME), ctx) }
         step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[0]), ease = Ease.EASY), ctx) }
         step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[1]), ease = Ease.HARD), ctx) }
         step { tools.setSmallStep.run(SmallStepArgs(texts = listOf(e.habits[1]), step = e.smallStep), ctx) }
@@ -113,6 +118,9 @@ class LoadExamplesTool(
         val members: List<String>,
         val chores: List<String>,
         val habits: List<String>,
+        val morning: String,
+        val dishes: String,
+        val bedtime: String,
         val smallStep: String,
         val admin: List<String>,
         val appointment: String,
@@ -145,7 +153,10 @@ class LoadExamplesTool(
         private val NL = Examples(
             members = listOf("Sam", "Noor"),
             chores = listOf("Lakens verversen", "Planten water geven"),
-            habits = listOf("Na het eten de tafel afruimen", "Elke avond de tassen klaarzetten"),
+            habits = listOf("De tafel afruimen", "De tassen klaarzetten"),
+            morning = "Bedden opmaken",
+            dishes = "Afwassen",
+            bedtime = "Voorlezen",
             smallStep = "Alleen de boekentassen bij de deur",
             admin = listOf("Belastingaangifte invullen", "Verzekering bellen over de fiets"),
             appointment = "Tandarts voor Mia",
@@ -176,7 +187,10 @@ class LoadExamplesTool(
         private val EN = Examples(
             members = listOf("Sam", "Noor"),
             chores = listOf("Change the sheets", "Water the plants"),
-            habits = listOf("Clear the table after dinner", "Get the bags ready in the evening"),
+            habits = listOf("Clear the table", "Get the bags ready"),
+            morning = "Make the beds",
+            dishes = "Do the dishes",
+            bedtime = "Read a story",
             smallStep = "Just the school bags by the door",
             admin = listOf("Do the tax return", "Call the insurance about the bike"),
             appointment = "Dentist for Mia",
