@@ -47,6 +47,8 @@ class ExampleToolsTest {
         val hard = open.single { it.text == "De tassen klaarzetten" }
         assertEquals(app.hearth.core.model.Anchor.EVENING, hard.anchor)
         assertEquals(Section.CHORE, open.single { it.text == "Afwassen" }.section)
+        val evening = open.single { it.text == "Avondroutine" }
+        assertEquals(listOf("Boodschappen halen", "Mia ophalen bij de opvang", "Koken", "Pyjama aan"), open.filter { it.parentId == evening.id }.map { it.text })
         assertEquals(Ease.HARD, hard.ease)
         assertEquals("Alleen de boekentassen bij de deur", hard.smallStep)
         assertEquals(2, open.single { it.text == "Fiets herstellen" }.postponed)

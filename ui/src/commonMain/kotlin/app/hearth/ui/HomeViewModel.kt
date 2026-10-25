@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.tools.backlog.AddRoutineArgs
 import app.hearth.core.tools.system.SetLanguageArgs
 import app.hearth.core.tools.backlog.SetAnchorArgs
 import app.hearth.core.model.Anchor
@@ -428,6 +429,12 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     fun waitForReply(item: BacklogItem, followUp: LocalDate?, waiting: Boolean = true) = tool {
         app.tools.registry.run(app.tools.waitForReply, WaitForReplyArgs(itemIds = listOf(item.id), followUp = followUp?.toString(), waiting = waiting), it)
+    }
+
+    /** One more step at the end of a routine. */
+    fun addRoutineStep(routine: BacklogItem, text: String) {
+        if (text.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addRoutine, AddRoutineArgs(routine.text, listOf(text), section = routine.section), it) }
     }
 
     /** Hangs a routine on a moment of the day (null: whenever it fits). */

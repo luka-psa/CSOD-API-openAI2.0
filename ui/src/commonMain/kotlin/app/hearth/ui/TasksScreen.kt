@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.model.isRoutineStep
 import app.hearth.core.model.title
 import app.hearth.core.model.Anchor
 import androidx.compose.foundation.background
@@ -117,7 +118,7 @@ fun TasksScreen(
     habits: Map<String, Ease>,
     callbacks: TaskCallbacks,
 ) {
-    CompositionLocalProvider(LocalEase provides habits) {
+    CompositionLocalProvider(LocalEase provides habits, LocalRoutineSteps provides steps.filter { it.isRoutineStep }.groupBy { it.parentId!! }) {
     val names = backlog.associate { it.id to it.text }
     val routines = backlog.filter { it.isRoutine() }
     val admin = backlog.filter { !it.isStep && it.kind == TaskKind.ADMIN }
@@ -323,13 +324,19 @@ private fun LazyListScope.group(
 private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCallbacks, modifier: Modifier, given: Ease? = null) {
     val ease = given ?: LocalEase.current[item.id]
     val narrow = LocalNarrow.current
+    val mySteps = LocalRoutineSteps.current[item.id].orEmpty()
+    // A routine with steps is ticked step by step; how it goes is rated in the weekoverleg.
+    val rated = item.isHabit && mySteps.isEmpty()
     BacklogRow(
         item, today, lang, onDone = { cb.complete(item) }, onOpen = { cb.open(item) }, modifier = modifier, showSection = !item.isRoutine(), onDelete = { cb.delete(item) },
         // On a phone the habit's chip goes under its name, so the name keeps its room.
-        below = if (narrow && item.isHabit) ({ EaseMenu(item, cb) }) else null,
+        below = if (mySteps.isEmpty() && !(narrow && rated)) null else ({
+            if (narrow && rated) EaseMenu(item, cb)
+            RoutineSteps(mySteps, today, cb.complete)
+        }),
     ) {
         // Atomic Habits: green runs easily, amber takes effort, orange is too much (make it smaller). Never red.
-        if (item.isHabit && !narrow) {
+        if (rated && !narrow) {
             EaseMenu(item, cb)
             Spacer(Modifier.width(6.dp))
         } else if (ease != null && ease != Ease.EASY) {
@@ -350,6 +357,9 @@ private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCal
 
 /** Each open item's colour, for every list on this screen. */
 private val LocalEase = staticCompositionLocalOf<Map<String, Ease>> { emptyMap() }
+
+/** Each routine's steps, by routine id. */
+private val LocalRoutineSteps = staticCompositionLocalOf<Map<String, List<BacklogItem>>> { emptyMap() }
 
 /** A habit's colour, set together: tap to change it or to give it a smaller first step. */
 @Composable

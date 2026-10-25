@@ -107,7 +107,10 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   *postponed* (2× amber, 4× orange). A routine can hang on an *Anchor*, a moment of the
   day (ochtend, na school, rond het eten, avond, slapengaan; never a clock time): the
   morning and evening routines are laid out per moment; a chore with a moment belongs
-  to the rhythm, one without to the household),
+  to the rhythm, one without to the household. A routine can have *steps* (`parentId`,
+  `add_routine`): a sequence ("avondroutine: boodschappen, Mia ophalen, koken, pyjama")
+  or a checklist ("paklijst opvang: luiers, flesjes"); steps are ticked per day and come
+  back tomorrow; all ticked = the routine is done today),
   *Admin* (ADMIN/APPOINTMENT: *urgent*, deadline, *waiting for a reply* with a
   follow-up day), *Projecten* (PROJECT: *steps* via `parentId`, a day or "dit
   weekend"), *Te sorteren* (everything else).

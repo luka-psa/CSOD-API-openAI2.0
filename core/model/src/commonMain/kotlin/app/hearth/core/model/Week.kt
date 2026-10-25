@@ -44,7 +44,8 @@ fun Section.topic(): Topic? = when (this) {
 
 /** A chore with a fixed moment ("na het eten afwassen") belongs to the rhythm of the day, not to the household list. */
 val BacklogItem.topic: Topic? get() = when {
-    isStep -> Topic.PROJECTS
+    // Routine steps show inside their routine, never on their own.
+    isStep -> if (section == Section.PROJECT) Topic.PROJECTS else null
     section == Section.CHORE && anchor != null -> Topic.RHYTHM
     else -> section.topic()
 }

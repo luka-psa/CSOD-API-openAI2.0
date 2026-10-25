@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.model.isRoutineStep
 import app.hearth.ui.resources.small_step_hint
 import app.hearth.ui.resources.small_step_title
 import app.hearth.ui.resources.small_step_add
@@ -411,7 +412,7 @@ private fun TopicDetail(
             AddRow(stringResource(Res.string.home_add_hint), { cb.addTo(it, Section.CHORE) }, muted = true)
         }
         Topic.RHYTHM -> {
-            RhythmBoard(backlog.filter { !it.done && it.topic == Topic.RHYTHM }, lang, cb)
+            RhythmBoard(backlog.filter { !it.done && it.topic == Topic.RHYTHM }, backlog.filter { it.isRoutineStep }.groupBy { it.parentId!! }, lang, cb)
             AttentionList(agenda?.needsAttention.orEmpty().filter { it.item.topic == Topic.RHYTHM }.map { it.item to it.ease }, cb.lessOften, cb.makeEasier, cb.smallStep)
             Spacer(Modifier.size(10.dp))
             AddRow(stringResource(Res.string.rhythm_add_hint), { cb.addTo(it, Section.RHYTHM) }, muted = true)
@@ -438,7 +439,7 @@ private fun TopicDetail(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RhythmBoard(routines: List<BacklogItem>, lang: Lang, cb: WeekCallbacks) {
+private fun RhythmBoard(routines: List<BacklogItem>, steps: Map<String, List<BacklogItem>>, lang: Lang, cb: WeekCallbacks) {
     var asking by remember { mutableStateOf<BacklogItem?>(null) }
     if (routines.isEmpty()) {
         Hint(stringResource(Res.string.rhythm_empty))
@@ -454,6 +455,7 @@ private fun RhythmBoard(routines: List<BacklogItem>, lang: Lang, cb: WeekCallbac
                     Text(item.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     MomentMenu(item, lang) { cb.setAnchor(item, it) }
                 }
+                steps[item.id]?.let { mine -> Text(mine.joinToString("  →  ") { it.text }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 item.smallStep?.let { Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink) }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                     if (item.isHabit) {

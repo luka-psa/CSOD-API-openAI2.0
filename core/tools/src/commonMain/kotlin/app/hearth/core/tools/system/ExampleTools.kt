@@ -13,6 +13,7 @@ import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolResult
 import app.hearth.core.tools.backlog.AddProjectStepArgs
 import app.hearth.core.tools.backlog.AddToBacklogArgs
+import app.hearth.core.tools.backlog.AddRoutineArgs
 import app.hearth.core.tools.backlog.PlanBacklogArgs
 import app.hearth.core.tools.backlog.RateHabitArgs
 import app.hearth.core.tools.backlog.SmallStepArgs
@@ -68,6 +69,9 @@ class LoadExamplesTool(
         step { tools.addToBacklog.run(AddToBacklogArgs(e.dishes, Section.CHORE, anchor = Anchor.DINNER), ctx) }
         step { tools.addToBacklog.run(AddToBacklogArgs(e.habits[1], Section.HABIT, anchor = Anchor.EVENING), ctx) }
         step { tools.addToBacklog.run(AddToBacklogArgs(e.bedtime, Section.RHYTHM, anchor = Anchor.BEDTIME), ctx) }
+        // Routines with steps: the bag for the opvang (a checklist) and the evening (a sequence).
+        step { tools.addRoutine.run(AddRoutineArgs(e.bag.first, e.bag.second, Anchor.MORNING), ctx) }
+        step { tools.addRoutine.run(AddRoutineArgs(e.evening.first, e.evening.second, Anchor.EVENING), ctx) }
         step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[0]), ease = Ease.EASY), ctx) }
         step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[1]), ease = Ease.HARD), ctx) }
         step { tools.setSmallStep.run(SmallStepArgs(texts = listOf(e.habits[1]), step = e.smallStep), ctx) }
@@ -121,6 +125,8 @@ class LoadExamplesTool(
         val morning: String,
         val dishes: String,
         val bedtime: String,
+        val bag: Pair<String, List<String>>,
+        val evening: Pair<String, List<String>>,
         val smallStep: String,
         val admin: List<String>,
         val appointment: String,
@@ -157,6 +163,8 @@ class LoadExamplesTool(
             morning = "Bedden opmaken",
             dishes = "Afwassen",
             bedtime = "Voorlezen",
+            bag = "Tas voor de opvang" to listOf("Luiers", "Flesjes", "Reservekleren", "Knuffel"),
+            evening = "Avondroutine" to listOf("Boodschappen halen", "Mia ophalen bij de opvang", "Koken", "Pyjama aan"),
             smallStep = "Alleen de boekentassen bij de deur",
             admin = listOf("Belastingaangifte invullen", "Verzekering bellen over de fiets"),
             appointment = "Tandarts voor Mia",
@@ -191,6 +199,8 @@ class LoadExamplesTool(
             morning = "Make the beds",
             dishes = "Do the dishes",
             bedtime = "Read a story",
+            bag = "Bag for daycare" to listOf("Diapers", "Bottles", "Spare clothes", "Cuddly toy"),
+            evening = "Evening routine" to listOf("Get groceries", "Pick up Mia from daycare", "Cook", "Pyjamas on"),
             smallStep = "Just the school bags by the door",
             admin = listOf("Do the tax return", "Call the insurance about the bike"),
             appointment = "Dentist for Mia",

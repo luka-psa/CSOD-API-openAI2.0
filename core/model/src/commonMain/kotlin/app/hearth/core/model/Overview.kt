@@ -20,6 +20,14 @@ enum class RoutineState {
 
 fun BacklogItem.isRoutine(): Boolean = !isStep && section.kind == TaskKind.ROUTINE
 
+/**
+ * One line of a routine: a step of a sequence ("Mia ophalen", then "Koken") or of a checklist ("Luiers"
+ * in the bag for the opvang). Ticked per day; tomorrow it is open again.
+ */
+val BacklogItem.isRoutineStep: Boolean get() = isStep && section.kind == TaskKind.ROUTINE
+
+fun BacklogItem.doneOn(day: LocalDate): Boolean = lastDoneDate == day
+
 fun BacklogItem.daysSinceDone(today: LocalDate): Int? =
     lastDoneDate?.let { (today.toEpochDays() - it.toEpochDays()).toInt() }
 

@@ -158,6 +158,17 @@ class OrchestratorTest {
     }
 
     @Test
+    fun `a routine said in one go gets its steps, and saying it again adds the missing ones`() = runTest {
+        val reply = offline.handle("avondroutine: boodschappen, Mia ophalen, koken en pyjama aan", nl)
+        assertEquals("Routine “Avondroutine” (avond): Boodschappen → Mia ophalen → Koken → Pyjama aan", reply.text)
+        val routine = inbox.openItems().single { !it.isStep }
+        assertEquals(Section.RHYTHM, routine.section)
+        assertEquals(app.hearth.core.model.Anchor.EVENING, routine.anchor)
+        assertEquals(listOf("Boodschappen", "Mia ophalen", "Koken", "Pyjama aan"), inbox.openItems().filter { it.parentId == routine.id }.map { it.text })
+        assertEquals("1 stap erbij in “Avondroutine”.", offline.handle("avondroutine: koken, badje", nl).text)
+    }
+
+    @Test
     fun `a moment of the day makes it part of a rhythm`() = runTest {
         offline.handle("’s avonds de tassen klaarzetten", nl)
         val item = inbox.openItems().single()

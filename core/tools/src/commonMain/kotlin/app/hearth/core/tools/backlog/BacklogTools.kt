@@ -16,6 +16,7 @@ import app.hearth.core.model.intervalLabel
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.TaskKind
 import app.hearth.core.model.kind
+import app.hearth.core.model.isRoutineStep
 import app.hearth.core.model.normalizeName
 import app.hearth.core.model.plusDays
 import app.hearth.core.tools.Describe
@@ -187,7 +188,8 @@ class ListBacklogTool(private val repo: BacklogRepository) : Tool<ListBacklogArg
         val open = repo.openItems()
         if (args.view == BacklogView.DONT_FORGET) return listed(dontForget(open, ctx.today), ctx)
         if (args.view == BacklogView.ROUTINES_DUE) return listed(dueRoutines(open, ctx.today), ctx)
-        val items = open.filter { item ->
+        // Routine steps are listed with their routine, not on their own.
+        val items = open.filterNot { it.isRoutineStep }.filter { item ->
             val d = item.localDate
             when (args.view) {
                 BacklogView.DONT_FORGET, BacklogView.ROUTINES_DUE -> true
@@ -289,8 +291,12 @@ class CompleteBacklogItemTool(private val repo: BacklogRepository) : Tool<Backlo
         val items = repo.find(args.itemIds, args.texts).filterNot { it.done }
         if (items.isEmpty()) throw ToolException(ctx.t("Dat vind ik niet op de backlog.", "I can't find that on the backlog."))
         // Routines come back: log the day instead of closing them.
-        val (routines, others) = items.partition { it.isRoutine() }
+        val (routines, others) = items.partition { it.isRoutine() || it.isRoutineStep }
         repo.logRoutine(routines.map { it.id }, ctx.today.toString())
+        // Every step of a routine ticked today: the routine itself is done for today.
+        val parents = routines.filter { it.isRoutineStep }.mapNotNull { it.parentId }.distinct()
+        val finished = parents.filter { p -> repo.stepsOf(listOf(p)).all { it.lastDone == ctx.today.toString() } }
+        repo.logRoutine(finished, ctx.today.toString())
         repo.setDone(others.map { it.id }, done = true)
         val updated = routines.map { it.copy(lastDone = ctx.today.toString(), plan = Plan.UNPLANNED, date = null, finishBy = false) } + others.map { it.copy(done = true) }
         val summary = buildList {

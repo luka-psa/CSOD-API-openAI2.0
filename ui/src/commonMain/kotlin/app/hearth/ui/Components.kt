@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.model.doneOn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -118,6 +119,26 @@ fun EmptyHint(text: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(vertical = 10.dp),
     )
+}
+
+/**
+ * A routine's steps in order, ticked per day: the evening sequence or the bag for the opvang. A ticked
+ * step shows a check until tomorrow.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun RoutineSteps(steps: List<BacklogItem>, today: LocalDate, onTick: (BacklogItem) -> Unit) {
+    if (steps.isEmpty()) return
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.padding(top = 2.dp),
+    ) {
+        steps.forEach { step ->
+            val done = step.doneOn(today)
+            ChoiceChip(step.text, done, { if (!done) onTick(step) }, icon = if (done) HearthIcons.Check else null)
+        }
+    }
 }
 
 /** True on phone-width screens, where rows drop secondary buttons so the text keeps its room. */

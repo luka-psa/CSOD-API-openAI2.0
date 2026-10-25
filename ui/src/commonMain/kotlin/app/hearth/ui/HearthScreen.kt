@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.model.isRoutineStep
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.key
 import androidx.compose.animation.AnimatedContent
@@ -344,8 +345,11 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                 waiting = { d, waiting -> viewModel.waitForReply(item, d, waiting) },
                 move = { viewModel.move(item, it) },
                 anchor = { viewModel.setAnchor(item, it) },
+                addStep = { viewModel.addRoutineStep(item, it) },
+                removeStep = { viewModel.delete(it) },
             ),
             onDismiss = { planning = null },
+            steps = steps.filter { it.parentId == item.id && it.isRoutineStep },
         )
     }
     deleting?.let { item ->

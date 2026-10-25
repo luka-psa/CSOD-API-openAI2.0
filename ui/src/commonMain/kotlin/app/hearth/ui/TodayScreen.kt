@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.model.isRoutineStep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -126,16 +127,22 @@ fun TodayScreen(
     onGoConnect: () -> Unit,
 ) {
     val names = backlog.associate { it.id to it.text }
+    val routineSteps = steps.filter { it.isRoutineStep }.groupBy { it.parentId!! }
     val urgent = dontForget(backlog, today)
     val planned = plannedToday(backlog, today)
-    val rhythm = dueRoutines(backlog, today)
+    // In the order the day goes: the morning routine first, whatever fits last.
+    val rhythm = dueRoutines(backlog, today).sortedBy { it.anchor?.ordinal ?: Int.MAX_VALUE }
     val next = backlog.filter { it.plan == Plan.NEXT && !it.waiting }
     val projects = backlog.filter { it.kind == TaskKind.PROJECT && !it.isStep }
     val dueToday = planned.size + urgent.count { it.urgent || (it.localDate?.let { d -> d <= today } ?: false) }
     val upcoming = (1..6).map { today.plusDays(it) }.map { it to plannedOn(backlog, it) }
 
     @Composable
-    fun ItemRow(item: BacklogItem) = BacklogRow(item, today, lang, onDone = { onComplete(item) }, onOpen = { onOpenItem(item) }, projectName = item.parentId?.let(names::get))
+    fun ItemRow(item: BacklogItem) = BacklogRow(
+        item, today, lang, onDone = { onComplete(item) }, onOpen = { onOpenItem(item) }, projectName = item.parentId?.let(names::get),
+        // A routine with steps: tick them as the evening goes.
+        below = routineSteps[item.id]?.let { mine -> { RoutineSteps(mine, today, onComplete) } },
+    )
 
     val dontForgetCard = @Composable { m: Modifier ->
         HearthCard(stringResource(Res.string.dash_dont_forget), HearthIcons.Flag, m) {

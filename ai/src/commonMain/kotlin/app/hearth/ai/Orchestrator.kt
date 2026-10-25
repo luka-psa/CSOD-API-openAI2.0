@@ -26,6 +26,9 @@ import app.hearth.ai.route.RecipeWords
 import app.hearth.core.tools.week.SaveRecipeArgs
 import app.hearth.core.tools.week.SaveRecipeTool
 import app.hearth.ai.route.StockWords
+import app.hearth.ai.route.RoutineWords
+import app.hearth.core.tools.backlog.AddRoutineTool
+import app.hearth.core.tools.backlog.AddRoutineArgs
 import app.hearth.core.tools.week.PlanMealArgs
 import app.hearth.core.tools.week.PlanMealTool
 import app.hearth.ai.route.TaskWords
@@ -95,6 +98,11 @@ class Orchestrator(
         WIN_PREFIX.matchEntire(text.trim())?.let { m ->
             val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
             return runCalls(listOf(ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(m.groupValues[1]))), local)
+        }
+        // "avondroutine: boodschappen, Mia ophalen, koken, pyjama": a routine with its steps, in order.
+        RoutineWords.extract(text)?.let { hint ->
+            val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
+            return runCalls(listOf(ToolCall.of(AddRoutineTool.NAME, AddRoutineArgs.serializer(), AddRoutineArgs(hint.name, hint.steps, hint.anchor))), local)
         }
         // "voeg aan de huisregels toe dat …": the person named the place; only the rest becomes the item.
         AreaWords.extract(text)?.let { hint ->

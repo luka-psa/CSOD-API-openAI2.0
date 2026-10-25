@@ -426,4 +426,6 @@
     <string name="home_add_hint">Huishoudtaak, bv. lakens om de 2 weken</string>
     <string name="settings_language">Taal</string>
     <string name="settings_language_card">De app spreekt</string>
+    <string name="routine_steps">Stappen</string>
+    <string name="routine_step_add">Stap toevoegen, bv. pyjama aan</string>
 </resources>

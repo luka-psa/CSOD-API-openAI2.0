@@ -433,4 +433,6 @@
     <string name="home_add_hint">Household task, e.g. sheets every 2 weeks</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_card">The app speaks</string>
+    <string name="routine_steps">Steps</string>
+    <string name="routine_step_add">Add a step, e.g. pyjamas on</string>
 </resources>

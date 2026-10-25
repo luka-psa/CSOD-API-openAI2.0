@@ -77,7 +77,8 @@ data class BacklogItem(
     val isStep: Boolean get() = parentId != null
 
     /** Which list it lives in. Steps belong to their project and are never listed on their own. */
-    val kind: TaskKind get() = if (isStep) TaskKind.PROJECT else section.kind
+    /** A project step is project work; a routine step (a line of the evening routine) stays a routine. */
+    val kind: TaskKind get() = if (isStep && section.kind != TaskKind.ROUTINE) TaskKind.PROJECT else section.kind
 }
 
 @OptIn(ExperimentalTime::class)

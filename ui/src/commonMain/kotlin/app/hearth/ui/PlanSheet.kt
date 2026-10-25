@@ -1,5 +1,8 @@
 package app.hearth.ui
 
+import androidx.compose.foundation.layout.width
+import app.hearth.ui.resources.routine_step_add
+import app.hearth.ui.resources.routine_steps
 import app.hearth.ui.resources.anchor_none
 import app.hearth.ui.resources.moment_title
 import app.hearth.core.model.title
@@ -93,6 +96,8 @@ class PlanActions(
     val waiting: (LocalDate?, Boolean) -> Unit,
     val move: (Section) -> Unit,
     val anchor: (Anchor?) -> Unit = {},
+    val addStep: (String) -> Unit = {},
+    val removeStep: (BacklogItem) -> Unit = {},
 )
 
 private val INTERVALS = listOf(1, 7, 14, 30, 90, null)
@@ -103,8 +108,9 @@ private val INTERVALS = listOf(1, 7, 14, 30, 90, null)
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActions, onDismiss: () -> Unit) {
+fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActions, onDismiss: () -> Unit, steps: List<BacklogItem> = emptyList()) {
     var finishBy by remember(item.id) { mutableStateOf(item.finishBy) }
+    var removingStep by remember { mutableStateOf<BacklogItem?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val kind = item.kind
@@ -156,6 +162,16 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
 
             when (kind) {
                 TaskKind.ROUTINE -> {
+                    // Its steps, in order: a sequence for the evening or a checklist for the bag.
+                    Text(stringResource(Res.string.routine_steps), style = MaterialTheme.typography.titleMedium)
+                    steps.forEachIndexed { i, step ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("${i + 1}.", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp))
+                            Text(step.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            DeleteButton({ removingStep = step })
+                        }
+                    }
+                    AddRow(stringResource(Res.string.routine_step_add), actions.addStep, compact = true)
                     // The moment of the day it belongs to: the morning routine, around dinner, bedtime.
                     Text(stringResource(Res.string.moment_title), style = MaterialTheme.typography.titleMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -236,6 +252,9 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
         }
     }
 
+    removingStep?.let { step ->
+        ConfirmDialog(stringResource(Res.string.delete_confirm, step.text), stringResource(Res.string.delete_confirm_body), onYes = { actions.removeStep(step) }) { removingStep = null }
+    }
     if (confirmDelete) {
         val isProject = kind == TaskKind.PROJECT && !item.isStep
         AlertDialog(

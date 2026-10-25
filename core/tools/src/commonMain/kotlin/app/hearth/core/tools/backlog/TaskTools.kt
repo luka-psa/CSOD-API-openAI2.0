@@ -265,6 +265,56 @@ class RateHabitTool(private val repo: BacklogRepository) : Tool<RateHabitArgs, B
     }
 }
 
+// ---------- add_routine ----------
+
+@Serializable
+data class AddRoutineArgs(
+    @Describe("The routine's name, e.g. 'Avondroutine' or 'Tas voor de opvang'.")
+    val name: String,
+    @Describe("Its steps in order (a sequence like boodschappen, Mia ophalen, koken, pyjama) or the lines of a checklist (luiers, flesjes, reservekleren).")
+    val steps: List<String> = emptyList(),
+    @Describe("The moment of the day: MORNING, AFTERNOON, DINNER, EVENING or BEDTIME. Empty: whenever it fits.")
+    val anchor: Anchor? = null,
+    @Describe("RHYTHM (default), HABIT or CHORE.")
+    val section: Section = Section.RHYTHM,
+    @Describe("Roughly every how many days. Default: daily.")
+    val intervalDays: Int? = null,
+)
+
+/**
+ * A routine with steps: the evening sequence or the bag for the opvang. Saying it again adds the steps
+ * that are missing, so a routine grows as the family thinks of things.
+ */
+class AddRoutineTool(private val repo: BacklogRepository) : Tool<AddRoutineArgs, AddToBacklogResult> {
+    override val name = NAME
+    override val description =
+        "Lay out a routine with its steps in order (the evening: boodschappen, Mia ophalen, koken, pyjama) or a " +
+            "checklist (the bag for the babysitter: luiers, flesjes, reservekleren), on a moment of the day. Steps are " +
+            "ticked per day and come back tomorrow. Calling it again for the same routine adds the missing steps."
+    override val argsSerializer = AddRoutineArgs.serializer()
+    override val resultSerializer = AddToBacklogResult.serializer()
+
+    override suspend fun run(args: AddRoutineArgs, ctx: ToolContext): AddToBacklogResult {
+        val title = args.name.trim().replaceFirstChar { it.uppercase() }.ifEmpty { throw ToolException(ctx.t("Hoe heet de routine?", "What's the routine called?")) }
+        val section = args.section.takeIf { it.kind == TaskKind.ROUTINE } ?: Section.RHYTHM
+        val (routine, added) = repo.add(title, section, Plan.UNPLANNED, null, false, ctx.actorMemberId, intervalDays = args.intervalDays ?: 1, anchor = args.anchor)
+        if (!added && args.anchor != null && routine.anchor != args.anchor) repo.setAnchor(listOf(routine.id), args.anchor)
+        val steps = args.steps.map { it.trim().trim('.', ',').replaceFirstChar { c -> c.uppercase() } }.filter { it.isNotEmpty() }
+        val new = steps.count { step -> repo.add(step, routine.section, Plan.UNPLANNED, null, false, ctx.actorMemberId, parentId = routine.id).second }
+        val moment = (args.anchor ?: routine.anchor)?.let { " (${it.title(ctx.lang).lowercase()})" } ?: ""
+        val summary = when {
+            added -> ctx.t("Routine “${routine.text}”$moment: ", "Routine “${routine.text}”$moment: ") + steps.joinToString(" → ").ifEmpty { ctx.t("nog zonder stappen", "no steps yet") }
+            new > 0 -> ctx.t("$new ${if (new == 1) "stap" else "stappen"} erbij in “${routine.text}”.", "$new ${if (new == 1) "step" else "steps"} added to “${routine.text}”.")
+            else -> ctx.t("“${routine.text}” heeft die stappen al.", "“${routine.text}” already has those steps.")
+        }
+        return AddToBacklogResult(routine, added, summary)
+    }
+
+    companion object {
+        const val NAME = "add_routine"
+    }
+}
+
 // ---------- set_anchor ----------
 
 @Serializable
