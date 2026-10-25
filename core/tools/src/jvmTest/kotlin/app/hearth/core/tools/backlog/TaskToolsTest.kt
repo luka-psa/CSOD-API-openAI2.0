@@ -47,7 +47,7 @@ class TaskToolsTest {
     @Test
     fun `a routine comes back after its interval instead of closing`() = runTest {
         val added = add(AddToBacklogArgs("Lakens verversen", Section.CHORE, intervalDays = 14))
-        assertEquals("Op de backlog: “Lakens verversen” (huishoudtaak) · om de 2 weken", added.summary)
+        assertEquals("Bij Taken: “Lakens verversen” (huishoudtaak) · om de 2 weken", added.summary)
         assertEquals(RoutineState.NEW, added.item.routineState(thursday))
         assertEquals(listOf("Lakens verversen"), dueRoutines(backlog.openItems(), thursday).map { it.text })
 
@@ -101,7 +101,7 @@ class TaskToolsTest {
 
         val listed = tools.registry.run(tools.listBacklog, ListBacklogArgs(BacklogView.DONT_FORGET), nl)
         assertEquals(
-            "Verzekering opzeggen (administratie, in te plannen, dringend)\nBelastingbrief (administratie, klaar tegen zaterdag)",
+            "Verzekering opzeggen (paperassen, in te plannen, dringend)\nBelastingbrief (paperassen, klaar tegen zaterdag)",
             listed.summary,
         )
 
@@ -141,7 +141,7 @@ class TaskToolsTest {
     @Test
     fun `moving sorts an item into the right list`() = runTest {
         add(AddToBacklogArgs("Zolder opruimen"))
-        assertEquals("“Zolder opruimen” staat nu bij project", tools.registry.run(tools.moveBacklogItem, MoveBacklogArgs(texts = listOf("zolder"), section = Section.PROJECT), nl).summary)
+        assertEquals("“Zolder opruimen” staat nu bij Grote taken", tools.registry.run(tools.moveBacklogItem, MoveBacklogArgs(texts = listOf("zolder"), section = Section.PROJECT), nl).summary)
     }
 
     @Test

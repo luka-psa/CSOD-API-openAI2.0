@@ -56,7 +56,6 @@ import app.hearth.core.model.plusDays
 import app.hearth.core.model.weekdayName
 import app.hearth.core.tools.backlog.When
 import app.hearth.ui.resources.Res
-import app.hearth.ui.resources.dash_board
 import app.hearth.ui.resources.dash_board_empty
 import app.hearth.ui.resources.dash_board_frictions
 import org.jetbrains.compose.resources.pluralStringResource
@@ -68,7 +67,6 @@ import app.hearth.ui.resources.dash_tonight
 import app.hearth.ui.resources.dash_dont_forget
 import app.hearth.ui.resources.dash_dont_forget_empty
 import app.hearth.ui.resources.dash_free
-import app.hearth.ui.resources.dash_projects
 import app.hearth.ui.resources.dash_rhythm
 import app.hearth.ui.resources.dash_rhythm_empty
 import app.hearth.ui.resources.done_today
@@ -95,6 +93,7 @@ import app.hearth.ui.resources.today_empty
 import app.hearth.ui.resources.today_next
 import app.hearth.ui.resources.today_planned
 import app.hearth.ui.theme.style
+import app.hearth.core.model.Topic
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -120,7 +119,6 @@ fun TodayScreen(
     onPlan: (BacklogItem, When) -> Unit,
     onOpenItem: (BacklogItem) -> Unit,
     onGoTasks: () -> Unit,
-    onGoProjects: () -> Unit,
     onGoShopping: () -> Unit,
     onGoBoard: () -> Unit,
     onGoWeek: () -> Unit,
@@ -182,18 +180,18 @@ fun TodayScreen(
         }
     }
     val projectsCard = @Composable { m: Modifier ->
-        HearthCard(stringResource(Res.string.dash_projects), HearthIcons.Backlog, m, action = { CardAction(stringResource(Res.string.open_tasks), onGoProjects, compact = wide) }) {
+        TopicCard(Topic.PROJECTS, lang, m, action = { CardAction(stringResource(Res.string.open_tasks), onGoTasks, compact = wide) }) {
             projects.take(4).forEach { project -> ProjectLine(project, steps.filter { it.parentId == project.id }, today, lang) { onOpenItem(project) } }
         }
     }
     val boardCard = @Composable { m: Modifier ->
         val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
         val frictions = board.count { it.kind == BoardKind.FRICTION && it.isOpen }
-        HearthCard(stringResource(Res.string.dash_board), HearthIcons.Rule, m, action = { CardAction(stringResource(Res.string.nav_board), onGoBoard, compact = wide) }) {
+        TopicCard(Topic.RULES, lang, m, action = { CardAction(stringResource(Res.string.nav_board), onGoBoard, compact = wide) }) {
             if (rules.isEmpty() && frictions == 0) EmptyHint(stringResource(Res.string.dash_board_empty))
             rules.take(3).forEach { rule ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-                    Box(Modifier.size(8.dp).background(Section.NOTE.style().ink, CircleShape))
+                    Box(Modifier.size(8.dp).background(Topic.RULES.style().ink, CircleShape))
                     Spacer(Modifier.width(10.dp))
                     Text(rule.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
@@ -204,15 +202,15 @@ fun TodayScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onGoBoard).padding(vertical = 4.dp),
                 ) {
-                    Icon(HearthIcons.Bolt, null, tint = Section.FRICTION.style().ink, modifier = Modifier.size(16.dp))
+                    Icon(Topic.FRICTION.icon(), null, tint = Topic.FRICTION.style().ink, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(pluralStringResource(Res.plurals.dash_board_frictions, frictions, frictions), style = MaterialTheme.typography.labelLarge, color = Section.FRICTION.style().ink)
+                    Text(pluralStringResource(Res.plurals.dash_board_frictions, frictions, frictions), style = MaterialTheme.typography.labelLarge, color = Topic.FRICTION.style().ink)
                 }
             }
         }
     }
     val shoppingCard = @Composable { m: Modifier ->
-        HearthCard(stringResource(Res.string.shopping_list), HearthIcons.Cart, m, action = { CardAction(stringResource(Res.string.open_list), onGoShopping, compact = wide) }) {
+        TopicCard(Topic.SHOPPING, lang, m, action = { CardAction(stringResource(Res.string.open_list), onGoShopping, compact = wide) }) {
             val open = shopping.flatMap { s -> s.items.filterNot { it.bought } }
             if (open.isEmpty()) EmptyHint(stringResource(Res.string.shopping_summary_empty))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -316,12 +314,12 @@ private fun FreeTime(dueToday: Int, doneToday: Int, lang: Lang) {
         load == DayLoad.LIGHT -> stringResource(Res.string.free_light)
         else -> return
     }
-    val s = Section.PROTECTED_TIME.style()
+    val s = Topic.FREE_TIME.style()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).background(s.tint, MaterialTheme.shapes.medium).padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Icon(HearthIcons.Sun, null, tint = s.ink, modifier = Modifier.size(22.dp))
+        Icon(Topic.FREE_TIME.icon(), null, tint = s.ink, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(12.dp))
         Column {
             Text(stringResource(Res.string.free_title), style = MaterialTheme.typography.titleSmall, color = s.ink)
@@ -419,10 +417,10 @@ private fun SubHeader(text: String) {
 
 @Composable
 private fun Hint(text: String) {
-    val s = Section.PROTECTED_TIME.style()
+    val s = Topic.FREE_TIME.style()
     Surface(color = s.tint, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-            Icon(HearthIcons.Sun, null, tint = s.ink, modifier = Modifier.size(18.dp))
+            Icon(Topic.FREE_TIME.icon(), null, tint = s.ink, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
             Text(text, style = MaterialTheme.typography.bodyMedium, color = s.ink)
         }
@@ -454,9 +452,9 @@ private fun Header(lang: Lang, doneToday: Int, wide: Boolean, onGoConnect: () ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DonePill(doneToday)
                 Spacer(Modifier.weight(1f))
-                // On a phone there is no rail, so "Koppelingen" lives here.
+                // On a phone there is no rail, so Instellingen lives here.
                 androidx.compose.material3.IconButton(onClick = onGoConnect) {
-                    Icon(HearthIcons.Link, stringResource(Res.string.nav_connect), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(HearthIcons.Settings, stringResource(Res.string.nav_connect), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

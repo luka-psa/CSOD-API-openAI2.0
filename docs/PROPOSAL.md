@@ -35,8 +35,8 @@ thing everywhere: in the UI, in chat, in code and in tool names. UI ships in
 | Term | Meaning | Example |
 |---|---|---|
 | **Appointment** / *Afspraak* | Something to **book** and then **attend**. Lifecycle: `TO_BOOK` → `BOOKED` (date, place) → `DONE`. It can repeat ("every year"). | Osteopath, car inspection (*autokeuring*), dentist |
-| **Admin** / *Administratie* | Paperwork with an optional deadline. | Taxes, insurance, school forms |
-| **Project** / *Project (bouw & klussen)* | Bigger job made of **steps**. It can link to shopping items (materials), errands and appointments. | Hang lamps in the toilet · Clear out & clean the whole kitchen (*keuken uitkuisen*) · New cupboard |
+| **Admin** / *Paperassen* | Paperwork with an optional deadline (end date). Topic: *Paperassen & afspraken*. | Taxes, insurance, school forms |
+| **Project** / *Grote taak* | Bigger job made of **steps**. It can link to shopping items (materials), errands and appointments. | Hang lamps in the toilet · Clear out & clean the whole kitchen (*keuken uitkuisen*) · New cupboard |
 | **Errand** / *Rit* | A trip to one shop. It automatically shows every open shopping item for that shop. | IKEA run for the cupboard, Gamma for paint |
 | **Step** / *Stap* | A sub-task of a project (or any task). Can be assigned to a helper, but the owner stays the owner. | "Buy paint", "Remove old lamp" |
 
@@ -226,7 +226,7 @@ Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under ever
 │ ● belastingbrief       │ │ ○ osteopaat bellen       │ │ Zo 25   ● lampen toilet  │
 │   klaar tegen morgen   │ │ In het ritme             │ │ Wo 28   (vrij)           │
 ├ Boodschappen ──────────┤ │ ○ vaatwasser · elke dag  │ │ "Zaterdag is nog vrij."  │
-│ Melk  Brood            │ │ ○ lakens · om de 2 weken │ ├ Lopende projecten ───────┤
+│ Melk  Brood            │ │ ○ lakens · om de 2 weken │ ├ Grote taken ─────────────┤
 └────────────────────────┘ │ Volgende                 │ │ IKEA kast ▓▓░ 1/3 stappen│
                            └──────────────────────────┘ └──────────────────────────┘
 ```
@@ -237,12 +237,20 @@ Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under ever
 - **Vrije tijd is generated**, without durations: nothing left today means free ("Alles van vandaag is
   gedaan…"), one or two things means a light day; in *Binnenkort* empty days read "vrij" and the first free
   weekend day is called out.
-- **Binnenkort**: the next six days with what's on them. **Lopende projecten**: progress and the next step.
+- **Binnenkort**: the next six days with what's on them. **Grote taken**: progress and the next step.
+- **One topic, one look** (v0.15): every topic (`Topic`) has one name, icon and colour on every screen: a card
+  on Vandaag (Boodschappen, Huisregels, Grote taken), a panel in Taken, a column on the Werkbord, a tile in the
+  weekoverleg. Time cards (Vandaag, Niet vergeten, Binnenkort, Deze week, Terugblik) and Hearth's own voice keep
+  the ember accent. The map of topics, icons and the user journeys: `docs/JOURNEYS.md`.
 
-**Taken**, one tab per way of planning: *Ritme & gewoontes* (Aan de beurt · Loopt goed · Nog geen ritme;
-the tick logs "done today", the routine returns after its interval), *Admin* (Dringend · Met deadline ·
-Wacht op antwoord · Open), *Projecten* (steps with progress, add a step inline, "Dit weekend" slot),
-*Week* (day strip over everything planned) and *Te sorteren* (only when something is unsorted).
+**Taken** (v0.15), a dashboard of panels like Vandaag, one per work topic with the same name, icon, colour
+and glance as its weekoverleg tile: *Paperassen & afspraken* (Dringend · Met een einddatum · Wacht op antwoord ·
+Open), *Grote taken* (steps with progress, add a step inline), *Huishouden* (Aan de beurt · Loopt goed · Nog geen
+ritme; the tick logs "done today", it returns after its interval), *Ritmes & routines* (per moment of the day,
+then Lijstjes and Gewoontes) and *Vrije tijd*. Each panel has its own add field and folds with a tap on its
+title (on a phone they start folded: the first look is the overview). *Te sorteren* sits on top, only when
+something is unsorted. No filter chips and no separate Week tab: the days live on Vandaag (Binnenkort) and in the
+weekoverleg (Deze week).
 The plan sheet adapts to the kind: how often / give it a day (routine); urgent, waiting for a reply with a
 follow-up day, do on / finish by (admin); next, this weekend, a day, later (project/step); and "Hoort bij"
 to move between kinds.
@@ -250,7 +258,7 @@ to move between kinds.
 **Werkbord**: who lives here (name chips with a colour), then three columns: *Huisregels* (numbered),
 *Frictie* (each with Wordt huisregel · Veranderen · Loslaten; sorted-out ones stay visible as wins) and
 *Doelen* (Gezin · Samen · per person, each with one small next step that can go onto "volgende"; reached
-goals stay as wins). The dashboard shows *Onze afspraken*: three house rules and how many frictions wait
+goals stay as wins). The dashboard shows *Huisregels*: three house rules and how many frictions wait
 for the weekoverleg.
 
 **Boodschappen**: stock per room or category (hold an item to move it, hold a category to remove it); the list (grouped by shop, X to remove with a confirm, "Gekochte wissen" once things are
@@ -272,13 +280,13 @@ ingredients fill in from the story (`RecipeWords`) and stay editable. Capture ba
 bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 
 **Weekoverleg** (v0.10): one page built around the household's *topics* (`Topic` in `core/model/Week.kt`):
-*Vrije tijd*, *Admin & afspraken*, *Grote taken*, *Huishouden*, *Ritmes & routines*, *Boodschappen*, *Weekmenu*, *Frictie & ideeën*, *Huisregels*. On top
+*Vrije tijd*, *Doelen*, *Paperassen & afspraken*, *Grote taken*, *Huishouden*, *Ritmes & routines*, *Boodschappen*, *Weekmenu*, *Frictie & ideeën*, *Huisregels* (two rows of five on the tablet). On top
 the **Luister mee** stage: a big mic with breathing rings and moving bars while it listens, the words as they come
-in, the seven topics as a row of dots (the one the last sentence went to glows), and the last sentences each with
+in, the topics as a row of dots (the one the last sentence went to glows), and the last sentences each with
 its topic chip. Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
 antwoord", "3 van 7 avonden"); the tile Luister mee just heard about glows too. Tapping a tile opens its list under
 the grid (free time and admin with an add field, projects with their next step and "dit weekend", chores aan de
-beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and frictions). In Dutch *afspraken* always means appointments; house rules are *huisregels*.
+beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and frictions, the goals with their next small step). In Dutch *afspraken* always means appointments; house rules are *huisregels*.
 Then *Terugblik* (last meeting's summary, what got done, *Wat ging goed*, the meters) and *Deze week* (7 days, what
 has that day with its section colour, the meal small underneath) and *Vooruitblik* (dates after this week). There
 are no Oudjes: what has no topic waits in Taken → Te sorteren. *Klaar* first opens *Samen akkoord?*: the summary
@@ -295,7 +303,7 @@ the family rates each one together (*Ease*: loopt vanzelf green / vraagt moeite 
 can give it a *small step* ("Begin klein: …"). Chores get their ease from the `routine_log`; tasks from how often
 they were postponed (2× amber, 4× orange; saying a task again with a later day moves it and counts). *Vraagt aandacht*
 lists both and offers *Minder vaak* (interval ×2) or *Makkelijker maken* (an idea on the Werkbord). In Taken habits
-have their own group with a sun icon and a "Hoe loopt het?" chip; never "late". **Luister mee** (it keeps listening while the family opens the list, the
+have their own group with the rhythm icon and a "Hoe loopt het?" chip; never "late". **Luister mee** (it keeps listening while the family opens the list, the
 stock or the tasks, with a small "Terug naar het overleg" bar there): continuous transcription during the meeting (Web Speech;
 Android restarts its recognizer after each pause and prefers on-device recognition). *Gesprek* shows what was
 heard; *Zet op zijn plek* opens the Voorstel: each sentence with its guessed place (Taken, Afspraak, Vrije tijd,
@@ -402,6 +410,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.15: one topic, one look (name, icon, colour) on every screen; Taken as a dashboard of topic panels;
+   Doelen as a weekoverleg tile; forms ask before typed text goes (Verder typen / Weggooien); Dutch copy
+   without English words (Paperassen, Taken, einddatum, koppelserver); user journeys in `docs/JOURNEYS.md`.
 7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
    icon on Vandaag): add `<relay>/mcp` once in ChatGPT/Claude and type the tablet's pairing code.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a

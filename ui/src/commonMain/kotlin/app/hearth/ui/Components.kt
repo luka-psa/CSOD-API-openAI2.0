@@ -64,29 +64,48 @@ import app.hearth.core.model.intervalLabel
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.lastDoneLabel
 import app.hearth.ui.theme.HearthColors
+import app.hearth.ui.theme.SectionStyle
+import app.hearth.core.model.Topic
 import app.hearth.ui.theme.style
 import kotlinx.datetime.LocalDate
 
-/** The one card style used everywhere: white, soft corners, no borders, a title row. */
+/**
+ * The one card style used everywhere: white, soft corners, no borders, a title row. A topic's card wears its
+ * colour ([style]); cards about time (Vandaag, Binnenkort) keep the ember accent. [subtitle] is a calm glance
+ * under the title; [onTitleClick] makes the title row a toggle (a panel that folds).
+ */
 @Composable
 fun HearthCard(
     title: String,
     icon: ImageVector? = null,
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
+    style: SectionStyle? = null,
+    subtitle: String? = null,
+    onTitleClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(modifier = modifier, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
         Column(Modifier.padding(horizontal = 22.dp, vertical = 20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 36.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.heightIn(min = 36.dp).then(
+                    if (onTitleClick != null) Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onTitleClick) else Modifier,
+                ),
+            ) {
                 if (icon != null) {
                     Box(
-                        Modifier.size(32.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                        Modifier.size(32.dp).background(style?.tint ?: MaterialTheme.colorScheme.primaryContainer, CircleShape),
                         contentAlignment = Alignment.Center,
-                    ) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) }
+                    ) { Icon(icon, null, tint = style?.ink ?: MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) }
                     Spacer(Modifier.width(12.dp))
                 }
-                Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (subtitle != null) {
+                        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
                 action?.invoke()
             }
             Spacer(Modifier.size(8.dp))
@@ -237,6 +256,7 @@ fun UrgentTag(lang: Lang) {
 }
 
 /** One backlog line: tick, text, section (or project) + status, and an optional trailing action. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun BacklogRow(
     item: BacklogItem,
@@ -264,7 +284,7 @@ fun BacklogRow(
         // Habits are lived, not ticked off.
         if (item.isHabit) {
             Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                Icon(HearthIcons.Sun, null, tint = Section.HABIT.style().ink, modifier = Modifier.size(20.dp))
+                Icon(Topic.RHYTHM.icon(), null, tint = Topic.RHYTHM.style().ink, modifier = Modifier.size(20.dp))
             }
         } else {
             RoundCheck(checked = item.done, onClick = onDone)
@@ -279,12 +299,22 @@ fun BacklogRow(
                 textDecoration = if (item.done) TextDecoration.LineThrough else null,
                 color = if (item.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Wraps as a whole: in a narrow panel the status goes under the tag instead of squeezing beside it.
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 if (item.urgent) UrgentTag(lang)
                 if (projectName != null) ProjectTag(projectName) else if (showSection) SectionTag(item, lang)
                 statusText(item, today, lang)?.let {
-                    if (item.finishBy) Icon(HearthIcons.Flag, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                    Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (item.finishBy) {
+                            Icon(HearthIcons.Flag, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
             item.smallStep?.let {

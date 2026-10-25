@@ -43,7 +43,7 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.serialization.Serializable
 import kotlin.time.ExperimentalTime
 
-// The Weekoverleg: a look back, then the household by topic (free time, admin, big tasks, home & habits, shopping, menu, agreements).
+// The Weekoverleg: a look back, then the household by topic (free time, goals, admin, big tasks, household, rhythms, shopping, menu, frictions, house rules).
 
 private fun parseDate(date: String?, ctx: ToolContext): LocalDate =
     date?.let { runCatching { LocalDate.parse(it.trim()) }.getOrNull() ?: throw ToolException(ctx.t("Welke dag? (bv. 2026-10-24)", "Which day? (e.g. 2026-10-24)")) }
@@ -201,7 +201,7 @@ data class WeekAgenda(
     override val summary: String,
 ) : ToolResult
 
-/** One tile of the weekoverleg: "Admin: 3 open · 1 wacht op antwoord". */
+/** One tile of the weekoverleg: "Paperassen & afspraken: 3 open · 1 wacht op antwoord". */
 @Serializable
 data class TopicLine(val topic: Topic, val title: String, val glance: String)
 
@@ -217,7 +217,7 @@ class WeekoverlegAgendaTool(
     override val name = NAME
     override val description =
         "The agenda for the weekly meeting (weekoverleg): what got done since last time and what went well, then " +
-            "the household by topic (free time, admin & appointments, big tasks, household, rhythms & routines by moment of the day, shopping, week menu, frictions & ideas, house rules), the two " +
+            "the household by topic (free time, goals, admin & appointments, big tasks, household, rhythms & routines by moment of the day, shopping, week menu, frictions & ideas, house rules), the two " +
             "household meters, and the conversation Luister mee heard (sort it into the right tools)."
     override val argsSerializer = AgendaArgs.serializer()
     override val resultSerializer = WeekAgenda.serializer()
@@ -234,6 +234,7 @@ class WeekoverlegAgendaTool(
         val deadlines = deadlinesThisWeek(open, ctx.today)
         val routines = dueRoutines(open, ctx.today)
         val frictions = board.allItems().filter { it.isWorkingPoint && it.isOpen }
+        val goals = board.allItems().filter { it.kind == BoardKind.GOAL && it.isOpen }
         val wins = meeting.currentWins()
         val metersOn = metersOn(settings)
         val meters = meeting.currentMeters()
@@ -264,6 +265,7 @@ class WeekoverlegAgendaTool(
                         attention.filter { it.item.isRoutine() }.takeIf { it.isNotEmpty() }?.let { ctx.t("vraagt aandacht: ", "asks for attention: ") + it.joinToString(", ") { a -> attentionText(a.item, a.ease, ctx) } },
                     ).takeIf { it.isNotEmpty() }?.joinToString("; ", " (", ")")
                     Topic.MENU -> meals.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { m -> m.dish } + ")" }
+                    Topic.GOALS -> goals.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { g -> g.text + (g.nextStep?.let { n -> ctx.t(" – volgende stap: ", " – next step: ") + n } ?: "") } + ")" }
                     Topic.FRICTION -> frictions.takeIf { it.isNotEmpty() }?.let { " (" + it.joinToString(", ") { f -> f.text } + ")" }
                     else -> null
                 }

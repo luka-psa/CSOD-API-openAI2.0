@@ -146,14 +146,14 @@ class AddToBacklogTool(private val repo: BacklogRepository, private val board: B
                 item.isRoutine() -> (item.anchor?.let { " · ${it.title(ctx.lang).lowercase()}" } ?: "") + " · ${intervalLabel(item.intervalDays, ctx.lang)}"
                 else -> ""
             } + if (item.urgent) ctx.t(" · dringend", " · urgent") else ""
-            ctx.t("Op de backlog: “${item.text}” ($label)$whenText", "On the backlog: “${item.text}” ($label)$whenText")
+            ctx.t("Bij Taken: “${item.text}” ($label)$whenText", "On the backlog: “${item.text}” ($label)$whenText")
         } else if (args.`when` != When.UNPLANNED && (item.plan != plan || item.date != date?.toString())) {
             // Said again with another day: it moves (a later day counts as postponed).
             repo.plan(listOf(item.id), plan, date?.toString(), args.finishBy && date != null)
             val moved = repo.itemsByIds(listOf(item.id)).first()
             return AddToBacklogResult(moved, false, ctx.t("“${moved.text}” staat nu op ${planLabel(moved, ctx)}.", "“${moved.text}” is now ${planLabel(moved, ctx)}."))
         } else {
-            ctx.t("Staat al op de backlog: “${item.text}”", "Already on the backlog: “${item.text}”")
+            ctx.t("Staat al bij Taken: “${item.text}”", "Already on the backlog: “${item.text}”")
         }
         return AddToBacklogResult(item, added, summary)
     }
@@ -263,7 +263,7 @@ class PlanBacklogItemTool(private val repo: BacklogRepository) : Tool<PlanBacklo
 
     override suspend fun run(args: PlanBacklogArgs, ctx: ToolContext): BacklogItemsResult {
         val items = repo.find(args.itemIds, args.texts)
-        if (items.isEmpty()) throw ToolException(ctx.t("Dat vind ik niet op de backlog.", "I can't find that on the backlog."))
+        if (items.isEmpty()) throw ToolException(ctx.t("Dat vind ik niet bij de taken.", "I can't find that on the backlog."))
         val (plan, date) = resolve(args.`when`, args.date, ctx)
         val finishBy = args.finishBy && date != null
         repo.plan(items.map { it.id }, plan, date?.toString(), finishBy)
@@ -289,7 +289,7 @@ class CompleteBacklogItemTool(private val repo: BacklogRepository) : Tool<Backlo
 
     override suspend fun run(args: BacklogRefArgs, ctx: ToolContext): BacklogItemsResult {
         val items = repo.find(args.itemIds, args.texts).filterNot { it.done }
-        if (items.isEmpty()) throw ToolException(ctx.t("Dat vind ik niet op de backlog.", "I can't find that on the backlog."))
+        if (items.isEmpty()) throw ToolException(ctx.t("Dat vind ik niet bij de taken.", "I can't find that on the backlog."))
         // Routines come back: log the day instead of closing them.
         val (routines, others) = items.partition { it.isRoutine() || it.isRoutineStep }
         repo.logRoutine(routines.map { it.id }, ctx.today.toString())
@@ -344,12 +344,12 @@ class RemoveBacklogItemTool(private val repo: BacklogRepository) : Tool<BacklogR
 
     override fun confirmQuestion(args: BacklogRefArgs, ctx: ToolContext): String {
         val what = args.texts.joinToString(", ") { "“$it”" }.ifEmpty { ctx.t("dit", "this") }
-        return ctx.t("$what van de backlog verwijderen?", "Delete $what from the backlog?")
+        return ctx.t("$what uit Taken verwijderen?", "Delete $what from the backlog?")
     }
 
     override suspend fun run(args: BacklogRefArgs, ctx: ToolContext): BacklogItemsResult {
         val items = repo.find(args.itemIds, args.texts)
-        if (items.isEmpty()) throw ToolException(ctx.t("Dat vind ik niet op de backlog.", "I can't find that on the backlog."))
+        if (items.isEmpty()) throw ToolException(ctx.t("Dat vind ik niet bij de taken.", "I can't find that on the backlog."))
         repo.delete(items.map { it.id })
         return BacklogItemsResult(items, ctx.t("Verwijderd: ${quoted(items)}", "Deleted: ${quoted(items)}"))
     }

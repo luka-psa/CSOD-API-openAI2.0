@@ -40,16 +40,16 @@ class BacklogToolsTest {
     fun `adds with a section label and never duplicates`() = runTest {
         val first = add("Tandarts bellen voor Mia", Section.APPOINTMENT)
         assertTrue(first.added)
-        assertEquals("Op de backlog: “Tandarts bellen voor Mia” (afspraak)", first.summary)
+        assertEquals("Bij Taken: “Tandarts bellen voor Mia” (afspraak)", first.summary)
         assertFalse(add("  tandarts bellen voor mia ", Section.APPOINTMENT).added)
         assertEquals(1, backlog.openItems().size)
     }
 
     @Test
     fun `adding with a plan says when`() = runTest {
-        assertEquals("Op de backlog: “Ramen kuisen” (huishoudtaak) · morgen", add("Ramen kuisen", Section.CHORE, When.TOMORROW).summary)
+        assertEquals("Bij Taken: “Ramen kuisen” (huishoudtaak) · morgen", add("Ramen kuisen", Section.CHORE, When.TOMORROW).summary)
         assertEquals(
-            "Op de backlog: “Belastingbrief” (administratie) · klaar tegen zaterdag",
+            "Bij Taken: “Belastingbrief” (paperassen) · klaar tegen zaterdag",
             add("Belastingbrief", Section.ADMIN, When.DAY, "2026-10-24", finishBy = true).summary,
         )
     }
@@ -96,7 +96,7 @@ class BacklogToolsTest {
         add("Iets verkeerds")
         val call = ToolCall.of(RemoveBacklogItemTool.NAME, BacklogRefArgs.serializer(), BacklogRefArgs(texts = listOf("Iets verkeerds")))
         val pending = tools.registry.execute(call, nl)
-        assertEquals("“Iets verkeerds” van de backlog verwijderen?", pending.summary)
+        assertEquals("“Iets verkeerds” uit Taken verwijderen?", pending.summary)
         assertTrue(pending is ToolOutcome.NeedsConfirmation)
         assertEquals(1, backlog.openItems().size)
         tools.registry.execute(call, nl, confirmed = true)

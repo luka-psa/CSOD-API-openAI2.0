@@ -4,9 +4,9 @@ package app.hearth.core.model
 enum class TaskKind {
     /** Ritme & gewoontes: comes back every now and then, never planned, never "late". */
     ROUTINE,
-    /** Admin: small things with a deadline or urgency; can wait for a reply. */
+    /** Paperassen & afspraken (admin): small things with a deadline or urgency; can wait for a reply. */
     ADMIN,
-    /** Projecten: bigger things with steps, prep and a time slot. */
+    /** Grote taken (projects): bigger things with steps, prep and a time slot. */
     PROJECT,
     /** Nog te sorteren: notes, frictions, rules and anything unclear, until those get their own home. */
     SORT,
@@ -39,13 +39,13 @@ enum class Section {
             SHOPPING -> "boodschappen"
             STOCK -> "voorraad"
             APPOINTMENT -> "afspraak"
-            ADMIN -> "administratie"
-            PROJECT -> "project"
+            ADMIN -> "paperassen"
+            PROJECT -> "grote taak"
             CHORE -> "huishoudtaak"
             RHYTHM -> "ritme"
             HABIT -> "gewoonte"
             PROTECTED_TIME -> "vrije tijd"
-            FRICTION -> "ergernis"
+            FRICTION -> "frictie"
             NOTE -> "huisregel"
             GOAL -> "doel"
             IDEA -> "idee"

@@ -73,36 +73,14 @@ import app.hearth.ui.resources.listen_start
 import app.hearth.ui.resources.listen_stop
 import app.hearth.ui.resources.sort_conversation
 import app.hearth.ui.theme.SectionStyle
+import app.hearth.ui.theme.AccentStyle
+import app.hearth.ui.theme.UnsortedStyle
+import app.hearth.ui.theme.style
 import app.hearth.ui.theme.style
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
-
-/** Each topic borrows the colour of the sections it holds. */
-fun Topic.style(): SectionStyle = when (this) {
-    Topic.FREE_TIME -> Section.PROTECTED_TIME
-    Topic.ADMIN -> Section.ADMIN
-    Topic.PROJECTS -> Section.PROJECT
-    Topic.HOME -> Section.CHORE
-    Topic.RHYTHM -> Section.RHYTHM
-    Topic.SHOPPING -> Section.SHOPPING
-    Topic.MENU -> Section.APPOINTMENT
-    Topic.FRICTION -> Section.FRICTION
-    Topic.RULES -> Section.NOTE
-}.style()
-
-fun Topic.icon() = when (this) {
-    Topic.FREE_TIME -> HearthIcons.Sun
-    Topic.ADMIN -> HearthIcons.Flag
-    Topic.PROJECTS -> HearthIcons.Backlog
-    Topic.HOME -> HearthIcons.Home
-    Topic.RHYTHM -> HearthIcons.Repeat
-    Topic.SHOPPING -> HearthIcons.Cart
-    Topic.MENU -> HearthIcons.Restaurant
-    Topic.FRICTION -> HearthIcons.Bolt
-    Topic.RULES -> HearthIcons.Rule
-}
 
 /**
  * Luister mee, front and centre: a big mic that breathes while it listens, the words as they come in,
@@ -121,7 +99,7 @@ fun ListenStage(
     onShow: () -> Unit,
     onSort: () -> Unit,
 ) {
-    val ink = Section.PROTECTED_TIME.style()
+    val ink = AccentStyle
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
             .background(if (listening) ink.tint else MaterialTheme.colorScheme.surface)
@@ -182,9 +160,11 @@ fun ListenStage(
     }
 }
 
-/** All seven topics as small dots: the one the last sentence went to glows, so it's visible without scrolling. */
+/** All topics as small dots: the one the last sentence went to glows, so it's visible without scrolling. */
 @Composable
-private fun TopicRail(lit: Set<Topic>) {
+private fun TopicRail(lit: Set<Topic>) = BoxWithConstraints(Modifier.fillMaxWidth()) {
+    // Ten dots: full size on the tablet, a little smaller on a phone so they stay on one line.
+    val dot = minOf(36.dp, (maxWidth - 4.dp * (Topic.entries.size - 1)) / Topic.entries.size)
     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
         Topic.entries.forEach { topic ->
             val s = topic.style()
@@ -195,9 +175,9 @@ private fun TopicRail(lit: Set<Topic>) {
             } else Modifier
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(36.dp).then(glow).clip(CircleShape).background(if (on) s.ink else MaterialTheme.colorScheme.surface),
+                modifier = Modifier.size(dot).then(glow).clip(CircleShape).background(if (on) s.ink else MaterialTheme.colorScheme.surface),
             ) {
-                Icon(topic.icon(), null, tint = if (on) Color.White else s.ink.copy(alpha = 0.55f), modifier = Modifier.size(18.dp))
+                Icon(topic.icon(), null, tint = if (on) Color.White else s.ink.copy(alpha = 0.55f), modifier = Modifier.size(dot / 2))
             }
         }
     }
@@ -242,7 +222,7 @@ private fun SoundBars(ink: Color) {
 @Composable
 private fun HeardRow(line: HeardLine, newest: Boolean, lang: Lang) {
     val topic = line.topic
-    val s = topic?.style() ?: Section.OTHER.style()
+    val s = topic?.style() ?: UnsortedStyle
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(16.dp))
@@ -274,12 +254,14 @@ private fun HeardRow(line: HeardLine, newest: Boolean, lang: Lang) {
 fun TopicGrid(glances: List<Pair<Topic, String>>, selected: Topic?, lit: Set<Topic>, lang: Lang, onSelect: (Topic) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val gap = 12.dp
+        // Ten topics: two rows of five on the tablet.
         val columns = when {
-            maxWidth >= 1000.dp -> 4
-            maxWidth >= 600.dp -> 3
+            maxWidth >= 1000.dp -> 5
+            maxWidth >= 600.dp -> 4
             else -> 2
         }
-        val width = (maxWidth - gap * (columns - 1)) / columns
+        // A hair narrower than the exact share, so rounding never pushes the last tile to the next row.
+        val width = (maxWidth - gap * (columns - 1)) / columns - 1.dp
         FlowRow(horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) {
             glances.forEach { (topic, glance) ->
                 TopicTile(topic, glance, topic == selected, topic in lit, lang, Modifier.width(width)) { onSelect(topic) }
@@ -323,7 +305,7 @@ fun AgreeSheet(lines: List<String>, unsorted: Boolean, onSort: () -> Unit, onAgr
             Spacer(Modifier.size(14.dp))
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 if (unsorted) {
-                    val s = Section.PROTECTED_TIME.style()
+                    val s = AccentStyle
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().background(s.tint, MaterialTheme.shapes.medium).padding(horizontal = 16.dp, vertical = 8.dp)) {
                         Text(stringResource(Res.string.agree_unsorted), style = MaterialTheme.typography.bodyMedium, color = s.ink, modifier = Modifier.weight(1f))
                         TextButton(onClick = onSort) { Text(stringResource(Res.string.sort_conversation)) }

@@ -35,7 +35,7 @@ class SaveConnectionTool(private val settings: SettingsRepository) : Tool<SaveCo
         }
         val c = settings.saveConnection(args.enabled, url)
         val summary = when {
-            c.relayUrl == null -> ctx.t("Deze versie heeft nog geen relay. Vul een adres in onder Geavanceerd.", "This build has no relay yet. Enter an address under Advanced.")
+            c.relayUrl == null -> ctx.t("Deze versie heeft nog geen koppelserver. Vul een adres in onder Instellingen → Geavanceerd.", "This build has no relay yet. Enter an address under Advanced.")
             c.enabled -> ctx.t("Verbinding met jullie AI staat aan.", "The connection to your AI is on.")
             else -> ctx.t("Verbinding met jullie AI staat uit.", "The connection to your AI is off.")
         }

@@ -23,7 +23,9 @@ import app.hearth.core.tools.ToolSource
 import app.hearth.core.tools.backlog.AddToBacklogArgs
 import app.hearth.core.tools.backlog.BacklogRefArgs
 import app.hearth.core.tools.backlog.When
+import app.hearth.core.tools.board.AddGoalArgs
 import app.hearth.core.tools.board.LogFrictionArgs
+import app.hearth.core.tools.board.SetGoalStepArgs
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.AfterTest
@@ -39,8 +41,9 @@ class WeekToolsTest {
     private val shopping = ShoppingRepository(db)
     private val backlog = BacklogRepository(db)
     private val week = WeekRepository(db)
+    private val boardRepo = BoardRepository(db)
     private var tick = app.hearth.core.model.nowMillis()
-    private val tools = HearthTools(shopping, BacklogRepository(db) { tick++ }, BoardRepository(db), StockRepository(db), week, app.hearth.core.data.settings.SettingsRepository(db), app.hearth.core.data.week.MeetingRepository(db))
+    private val tools = HearthTools(shopping, BacklogRepository(db) { tick++ }, boardRepo, StockRepository(db), week, app.hearth.core.data.settings.SettingsRepository(db), app.hearth.core.data.week.MeetingRepository(db))
 
     // Friday 23 October 2026.
     private val friday = LocalDate(2026, 10, 23)
@@ -101,6 +104,15 @@ class WeekToolsTest {
         tools.registry.run(tools.setAnchor, app.hearth.core.tools.backlog.SetAnchorArgs(texts = listOf("tassen"), anchor = app.hearth.core.model.Anchor.EVENING), nl)
         val later = WeekLook(backlog.openItems(), emptyList(), 0, 0, LocalDate(2026, 10, 22))
         assertEquals("2 routines · over 2 momenten", Topic.RHYTHM.glance(later, Lang.NL))
+
+        // Doelen have their own tile, with the next small step; frictions keep theirs.
+        assertEquals(Topic.GOALS, Section.GOAL.topic())
+        tools.registry.run(tools.addGoal, AddGoalArgs("Elke maand een avondje uit"), nl)
+        tools.registry.run(tools.setGoalStep, SetGoalStepArgs(goal = "avondje", step = "Oppas vragen"), nl)
+        tools.registry.run(tools.logFriction, LogFrictionArgs("Rommel in de gang"), nl)
+        val withBoard = WeekLook(emptyList(), boardRepo.allItems(), 0, 0, LocalDate(2026, 10, 22))
+        assertEquals("1 doel · volgende stap: Oppas vragen", Topic.GOALS.glance(withBoard, Lang.NL))
+        assertEquals("1 te bespreken", Topic.FRICTION.glance(withBoard, Lang.NL))
     }
 
     @Test
@@ -116,8 +128,8 @@ class WeekToolsTest {
         assertEquals(listOf("Autokeuring"), agenda.deadlines.map { it.text })
         assertEquals(listOf("Rommel in de gang"), agenda.frictions.map { it.text })
         assertEquals(
-            "Terugblik: 1 ding gedaan.\nVrije tijd: Nog niets gepland.\nAdmin & afspraken: 1 open (klaar tegen: Autokeuring).\n" +
-                "Grote taken: Geen lopende projecten.\nHuishouden: Nog geen huishoudtaken.\nRitmes & routines: Nog geen ritme.\n" +
+            "Terugblik: 1 ding gedaan.\nVrije tijd: Nog niets gepland.\nDoelen: Nog geen doelen.\nPaperassen & afspraken: 1 open (klaar tegen: Autokeuring).\n" +
+                "Grote taken: Niets lopend.\nHuishouden: Nog geen huishoudtaken.\nRitmes & routines: Nog geen ritme.\n" +
                 "Boodschappen: De lijst is leeg.\nWeekmenu: 1 van 7 avonden (Pizza).\nFrictie & ideeën: 1 te bespreken (Rommel in de gang).\n" +
                 "Huisregels: Nog geen huisregels.\nMeters (samen afspreken): hoe liep het, voorstel 4; wat schuurde, voorstel 2.",
             agenda.summary,

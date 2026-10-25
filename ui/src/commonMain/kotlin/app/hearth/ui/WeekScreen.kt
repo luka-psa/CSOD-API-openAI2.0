@@ -139,7 +139,6 @@ import app.hearth.ui.resources.plan_weekend
 import app.hearth.ui.resources.save
 import app.hearth.ui.resources.shopping_add_hint
 import app.hearth.ui.resources.shopping_summary_empty
-import app.hearth.ui.resources.step_board
 import app.hearth.ui.resources.step_board_hint
 import app.hearth.ui.resources.step_board_empty
 import app.hearth.ui.resources.step_look_back
@@ -148,26 +147,19 @@ import app.hearth.ui.resources.step_look_back_count
 import org.jetbrains.compose.resources.pluralStringResource
 import app.hearth.ui.resources.step_look_back_since
 import app.hearth.ui.resources.step_look_back_week
-import app.hearth.ui.resources.step_meals
-import app.hearth.ui.resources.step_meals_hint
-import app.hearth.ui.resources.step_of
-import app.hearth.ui.resources.step_shopping
 import app.hearth.ui.resources.step_shopping_hint
 import app.hearth.ui.resources.step_week
-import app.hearth.ui.resources.step_week_calm
-import app.hearth.ui.resources.step_week_deadlines
-import app.hearth.ui.resources.step_week_projects
-import app.hearth.ui.resources.step_week_routines
-import app.hearth.ui.resources.this_week
-import app.hearth.ui.resources.week_back
 import app.hearth.ui.resources.week_done
 import app.hearth.ui.resources.week_done_recap
 import app.hearth.ui.resources.week_finish
 import app.hearth.ui.resources.week_last_held
-import app.hearth.ui.resources.week_next
 import app.hearth.ui.resources.week_subtitle
 import app.hearth.ui.resources.board_won
+import app.hearth.ui.resources.goals_meeting_hint
+import app.hearth.ui.resources.goals_add_hint
+import app.hearth.ui.resources.goals_empty
 import app.hearth.ui.theme.style
+import app.hearth.ui.theme.AccentStyle
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.StringResource
@@ -184,6 +176,8 @@ class WeekCallbacks(
     val complete: (BacklogItem) -> Unit,
     val resolveFriction: (BoardItem, FrictionOutcome, String?) -> Unit,
     val setGoalStep: (BoardItem, String, Boolean) -> Unit,
+    val addGoal: (String) -> Unit,
+    val achieveGoal: (BoardItem) -> Unit,
     val finish: () -> Unit,
     val goTasks: () -> Unit,
     val goMenu: () -> Unit,
@@ -306,7 +300,7 @@ fun WeekScreen(
             TopicGrid(Topic.entries.map { it to it.glance(look, lang) }, open, lit, lang) { open = if (open == it) null else it }
             open?.let { topic ->
                 Spacer(Modifier.size(gap))
-                HearthCard(topic.title(lang), topic.icon(), Modifier.fillMaxWidth(), action = {
+                TopicCard(topic, lang, Modifier.fillMaxWidth(), action = {
                     IconButton(onClick = { open = null }) { Icon(HearthIcons.Close, stringResource(Res.string.close), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }) {
                     TopicDetail(topic, agenda, backlog, steps, board, meals, dishes, shopping, today, lang, meeting, cb)
@@ -392,6 +386,7 @@ private fun TopicDetail(
             Spacer(Modifier.size(10.dp))
             AddRow(stringResource(Res.string.free_add_hint), { cb.addTo(it, Section.PROTECTED_TIME) }, muted = true)
         }
+        Topic.GOALS -> GoalsStep(board, cb)
         Topic.ADMIN -> {
             if (mine.isEmpty()) Hint(stringResource(Res.string.admin_empty))
             mine.take(8).forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}) }
@@ -553,7 +548,7 @@ private fun Days(meals: List<Meal>, dishes: List<Meal>, today: LocalDate, lang: 
             )
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(HearthIcons.Restaurant, null, tint = if (meal == null) MaterialTheme.colorScheme.primary else Section.SHOPPING.style().ink, modifier = Modifier.size(16.dp))
+                    Icon(HearthIcons.Restaurant, null, tint = if (meal == null) MaterialTheme.colorScheme.primary else Topic.MENU.style().ink, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
                         meal?.dish ?: stringResource(Res.string.meal_add),
@@ -647,7 +642,7 @@ private fun LookBack(agenda: WeekAgenda?, last: Huddle?, today: LocalDate, lang:
         GroupTitle(stringResource(Res.string.board_won))
         agenda.boardWins.forEach { win ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) {
-                Icon(if (win.kind == BoardKind.GOAL) HearthIcons.Star else HearthIcons.Bolt, null, tint = Section.RHYTHM.style().ink, modifier = Modifier.size(16.dp))
+                Icon(if (win.kind == BoardKind.GOAL) Topic.GOALS.icon() else Topic.FRICTION.icon(), null, tint = (if (win.kind == BoardKind.GOAL) Topic.GOALS else Topic.FRICTION).style().ink, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(win.text, style = MaterialTheme.typography.bodyMedium)
             }
@@ -665,8 +660,10 @@ private fun dayName(day: LocalDate, today: LocalDate, lang: Lang, short: Boolean
 private fun MealDialog(day: LocalDate, today: LocalDate, lang: Lang, current: Meal?, dishes: List<Meal>, onSave: (String, String) -> Unit, onDismiss: () -> Unit) {
     var dish by remember { mutableStateOf(current?.dish ?: "") }
     var ingredients by remember { mutableStateOf(current?.ingredients?.joinToString(", ") ?: "") }
+    var asking by remember { mutableStateOf(false) }
+    val dirty = dish != (current?.dish ?: "") || ingredients != (current?.ingredients?.joinToString(", ") ?: "")
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (dirty) asking = true else onDismiss() },
         title = { Text(stringResource(Res.string.meal_title, dayName(day, today, lang))) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -686,6 +683,7 @@ private fun MealDialog(day: LocalDate, today: LocalDate, lang: Lang, current: Me
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) } },
         containerColor = MaterialTheme.colorScheme.surface,
     )
+    if (asking) DiscardDialog(onKeep = { asking = false }, onDiscard = { asking = false; onDismiss() })
 }
 
 // ---------- 3. shopping ----------
@@ -740,19 +738,18 @@ private fun Projects(backlog: List<BacklogItem>, steps: List<BacklogItem>, today
 private fun BoardStep(board: List<BoardItem>, heavy: Boolean, cb: WeekCallbacks) {
     var asking by remember { mutableStateOf<Pair<BoardItem, FrictionOutcome?>?>(null) }
     val frictions = board.filter { it.isWorkingPoint && it.isOpen }
-    val goals = board.filter { it.kind == BoardKind.GOAL && it.isOpen && it.nextStep == null }
     Text(stringResource(Res.string.step_board_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if (heavy && frictions.isNotEmpty()) {
         Spacer(Modifier.size(10.dp))
         Hint(stringResource(Res.string.feeling_heavy_hint))
     }
     Spacer(Modifier.size(12.dp))
-    if (frictions.isEmpty() && goals.isEmpty()) Hint(stringResource(Res.string.step_board_empty))
+    if (frictions.isEmpty()) Hint(stringResource(Res.string.step_board_empty))
     frictions.forEach { f ->
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val idea = f.kind == BoardKind.IDEA
-                Icon(if (idea) HearthIcons.Idea else HearthIcons.Bolt, null, tint = (if (idea) Section.IDEA else Section.FRICTION).style().ink, modifier = Modifier.size(18.dp))
+                Icon(if (idea) HearthIcons.Idea else Topic.FRICTION.icon(), null, tint = Topic.FRICTION.style().ink, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(f.text, style = MaterialTheme.typography.bodyLarge)
             }
@@ -764,20 +761,32 @@ private fun BoardStep(board: List<BoardItem>, heavy: Boolean, cb: WeekCallbacks)
             }
         }
     }
-    goals.forEach { g ->
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-            Icon(HearthIcons.Star, null, tint = Section.GOAL.style().ink, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(g.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            TextButton(onClick = { asking = g to null }) { Text(stringResource(Res.string.goal_step_add)) }
-        }
-    }
     asking?.let { (item, outcome) ->
         when (outcome) {
             FrictionOutcome.RULE -> TextDialog(stringResource(Res.string.friction_rule_title), item.text, onDone = { t, _ -> cb.resolveFriction(item, FrictionOutcome.RULE, t.ifBlank { null }) }) { asking = null }
-            FrictionOutcome.CHANGE -> TextDialog(stringResource(Res.string.friction_change_title), item.text, onDone = { t, _ -> cb.resolveFriction(item, FrictionOutcome.CHANGE, t.ifBlank { null }) }) { asking = null }
-            else -> TextDialog(stringResource(Res.string.goal_step_title), stringResource(Res.string.friction_text_hint), toggle = stringResource(Res.string.goal_step_to_week), onDone = { t, toWeek -> cb.setGoalStep(item, t, toWeek) }) { asking = null }
+            else -> TextDialog(stringResource(Res.string.friction_change_title), item.text, onDone = { t, _ -> cb.resolveFriction(item, FrictionOutcome.CHANGE, t.ifBlank { null }) }) { asking = null }
         }
+    }
+}
+
+// ---------- Doelen ----------
+
+/**
+ * Doelen: what we want to reach, as a family, the two of us or one person. The meeting looks at each one's
+ * next small step (or picks one); reached goals are celebrated on the Werkbord.
+ */
+@Composable
+private fun GoalsStep(board: List<BoardItem>, cb: WeekCallbacks) {
+    var asking by remember { mutableStateOf<BoardItem?>(null) }
+    val goals = board.filter { it.kind == BoardKind.GOAL && it.isOpen }
+    Text(stringResource(Res.string.goals_meeting_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.size(8.dp))
+    if (goals.isEmpty()) Hint(stringResource(Res.string.goals_empty))
+    goals.forEach { g -> GoalRow(g, onAchieve = { cb.achieveGoal(g) }, onStep = { asking = g }) }
+    Spacer(Modifier.size(10.dp))
+    AddRow(stringResource(Res.string.goals_add_hint), cb.addGoal, muted = true, compact = true)
+    asking?.let { g ->
+        TextDialog(stringResource(Res.string.goal_step_title), stringResource(Res.string.friction_text_hint), toggle = stringResource(Res.string.goal_step_to_week), onDone = { t, toWeek -> cb.setGoalStep(g, t, toWeek) }) { asking = null }
     }
 }
 
@@ -797,7 +806,7 @@ private fun Finished(agenda: WeekAgenda?, meals: List<Meal>, huddles: List<Huddl
         )
         if (meals.isNotEmpty()) {
             Spacer(Modifier.size(8.dp))
-            Text(meals.joinToString("  ·  ") { it.dish }, style = MaterialTheme.typography.bodyLarge, color = Section.PROTECTED_TIME.style().ink)
+            Text(meals.joinToString("  ·  ") { it.dish }, style = MaterialTheme.typography.bodyLarge, color = Topic.MENU.style().ink)
         }
     }
     huddles.firstOrNull()?.summary?.takeIf { it.isNotBlank() }?.let {
@@ -816,9 +825,9 @@ private fun Finished(agenda: WeekAgenda?, meals: List<Meal>, huddles: List<Huddl
 
 @Composable
 private fun Hint(text: String) {
-    val s = Section.PROTECTED_TIME.style()
+    val s = AccentStyle
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().background(s.tint, MaterialTheme.shapes.medium).padding(16.dp)) {
-        Icon(HearthIcons.Sun, null, tint = s.ink, modifier = Modifier.size(20.dp))
+        Icon(HearthIcons.Flame, null, tint = s.ink, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge, color = s.ink)
     }

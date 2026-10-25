@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_today">Vandaag</string>
-    <string name="nav_backlog">Backlog</string>
     <string name="nav_shopping">Boodschappen</string>
 
     <string name="greeting_morning">Goeiemorgen</string>
@@ -11,22 +10,11 @@
     <string name="done_today_none">Een frisse dag</string>
 
     <string name="today_planned">Vandaag</string>
-    <string name="today_empty">Niets gepland. Kies iets uit de backlog wanneer je klaar bent.</string>
+    <string name="today_empty">Niets gepland. Kies iets uit Taken wanneer je er klaar voor bent.</string>
     <string name="today_next">Volgende</string>
-    <string name="today_next_empty">Niets in de rij. Zet dingen op “Volgende” in de backlog.</string>
-    <string name="today_to_plan">Wacht op een plek</string>
-    <string name="today_to_plan_count">%1$d dingen om in te plannen</string>
-    <string name="today_to_plan_none">Alles heeft een plek.</string>
-    <string name="open_backlog">Open backlog</string>
     <string name="shopping_summary_empty">Niets nodig op dit moment.</string>
     <string name="open_list">Open lijst</string>
 
-    <string name="backlog_subtitle">Alles wat nog open staat, uit elke hoek van het huis.</string>
-    <string name="filter_all">Alles</string>
-    <string name="group_unplanned">In te plannen</string>
-    <string name="group_next">Volgende</string>
-    <string name="group_later">Later</string>
-    <string name="backlog_empty">De backlog is leeg. Zeg of typ gewoon wat in je opkomt.</string>
     <string name="plan">Plannen</string>
     <string name="mark_done">Gedaan</string>
 
@@ -42,7 +30,7 @@
     <string name="delete_confirm">“%1$s” verwijderen?</string>
     <string name="delete_confirm_body">Dit haalt het voor iedereen weg. Is het klaar? Tik dan op Gedaan.</string>
 
-    <string name="shopping_list">Boodschappenlijst</string>
+    <string name="shopping_list">Boodschappen</string>
     <string name="shopping_empty">Niets nodig op dit moment.</string>
     <string name="shopping_add_hint">Toevoegen aan de lijst…</string>
     <string name="add">Voeg toe</string>
@@ -65,28 +53,17 @@
     <string name="dash_rhythm">In het ritme</string>
     <string name="dash_rhythm_empty">Het ritme loopt. Niets is aan de beurt.</string>
     <string name="dash_coming_up">Binnenkort</string>
-    <string name="dash_projects">Lopende projecten</string>
     <string name="dash_free">vrij</string>
     <string name="free_title">Vrije tijd</string>
     <string name="free_all_done">Alles van vandaag is gedaan. De rest van de dag is van jullie.</string>
     <string name="free_nothing">Vandaag moet er niets. Geniet ervan.</string>
     <string name="free_light">Een lichte dag: ruimte voor iets leuks.</string>
     <string name="free_weekend">%1$s is nog vrij.</string>
-    <string name="urgent">dringend</string>
-    <string name="waiting_reply">wacht op antwoord</string>
-    <string name="follow_up">opvolgen %1$s</string>
     <string name="next_step">Volgende stap: %1$s</string>
     <string name="steps_progress">%1$d van %2$d stappen</string>
     <string name="no_steps">Nog geen stappen. Voeg de eerste toe.</string>
-    <string name="tasks_subtitle">Ritme, admin en projecten, elk op hun eigen manier.</string>
-    <string name="tab_routines">Ritme &amp; gewoontes</string>
-    <string name="tab_admin">Admin</string>
-    <string name="tab_projects">Projecten</string>
-    <string name="tab_week">Week</string>
+    <string name="tasks_subtitle">Alles wat er te doen is, per onderwerp.</string>
     <string name="tab_sort">Te sorteren</string>
-    <string name="add_routine_hint">Nieuwe gewoonte, bv. lakens verversen om de 2 weken</string>
-    <string name="add_admin_hint">Nieuwe admin, bv. autokeuring boeken</string>
-    <string name="add_project_hint">Nieuw project, bv. IKEA kast</string>
     <string name="add_step_hint">Stap toevoegen</string>
     <string name="routine_due">aan de beurt</string>
     <string name="routine_soon">binnenkort</string>
@@ -94,13 +71,9 @@
     <string name="group_on_track">Loopt goed</string>
     <string name="group_no_rhythm">Nog geen ritme</string>
     <string name="group_urgent">Dringend</string>
-    <string name="group_deadline">Met deadline</string>
+    <string name="group_deadline">Met een einddatum</string>
     <string name="group_waiting">Wacht op antwoord</string>
     <string name="group_open">Open</string>
-    <string name="empty_routines">Nog geen gewoontes. Denk aan lakens, gras maaien, ramen.</string>
-    <string name="empty_admin">Geen admin open. Heerlijk.</string>
-    <string name="empty_projects">Nog geen projecten. Grote klussen met stappen komen hier.</string>
-    <string name="empty_sort">Alles is gesorteerd.</string>
     <string name="sort_hint">Waar hoort dit? Tik op iets om te kiezen.</string>
     <string name="how_often">Hoe vaak?</string>
     <string name="do_on_day">Op een dag doen</string>
@@ -110,8 +83,8 @@
     <string name="follow_up_on">Opvolgen op</string>
     <string name="move_to">Hoort bij</string>
     <string name="kind_routine">Ritme</string>
-    <string name="kind_admin">Admin</string>
-    <string name="kind_project">Project</string>
+    <string name="kind_admin">Paperassen</string>
+    <string name="kind_project">Grote taak</string>
     <string name="kind_appointment">Afspraak</string>
     <string name="kind_note">Huisregel</string>
     <string name="plan_weekend">Dit weekend</string>
@@ -126,10 +99,8 @@
     <string name="member_name_hint">Naam</string>
     <string name="member_remove_confirm">%1$s uit het huishouden halen?</string>
     <string name="member_remove_body">Persoonlijke doelen worden gezinsdoelen.</string>
-    <string name="rules_title">Huisregels</string>
     <string name="rules_add_hint">Nieuwe huisregel, bv. schoenen in de kast</string>
     <string name="rules_empty">Nog geen huisregels. Schrijf op wat jullie afspreken.</string>
-    <string name="frictions_title">Frictie &amp; ideeën</string>
     <string name="frictions_add_hint">Wat stoort er, of “idee: …”</string>
     <string name="frictions_empty">Niets dat stoort. Heerlijk.</string>
     <string name="frictions_hint">Bespreek ze in het weekoverleg: een regel, een verandering, of loslaten.</string>
@@ -143,7 +114,6 @@
     <string name="became_rule">werd een huisregel</string>
     <string name="became_change">werd een taak</string>
     <string name="let_go">losgelaten</string>
-    <string name="goals_title">Doelen</string>
     <string name="goals_add_hint">Nieuw doel, bv. elke maand een avondje uit</string>
     <string name="goals_empty">Nog geen doelen. Wat willen jullie bereiken, alleen of samen?</string>
     <string name="scope_family">Gezin</string>
@@ -152,13 +122,11 @@
     <string name="goal_step_add">Kleine volgende stap</string>
     <string name="goal_step_title">Wat is één kleine volgende stap?</string>
     <string name="goal_step_to_week">Zet bij volgende</string>
-    <string name="goal_achieved">Bereikt</string>
     <string name="goal_achieved_title">Samen bereikt</string>
     <string name="save">Bewaar</string>
     <string name="cancel">Annuleer</string>
     <string name="days_ago">%1$d dagen geleden</string>
     <string name="today_word">vandaag</string>
-    <string name="dash_board">Onze huisregels</string>
     <string name="dash_board_empty">Nog geen huisregels. Voeg er een toe op het werkbord.</string>
     <string name="kind_friction">Frictie</string>
     <string name="kind_goal">Doel</string>
@@ -185,17 +153,12 @@
     <string name="nav_week">Weekoverleg</string>
     <string name="week_subtitle">Een kwartiertje samen, alles op één blad.</string>
     <string name="week_last_held">vorige keer: %1$s</string>
-    <string name="step_of">Stap %1$d van %2$d</string>
     <string name="step_look_back">Terugblik</string>
-    <string name="step_meals">Maaltijden</string>
-    <string name="step_shopping">Boodschappen</string>
     <string name="step_week">Deze week</string>
-    <string name="step_board">Werkbord</string>
     <string name="step_look_back_since">sinds %1$s</string>
     <string name="step_look_back_week">de voorbije week</string>
     <string name="step_look_back_calm">Een rustige week. Ook dat mag.</string>
     <string name="board_won">Opgelost op het werkbord</string>
-    <string name="step_meals_hint">Tik op een dag. De ingrediënten gaan op de boodschappenlijst; gerechten van vroeger komen in één tik terug.</string>
     <string name="meal_add">Wat eten we?</string>
     <string name="meal_title">%1$s: wat eten we?</string>
     <string name="meal_dish_hint">Gerecht, bv. spaghetti bolognese</string>
@@ -204,15 +167,8 @@
     <string name="meal_remove_body">De boodschappenlijst blijft zoals ze is.</string>
     <string name="step_shopping_hint">Ontbreekt er iets? Een snelle blik op de voorraad helpt ook.</string>
     <string name="open_stock">Voorraad nakijken</string>
-    <string name="step_week_deadlines">Met deadline</string>
-    <string name="step_week_routines">Aan de beurt</string>
-    <string name="step_week_projects">Een stap voor het weekend</string>
-    <string name="step_week_calm">Een rustige week. Ruimte voor iets leuks.</string>
-    <string name="this_week">Deze week</string>
     <string name="step_board_hint">Wat stoorde er deze week? Beslis samen: een regel, een verandering, of loslaten.</string>
     <string name="step_board_empty">Geen frictie die wacht. Heerlijk.</string>
-    <string name="week_back">Vorige</string>
-    <string name="week_next">Volgende</string>
     <string name="week_finish">Klaar</string>
     <string name="week_done">Klaar voor de week!</string>
     <string name="week_done_recap">Gedaan: %1$d  ·  Maaltijden gepland: %2$d</string>
@@ -234,15 +190,15 @@
     <string name="connect_on">Verbinding</string>
     <string name="connect_status_off">Uit</string>
     <string name="connect_status_connecting">Verbinden…</string>
-    <string name="connect_status_online">Online: jullie AI kan Hearth bereiken</string>
+    <string name="connect_status_online">Verbonden: jullie AI kan Hearth bereiken</string>
     <string name="connect_status_retrying">Even geen verbinding, Hearth probeert het zelf opnieuw</string>
     <string name="connect_activity">Recent gedaan door jullie AI</string>
     <string name="connect_apps">Gekoppeld</string>
     <string name="connect_since">sinds %1$s</string>
     <string name="connect_unlink_confirm">%1$s ontkoppelen?</string>
     <string name="connect_unlink_body">%1$s kan Hearth dan niet meer gebruiken. Opnieuw koppelen kan altijd met een nieuwe code.</string>
-    <string name="connect_no_relay">Deze versie heeft geen relay-adres</string>
-    <string name="connect_no_relay_body">ChatGPT en Claude bereiken Hearth via een gedeelde relay. Deze versie van Hearth is zonder dat adres gebouwd. Vul het in onder Geavanceerd, of installeer een versie die het wel heeft.</string>
+    <string name="connect_no_relay">Deze versie heeft geen koppelserver</string>
+    <string name="connect_no_relay_body">ChatGPT en Claude bereiken Hearth via een gedeelde koppelserver. Deze versie van Hearth is zonder dat adres gebouwd. Vul het in onder Geavanceerd, of installeer een versie die het wel heeft.</string>
     <string name="connect_link">Koppel ChatGPT of Claude</string>
     <string name="connect_link_body">Iedereen doet dit één keer, in de eigen AI-app. Geen sleutels of wachtwoorden: je voegt dit adres toe, de app opent een Hearth-pagina en je typt de code van deze tablet.</string>
     <string name="connect_share">Delen</string>
@@ -255,10 +211,10 @@
     <string name="connect_chatgpt_steps">Instellingen → Apps &amp; Connectors → Geavanceerd: zet Developer mode aan|Terug in Apps &amp; Connectors: Create (aanmaken). Naam: Hearth, plak het adres, authenticatie: OAuth|Er opent een Hearth-pagina: tik hier op Toon koppelcode en typ de code daar|Zet Hearth aan in een gesprek en zeg bv. “zet melk op de lijst”</string>
     <string name="connect_plan_note">Menunamen veranderen af en toe. ChatGPT heeft een abonnement met Developer mode nodig; Claude laat aangepaste connectors toe op de meeste abonnementen. Hearth moet open staan op de tablet.</string>
     <string name="connect_advanced">Geavanceerd</string>
-    <string name="connect_advanced_body">Een eigen relay? Vul het adres in. Gezinnen hebben dit normaal nooit nodig.</string>
+    <string name="connect_advanced_body">Een eigen koppelserver? Vul het adres in. Gezinnen hebben dit normaal nooit nodig.</string>
     <string name="connect_address">Nu: %1$s</string>
     <string name="connect_manual_hint">https://hearth-relay.….workers.dev</string>
-    <string name="connect_standard_relay">Terug naar de ingebouwde relay</string>
+    <string name="connect_standard_relay">Terug naar de ingebouwde koppelserver</string>
     <string name="connect_ai">ChatGPT en Claude</string>
     <string name="connect_google">Google</string>
     <string name="google_backup">Back-up in Google Drive</string>
@@ -351,10 +307,6 @@
     <string name="wins_title">Wat ging goed</string>
     <string name="wins_hint">Wat ging goed deze week?</string>
     <string name="win_remove">Weghalen bij wat goed ging?</string>
-    <string name="feeling_title">Hoe zwaar voelde de week?</string>
-    <string name="feeling_light">licht</string>
-    <string name="feeling_heavy">zwaar</string>
-    <string name="feeling_us">Wij</string>
     <string name="feeling_heavy_hint">Een zware week. Wat pakken we als eerste aan?</string>
     <string name="last_time">Vorige keer</string>
     <string name="week_summary">Samenvatting</string>
@@ -378,12 +330,8 @@
     <string name="rules_check_title">Hoe liepen de huisregels?</string>
     <string name="rule_worked">Liep goed</string>
     <string name="rule_not_yet">Liep nog niet</string>
-    <string name="habits_attention">Gewoontes die aandacht vragen</string>
-    <string name="habits_attention_hint">Lukt het niet vaak? Maak het kleiner, makkelijker of minder vaak, in plaats van harder te proberen.</string>
     <string name="habit_less_often">Minder vaak</string>
     <string name="habit_easier">Makkelijker maken</string>
-    <string name="habit_easy">loopt vanzelf</string>
-    <string name="habits_attention_short">vraagt aandacht</string>
     <string name="ease_easy">loopt vanzelf</string>
     <string name="ease_effort">vraagt moeite</string>
     <string name="ease_hard">te zwaar</string>
@@ -413,10 +361,10 @@
     <string name="agree_empty">Nog niets om samen te vatten. Dat mag ook.</string>
     <string name="free_empty">Nog niets gepland. Wat zou deze week fijn zijn?</string>
     <string name="free_add_hint">Iets leuks, bv. filmavond vrijdag</string>
-    <string name="admin_empty">Geen admin open. Fijn.</string>
-    <string name="admin_add_hint">Admin, bv. verzekering bellen</string>
+    <string name="admin_empty">Geen paperassen open. Fijn.</string>
+    <string name="admin_add_hint">Paperassen, bv. verzekering bellen</string>
     <string name="project_add_hint">Grote taak, bv. zolder opruimen</string>
-    <string name="projects_empty">Geen lopende projecten.</string>
+    <string name="projects_empty">Nog geen grote taken. Klussen met stappen komen hier.</string>
     <string name="day_free">vrij</string>
     <string name="moment_title">Wanneer op de dag?</string>
     <string name="anchor_none">Wanneer het past</string>
@@ -430,4 +378,15 @@
     <string name="routine_step_add">Stap toevoegen, bv. pyjama aan</string>
     <string name="group_lists">Lijstjes</string>
     <string name="recipe_link_hint">Plak een link naar een recept</string>
+    <string name="fold">Open of dicht</string>
+    <string name="home_none">Nog geen huishoudtaken. Denk aan lakens, gras maaien, ramen.</string>
+    <plurals name="sort_count">
+        <item quantity="one">%1$d ding wacht op een plek</item>
+        <item quantity="other">%1$d dingen wachten op een plek</item>
+    </plurals>
+    <string name="goals_meeting_hint">Wat willen we bereiken? Kies voor elk doel één kleine volgende stap.</string>
+    <string name="discard_title">Wat je typte weggooien?</string>
+    <string name="discard_body">Het is nog niet bewaard. Typ gerust verder, of gooi het weg.</string>
+    <string name="discard_keep">Verder typen</string>
+    <string name="discard_yes">Weggooien</string>
 </resources>

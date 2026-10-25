@@ -17,9 +17,9 @@ object AreaWords {
         Section.FRICTION to listOf("ergernissen", "fricties", "frictie", "irritaties", "frictions", "friction", "annoyances"),
         Section.GOAL to listOf("doelen", "doel", "goals", "goal"),
         Section.IDEA to listOf("ideeën", "ideeen", "idee", "verbeteringen", "ideas", "idea"),
-        Section.PROJECT to listOf("projecten", "project", "projects"),
+        Section.PROJECT to listOf("grote taken", "grote taak", "projecten", "project", "big tasks", "projects"),
         Section.CHORE to listOf("huishoudtaken", "gewoontes", "gewoonte", "ritme", "routines", "routine", "habits", "chores"),
-        Section.ADMIN to listOf("administratie", "admin", "paperwork"),
+        Section.ADMIN to listOf("paperassen", "papierwerk", "administratie", "admin", "paperwork"),
         // "Afspraken" are appointments (the dentist), never house rules.
         Section.APPOINTMENT to listOf("afspraken", "appointments"),
         Section.OTHER to listOf("takenlijst", "taken", "backlog", "to do list", "to-do list", "todo list", "to do", "to-do", "tasks"),

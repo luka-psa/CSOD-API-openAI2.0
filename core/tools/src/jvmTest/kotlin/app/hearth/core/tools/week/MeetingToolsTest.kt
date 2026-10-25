@@ -178,7 +178,7 @@ class MeetingToolsTest {
         assertTrue("Wat ging goed: De ochtenden gingen vlotter" in text, text)
         assertTrue("Hoe liep het: oké (Hearth dacht: heel goed)" in text, text)
         assertTrue("Nieuwe huisregels: Schoenen uit in de gang" in text, text)
-        assertTrue("Admin & afspraken: Tandarts Mia (dinsdag)" in text, text)
+        assertTrue("Paperassen & afspraken: Tandarts Mia (dinsdag)" in text, text)
         assertTrue("Vrije tijd: Niks plannen, uitrusten (morgen)" in text, text)
         assertEquals(emptyList(), meeting.currentWins())
         assertEquals(listOf("we moeten de garage opruimen dit weekend"), meeting.transcriptOf(first.id).first().map { it.text })

@@ -29,7 +29,7 @@ object KeywordRouter {
             "holiday", "vacation", "on leave", "birthday", "wedding",
         ),
         Section.ADMIN to listOf(
-            "belasting", "belastingbrief", "verzekering", "formulier", "factuur", "facturen", "papieren", "bank", "mutualiteit",
+            "belasting", "belastingbrief", "verzekering", "formulier", "factuur", "facturen", "papieren", "paperassen", "papierwerk", "bank", "mutualiteit",
             "aangifte", "contract", "tax", "insurance", "form", "invoice", "paperwork", "bills", "renew",
             // Admin verbs: "school bellen", "abonnement opzeggen".
             " bellen", " regelen", " betalen", " invullen", " aanvragen", " boeken", " opzeggen", " nakijken", " doorsturen", " mailen",

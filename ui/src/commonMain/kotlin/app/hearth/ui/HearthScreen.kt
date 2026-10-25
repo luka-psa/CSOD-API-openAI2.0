@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.model.GoalScope
 import app.hearth.core.model.isRoutineStep
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.key
@@ -80,7 +81,7 @@ enum class Destination(val icon: ImageVector, val label: StringResource, val inN
     WEEK(HearthIcons.People, Res.string.nav_week),
     BOARD(HearthIcons.Board, Res.string.nav_board),
     SHOPPING(HearthIcons.Cart, Res.string.nav_shopping),
-    CONNECT(HearthIcons.Link, Res.string.nav_connect, inNav = false),
+    CONNECT(HearthIcons.Settings, Res.string.nav_connect, inNav = false),
 }
 
 /**
@@ -92,15 +93,14 @@ fun HearthScreen(viewModel: HomeViewModel, dimmed: Boolean) {
     val lang by viewModel.lang.collectAsStateWithLifecycle()
     // Kept outside the rebuild, so switching the language stays on the same screen.
     val destination = rememberSaveable { mutableStateOf(Destination.TODAY) }
-    val tab = rememberSaveable { mutableStateOf(TaskTab.ROUTINES) }
     // The chosen language wins over the device's; switching rebuilds the screen in the new language.
     CompositionLocalProvider(LocalAppLocale provides lang.localeTag, LocalLang provides lang) {
-        key(lang) { HearthContent(viewModel, lang, dimmed, destination, tab) }
+        key(lang) { HearthContent(viewModel, lang, dimmed, destination) }
     }
 }
 
 @Composable
-private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean, destinationState: MutableState<Destination>, tabState: MutableState<TaskTab>) {
+private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean, destinationState: MutableState<Destination>) {
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val shopping by viewModel.shopping.collectAsStateWithLifecycle()
@@ -141,7 +141,6 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val today by viewModel.today.collectAsStateWithLifecycle()
 
     var destination by destinationState
-    var tab by tabState
     var planning by remember { mutableStateOf<BacklogItem?>(null) }
     var conversation by remember { mutableStateOf(false) }
 
@@ -174,8 +173,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             onComplete = viewModel::complete,
                             onPlan = { item, w -> viewModel.plan(item, w) },
                             onOpenItem = { planning = it },
-                            onGoTasks = { tab = TaskTab.WEEK; destination = Destination.TASKS },
-                            onGoProjects = { tab = TaskTab.PROJECTS; destination = Destination.TASKS },
+                            onGoTasks = { destination = Destination.TASKS },
                             onGoShopping = { destination = Destination.SHOPPING },
                             onGoBoard = { destination = Destination.BOARD },
                             onGoWeek = { destination = Destination.WEEK },
@@ -207,8 +205,10 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 complete = viewModel::complete,
                                 resolveFriction = viewModel::resolveFriction,
                                 setGoalStep = viewModel::setGoalStep,
+                                addGoal = { viewModel.addGoal(it, GoalScope.FAMILY, null) },
+                                achieveGoal = viewModel::achieveGoal,
                                 finish = viewModel::finishWeekoverleg,
-                                goTasks = { tab = TaskTab.WEEK; destination = Destination.TASKS },
+                                goTasks = { destination = Destination.TASKS },
                                 goMenu = { destination = Destination.MENU },
                                 addWin = viewModel::addWin,
                                 removeWin = viewModel::removeWin,
@@ -270,7 +270,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             ),
                         )
                         Destination.TASKS -> TasksScreen(
-                            backlog, steps, today, lang, tab, { tab = it }, ease,
+                            backlog, steps, today, lang, ease,
                             TaskCallbacks(
                                 complete = viewModel::complete,
                                 reopen = viewModel::reopen,
@@ -438,7 +438,8 @@ private fun BottomBar(selected: Destination, counts: Map<Destination, Int>, onSe
                         Badge(counts[d], Modifier.align(Alignment.TopEnd).padding(start = 18.dp))
                     }
                 },
-                label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) },
+                // A touch smaller than labelSmall, so "Weekoverleg" fits a sixth of a phone.
+                label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.sp), maxLines = 1, softWrap = false) },
                 // Six places on a phone: only the selected one shows its name.
                 alwaysShowLabel = false,
                 colors = NavigationBarItemDefaults.colors(

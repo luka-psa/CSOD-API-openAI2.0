@@ -9,6 +9,7 @@ import app.hearth.core.model.title
 import app.hearth.core.model.Anchor
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
+import app.hearth.core.model.topic
 import app.hearth.core.model.TaskKind
 import app.hearth.core.model.dayLabel
 import app.hearth.core.model.intervalLabel
@@ -26,7 +27,7 @@ import kotlinx.serialization.Serializable
 // Tools for the three kinds of open work: routines, admin and projects.
 
 private fun notFound(ctx: ToolContext): Nothing =
-    throw ToolException(ctx.t("Dat vind ik niet op de backlog.", "I can't find that on the backlog."))
+    throw ToolException(ctx.t("Dat vind ik niet bij de taken.", "I can't find that on the backlog."))
 
 // ---------- set_routine_interval ----------
 
@@ -168,7 +169,9 @@ class MoveBacklogItemTool(private val repo: BacklogRepository, private val board
         }
         repo.setSection(items.map { it.id }, args.section)
         val updated = items.map { it.copy(section = args.section) }
-        return BacklogItemsResult(updated, ctx.t("${quoted(updated)} staat nu bij ${args.section.label(ctx.lang)}", "${quoted(updated)} is now under ${args.section.label(ctx.lang)}"))
+        // Named like the panel it now shows in ("Grote taken"), so the words on screen and in chat agree.
+        val place = args.section.topic()?.title(ctx.lang) ?: args.section.label(ctx.lang)
+        return BacklogItemsResult(updated, ctx.t("${quoted(updated)} staat nu bij $place", "${quoted(updated)} is now under $place"))
     }
 
     companion object {

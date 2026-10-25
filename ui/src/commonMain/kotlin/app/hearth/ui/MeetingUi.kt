@@ -116,6 +116,8 @@ import app.hearth.ui.resources.win_remove
 import app.hearth.ui.resources.wins_hint
 import app.hearth.ui.resources.wins_title
 import app.hearth.ui.theme.style
+import app.hearth.ui.theme.AccentStyle
+import app.hearth.core.model.Topic
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.StringResource
@@ -134,7 +136,7 @@ fun ListenBar(
     onSort: () -> Unit,
 ) {
     val unsorted = lines.count { !it.sorted }
-    val ink = Section.PROTECTED_TIME.style()
+    val ink = AccentStyle
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(if (listening) ink.tint else MaterialTheme.colorScheme.surface)
@@ -176,7 +178,7 @@ fun ListenBar(
 /** On other screens while Luister mee runs: it's still listening, and one tap goes back to the meeting. */
 @Composable
 fun ListenPill(lines: Int, partial: String, onBack: () -> Unit, onStop: () -> Unit, modifier: Modifier = Modifier) {
-    val ink = Section.PROTECTED_TIME.style()
+    val ink = AccentStyle
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.clip(RoundedCornerShape(24.dp)).background(ink.tint).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
@@ -336,13 +338,13 @@ fun Place.section(): Section = when (this) {
 fun Place.icon() = when (this) {
     Place.PLANNING -> HearthIcons.Backlog
     Place.EVENT -> HearthIcons.Calendar
-    Place.FREE_TIME -> HearthIcons.Sun
+    Place.FREE_TIME -> Topic.FREE_TIME.icon()
     Place.SHOPPING -> HearthIcons.Cart
     Place.MEAL -> HearthIcons.Restaurant
     Place.HOUSE_RULE -> HearthIcons.Rule
-    Place.FRICTION -> HearthIcons.Bolt
+    Place.FRICTION -> Topic.FRICTION.icon()
     Place.IDEA -> HearthIcons.Idea
-    Place.GOAL -> HearthIcons.Star
+    Place.GOAL -> Topic.GOALS.icon()
     Place.WIN -> HearthIcons.Check
     Place.NONE -> HearthIcons.Chat
 }
@@ -355,7 +357,7 @@ fun WinsSection(wins: List<Win>, members: List<Member>, onAdd: (String) -> Unit,
     GroupTitle(stringResource(Res.string.wins_title))
     wins.forEach { win ->
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 10.dp)) {
-            Icon(HearthIcons.Heart, null, tint = Section.PROTECTED_TIME.style().ink, modifier = Modifier.size(18.dp))
+            Icon(HearthIcons.Heart, null, tint = AccentStyle.ink, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
             Text(win.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             win.memberId?.let(byId::get)?.let { MemberDot(it) }

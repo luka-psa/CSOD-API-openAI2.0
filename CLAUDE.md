@@ -5,7 +5,8 @@ tablet at home. The same code also runs as a web app (Kotlin/Wasm) for previews.
 today-focused dashboard. The tablet *is* the server: there is no backend.
 
 Read `docs/PROPOSAL.md` for the approved tool list, schema, layout and folder
-structure. Keep it in sync when any of those change.
+structure, and `docs/JOURNEYS.md` for the topics, where each one lives and the user journeys. Keep both in
+sync when any of those change.
 
 ## Problems we solve (keep every feature tied to one)
 
@@ -112,12 +113,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   or a checklist ("paklijst opvang: luiers, flesjes"); steps are ticked per day and come
   back tomorrow; all ticked = the routine is done today. With a moment it is daily; without
   one it is a *checklist* (*Lijstjes*: no rhythm, not on Vandaag, used when needed)),
-  *Admin* (ADMIN/APPOINTMENT: *urgent*, deadline, *waiting for a reply* with a
-  follow-up day), *Projecten* (PROJECT: *steps* via `parentId`, a day or "dit
+  *Paperassen & afspraken* (ADMIN/APPOINTMENT: *urgent*, an end date ("klaar tegen"), *waiting for a reply* with a
+  follow-up day), *Grote taken* (PROJECT: *steps* via `parentId`, a day or "dit
   weekend"), *Te sorteren* (everything else).
 - **Dashboard terms:** *Niet vergeten*, *Vandaag*, *In het ritme*,
   *Binnenkort*, *Vrije tijd* (generated from how full a day is, never from
-  durations), *Lopende projecten*. The selectors live in
+  durations), *Grote taken*. The selectors live in
   `core/model/Overview.kt` so the screen, tools and MCP agree.
 - **Werkbord** (`board_item`, not the backlog): *Huisregel* (RULE), *Frictie*
   (FRICTION → wordt huisregel / veranderen / loslaten; all three are good
@@ -135,7 +136,13 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   saved on purpose (`isRecipe`, notes = how we made it, an optional photo) or
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
-- **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Admin & afspraken* (appointments), *Grote taken*,
+- **Topics** (`Topic`): one name, icon and colour per topic on every screen (`Topic.title`, `Topic.icon()`,
+  `Topic.style()`): a card on Vandaag, a panel in **Taken** (a dashboard of panels: Paperassen & afspraken,
+  Grote taken, Huishouden, Ritmes & routines, Vrije tijd; *Te sorteren* on top; panels fold), a column on the
+  Werkbord (Huisregels, Frictie & ideeën, Doelen), a tile in the weekoverleg. Ember is for time cards and
+  Hearth's own voice, never a topic. A form with typed text never closes without asking (`FormSheet`,
+  `DiscardDialog`: *Verder typen* / *Weggooien*).
+- **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Doelen* (next small step), *Paperassen & afspraken* (admin and appointments), *Grote taken*,
   *Huishouden* (chores without a moment), *Ritmes & routines* (laid out per moment of the day), *Boodschappen*,
   *Weekmenu*, *Frictie & ideeën*, *Huisregels*): each a calm tile with a *glance*,
   tap to open its list. Terugblik (*Wat ging goed* = wins; two household
@@ -157,7 +164,8 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   server lives in `mcp/`; tablet-only tools set `exposeOverMcp = false`. Google:
   *Back-up* (Drive app folder, *Terugzetten* asks first) and the *Hearth* calendar; setup in
   `docs/GOOGLE.md`.
-- Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
+- Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy). Dutch copy has no English
+  words: Taken (not backlog), paperassen (not admin), einddatum (not deadline), koppelserver (not relay).
   UI ships in Dutch (Flemish), the default whatever the device says, and English (a setting);
   the local parser understands both.
 

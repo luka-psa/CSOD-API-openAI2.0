@@ -99,6 +99,7 @@ import app.hearth.ui.resources.edit
 import app.hearth.ui.resources.nav_menu
 import app.hearth.ui.resources.save
 import app.hearth.ui.theme.style
+import app.hearth.core.model.Topic
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.decodeToImageBitmap
@@ -329,7 +330,7 @@ private fun RecipeThumb(recipe: Recipe?, name: String, photoVersion: Int, loadPh
     val bitmap by produceState<ImageBitmap?>(null, recipe?.key, recipe?.hasPhoto, photoVersion) {
         value = if (recipe?.hasPhoto == true) runCatching { loadPhoto(recipe.key)?.decodeToImageBitmap() }.getOrNull() else null
     }
-    val s = Section.PROJECT.style()
+    val s = Topic.MENU.style()
     Box(modifier.background(s.tint), contentAlignment = Alignment.Center) {
         val image = bitmap
         if (image != null) {
@@ -359,7 +360,7 @@ private fun ChooseMealSheet(
     var dish by remember { mutableStateOf("") }
     var ingredients by remember { mutableStateOf("") }
     var alsoRecipe by remember { mutableStateOf(true) }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
+    FormSheet(dirty = dish.isNotBlank() || ingredients.isNotBlank(), onDismiss = onDismiss) {
         Column(Modifier.fillMaxWidth().widthIn(max = 900.dp).verticalScroll(rememberScrollState()).padding(horizontal = 28.dp).padding(bottom = 28.dp).navigationBarsPadding()) {
             Text(stringResource(Res.string.menu_choose_title, menuDayName(day, today, lang)), style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.size(14.dp))
@@ -487,7 +488,10 @@ private fun RecipeEditor(
         if (!ingredientsTouched && hint.ingredients.isNotEmpty()) ingredients = hint.ingredients
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
+    // Typed, spoken, picked or changed: anything that would be lost if the sheet closed now.
+    val dirty = story != (existing?.notes ?: "") || name != (existing?.name ?: "") ||
+        ingredients != (existing?.ingredients ?: emptyList<String>()) || newPhoto != null
+    FormSheet(dirty = dirty, onDismiss = onDismiss) {
         Column(Modifier.fillMaxWidth().widthIn(max = 900.dp).verticalScroll(rememberScrollState()).padding(horizontal = 28.dp).padding(bottom = 28.dp).navigationBarsPadding()) {
             Text(stringResource(Res.string.menu_recipe_title), style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(Res.string.menu_recipe_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -500,10 +504,10 @@ private fun RecipeEditor(
             }
             val removed = newPhoto?.isEmpty() == true
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(width = 160.dp, height = 120.dp).clip(RoundedCornerShape(20.dp)).background(Section.PROJECT.style().tint), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(width = 160.dp, height = 120.dp).clip(RoundedCornerShape(20.dp)).background(Topic.MENU.style().tint), contentAlignment = Alignment.Center) {
                     val image = shownPhoto
                     if (image != null && !removed) Image(image, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                    else Icon(HearthIcons.Camera, null, tint = Section.PROJECT.style().ink, modifier = Modifier.size(36.dp))
+                    else Icon(HearthIcons.Camera, null, tint = Topic.MENU.style().ink, modifier = Modifier.size(36.dp))
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

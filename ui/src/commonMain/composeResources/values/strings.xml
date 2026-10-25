@@ -2,7 +2,6 @@
 <resources>
     <!-- Navigation -->
     <string name="nav_today">Today</string>
-    <string name="nav_backlog">Backlog</string>
     <string name="nav_shopping">Shopping</string>
 
     <!-- Greetings -->
@@ -16,21 +15,10 @@
     <string name="today_planned">Today</string>
     <string name="today_empty">Nothing planned. Pick something from the backlog when you’re ready.</string>
     <string name="today_next">Next up</string>
-    <string name="today_next_empty">Nothing queued. Mark things as “Next up” in the backlog.</string>
-    <string name="today_to_plan">Waiting for a place</string>
-    <string name="today_to_plan_count">%1$d things to plan</string>
-    <string name="today_to_plan_none">Everything has a place.</string>
-    <string name="open_backlog">Open backlog</string>
     <string name="shopping_summary_empty">Nothing needed right now.</string>
     <string name="open_list">Open list</string>
 
     <!-- Backlog -->
-    <string name="backlog_subtitle">Everything that’s still open, from every part of the house.</string>
-    <string name="filter_all">All</string>
-    <string name="group_unplanned">To plan</string>
-    <string name="group_next">Next up</string>
-    <string name="group_later">Later</string>
-    <string name="backlog_empty">The backlog is empty. Say or type anything you think of.</string>
     <string name="plan">Plan</string>
     <string name="mark_done">Done</string>
 
@@ -48,7 +36,7 @@
     <string name="delete_confirm_body">This removes it for everyone. To finish it, tap Done instead.</string>
 
     <!-- Shopping -->
-    <string name="shopping_list">Shopping list</string>
+    <string name="shopping_list">Shopping</string>
     <string name="shopping_empty">Nothing needed right now.</string>
     <string name="shopping_add_hint">Add to the list…</string>
     <string name="add">Add</string>
@@ -72,28 +60,17 @@
     <string name="dash_rhythm">In the rhythm</string>
     <string name="dash_rhythm_empty">The rhythm is on track. Nothing is due.</string>
     <string name="dash_coming_up">Coming up</string>
-    <string name="dash_projects">Projects in progress</string>
     <string name="dash_free">free</string>
     <string name="free_title">Free time</string>
     <string name="free_all_done">Everything for today is done. The rest of the day is yours.</string>
     <string name="free_nothing">Nothing has to happen today. Enjoy it.</string>
     <string name="free_light">A light day: room for something fun.</string>
     <string name="free_weekend">%1$s is still free.</string>
-    <string name="urgent">urgent</string>
-    <string name="waiting_reply">waiting for a reply</string>
-    <string name="follow_up">follow up %1$s</string>
     <string name="next_step">Next step: %1$s</string>
     <string name="steps_progress">%1$d of %2$d steps</string>
     <string name="no_steps">No steps yet. Add the first one.</string>
-    <string name="tasks_subtitle">Rhythm, admin and projects, each planned its own way.</string>
-    <string name="tab_routines">Routines &amp; habits</string>
-    <string name="tab_admin">Admin</string>
-    <string name="tab_projects">Projects</string>
-    <string name="tab_week">Week</string>
+    <string name="tasks_subtitle">Everything there is to do, by topic.</string>
     <string name="tab_sort">To sort</string>
-    <string name="add_routine_hint">New routine, e.g. change the sheets every 2 weeks</string>
-    <string name="add_admin_hint">New admin, e.g. book the car inspection</string>
-    <string name="add_project_hint">New project, e.g. IKEA cupboard</string>
     <string name="add_step_hint">Add a step</string>
     <string name="routine_due">about time</string>
     <string name="routine_soon">soon</string>
@@ -101,13 +78,9 @@
     <string name="group_on_track">On track</string>
     <string name="group_no_rhythm">No rhythm yet</string>
     <string name="group_urgent">Urgent</string>
-    <string name="group_deadline">With a deadline</string>
+    <string name="group_deadline">With an end date</string>
     <string name="group_waiting">Waiting for a reply</string>
     <string name="group_open">Open</string>
-    <string name="empty_routines">No routines yet. Think sheets, mowing, windows.</string>
-    <string name="empty_admin">No admin open. Lovely.</string>
-    <string name="empty_projects">No projects yet. Big jobs with steps go here.</string>
-    <string name="empty_sort">Everything is sorted.</string>
     <string name="sort_hint">Where does this belong? Tap an item to choose.</string>
     <string name="how_often">How often?</string>
     <string name="do_on_day">Give it a day</string>
@@ -118,7 +91,7 @@
     <string name="move_to">Belongs to</string>
     <string name="kind_routine">Routine</string>
     <string name="kind_admin">Admin</string>
-    <string name="kind_project">Project</string>
+    <string name="kind_project">Big task</string>
     <string name="kind_appointment">Appointment</string>
     <string name="kind_note">House rule</string>
     <string name="plan_weekend">This weekend</string>
@@ -133,10 +106,8 @@
     <string name="member_name_hint">Name</string>
     <string name="member_remove_confirm">Remove %1$s from the household?</string>
     <string name="member_remove_body">Their personal goals become family goals.</string>
-    <string name="rules_title">House rules</string>
     <string name="rules_add_hint">New rule, e.g. shoes go in the cupboard</string>
     <string name="rules_empty">No house rules yet. Write down what you agree on.</string>
-    <string name="frictions_title">Frictions &amp; ideas</string>
     <string name="frictions_add_hint">What bothers you, or “idea: …”</string>
     <string name="frictions_empty">Nothing bothering anyone. Lovely.</string>
     <string name="frictions_hint">Talk them through in the weekly meeting: a rule, a change, or let go.</string>
@@ -150,7 +121,6 @@
     <string name="became_rule">became a house rule</string>
     <string name="became_change">became a task</string>
     <string name="let_go">let go</string>
-    <string name="goals_title">Goals</string>
     <string name="goals_add_hint">New goal, e.g. a monthly date night</string>
     <string name="goals_empty">No goals yet. What would you like to reach, alone or together?</string>
     <string name="scope_family">Family</string>
@@ -159,13 +129,11 @@
     <string name="goal_step_add">Add a small next step</string>
     <string name="goal_step_title">What’s one small next step?</string>
     <string name="goal_step_to_week">Put it on next up</string>
-    <string name="goal_achieved">Reached</string>
     <string name="goal_achieved_title">Reached together</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="days_ago">%1$d days ago</string>
     <string name="today_word">today</string>
-    <string name="dash_board">Our house rules</string>
     <string name="dash_board_empty">No house rules yet. Add one on the workboard.</string>
     <string name="kind_friction">Friction</string>
     <string name="kind_goal">Goal</string>
@@ -192,17 +160,12 @@
     <string name="nav_week">Weekly meeting</string>
     <string name="week_subtitle">A quarter of an hour together, all on one page.</string>
     <string name="week_last_held">last time: %1$s</string>
-    <string name="step_of">Step %1$d of %2$d</string>
     <string name="step_look_back">Look back</string>
-    <string name="step_meals">Meals</string>
-    <string name="step_shopping">Shopping</string>
     <string name="step_week">This week</string>
-    <string name="step_board">Workboard</string>
     <string name="step_look_back_since">since %1$s</string>
     <string name="step_look_back_week">this past week</string>
     <string name="step_look_back_calm">A calm week. That’s allowed too.</string>
     <string name="board_won">Sorted out on the workboard</string>
-    <string name="step_meals_hint">Tap a day. Ingredients go onto the shopping list; dishes from before come back in one tap.</string>
     <string name="meal_add">What are we eating?</string>
     <string name="meal_title">%1$s: what are we eating?</string>
     <string name="meal_dish_hint">Dish, e.g. spaghetti bolognese</string>
@@ -211,15 +174,8 @@
     <string name="meal_remove_body">The shopping list stays as it is.</string>
     <string name="step_shopping_hint">Anything missing? A quick look at the stock helps too.</string>
     <string name="open_stock">Check the stock</string>
-    <string name="step_week_deadlines">With a deadline</string>
-    <string name="step_week_routines">About time</string>
-    <string name="step_week_projects">A step for the weekend</string>
-    <string name="step_week_calm">A calm week ahead. Room for something fun.</string>
-    <string name="this_week">This week</string>
     <string name="step_board_hint">What bothered someone this week? Decide together: a rule, a change, or let it go.</string>
     <string name="step_board_empty">No frictions waiting. Lovely.</string>
-    <string name="week_back">Back</string>
-    <string name="week_next">Next</string>
     <string name="week_finish">Done</string>
     <string name="week_done">Ready for the week!</string>
     <string name="week_done_recap">Done: %1$d  ·  Meals planned: %2$d</string>
@@ -241,7 +197,7 @@
     <string name="connect_on">Connection</string>
     <string name="connect_status_off">Off</string>
     <string name="connect_status_connecting">Connecting…</string>
-    <string name="connect_status_online">Online: your AI can reach Hearth</string>
+    <string name="connect_status_online">Connected: your AI can reach Hearth</string>
     <string name="connect_status_retrying">No connection right now, trying again by itself</string>
     <string name="connect_activity">Recently done by your AI</string>
     <string name="connect_apps">Linked</string>
@@ -358,10 +314,6 @@
     <string name="wins_title">What went well</string>
     <string name="wins_hint">What went well this week?</string>
     <string name="win_remove">Remove from what went well?</string>
-    <string name="feeling_title">How heavy did the week feel?</string>
-    <string name="feeling_light">light</string>
-    <string name="feeling_heavy">heavy</string>
-    <string name="feeling_us">Us</string>
     <string name="feeling_heavy_hint">A heavy week. Which one shall we tackle first?</string>
     <string name="last_time">Last time</string>
     <string name="week_summary">Summary</string>
@@ -385,12 +337,8 @@
     <string name="rules_check_title">How did the house rules go?</string>
     <string name="rule_worked">Went well</string>
     <string name="rule_not_yet">Not yet</string>
-    <string name="habits_attention">Habits asking for attention</string>
-    <string name="habits_attention_hint">Not happening often? Make it smaller, easier or less often, rather than trying harder.</string>
     <string name="habit_less_often">Less often</string>
     <string name="habit_easier">Make it easier</string>
-    <string name="habit_easy">runs easily</string>
-    <string name="habits_attention_short">asks attention</string>
     <string name="ease_easy">runs easily</string>
     <string name="ease_effort">takes effort</string>
     <string name="ease_hard">too much</string>
@@ -423,7 +371,7 @@
     <string name="admin_empty">No admin open. Nice.</string>
     <string name="admin_add_hint">Admin, e.g. call the insurance</string>
     <string name="project_add_hint">Big task, e.g. clear the attic</string>
-    <string name="projects_empty">No running projects.</string>
+    <string name="projects_empty">No big tasks yet. Jobs with steps go here.</string>
     <string name="day_free">free</string>
     <string name="moment_title">When in the day?</string>
     <string name="anchor_none">Whenever it fits</string>
@@ -437,4 +385,15 @@
     <string name="routine_step_add">Add a step, e.g. pyjamas on</string>
     <string name="group_lists">Checklists</string>
     <string name="recipe_link_hint">Paste a link to a recipe</string>
+    <string name="fold">Show or hide</string>
+    <string name="home_none">No household tasks yet. Think sheets, mowing the lawn, windows.</string>
+    <plurals name="sort_count">
+        <item quantity="one">%1$d thing waiting for a place</item>
+        <item quantity="other">%1$d things waiting for a place</item>
+    </plurals>
+    <string name="goals_meeting_hint">What do we want to reach? Pick one small next step for each goal.</string>
+    <string name="discard_title">Throw away what you typed?</string>
+    <string name="discard_body">It isn't saved yet. Keep typing, or throw it away.</string>
+    <string name="discard_keep">Keep typing</string>
+    <string name="discard_yes">Throw away</string>
 </resources>

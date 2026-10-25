@@ -596,7 +596,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
             Place.SHOPPING -> Topic.SHOPPING
             Place.MEAL -> Topic.MENU
             Place.HOUSE_RULE -> Topic.RULES
-            Place.FRICTION, Place.IDEA, Place.GOAL -> Topic.FRICTION
+            Place.FRICTION, Place.IDEA -> Topic.FRICTION
+            Place.GOAL -> Topic.GOALS
             Place.WIN, Place.NONE -> null
         }
         return HeardLine(sentence, place, topic)

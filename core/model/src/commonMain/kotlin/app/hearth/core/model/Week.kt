@@ -12,14 +12,16 @@ data class Huddle(val id: String, val heldOn: String, val createdAt: Long, val s
 }
 
 /**
- * The weekoverleg's topics: one tile each, so the whole household fits on one screen and nobody has to
- * hold it in their head. Luister mee lights up the tile a sentence lands in.
+ * The household's topics, one name, icon and colour each, the same on every screen: a tile in the
+ * weekoverleg (Luister mee lights up the one a sentence lands in), a panel in Taken, a column on the
+ * Werkbord, a card on Vandaag. So the whole household fits on one screen and nobody has to hold it in their head.
  */
-enum class Topic { FREE_TIME, ADMIN, PROJECTS, HOME, RHYTHM, SHOPPING, MENU, FRICTION, RULES }
+enum class Topic { FREE_TIME, GOALS, ADMIN, PROJECTS, HOME, RHYTHM, SHOPPING, MENU, FRICTION, RULES }
 
 fun Topic.title(lang: Lang): String = when (this) {
     Topic.FREE_TIME -> if (lang == Lang.NL) "Vrije tijd" else "Free time"
-    Topic.ADMIN -> if (lang == Lang.NL) "Admin & afspraken" else "Admin & appointments"
+    Topic.GOALS -> if (lang == Lang.NL) "Doelen" else "Goals"
+    Topic.ADMIN -> if (lang == Lang.NL) "Paperassen & afspraken" else "Admin & appointments"
     Topic.PROJECTS -> if (lang == Lang.NL) "Grote taken" else "Big tasks"
     Topic.HOME -> if (lang == Lang.NL) "Huishouden" else "Household"
     Topic.RHYTHM -> if (lang == Lang.NL) "Ritmes & routines" else "Rhythms & routines"
@@ -38,7 +40,8 @@ fun Section.topic(): Topic? = when (this) {
     Section.RHYTHM, Section.HABIT -> Topic.RHYTHM
     Section.SHOPPING, Section.STOCK -> Topic.SHOPPING
     Section.NOTE -> Topic.RULES
-    Section.FRICTION, Section.GOAL, Section.IDEA -> Topic.FRICTION
+    Section.FRICTION, Section.IDEA -> Topic.FRICTION
+    Section.GOAL -> Topic.GOALS
     Section.OTHER -> null
 }
 
@@ -72,6 +75,15 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
             else listOf(soon.first().let { f -> f.text + (f.localDate?.let { " (" + dayLabel(it, look.today, lang) + ")" } ?: "") }) +
                 listOfNotNull((soon.size - 1).takeIf { it > 0 }?.let { "+$it" })
         }
+        Topic.GOALS -> {
+            val goals = look.board.filter { it.kind == BoardKind.GOAL && it.isOpen }
+            val step = goals.firstNotNullOfOrNull { it.nextStep }
+            if (goals.isEmpty()) listOf(if (nl) "Nog geen doelen" else "No goals yet")
+            else listOfNotNull(
+                if (nl) count(goals.size, "doel", "doelen") else count(goals.size, "goal", "goals"),
+                step?.let { if (nl) "volgende stap: $it" else "next step: $it" },
+            )
+        }
         Topic.ADMIN -> {
             val admin = open.filter { it.topic == Topic.ADMIN }
             if (admin.isEmpty()) listOf(if (nl) "Niets open. Fijn." else "Nothing open. Nice.")
@@ -83,7 +95,7 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
         }
         Topic.PROJECTS -> {
             val projects = open.filter { it.section == Section.PROJECT && !it.isStep }
-            if (projects.isEmpty()) listOf(if (nl) "Geen lopende projecten" else "No running projects")
+            if (projects.isEmpty()) listOf(if (nl) "Niets lopend" else "Nothing running")
             else listOfNotNull(
                 if (nl) "${projects.size} lopend" else "${projects.size} running",
                 projects.count { it.postponed >= 2 }.takeIf { it > 0 }?.let { if (nl) "$it vraagt aandacht" else "$it ask for attention" },

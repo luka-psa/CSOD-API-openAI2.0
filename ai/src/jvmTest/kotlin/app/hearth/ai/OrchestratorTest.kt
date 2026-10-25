@@ -135,7 +135,7 @@ class OrchestratorTest {
         llm.fail = LlmException(LlmException.Reason.NETWORK, "offline")
         val reply = online.handle("lampen ophangen in het toilet", nl)
         assertEquals(
-            "Even geen verbinding met de AI. Ik heb het veilig bewaard:\nOp de backlog: “lampen ophangen in het toilet” (project)",
+            "Even geen verbinding met de AI. Ik heb het veilig bewaard:\nBij Taken: “lampen ophangen in het toilet” (grote taak)",
             reply.text,
         )
     }
@@ -218,9 +218,9 @@ class OrchestratorTest {
 
     @Test
     fun `offline capture reads time words and done words`() = runTest {
-        assertEquals("Op de backlog: “tandarts” (afspraak) · morgen", offline.handle("tandarts morgen", nl).text)
+        assertEquals("Bij Taken: “tandarts” (afspraak) · morgen", offline.handle("tandarts morgen", nl).text)
         assertEquals(
-            "Op de backlog: “belastingbrief” (administratie) · klaar tegen morgen",
+            "Bij Taken: “belastingbrief” (paperassen) · klaar tegen morgen",
             offline.handle("belastingbrief tegen vrijdag", nl).text,
         )
         val friday = inbox.openItems().first { it.text == "belastingbrief" }
@@ -234,15 +234,15 @@ class OrchestratorTest {
     @Test
     fun `offline capture reads rhythm and urgency`() = runTest {
         assertEquals(
-            "Op de backlog: “lakens verversen” (huishoudtaak) · om de 2 weken",
+            "Bij Taken: “lakens verversen” (huishoudtaak) · om de 2 weken",
             offline.handle("lakens verversen om de 2 weken", nl).text,
         )
         assertEquals(
-            "Op de backlog: “plantjes water geven” (huishoudtaak) · elke week",
+            "Bij Taken: “plantjes water geven” (huishoudtaak) · elke week",
             offline.handle("plantjes water geven elke week", nl).text,
         )
         assertEquals(
-            "Op de backlog: “verzekering bellen” (administratie) · dringend",
+            "Bij Taken: “verzekering bellen” (paperassen) · dringend",
             offline.handle("dringend: verzekering bellen", nl).text,
         )
         assertEquals(emptyList(), shopping.openItems())
@@ -251,7 +251,7 @@ class OrchestratorTest {
 
     @Test
     fun `bare project phrases become projects, a bare thing to buy stays shopping`() = runTest {
-        assertEquals("Op de backlog: “IKEA kast” (project)", offline.handle("IKEA kast", nl).text)
+        assertEquals("Bij Taken: “IKEA kast” (grote taak)", offline.handle("IKEA kast", nl).text)
         offline.handle("keuken uitkuisen", nl)
         offline.handle("lampen", nl)
         assertEquals(listOf("Lampen"), shopping.openItems().map { it.name })

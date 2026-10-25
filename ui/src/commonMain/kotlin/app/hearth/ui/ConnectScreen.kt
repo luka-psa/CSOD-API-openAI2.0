@@ -161,7 +161,7 @@ fun ConnectScreen(
             }
 
             if (connection.relayUrl == null) {
-                HearthCard(stringResource(Res.string.connect_no_relay), HearthIcons.Flame, Modifier.fillMaxWidth()) {
+                HearthCard(stringResource(Res.string.connect_no_relay), HearthIcons.Link, Modifier.fillMaxWidth()) {
                     Text(stringResource(Res.string.connect_no_relay_body), style = MaterialTheme.typography.bodyMedium)
                 }
             } else {
@@ -172,7 +172,7 @@ fun ConnectScreen(
             GoogleCards(google, googleAvailable, googleBusy, backups, googleCb)
             cb.loadExamples?.let { load ->
                 SectionTitle(stringResource(Res.string.examples_title))
-                HearthCard(stringResource(Res.string.examples_card), HearthIcons.Idea, Modifier.fillMaxWidth()) {
+                HearthCard(stringResource(Res.string.examples_card), HearthIcons.Next, Modifier.fillMaxWidth()) {
                     Text(stringResource(Res.string.examples_body), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.size(10.dp))
                     FilledTonalButton(onClick = load) { Text(stringResource(Res.string.examples_load)) }
@@ -284,7 +284,7 @@ private fun AdvancedCard(connection: Connection, cb: ConnectCallbacks) {
         TextButton(onClick = { open = true }) { Text(stringResource(Res.string.connect_advanced)) }
         return
     }
-    HearthCard(stringResource(Res.string.connect_advanced), HearthIcons.Flame, Modifier.fillMaxWidth()) {
+    HearthCard(stringResource(Res.string.connect_advanced), HearthIcons.Settings, Modifier.fillMaxWidth()) {
         Text(stringResource(Res.string.connect_advanced_body), style = MaterialTheme.typography.bodyMedium)
         connection.relayUrl?.let {
             Spacer(Modifier.size(6.dp))
