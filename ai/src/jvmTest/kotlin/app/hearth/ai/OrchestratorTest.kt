@@ -169,6 +169,28 @@ class OrchestratorTest {
     }
 
     @Test
+    fun `a pasted list goes where its heading says, or line by line`() = runTest {
+        offline.handle("Paklijst babysit:\n- luiers\n- slaapzak\n- speentje", nl)
+        val bag = inbox.openItems().single { !it.isStep }
+        assertEquals("Paklijst babysit", bag.text)
+        assertEquals(null, bag.intervalDays)
+        assertEquals(listOf("Luiers", "Slaapzak", "Speentje"), inbox.openItems().filter { it.parentId == bag.id }.map { it.text })
+
+        offline.handle("Boodschappen\nmelk\neieren", nl)
+        assertEquals(listOf("Melk", "Eieren"), shopping.openItems().map { it.name }.filter { it in listOf("Melk", "Eieren") })
+
+        offline.handle("• brood\n• tandarts morgen", nl)
+        assertTrue(shopping.openItems().any { it.name == "Brood" })
+        assertEquals(Section.APPOINTMENT, inbox.openItems().single { it.text == "tandarts" }.section)
+    }
+
+    @Test
+    fun `a link goes to the recipe import`() = runTest {
+        val reply = offline.handle("https://kook.be/lasagne", nl)
+        assertTrue("pagina niet openen" in reply.text, reply.text)
+    }
+
+    @Test
     fun `a moment of the day makes it part of a rhythm`() = runTest {
         offline.handle("’s avonds de tassen klaarzetten", nl)
         val item = inbox.openItems().single()

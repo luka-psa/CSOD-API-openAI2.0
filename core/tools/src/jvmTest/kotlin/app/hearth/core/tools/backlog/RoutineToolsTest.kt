@@ -62,4 +62,13 @@ class RoutineToolsTest {
         val all = tools.registry.run(tools.listBacklog, ListBacklogArgs(BacklogView.ALL), ctx).items
         assertEquals(listOf("Tas voor de opvang"), all.map { it.text })
     }
+
+    @Test
+    fun `a checklist without a moment is not daily, it waits until it's needed`() = runTest {
+        val bag = tools.registry.run(tools.addRoutine, AddRoutineArgs("Paklijst babysit", listOf("Luiers", "Slaapzak")), ctx).item
+        assertEquals(null, bag.intervalDays)
+        assertEquals(null, bag.anchor)
+        // Not in today's rhythm: it's used when the babysit comes.
+        assertTrue(app.hearth.core.model.dueRoutines(backlog.openItems(), today).none { it.id == bag.id })
+    }
 }

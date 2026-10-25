@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.ui.resources.group_lists
 import app.hearth.core.model.isRoutineStep
 import app.hearth.core.model.title
 import app.hearth.core.model.Anchor
@@ -149,7 +150,7 @@ fun TasksScreen(
         val body = Modifier.fillMaxWidth().weight(1f)
         when (tab) {
             TaskTab.ROUTINES -> AddAndList(stringResource(Res.string.add_routine_hint), { callbacks.add(it, Section.CHORE) }, body) {
-                routineList(routines, today, lang, callbacks, habits)
+                routineList(routines, today, lang, callbacks, habits, steps.filter { it.isRoutineStep }.mapNotNull { it.parentId }.toSet())
             }
             TaskTab.ADMIN -> AddAndList(stringResource(Res.string.add_admin_hint), { callbacks.add(it, Section.ADMIN) }, body) {
                 adminList(admin, today, lang, callbacks)
@@ -187,14 +188,16 @@ private fun AddAndList(hint: String, onAdd: (String) -> Unit, modifier: Modifier
 // ---------- routines ----------
 
 /** About time · On track · No rhythm yet. The tick logs "done today"; the routine stays. */
-private fun LazyListScope.routineList(routines: List<BacklogItem>, today: LocalDate, lang: Lang, cb: TaskCallbacks, habits: Map<String, Ease>) {
+private fun LazyListScope.routineList(routines: List<BacklogItem>, today: LocalDate, lang: Lang, cb: TaskCallbacks, habits: Map<String, Ease>, withSteps: Set<String>) {
     if (routines.isEmpty()) {
         item { EmptyHint0(Res.string.empty_routines) }
         return
     }
     // Laid out per moment of the day, in the order the day goes: the morning routine first.
     Anchor.entries.forEach { a -> group(a.title(lang), routines.filter { it.anchor == a }, today, lang, cb, habits) }
-    val loose = routines.filter { it.anchor == null }
+    // Checklists without a moment (the bag for the babysit): used when they're needed.
+    group(Res.string.group_lists, routines.filter { it.anchor == null && it.id in withSteps }, today, lang, cb, habits)
+    val loose = routines.filter { it.anchor == null && it.id !in withSteps }
     // Habits without a moment, in their own group: rated together, never ticked off.
     group(Res.string.group_habits, loose.filter { it.isHabit }, today, lang, cb, habits)
     val ticked = loose.filterNot { it.isHabit }

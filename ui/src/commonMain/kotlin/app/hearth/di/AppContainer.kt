@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolSource
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +56,8 @@ class AppContainer(
     val googleAuth: GoogleAuth = NoGoogleAuth,
     /** The web preview starts with examples, so a first visit shows how it works. */
     examplesOnFirstRun: Boolean = false,
+    /** False in the browser: other sites are read through the relay (CORS). */
+    directPages: Boolean = true,
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -76,7 +79,8 @@ class AppContainer(
     val drive = DriveBackupStore(googleHttp, googleAuth)
     val calendar = GoogleCalendarApi(googleHttp, googleAuth)
     val meeting = MeetingRepository(db)
-    val tools = HearthTools(shopping, backlog, board, stock, week, settings, meeting, backups, drive, calendar)
+    private val pages = WebPages(HttpClient(), directPages) { settings.connection.first().relayUrl ?: DEFAULT_RELAY_URL.ifBlank { null } }
+    val tools = HearthTools(shopping, backlog, board, stock, week, settings, meeting, backups, drive, calendar, pages)
     val orchestrator = Orchestrator(tools.registry)
 
     /** The family's ChatGPT or Claude reaches the same tools here, through the relay. */

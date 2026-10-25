@@ -13,10 +13,11 @@ const key = "k".repeat(40);
 const R = "http://relay";
 const redirect = "https://claude.ai/api/mcp/auth_callback";
 
-async function relay() {
+async function relay(outboundService) {
   return new Miniflare({
     modules: true,
     script,
+    outboundService,
     compatibilityDate: "2025-09-01",
     durableObjects: {
       HOUSEHOLD: { className: "Household", useSQLite: true },
@@ -181,5 +182,38 @@ test("offline tablet gives a clear JSON-RPC error; guessing codes is slowed down
   let last;
   for (let i = 0; i < 11; i++) last = (await login(mf, "99999" + (i % 10))).post;
   assert.match(await last.text(), /te veel pogingen/);
+  await mf.dispose();
+});
+
+test("recipe import for the web: only the JSON-LD and the photo come back", async () => {
+  const site = (req) => {
+    const u = new URL(req.url);
+    if (u.pathname === "/lasagne") {
+      return new Response(
+        `<html><head><title>Lasagne</title><meta property="og:image" content="https://kook.be/l.jpg">` +
+          `<script type="application/ld+json">{"@type":"Recipe","name":"Lasagne"}</script></head>` +
+          `<body><p>Secret page text</p></body></html>`,
+        { headers: { "content-type": "text/html" } },
+      );
+    }
+    if (u.pathname === "/l.jpg") return new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "image/jpeg" } });
+    if (u.pathname === "/page.html") return new Response("<html></html>", { headers: { "content-type": "text/html" } });
+    return new Response("no", { status: 404 });
+  };
+  const mf = await relay(site);
+  const page = await mf.dispatchFetch(`${R}/page?url=${encodeURIComponent("https://kook.be/lasagne")}`);
+  assert.equal(page.status, 200);
+  assert.equal(page.headers.get("access-control-allow-origin"), "*");
+  const html = await page.text();
+  assert.match(html, /application\/ld\+json">\{"@type":"Recipe","name":"Lasagne"\}/);
+  assert.match(html, /og:image" content="https:\/\/kook.be\/l.jpg"/);
+  assert.doesNotMatch(html, /Secret page text/);
+
+  const img = await mf.dispatchFetch(`${R}/image?url=${encodeURIComponent("https://kook.be/l.jpg")}`);
+  assert.equal(img.headers.get("content-type"), "image/jpeg");
+  assert.deepEqual([...new Uint8Array(await img.arrayBuffer())], [1, 2, 3]);
+  // Only images come through /image, and only http(s) links are fetched.
+  assert.equal((await mf.dispatchFetch(`${R}/image?url=${encodeURIComponent("https://kook.be/page.html")}`)).status, 404);
+  assert.equal((await mf.dispatchFetch(`${R}/page?url=${encodeURIComponent("file:///etc/passwd")}`)).status, 400);
   await mf.dispose();
 });

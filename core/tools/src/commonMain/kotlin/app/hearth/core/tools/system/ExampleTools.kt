@@ -70,7 +70,7 @@ class LoadExamplesTool(
         step { tools.addToBacklog.run(AddToBacklogArgs(e.habits[1], Section.HABIT, anchor = Anchor.EVENING), ctx) }
         step { tools.addToBacklog.run(AddToBacklogArgs(e.bedtime, Section.RHYTHM, anchor = Anchor.BEDTIME), ctx) }
         // Routines with steps: the bag for the opvang (a checklist) and the evening (a sequence).
-        step { tools.addRoutine.run(AddRoutineArgs(e.bag.first, e.bag.second, Anchor.MORNING), ctx) }
+        step { tools.addRoutine.run(AddRoutineArgs(e.bag.first, e.bag.second), ctx) }
         step { tools.addRoutine.run(AddRoutineArgs(e.evening.first, e.evening.second, Anchor.EVENING), ctx) }
         step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[0]), ease = Ease.EASY), ctx) }
         step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[1]), ease = Ease.HARD), ctx) }

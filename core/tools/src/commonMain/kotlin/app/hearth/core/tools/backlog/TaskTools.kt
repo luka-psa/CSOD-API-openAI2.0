@@ -277,7 +277,7 @@ data class AddRoutineArgs(
     val anchor: Anchor? = null,
     @Describe("RHYTHM (default), HABIT or CHORE.")
     val section: Section = Section.RHYTHM,
-    @Describe("Roughly every how many days. Default: daily.")
+    @Describe("Roughly every how many days. Default: daily with a moment of the day; none for a checklist without a moment (used when needed).")
     val intervalDays: Int? = null,
 )
 
@@ -297,7 +297,9 @@ class AddRoutineTool(private val repo: BacklogRepository) : Tool<AddRoutineArgs,
     override suspend fun run(args: AddRoutineArgs, ctx: ToolContext): AddToBacklogResult {
         val title = args.name.trim().replaceFirstChar { it.uppercase() }.ifEmpty { throw ToolException(ctx.t("Hoe heet de routine?", "What's the routine called?")) }
         val section = args.section.takeIf { it.kind == TaskKind.ROUTINE } ?: Section.RHYTHM
-        val (routine, added) = repo.add(title, section, Plan.UNPLANNED, null, false, ctx.actorMemberId, intervalDays = args.intervalDays ?: 1, anchor = args.anchor)
+        // A moment of the day makes it daily; without one it's a checklist for when it's needed (the bag for the babysit).
+        val interval = args.intervalDays ?: if (args.anchor != null) 1 else null
+        val (routine, added) = repo.add(title, section, Plan.UNPLANNED, null, false, ctx.actorMemberId, intervalDays = interval, anchor = args.anchor)
         if (!added && args.anchor != null && routine.anchor != args.anchor) repo.setAnchor(listOf(routine.id), args.anchor)
         val steps = args.steps.map { it.trim().trim('.', ',').replaceFirstChar { c -> c.uppercase() } }.filter { it.isNotEmpty() }
         val new = steps.count { step -> repo.add(step, routine.section, Plan.UNPLANNED, null, false, ctx.actorMemberId, parentId = routine.id).second }

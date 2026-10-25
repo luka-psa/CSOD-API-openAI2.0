@@ -89,6 +89,8 @@ class HearthTools(
     backups: BackupRepository? = null,
     backupStore: BackupStore = NoGoogle,
     calendarApi: CalendarApi = NoGoogle,
+    /** Web pages for importing a recipe from a link. */
+    pages: app.hearth.core.tools.week.PageFetcher = app.hearth.core.tools.week.NoPages,
 ) {
     val addShoppingItem = AddShoppingItemTool(shopping, stock)
     val listShoppingItems = ListShoppingItemsTool(shopping)
@@ -148,6 +150,7 @@ class HearthTools(
     val markTranscriptSorted = MarkTranscriptSortedTool(meeting)
     val listHuddles = ListHuddlesTool(meeting)
     val saveRecipe = SaveRecipeTool(week)
+    val importRecipe = app.hearth.core.tools.week.ImportRecipeTool(week, pages)
     val listRecipes = ListRecipesTool(week)
     val removeRecipe = RemoveRecipeTool(week)
     val setRecipePhoto = SetRecipePhotoTool(week)
@@ -171,7 +174,7 @@ class HearthTools(
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
             addWin, removeWin, setWeekMeter, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, clearTranscript, listHuddles, addIdea,
-            saveRecipe, listRecipes, removeRecipe, setRecipePhoto,
+            saveRecipe, importRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples, setLanguage,
         ) + listOfNotNull(backupNow, restoreBackup),
     )

@@ -110,7 +110,8 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   to the rhythm, one without to the household. A routine can have *steps* (`parentId`,
   `add_routine`): a sequence ("avondroutine: boodschappen, Mia ophalen, koken, pyjama")
   or a checklist ("paklijst opvang: luiers, flesjes"); steps are ticked per day and come
-  back tomorrow; all ticked = the routine is done today),
+  back tomorrow; all ticked = the routine is done today. With a moment it is daily; without
+  one it is a *checklist* (*Lijstjes*: no rhythm, not on Vandaag, used when needed)),
   *Admin* (ADMIN/APPOINTMENT: *urgent*, deadline, *waiting for a reply* with a
   follow-up day), *Projecten* (PROJECT: *steps* via `parentId`, a day or "dit
   weekend"), *Te sorteren* (everything else).
@@ -126,6 +127,10 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
   and onto the list, bought = IN_STOCK again. Voice never adds on its own: the
   words show live, then "Klopt dit?". Every list row ends in an X that asks first.
+- **Import:** a list pasted in the capture bar (one item per line, bullets fine): a heading says where it
+  goes (a checklist, Boodschappen, Recept …), without one each line is sorted on its own (`ListWords`).
+  A recipe link (`import_recipe`) reads the page's schema.org JSON-LD (name, ingredients, steps, photo);
+  the tablet fetches pages itself, the web preview through the relay's `/page` and `/image`.
 - **Weekmenu & Recept:** a *Recipe* is a dish we know (in the `dish` table):
   saved on purpose (`isRecipe`, notes = how we made it, an optional photo) or
   remembered from the plan. Planning one puts its ingredients on the list.

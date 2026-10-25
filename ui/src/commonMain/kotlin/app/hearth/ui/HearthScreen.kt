@@ -190,6 +190,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 saveRecipe = viewModel::saveRecipe,
                                 deleteRecipe = viewModel::deleteRecipe,
                                 loadPhoto = viewModel::photo,
+                                importRecipe = viewModel::importRecipe,
                             ),
                         )
                         Destination.WEEK -> WeekScreen(

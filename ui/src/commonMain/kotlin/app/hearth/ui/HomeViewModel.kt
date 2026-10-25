@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.tools.week.ImportRecipeArgs
 import app.hearth.core.tools.backlog.AddRoutineArgs
 import app.hearth.core.tools.system.SetLanguageArgs
 import app.hearth.core.tools.backlog.SetAnchorArgs
@@ -480,6 +481,15 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     /** Saves a recipe; [photo] is set when it changed (empty array = removed). */
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    /** A recipe from a link; how it went shows in the chat. */
+    fun importRecipe(url: String) {
+        if (url.isBlank()) return
+        tool {
+            say(app.tools.registry.run(app.tools.importRecipe, ImportRecipeArgs(url.trim()), it).summary)
+            _photoVersion.update { v -> v + 1 }
+        }
+    }
+
     fun saveRecipe(name: String, ingredients: List<String>, notes: String?, previousKey: String?, photo: ByteArray?) {
         if (name.isBlank()) return
         tool {

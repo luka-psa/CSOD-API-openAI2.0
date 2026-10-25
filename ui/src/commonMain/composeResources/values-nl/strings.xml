@@ -428,4 +428,6 @@
     <string name="settings_language_card">De app spreekt</string>
     <string name="routine_steps">Stappen</string>
     <string name="routine_step_add">Stap toevoegen, bv. pyjama aan</string>
+    <string name="group_lists">Lijstjes</string>
+    <string name="recipe_link_hint">Plak een link naar een recept</string>
 </resources>

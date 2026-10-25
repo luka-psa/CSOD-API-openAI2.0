@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.ui.resources.recipe_link_hint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -112,6 +113,7 @@ class MenuCallbacks(
     val saveRecipe: (name: String, ingredients: List<String>, notes: String?, previousKey: String?, photo: ByteArray?) -> Unit,
     val deleteRecipe: (Recipe) -> Unit,
     val loadPhoto: suspend (String) -> ByteArray?,
+    val importRecipe: (String) -> Unit = {},
 )
 
 /**
@@ -142,7 +144,7 @@ fun MenuScreen(
         Planner(meals, byKey, today, lang, photoVersion, cb.loadPhoto, onChoose = { choosingFor = it }, onOpen = { opened = it }, onRemove = { removingMeal = it }, modifier = m)
     }
     val library = @Composable { m: Modifier ->
-        Library(recipes, photoVersion, cb.loadPhoto, onNew = { creating = true }, onOpen = { opened = it }, onMakeRecipe = { editing = it }, modifier = m)
+        Library(recipes, photoVersion, cb.loadPhoto, onNew = { creating = true }, onOpen = { opened = it }, onMakeRecipe = { editing = it }, onImport = cb.importRecipe, modifier = m)
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -265,6 +267,7 @@ private fun Library(
     onNew: () -> Unit,
     onOpen: (Recipe) -> Unit,
     onMakeRecipe: (Recipe) -> Unit,
+    onImport: (String) -> Unit,
     modifier: Modifier,
 ) {
     val saved = recipes.filter { it.isRecipe }
@@ -279,6 +282,9 @@ private fun Library(
                     Text(stringResource(Res.string.menu_new_recipe))
                 }
             }
+            Spacer(Modifier.size(12.dp))
+            // A link from a cooking site: name, ingredients, steps and photo come along.
+            AddRow(stringResource(Res.string.recipe_link_hint), onImport, muted = true, compact = true)
             Spacer(Modifier.size(12.dp))
             if (saved.isEmpty()) EmptyHint(stringResource(Res.string.menu_recipes_empty), Modifier.padding(horizontal = 4.dp))
             LazyVerticalGrid(

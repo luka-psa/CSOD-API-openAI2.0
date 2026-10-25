@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.ui.resources.group_lists
 import app.hearth.core.model.isRoutineStep
 import app.hearth.ui.resources.small_step_hint
 import app.hearth.ui.resources.small_step_title
@@ -445,10 +446,15 @@ private fun RhythmBoard(routines: List<BacklogItem>, steps: Map<String, List<Bac
         Hint(stringResource(Res.string.rhythm_empty))
         return
     }
-    (Anchor.entries.map { it as Anchor? } + null).forEach { moment ->
-        val mine = routines.filter { it.anchor == moment }
+    // Per moment in the order of the day, then checklists (used when needed), then the rest.
+    val groups = Anchor.entries.map { a -> a.title(lang) to routines.filter { it.anchor == a } } +
+        listOf(
+            stringResource(Res.string.group_lists) to routines.filter { it.anchor == null && it.id in steps },
+            stringResource(Res.string.anchor_none) to routines.filter { it.anchor == null && it.id !in steps },
+        )
+    groups.forEach { (title, mine) ->
         if (mine.isEmpty()) return@forEach
-        GroupTitle(moment?.title(lang) ?: stringResource(Res.string.anchor_none))
+        GroupTitle(title)
         mine.forEach { item ->
             Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

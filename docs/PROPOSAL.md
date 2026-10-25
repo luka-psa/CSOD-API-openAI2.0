@@ -109,7 +109,9 @@ transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the su
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `set_week_meter` (FLOW / STRAIN, agreed together for the household; empty = no
 agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (worked / not yet, never who), `rate_habit` (EASY / EFFORT / HARD),
-`set_small_step` (a habit's smallest first step), `add_routine` (a routine with its steps in order: the evening
+`import_recipe` (a link: the page's schema.org JSON-LD becomes a Recipe with ingredients, numbered steps and
+"Bron: …" as notes, and its photo; the web preview fetches through the relay's `/page` (only JSON-LD and
+og:image come back) and `/image` (images only, max 3 MB)), `set_small_step` (a habit's smallest first step), `add_routine` (a routine with its steps in order: the evening
 sequence or a checklist like the bag for the opvang; saying it again adds the missing steps; steps are ticked per
 day with `complete_backlog_item`, and all ticked logs the routine for today), `set_anchor` (a routine's moment of the day: MORNING, AFTERNOON,
 DINNER, EVENING, BEDTIME; `add_to_backlog` takes it too),
@@ -397,6 +399,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    default with a language setting (Instellingen → Taal); Koppelingen lives under Instellingen. v0.13: routines
    with steps (sequence or checklist), ticked per day in Taken and Vandaag, edited in the routine's sheet;
    capture bar "avondroutine: …", "paklijst opvang: …", "slaaproutine: badje → pyjama → verhaaltje".
+   v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
+   capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
+   (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
 7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
    icon on Vandaag): add `<relay>/mcp` once in ChatGPT/Claude and type the tablet's pairing code.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a

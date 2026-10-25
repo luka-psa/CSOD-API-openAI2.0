@@ -1,5 +1,11 @@
 package app.hearth.ui
 
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -145,12 +151,17 @@ fun CaptureBar(
                             value = input,
                             onValueChange = { input = it },
                             readOnly = listening,
-                            singleLine = true,
+                            // A pasted list keeps its lines (one item each); Enter still sends, Shift+Enter adds a line.
+                            singleLine = false,
+                            maxLines = 4,
                             textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                             keyboardActions = KeyboardActions(onSend = { send() }),
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 12.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 12.dp)
+                                .onPreviewKeyEvent { e ->
+                                    if (e.type == KeyEventType.KeyDown && e.key == Key.Enter && !e.isShiftPressed) { send(); true } else false
+                                },
                         )
                     }
                     LangPill(speechLang) { speechLang = if (speechLang.startsWith("nl")) "en-GB" else "nl-BE" }

@@ -36,6 +36,8 @@ export default {
     if (path === "/authorize") return authorize(request, env, url);
     if (path === "/token") return cors(await token(request, env, origin));
     if (path === "/mcp") return cors(await mcp(request, env, origin));
+    if (path === "/page") return cors(await importPage(url));
+    if (path === "/image") return cors(await importImage(url));
 
     const [, kind, household] = path.split("/");
     if (kind === "connect" && household && ID.test(household)) {
@@ -44,6 +46,50 @@ export default {
     return new Response("Not found", { status: 404 });
   },
 };
+
+// ---- Recipe import for the web preview ----
+//
+// A browser may not read other sites (CORS), so the web app asks here. Only what an import needs comes back:
+// the page's JSON-LD and its og:image (no cookies, no other content), or one photo. The tablet app fetches
+// pages itself and never uses this.
+
+const PAGE_LIMIT = 3_000_000;
+const IMAGE_LIMIT = 3_000_000;
+
+function target(url) {
+  try {
+    const t = new URL(url.searchParams.get("url") || "");
+    return t.protocol === "https:" || t.protocol === "http:" ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+async function importPage(url) {
+  const t = target(url);
+  if (!t) return new Response("Bad url", { status: 400 });
+  const res = await fetch(t, { headers: { "user-agent": "Mozilla/5.0 (Hearth recipe import)", accept: "text/html" }, redirect: "follow" });
+  if (!res.ok) return new Response("Not found", { status: 404 });
+  const html = (await res.text()).slice(0, PAGE_LIMIT);
+  const scripts = [...html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1];
+  const body = "<html><head>" +
+    (og ? `<meta property="og:image" content="${og.replace(/"/g, "&quot;")}">` : "") +
+    scripts.map((j) => `<script type="application/ld+json">${j.replace(/<\/script/gi, "<\\/script")}</script>`).join("") +
+    "</head></html>";
+  return new Response(body, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+}
+
+async function importImage(url) {
+  const t = target(url);
+  if (!t) return new Response("Bad url", { status: 400 });
+  const res = await fetch(t, { headers: { "user-agent": "Mozilla/5.0 (Hearth recipe import)" }, redirect: "follow" });
+  const type = res.headers.get("content-type") || "";
+  if (!res.ok || !type.startsWith("image/")) return new Response("Not an image", { status: 404 });
+  const bytes = await res.arrayBuffer();
+  if (bytes.byteLength > IMAGE_LIMIT) return new Response("Too large", { status: 413 });
+  return new Response(bytes, { headers: { "content-type": type, "cache-control": "no-store" } });
+}
 
 // ---- OAuth: discovery ----
 

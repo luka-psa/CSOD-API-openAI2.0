@@ -27,6 +27,11 @@ import app.hearth.core.tools.week.SaveRecipeArgs
 import app.hearth.core.tools.week.SaveRecipeTool
 import app.hearth.ai.route.StockWords
 import app.hearth.ai.route.RoutineWords
+import app.hearth.core.tools.week.ImportRecipeArgs
+import app.hearth.core.tools.week.ImportRecipeTool
+import app.hearth.ai.route.ListKind
+import app.hearth.ai.route.ListHint
+import app.hearth.ai.route.ListWords
 import app.hearth.core.tools.backlog.AddRoutineTool
 import app.hearth.core.tools.backlog.AddRoutineArgs
 import app.hearth.core.tools.week.PlanMealArgs
@@ -86,6 +91,13 @@ class Orchestrator(
     private val parser: LocalIntentParser = LocalIntentParser(),
 ) {
     suspend fun handle(text: String, ctx: ToolContext, history: List<ChatTurn> = emptyList()): ChatReply {
+        // A link to a recipe: its name, ingredients, steps and photo become one of our recipes.
+        LINK.find(text)?.takeIf { text.replace(it.value, "").replace(RECIPE_WORD, "").isBlank() }?.let { link ->
+            val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
+            return runCalls(listOf(ToolCall.of(ImportRecipeTool.NAME, ImportRecipeArgs.serializer(), ImportRecipeArgs(link.value))), local)
+        }
+        // A pasted list: a heading says where it goes; without one every line is sorted on its own.
+        ListWords.extract(text)?.let { list -> return pastedList(list, ctx, history) }
         // "recept: pannenkoeken met bloem, melk en eieren": a recipe for the week menu.
         if (RECIPE_PREFIX.containsMatchIn(text)) {
             val hint = RecipeWords.parse(text)
@@ -219,6 +231,24 @@ class Orchestrator(
     }
 
     // ---- helpers ----
+
+    private suspend fun pastedList(list: ListHint, ctx: ToolContext, history: List<ChatTurn>): ChatReply {
+        val local = ctx.copy(lang = KeywordRouter.language(list.items.joinToString(" ") + " " + (list.heading ?: ""), ctx.lang))
+        val heading = list.heading
+        return when (ListWords.kind(heading)) {
+            ListKind.SHOPPING -> runCalls(list.items.map { ToolCall.of(AddShoppingItemTool.NAME, AddShoppingItemArgs.serializer(), AddShoppingItemArgs(it)) }, local)
+            ListKind.RECIPE -> runCalls(listOf(ToolCall.of(SaveRecipeTool.NAME, SaveRecipeArgs.serializer(), SaveRecipeArgs(ListWords.recipeName(heading!!), list.items))), local)
+            // "Paklijst babysit" with its lines: a checklist, ticked when it's needed (a moment in the name makes it a daily routine).
+            ListKind.CHECKLIST -> {
+                val anchor = RoutineWords.momentOf(heading!!)
+                runCalls(listOf(ToolCall.of(AddRoutineTool.NAME, AddRoutineArgs.serializer(), AddRoutineArgs(heading.replaceFirstChar { it.uppercase() }, list.items, anchor))), local)
+            }
+            ListKind.NONE -> {
+                val replies = list.items.map { handle(it, ctx, history) }
+                ChatReply(replies.joinToString("\n") { it.text }, replies.flatMap { it.outcomes }, replies.firstNotNullOfOrNull { it.pending })
+            }
+        }
+    }
 
     private suspend fun runCalls(calls: List<ToolCall>, ctx: ToolContext): ChatReply {
         val outcomes = mutableListOf<ToolOutcome>()
@@ -392,6 +422,8 @@ class Orchestrator(
             RegexOption.IGNORE_CASE,
         )
         val ROUTE_SCHEMA = RouteDecision.serializer().descriptor.toJsonSchema()
+        val LINK = Regex("https?://\\S+")
+        val RECIPE_WORD = Regex("(?i)\\b(?:recept|recipe)\\b[:\\s]*")
         val WIN_PREFIX = Regex("^(?:dat ging goed|wat ging goed|ging goed|went well|that went well)\\s*[:,\\-]\\s*(.+)$", RegexOption.IGNORE_CASE)
         val SHOPPING_TALK = Regex(
             "\\b(?:we|moeten|moet|nog|wat|even|ook|kopen|halen|gaan|in de winkel|boodschappen|need to|we need|buy|pick up|get some|groceries)\\b",

@@ -41,7 +41,10 @@ object RoutineWords {
             .map { it.trim().trim('.', ',').replaceFirstChar { c -> c.uppercase() } }
             .filter { it.isNotEmpty() }
         if (steps.isEmpty()) return null
-        val anchor = TaskWords.extract(name).anchor ?: nameMoments.firstOrNull { (r, _) -> r.containsMatchIn(name) }?.second
-        return RoutineHint(name, anchor, steps)
+        return RoutineHint(name, momentOf(name), steps)
     }
+
+    /** The moment a routine's name points at: "avondroutine" is the evening; "paklijst babysit" has none. */
+    fun momentOf(name: String): Anchor? =
+        TaskWords.extract(name).anchor ?: nameMoments.firstOrNull { (r, _) -> r.containsMatchIn(name) }?.second
 }

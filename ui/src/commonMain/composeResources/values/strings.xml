@@ -435,4 +435,6 @@
     <string name="settings_language_card">The app speaks</string>
     <string name="routine_steps">Steps</string>
     <string name="routine_step_add">Add a step, e.g. pyjamas on</string>
+    <string name="group_lists">Checklists</string>
+    <string name="recipe_link_hint">Paste a link to a recipe</string>
 </resources>
