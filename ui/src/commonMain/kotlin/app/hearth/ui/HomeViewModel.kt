@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.core.tools.system.SetLanguageArgs
 import app.hearth.core.tools.backlog.SetAnchorArgs
 import app.hearth.core.model.Anchor
 import androidx.lifecycle.ViewModel
@@ -129,8 +130,10 @@ data class ShopSection(val shop: Shop, val items: List<ShoppingItem>)
 
 class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
-    val lang: Lang = app.lang
-    val speechLanguage: String = if (lang == Lang.NL) "nl-BE" else "en-US"
+    /** Dutch (Flemish) by default; English when switched in Instellingen. */
+    val lang: StateFlow<Lang> = app.language
+
+    fun setLanguage(language: Lang) = tool { app.tools.registry.run(app.tools.setLanguage, SetLanguageArgs(language), it) }
 
     // ---- clock ----
 

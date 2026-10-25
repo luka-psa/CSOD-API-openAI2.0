@@ -118,6 +118,9 @@ DINNER, EVENING, BEDTIME; `add_to_backlog` takes it too),
 `set_recipe_photo` (tablet only). Stock: `move_stock_item`, `remove_storage_spot` ⚠.
 Google (tablet only, opt-in, see `docs/GOOGLE.md`): `set_google_sync`, `backup_now`, `list_backups`,
 `restore_backup` ⚠, `sync_calendar`.
+Language (tablet only): `set_language` (NL / EN, stored as `app.lang`). The app is Dutch (Flemish) by default,
+whatever the device or browser says; Instellingen → Taal switches it, strings and tool texts alike, and the
+recognizer follows (nl-BE / en-US).
 Examples (tablet only): `load_examples` puts one or two items in every section through the normal tools (Koppelingen →
 Voorbeelden laden). The web preview loads them on a first visit, before the screen shows.
 
@@ -388,7 +391,8 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.10: the meeting by topic (tiles), a visible Luister mee that lights up the topic, Samen akkoord? before
    Klaar, Oudjes removed, phone layout fixes. v0.11: moments of the day (*Anchor*): Ritmes & routines laid out
    per moment (capture bar: "’s avonds de tassen klaarzetten", "na het eten afwassen", "voor het slapen
-   voorlezen"), apart from Huishouden; Frictie & ideeën and Huisregels as separate tiles.
+   voorlezen"), apart from Huishouden; Frictie & ideeën and Huisregels as separate tiles. v0.12: Dutch by
+   default with a language setting (Instellingen → Taal); Koppelingen lives under Instellingen.
 7. ✅ **MCP relay** (§7, option A): one shared relay; "Koppelingen" (rail bottom; on a phone via the link
    icon on Vandaag): add `<relay>/mcp` once in ChatGPT/Claude and type the tablet's pairing code.
 8. ✅ Stock per room/topic with the restock loop; X-to-delete everywhere; clear bought; live voice with a

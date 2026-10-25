@@ -1,5 +1,7 @@
 package app.hearth.ui
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.key
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -85,7 +87,19 @@ enum class Destination(val icon: ImageVector, val label: StringResource, val inN
  * and the capture bar underneath every screen.
  */
 @Composable
-fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
+fun HearthScreen(viewModel: HomeViewModel, dimmed: Boolean) {
+    val lang by viewModel.lang.collectAsStateWithLifecycle()
+    // Kept outside the rebuild, so switching the language stays on the same screen.
+    val destination = rememberSaveable { mutableStateOf(Destination.TODAY) }
+    val tab = rememberSaveable { mutableStateOf(TaskTab.ROUTINES) }
+    // The chosen language wins over the device's; switching rebuilds the screen in the new language.
+    CompositionLocalProvider(LocalAppLocale provides lang.localeTag, LocalLang provides lang) {
+        key(lang) { HearthContent(viewModel, lang, dimmed, destination, tab) }
+    }
+}
+
+@Composable
+private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean, destinationState: MutableState<Destination>, tabState: MutableState<TaskTab>) {
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val shopping by viewModel.shopping.collectAsStateWithLifecycle()
@@ -125,8 +139,8 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
 
-    var destination by rememberSaveable { mutableStateOf(Destination.TODAY) }
-    var tab by rememberSaveable { mutableStateOf(TaskTab.ROUTINES) }
+    var destination by destinationState
+    var tab by tabState
     var planning by remember { mutableStateOf<BacklogItem?>(null) }
     var conversation by remember { mutableStateOf(false) }
 
@@ -167,7 +181,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                             onGoConnect = { destination = Destination.CONNECT },
                         )
                         Destination.MENU -> MenuScreen(
-                            meals, recipes, today, lang, wide, photoVersion, viewModel.speechLanguage,
+                            meals, recipes, today, lang, wide, photoVersion, lang.speechTag,
                             MenuCallbacks(
                                 planRecipe = viewModel::planRecipe,
                                 planDish = viewModel::planMeal,
@@ -225,6 +239,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                                 hideCode = viewModel::hidePairingCode,
                                 unlink = viewModel::unlinkApp,
                                 loadExamples = if (viewModel.offersExamples) viewModel::loadExamples else null,
+                                setLanguage = viewModel::setLanguage,
                             ),
                             google, viewModel.googleAvailable, googleBusy, backupList,
                             GoogleCallbacks(
@@ -292,7 +307,7 @@ fun HearthScreen(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean) {
                     Spacer(Modifier.height(10.dp))
                 }
                 CaptureBar(
-                    messages, busy, viewModel.speechLanguage,
+                    messages, busy, lang.speechTag,
                     onSend = viewModel::send,
                     onAnswer = viewModel::answer,
                     onOpenConversation = { conversation = true },

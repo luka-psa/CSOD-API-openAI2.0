@@ -334,7 +334,8 @@ private fun DayLine(day: LocalDate, items: List<BacklogItem>, today: LocalDate, 
             label,
             style = MaterialTheme.typography.labelLarge,
             color = if (day.isWeekend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(76.dp).padding(top = 6.dp),
+            maxLines = 1,
+            modifier = Modifier.width(84.dp).padding(top = 6.dp),
         )
         if (items.isEmpty()) {
             val s = Section.PROTECTED_TIME.style()

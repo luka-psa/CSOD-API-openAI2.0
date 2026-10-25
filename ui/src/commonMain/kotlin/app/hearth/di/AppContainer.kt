@@ -1,5 +1,9 @@
 package app.hearth.di
 
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import app.hearth.core.tools.system.AppSettings
 import app.hearth.ai.Orchestrator
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.data.backlog.BacklogRepository
@@ -48,12 +52,16 @@ import kotlinx.coroutines.launch
  */
 class AppContainer(
     db: HearthDatabase,
-    val lang: Lang,
     val googleAuth: GoogleAuth = NoGoogleAuth,
     /** The web preview starts with examples, so a first visit shows how it works. */
     examplesOnFirstRun: Boolean = false,
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** The app's language: Dutch (Flemish) unless the family switched to English in Instellingen. */
+    private val _language = MutableStateFlow(Lang.NL)
+    val language: StateFlow<Lang> = _language.asStateFlow()
+    val lang: Lang get() = _language.value
 
     val shopping = ShoppingRepository(db)
     val backlog = BacklogRepository(db)
@@ -88,6 +96,7 @@ class AppContainer(
      * showing the screen: its database driver can stall when a screen query is cancelled mid-write.
      */
     val ready = appScope.async {
+        settings.currentValue(AppSettings.LANGUAGE)?.let { _language.value = Lang.fromTag(it) }
         shopping.ensureDefaultShops(lang)
         stock.ensureDefaults(lang) { shopping.shopIdFor(it) }
         if (examplesOnFirstRun && settings.currentValue(LoadExamplesTool.LOADED) == null && backlog.openItems().isEmpty()) {
@@ -99,6 +108,7 @@ class AppContainer(
     val offersExamples = !examplesOnFirstRun
 
     init {
+        appScope.launch { settings.value(AppSettings.LANGUAGE).collect { it?.let { tag -> _language.value = Lang.fromTag(tag) } } }
         // Connected only while it's switched on; the client reconnects by itself.
         appScope.launch { settings.connection.collect { c -> relay.connect(if (c.enabled) c.tabletUrl else null) } }
         if (googleAuth.available) keepGoogleUpToDate()

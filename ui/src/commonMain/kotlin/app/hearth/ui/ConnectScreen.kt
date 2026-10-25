@@ -1,5 +1,8 @@
 package app.hearth.ui
 
+import app.hearth.ui.resources.settings_language_card
+import app.hearth.ui.resources.settings_language
+import app.hearth.core.model.Lang
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,6 +96,7 @@ class ConnectCallbacks(
     val unlink: (appId: String) -> Unit,
     /** Null when examples aren't offered here (the web preview starts with them). */
     val loadExamples: (() -> Unit)? = null,
+    val setLanguage: (Lang) -> Unit = {},
 )
 
 /**
@@ -120,6 +124,15 @@ fun ConnectScreen(
         Spacer(Modifier.size(20.dp))
 
         Column(Modifier.widthIn(max = 860.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            // Dutch (Flemish) by default; each option is written in its own language.
+            SectionTitle(stringResource(Res.string.settings_language))
+            HearthCard(stringResource(Res.string.settings_language_card), HearthIcons.Chat, Modifier.fillMaxWidth()) {
+                val current = LocalLang.current
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ChoiceChip("Nederlands (Vlaams)", current == Lang.NL, { cb.setLanguage(Lang.NL) })
+                    ChoiceChip("English", current == Lang.EN, { cb.setLanguage(Lang.EN) })
+                }
+            }
             SectionTitle(stringResource(Res.string.connect_ai))
             HearthCard(stringResource(Res.string.connect_on), HearthIcons.Link, Modifier.fillMaxWidth(), action = {
                 Switch(

@@ -229,8 +229,8 @@
         <item quantity="other">dingen gedaan %1$s</item>
     </plurals>
     <!-- Connect AI (MCP) -->
-    <string name="nav_connect">Koppelingen</string>
-    <string name="connect_subtitle">Jullie eigen ChatGPT of Claude, en jullie eigen Google Drive en Agenda. Geen API-sleutels, geen extra kosten.</string>
+    <string name="nav_connect">Instellingen</string>
+    <string name="connect_subtitle">Taal, en jullie eigen ChatGPT of Claude, Google Drive en Agenda. Geen API-sleutels, geen extra kosten.</string>
     <string name="connect_on">Verbinding</string>
     <string name="connect_status_off">Uit</string>
     <string name="connect_status_connecting">Verbinden…</string>
@@ -424,4 +424,6 @@
     <string name="rhythm_add_hint">Routine, bv. ’s avonds tassen klaarzetten</string>
     <string name="home_empty">Niets aan de beurt. Fijn.</string>
     <string name="home_add_hint">Huishoudtaak, bv. lakens om de 2 weken</string>
+    <string name="settings_language">Taal</string>
+    <string name="settings_language_card">De app spreekt</string>
 </resources>

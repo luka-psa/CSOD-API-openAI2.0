@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             HearthTheme {
-                HearthScreen(viewModel = viewModel, lang = container.lang, dimmed = dimmed.value)
+                HearthScreen(viewModel = viewModel, dimmed = dimmed.value)
             }
         }
     }

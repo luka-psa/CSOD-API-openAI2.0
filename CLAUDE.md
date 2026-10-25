@@ -140,6 +140,9 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   with its topic and lights up that tile (the *transcript* lasts until the next meeting); *Zet op zijn plek* opens the
   *Voorstel* (each sentence → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.
+- **Instellingen** (Settings; the rail's bottom item): *Taal* first (Dutch (Flemish) by default,
+  English on request; `set_language`, setting `app.lang`; switching changes both the strings and
+  what tools write), then Koppelingen.
 - **Koppelingen** (ChatGPT/Claude and Google): *Relay* (`relay/`, one shared Cloudflare Worker), *connector address*
   (`<relay>/mcp`, the same for everyone), *koppelcode* / *pairing code* (6 digits on the tablet, typed on
   the relay's login page), *linked app* (*Gekoppeld*), *tablet key*. The MCP
@@ -147,7 +150,8 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   *Back-up* (Drive app folder, *Terugzetten* asks first) and the *Hearth* calendar; setup in
   `docs/GOOGLE.md`.
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy).
-  UI ships in Dutch (Flemish) and English; the local parser understands both.
+  UI ships in Dutch (Flemish), the default whatever the device says, and English (a setting);
+  the local parser understands both.
 
 ## Code conventions
 

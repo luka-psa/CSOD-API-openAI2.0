@@ -13,6 +13,15 @@
             font: 500 20px system-ui, sans-serif; color: #6B5E54;
         }
     </style>
+    <script>
+        // The app's language setting wins over the browser's: Compose reads navigator.languages.
+        (function () {
+            var original = Object.getOwnPropertyDescriptor(Navigator.prototype, "languages");
+            Object.defineProperty(Navigator.prototype, "languages", Object.assign({}, original, {
+                get: function () { return window.__customLocale ? [window.__customLocale] : original.get.apply(this); }
+            }));
+        })();
+    </script>
     <script type="application/javascript" src="hearth.js"></script>
 </head>
 <body>

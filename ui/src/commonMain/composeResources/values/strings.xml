@@ -236,8 +236,8 @@
         <item quantity="other">things done %1$s</item>
     </plurals>
     <!-- Connect AI (MCP) -->
-    <string name="nav_connect">Connections</string>
-    <string name="connect_subtitle">Your own ChatGPT or Claude, and your own Google Drive and Calendar. No API keys, no extra costs.</string>
+    <string name="nav_connect">Settings</string>
+    <string name="connect_subtitle">Language, and your own ChatGPT or Claude, Google Drive and Calendar. No API keys, no extra costs.</string>
     <string name="connect_on">Connection</string>
     <string name="connect_status_off">Off</string>
     <string name="connect_status_connecting">Connecting…</string>
@@ -431,4 +431,6 @@
     <string name="rhythm_add_hint">Routine, e.g. bags ready in the evening</string>
     <string name="home_empty">Nothing due. Nice.</string>
     <string name="home_add_hint">Household task, e.g. sheets every 2 weeks</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_card">The app speaks</string>
 </resources>
