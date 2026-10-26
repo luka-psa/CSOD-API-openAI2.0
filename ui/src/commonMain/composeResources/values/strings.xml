@@ -241,7 +241,7 @@
     <string name="google_restore_confirm">Put this backup back?</string>
     <string name="google_restore_body">Everything on this tablet is replaced by the backup from %1$s. The connection to ChatGPT and Claude stays.</string>
     <string name="google_calendar">Google Calendar</string>
-    <string name="google_calendar_body">Everything with a day in Hearth shows in its own “Hearth” calendar, on everyone’s phone. No reminders that ping, and Hearth never touches your other calendars.</string>
+    <string name="google_calendar_body">Everything with a day in Hearth shows in its own “Hearth” calendar, rhythms on fixed days in “Hearth · Rhythms”, on everyone’s phone. No reminders that ping, and Hearth never touches your other calendars.</string>
     <string name="google_calendar_on">Link Google Calendar</string>
     <string name="google_calendar_follow">Follows the plan by itself.</string>
     <string name="google_calendar_last">Last updated: %1$s</string>
@@ -301,7 +301,7 @@
     <string name="transcript_clear">Clear conversation</string>
     <string name="transcript_clear_body">What Luister mee heard in this meeting goes. Things already put in place stay.</string>
     <string name="voorstel_title">Put in place</string>
-    <string name="voorstel_hint">Tap the words to fix them, a place to move something, or untick it. Nothing is added until you tap Add.</string>
+    <string name="voorstel_hint">Tap a suggestion to change its name, place or day, or untick it. Nothing is added until you tap Add.</string>
     <string name="voorstel_add">Add (%1$d)</string>
     <string name="voorstel_empty">Nothing new to put in place.</string>
     <string name="place_planning">Tasks</string>
@@ -365,7 +365,7 @@
     <string name="examples_card">See how it works</string>
     <string name="examples_body">One or two examples in every section: tasks, habits, the shopping list, the week menu and the Werkbord. Change or remove them whenever you like.</string>
     <string name="examples_load">Load examples</string>
-    <string name="listen_live">Just talk, pauses are fine. What belongs together stays together. Tap a line to fix words.</string>
+    <string name="listen_live">Just talk, pauses are fine. What belongs together stays together. Tap a suggestion to change it.</string>
     <string name="listen_stage_hint">Tap and just talk, pauses and all. Hearth keeps together what belongs together and picks out what needs doing; you check it together afterwards.</string>
     <string name="listen_still">Still listening…</string>
     <string name="heard_this_week">this week</string>

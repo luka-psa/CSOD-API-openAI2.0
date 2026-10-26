@@ -234,7 +234,7 @@
     <string name="google_restore_confirm">Deze back-up terugzetten?</string>
     <string name="google_restore_body">Alles op deze tablet wordt vervangen door de back-up van %1$s. De koppeling met ChatGPT en Claude blijft.</string>
     <string name="google_calendar">Google Agenda</string>
-    <string name="google_calendar_body">Alles met een dag in Hearth komt in een eigen agenda “Hearth”, op ieders gsm. Geen herinneringen die piepen, en jullie andere agenda’s raakt Hearth nooit aan.</string>
+    <string name="google_calendar_body">Alles met een dag in Hearth komt in een eigen agenda “Hearth”, ritmes op vaste dagen in “Hearth · Ritmes”, op ieders gsm. Geen herinneringen die piepen, en jullie andere agenda’s raakt Hearth nooit aan.</string>
     <string name="google_calendar_on">Koppel Google Agenda</string>
     <string name="google_calendar_follow">Volgt de planning vanzelf.</string>
     <string name="google_calendar_last">Laatst bijgewerkt: %1$s</string>
@@ -294,7 +294,7 @@
     <string name="transcript_clear">Gesprek wissen</string>
     <string name="transcript_clear_body">Wat Luister mee in dit weekoverleg hoorde, verdwijnt. Wat al op zijn plek staat, blijft.</string>
     <string name="voorstel_title">Op zijn plek</string>
-    <string name="voorstel_hint">Tik op de woorden om ze te verbeteren, op een plek om iets te verplaatsen, of haal het vinkje weg. Er komt pas iets bij als je op Toevoegen tikt.</string>
+    <string name="voorstel_hint">Tik op een voorstel om de naam, plek of dag aan te passen, of haal het vinkje weg. Er komt pas iets bij als je op Toevoegen tikt.</string>
     <string name="voorstel_add">Toevoegen (%1$d)</string>
     <string name="voorstel_empty">Niets nieuws om op zijn plek te zetten.</string>
     <string name="place_planning">Taken</string>
@@ -358,7 +358,7 @@
     <string name="examples_card">Kijk hoe het werkt</string>
     <string name="examples_body">Een of twee voorbeelden in elk onderdeel: taken, gewoontes, de boodschappenlijst, het weekmenu en het Werkbord. Pas ze aan of haal ze weg wanneer je wilt.</string>
     <string name="examples_load">Voorbeelden laden</string>
-    <string name="listen_live">Praat gewoon, pauzes mogen. Wat bij elkaar hoort, blijft samen. Tik op een zin om woorden te verbeteren.</string>
+    <string name="listen_live">Praat gewoon, pauzes mogen. Wat bij elkaar hoort, blijft samen. Tik op een voorstel om het aan te passen.</string>
     <string name="listen_stage_hint">Tik en praat gewoon, met pauzes. Hearth houdt samen wat bij elkaar hoort en haalt eruit wat er moet gebeuren; jullie kijken het daarna samen na.</string>
     <string name="listen_still">Hearth luistert nog…</string>
     <string name="heard_this_week">deze week</string>

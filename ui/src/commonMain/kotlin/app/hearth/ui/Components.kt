@@ -445,7 +445,8 @@ fun WeatherScale(current: Ease?, onRate: (Ease) -> Unit, guess: Ease? = null) {
                     tint = when {
                         chosen -> ink
                         current == null && guess == e -> ink.copy(alpha = 0.55f)
-                        else -> MaterialTheme.colorScheme.outline
+                        // Quiet, but clearly something to tap.
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     },
                     modifier = Modifier.size(if (chosen) 26.dp else 22.dp),
                 )
