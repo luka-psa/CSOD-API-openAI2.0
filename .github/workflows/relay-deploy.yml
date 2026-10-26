@@ -33,7 +33,11 @@ jobs:
         id: deploy
         if: steps.secrets.outputs.ready == 'yes'
         uses: cloudflare/wrangler-action@v3
+        env:
+          WRANGLER_SEND_METRICS: "false"
         with:
+          # The action's own default (3.90) can't read wrangler.jsonc.
+          wranglerVersion: "4.149.0"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: relay
