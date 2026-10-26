@@ -4,7 +4,6 @@ import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.tools.Describe
 import app.hearth.core.tools.Tool
 import app.hearth.core.tools.ToolContext
-import app.hearth.core.tools.ToolException
 import app.hearth.core.tools.ToolResult
 import kotlinx.serialization.Serializable
 
@@ -14,8 +13,6 @@ import kotlinx.serialization.Serializable
 data class SaveConnectionArgs(
     @Describe("Turn the connection to ChatGPT/Claude on or off.")
     val enabled: Boolean? = null,
-    @Describe("Another relay's address (advanced); empty goes back to the built-in one.")
-    val relayUrl: String? = null,
 )
 
 @Serializable
@@ -29,13 +26,9 @@ class SaveConnectionTool(private val settings: SettingsRepository) : Tool<SaveCo
     override val resultSerializer = ConnectionResult.serializer()
 
     override suspend fun run(args: SaveConnectionArgs, ctx: ToolContext): ConnectionResult {
-        val url = args.relayUrl?.trim()?.let { if (it.isEmpty() || it.startsWith("http")) it else "https://$it" }
-        if (!url.isNullOrEmpty() && !Regex("^https?://[^/\\s]+[^\\s]*$").matches(url)) {
-            throw ToolException(ctx.t("Dat adres lijkt niet te kloppen.", "That address doesn't look right."))
-        }
-        val c = settings.saveConnection(args.enabled, url)
+        val c = settings.saveConnection(args.enabled)
         val summary = when {
-            c.relayUrl == null -> ctx.t("Deze versie heeft nog geen koppelserver. Vul een adres in onder Instellingen → Geavanceerd.", "This build has no relay yet. Enter an address under Advanced.")
+            c.relayUrl == null -> ctx.t(NO_RELAY_NL, NO_RELAY_EN)
             c.enabled -> ctx.t("Verbinding met jullie AI staat aan.", "The connection to your AI is on.")
             else -> ctx.t("Verbinding met jullie AI staat uit.", "The connection to your AI is off.")
         }
@@ -46,3 +39,7 @@ class SaveConnectionTool(private val settings: SettingsRepository) : Tool<SaveCo
         const val NAME = "save_connection"
     }
 }
+
+/** The relay's address is built in (HEARTH_RELAY_URL); a build without one says so, and nobody types it. */
+internal const val NO_RELAY_NL = "Deze versie van Hearth is gebouwd zonder koppelserver. Installeer een nieuwere versie."
+internal const val NO_RELAY_EN = "This version of Hearth was built without a relay. Install a newer version."

@@ -195,7 +195,7 @@
     <string name="connect_unlink_confirm">%1$s ontkoppelen?</string>
     <string name="connect_unlink_body">%1$s kan Hearth dan niet meer gebruiken. Opnieuw koppelen kan altijd met een nieuwe code.</string>
     <string name="connect_no_relay">Deze versie heeft geen koppelserver</string>
-    <string name="connect_no_relay_body">ChatGPT en Claude bereiken Hearth via een gedeelde koppelserver. Deze versie van Hearth is zonder dat adres gebouwd. Vul het in onder Geavanceerd, of installeer een versie die het wel heeft.</string>
+    <string name="connect_no_relay_body">ChatGPT en Claude bereiken Hearth via een gedeelde koppelserver. Deze versie van Hearth is zonder dat adres gebouwd. Installeer een nieuwere versie.</string>
     <string name="connect_link">Koppel ChatGPT of Claude</string>
     <string name="connect_link_body">Iedereen doet dit één keer, in de eigen AI-app. Geen sleutels of wachtwoorden: je voegt dit adres toe, de app opent een Hearth-pagina en je typt de code van deze tablet.</string>
     <string name="connect_share">Delen</string>
@@ -207,11 +207,6 @@
     <string name="connect_chatgpt">ChatGPT</string>
     <string name="connect_chatgpt_steps">Instellingen → Apps &amp; Connectors → Geavanceerd: zet Developer mode aan|Terug in Apps &amp; Connectors: Create (aanmaken). Naam: Hearth, plak het adres, authenticatie: OAuth|Er opent een Hearth-pagina: tik hier op Toon koppelcode en typ de code daar|Zet Hearth aan in een gesprek en zeg bv. “zet melk op de lijst”</string>
     <string name="connect_plan_note">Menunamen veranderen af en toe. ChatGPT heeft een abonnement met Developer mode nodig; Claude laat aangepaste connectors toe op de meeste abonnementen. Hearth moet open staan op de tablet.</string>
-    <string name="connect_advanced">Geavanceerd</string>
-    <string name="connect_advanced_body">Een eigen koppelserver? Vul het adres in. Gezinnen hebben dit normaal nooit nodig.</string>
-    <string name="connect_address">Nu: %1$s</string>
-    <string name="connect_manual_hint">https://hearth-relay.….workers.dev</string>
-    <string name="connect_standard_relay">Terug naar de ingebouwde koppelserver</string>
     <string name="connect_ai">ChatGPT en Claude</string>
     <string name="connect_google">Google</string>
     <string name="google_backup">Back-up in Google Drive</string>
@@ -434,7 +429,7 @@
     <string name="sync_body_on">Dit toestel houdt het huishouden gelijk met de andere: kort na een wijziging, om de paar minuten zolang Hearth openstaat, en met de knop.</string>
     <string name="sync_share">Deel dit huishouden</string>
     <string name="sync_join">Doe mee met een code</string>
-    <string name="sync_no_relay">Deze versie heeft nog geen koppelserver. Vul een adres in onder Geavanceerd.</string>
+    <string name="sync_no_relay">Deze versie van Hearth is gebouwd zonder koppelserver. Installeer een nieuwere versie om samen te werken op meer toestellen.</string>
     <string name="sync_busy">Bezig met synchroniseren…</string>
     <string name="sync_last">Bijgewerkt om %1$s</string>
     <string name="sync_last_day">Bijgewerkt op %1$s om %2$s</string>

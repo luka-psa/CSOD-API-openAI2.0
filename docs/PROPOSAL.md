@@ -383,8 +383,8 @@ HTTPS address; a tablet on home Wi-Fi has none. Options:
 | C. Claude Desktop on a home laptop | Local MCP over the LAN. | No public URL at all, but only works from that laptop, not phones; ChatGPT can't do this. |
 
 **Chosen: A, one shared relay for every family (v0.5).** The maintainer deploys `relay/` once (Cloudflare
-Worker, "Deploy relay" workflow); its address is baked into the builds (`-Phearth.relayUrl`, CI variable
-`HEARTH_RELAY_URL`). Families never handle keys:
+Worker, "Deploy relay" workflow); its address is baked into the builds (`-Phearth.relayUrl`; CI finds it from the
+Cloudflare account, or the variable `HEARTH_RELAY_URL`). Nobody types it in the app. Families never handle keys:
 
 1. Each person adds the same connector address `<relay>/mcp` in Claude or ChatGPT.
 2. The AI app opens the relay's Hearth page; they tap **Toon koppelcode** on the tablet and type the 6-digit

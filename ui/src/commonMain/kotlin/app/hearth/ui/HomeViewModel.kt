@@ -208,8 +208,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val linkedApps: StateFlow<List<LinkedApp>> = app.relay.apps
     val pairingCode: StateFlow<PairingCode?> = app.relay.pairing
 
-    fun saveConnection(enabled: Boolean? = null, relayUrl: String? = null) = tool {
-        app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(enabled, relayUrl), it)
+    fun saveConnection(enabled: Boolean) = tool {
+        app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(enabled), it)
     }
 
     val offersExamples = app.offersExamples

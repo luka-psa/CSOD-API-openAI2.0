@@ -36,17 +36,15 @@ interface SettingDao {
 }
 
 /**
- * How Hearth reaches the family's AI. [relayUrl] is the shared relay (built in, or typed under
- * "Advanced"); [householdId] names this household there and [tabletKey] proves this is its tablet.
- * Both are made on the device. AI apps get in with a pairing code, never with these.
+ * How Hearth reaches the family's AI. [relayUrl] is the shared relay, built in (HEARTH_RELAY_URL); [householdId]
+ * names this household there and [tabletKey] proves this is its tablet. Both are made on the device. AI apps get
+ * in with a pairing code, never with these.
  */
 data class Connection(
     val enabled: Boolean = false,
     val relayUrl: String? = null,
     val householdId: String? = null,
     val tabletKey: String? = null,
-    /** True when [relayUrl] was typed instead of built in. */
-    val customRelay: Boolean = false,
 ) {
     /** The address to add once as a connector in ChatGPT or Claude: the same for every family. */
     val connectorUrl: String? get() = relayUrl?.let { "${it.trimEnd('/')}/mcp" }
@@ -67,17 +65,11 @@ class SettingsRepository(
 
     suspend fun currentConnection(): Connection = toConnection(dao.all())
 
-    /**
-     * Updates what's given and makes the household's ids the first time. A blank [relayUrl] goes back
-     * to the built-in relay.
-     */
-    suspend fun saveConnection(enabled: Boolean?, relayUrl: String?): Connection = db.withWriteTransaction {
+    /** Turns the connection on or off and makes the household's ids the first time. */
+    suspend fun saveConnection(enabled: Boolean?): Connection = db.withWriteTransaction {
         val now = clock()
         val current = toConnection(dao.all())
         if (enabled != null) dao.put(SettingEntity(ENABLED, enabled.toString(), now))
-        if (relayUrl != null) {
-            if (relayUrl.isBlank()) dao.delete(listOf(RELAY_URL)) else dao.put(SettingEntity(RELAY_URL, relayUrl.trim().trimEnd('/'), now))
-        }
         if (current.householdId == null) dao.put(SettingEntity(HOUSEHOLD, secret(), now))
         if (current.tabletKey == null) dao.put(SettingEntity(TABLET_KEY, secret(), now))
         toConnection(dao.all())
@@ -94,13 +86,13 @@ class SettingsRepository(
 
     private fun toConnection(rows: List<SettingEntity>): Connection {
         val map = rows.associate { it.key to it.value }
-        val custom = map[RELAY_URL]
-        val relay = custom ?: defaultRelayUrl?.takeIf { it.isNotBlank() }
-        return Connection(map[ENABLED] == "true" && relay != null, relay, map[HOUSEHOLD], map[TABLET_KEY], custom != null)
+        val relay = defaultRelayUrl?.takeIf { it.isNotBlank() }
+        return Connection(map[ENABLED] == "true" && relay != null, relay, map[HOUSEHOLD], map[TABLET_KEY])
     }
 
     companion object {
         private const val ENABLED = "mcp.enabled"
+        /** A relay address typed on the device by an older Hearth; no longer read, and it never travels. */
         private const val RELAY_URL = "mcp.relayUrl"
         private const val HOUSEHOLD = "mcp.householdId"
         private const val TABLET_KEY = "mcp.tabletKey"

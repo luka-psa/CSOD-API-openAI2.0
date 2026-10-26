@@ -1,11 +1,12 @@
-# Deploys the one shared relay (relay/) to the maintainer's Cloudflare account.
+# Deploys the one shared relay (relay/) to the maintainer's Cloudflare account and shows its address.
 # Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID; skips quietly without them.
+# The "Web preview" builds find the same address by themselves (or use the variable HEARTH_RELAY_URL).
 name: Deploy relay
 
 on:
   push:
     branches: [hearth-household-assistant]
-    paths: ["relay/**"]
+    paths: ["relay/**", ".github/workflows/relay-deploy.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -29,6 +30,7 @@ jobs:
         run: echo "ready=$([ -n "$TOKEN" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
 
       - name: Deploy
+        id: deploy
         if: steps.secrets.outputs.ready == 'yes'
         uses: cloudflare/wrangler-action@v3
         with:
@@ -36,6 +38,22 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: relay
           command: deploy
+
+      - name: Show the address
+        if: steps.secrets.outputs.ready == 'yes'
+        env:
+          URL: ${{ steps.deploy.outputs.deployment-url }}
+          OUT: ${{ steps.deploy.outputs.command-output }}
+        run: |
+          [ -n "$URL" ] || URL=$(printf '%s' "$OUT" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1 || true)
+          echo "::notice::The relay is live at $URL"
+          {
+            echo "### The relay is live"
+            echo
+            echo "\`$URL\`"
+            echo
+            echo "The next Web preview build bakes it in (run it from the Actions tab to get it now)."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: No secrets yet
         if: steps.secrets.outputs.ready != 'yes'

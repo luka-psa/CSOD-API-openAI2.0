@@ -34,16 +34,25 @@ and rotating refresh tokens (180 days). The tablet lists the linked apps and can
 
 ## Deploy (one time)
 
-**With GitHub Actions:** add the repository secrets `CLOUDFLARE_API_TOKEN` (template “Edit Cloudflare
-Workers”) and `CLOUDFLARE_ACCOUNT_ID`, then run the **Deploy relay** workflow. It also runs on every
-change to `relay/`.
+Nothing is created by hand in the Cloudflare dashboard (no "Create application"): the **Deploy relay** workflow
+uploads this folder with Wrangler. It only needs two repository secrets.
 
-**From a laptop:** `npx wrangler deploy` in this folder.
+1. **Account ID.** In the Cloudflare dashboard it is the 32-character code in the address bar
+   (`dash.cloudflare.com/<account id>/…`), also shown on the account's home page and under Workers & Pages.
+2. **API token.** My Profile → API Tokens (`dash.cloudflare.com/profile/api-tokens`) → Create Token → the
+   *Edit Cloudflare Workers* template → Use template. Account Resources: your account; Zone Resources: All zones.
+   Continue to summary → Create Token, and copy it (it is shown once).
+3. **GitHub.** Settings → Secrets and variables → Actions → New repository secret: `CLOUDFLARE_API_TOKEN` (the
+   token) and `CLOUDFLARE_ACCOUNT_ID` (the id).
+4. **Deploy.** Run the **Deploy relay** workflow (or re-run its last run). Its summary shows the address,
+   `https://hearth-relay.<subdomain>.workers.dev`. It also runs on every change to `relay/`. If Wrangler asks to
+   register a workers.dev subdomain, pick one once under Workers & Pages.
 
-Then tell the app where it lives: set the repository variable `HEARTH_RELAY_URL` (Settings → Secrets and
-variables → Actions → Variables), e.g. `https://hearth-relay.<your-subdomain>.workers.dev`. The web and
-Android builds bake it in (`-Phearth.relayUrl`). A custom domain works too. Families can still point their
-tablet at another relay under Koppelingen → Geavanceerd.
+The **Web preview** workflow then bakes the address into the web and Android builds by itself (it asks Cloudflare
+for the account's workers.dev subdomain); the next build has it. Families never type it: there is no field for it
+in the app. To use another address (a custom domain), set the repository *variable* `HEARTH_RELAY_URL`; it wins.
+
+**From a laptop:** `npx wrangler deploy` in this folder, then build with `-Phearth.relayUrl=<its address>`.
 
 The Workers Free plan is enough for many households (SQLite Durable Objects are included).
 

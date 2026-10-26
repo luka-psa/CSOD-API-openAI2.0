@@ -24,7 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,9 +54,6 @@ import app.hearth.ui.resources.examples_body
 import app.hearth.ui.resources.examples_card
 import app.hearth.ui.resources.examples_load
 import app.hearth.ui.resources.examples_title
-import app.hearth.ui.resources.connect_address
-import app.hearth.ui.resources.connect_advanced
-import app.hearth.ui.resources.connect_advanced_body
 import app.hearth.ui.resources.connect_apps
 import app.hearth.ui.resources.connect_chatgpt
 import app.hearth.ui.resources.connect_chatgpt_steps
@@ -68,7 +63,6 @@ import app.hearth.ui.resources.connect_code_hide
 import app.hearth.ui.resources.connect_code_valid
 import app.hearth.ui.resources.connect_link
 import app.hearth.ui.resources.connect_link_body
-import app.hearth.ui.resources.connect_manual_hint
 import app.hearth.ui.resources.connect_no_relay
 import app.hearth.ui.resources.connect_no_relay_body
 import app.hearth.ui.resources.connect_on
@@ -76,7 +70,6 @@ import app.hearth.ui.resources.connect_plan_note
 import app.hearth.ui.resources.connect_share
 import app.hearth.ui.resources.connect_show_code
 import app.hearth.ui.resources.connect_since
-import app.hearth.ui.resources.connect_standard_relay
 import app.hearth.ui.resources.connect_status_connecting
 import app.hearth.ui.resources.connect_status_off
 import app.hearth.ui.resources.connect_status_online
@@ -85,13 +78,12 @@ import app.hearth.ui.resources.connect_subtitle
 import app.hearth.ui.resources.connect_unlink_body
 import app.hearth.ui.resources.connect_unlink_confirm
 import app.hearth.ui.resources.nav_connect
-import app.hearth.ui.resources.save
 import app.hearth.ui.theme.style
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 class ConnectCallbacks(
-    val save: (enabled: Boolean?, relayUrl: String?) -> Unit,
+    val save: (enabled: Boolean) -> Unit,
     val showCode: () -> Unit,
     val hideCode: () -> Unit,
     val unlink: (appId: String) -> Unit,
@@ -146,7 +138,7 @@ fun ConnectScreen(
             HearthCard(stringResource(Res.string.connect_on), HearthIcons.Link, Modifier.fillMaxWidth(), action = {
                 Switch(
                     checked = connection.enabled,
-                    onCheckedChange = { cb.save(it, null) },
+                    onCheckedChange = { cb.save(it) },
                     enabled = connection.relayUrl != null,
                 )
             }) {
@@ -176,7 +168,6 @@ fun ConnectScreen(
             } else {
                 LinkCard(connection, status, code, cb)
             }
-            AdvancedCard(connection, cb)
             SectionTitle(stringResource(Res.string.connect_google))
             GoogleCards(google, googleAvailable, googleBusy, backups, googleCb)
             cb.loadExamples?.let { load ->
@@ -281,33 +272,6 @@ private fun CodeBox(code: PairingCode, onHide: () -> Unit) {
         Text(code.spaced, fontSize = 56.sp, fontWeight = FontWeight.Bold, letterSpacing = 6.sp, color = MaterialTheme.colorScheme.primary)
         Text(stringResource(Res.string.connect_code_valid, minutes), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(onClick = onHide) { Text(stringResource(Res.string.connect_code_hide)) }
-    }
-}
-
-/** Another relay than the built-in one (self-hosting). Most families never open this. */
-@Composable
-private fun AdvancedCard(connection: Connection, cb: ConnectCallbacks) {
-    var open by rememberSaveable { mutableStateOf(connection.relayUrl == null) }
-    var manual by rememberSaveable { mutableStateOf("") }
-    if (!open) {
-        TextButton(onClick = { open = true }) { Text(stringResource(Res.string.connect_advanced)) }
-        return
-    }
-    HearthCard(stringResource(Res.string.connect_advanced), HearthIcons.Settings, Modifier.fillMaxWidth()) {
-        Text(stringResource(Res.string.connect_advanced_body), style = MaterialTheme.typography.bodyMedium)
-        connection.relayUrl?.let {
-            Spacer(Modifier.size(6.dp))
-            Text(stringResource(Res.string.connect_address, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.size(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(manual, { manual = it }, placeholder = { Text(stringResource(Res.string.connect_manual_hint)) }, singleLine = true, modifier = Modifier.weight(1f))
-            Spacer(Modifier.width(10.dp))
-            FilledTonalButton(onClick = { cb.save(true, manual); manual = "" }, enabled = manual.isNotBlank()) { Text(stringResource(Res.string.save)) }
-        }
-        if (connection.customRelay) {
-            TextButton(onClick = { cb.save(null, "") }) { Text(stringResource(Res.string.connect_standard_relay)) }
-        }
     }
 }
 

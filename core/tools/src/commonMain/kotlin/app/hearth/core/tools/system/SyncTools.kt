@@ -159,7 +159,7 @@ private suspend fun <T> syncing(ctx: ToolContext, block: suspend () -> T): T = t
 } catch (e: ToolException) {
     throw e
 } catch (_: SyncNoRelay) {
-    throw ToolException(ctx.t("Deze versie heeft nog geen koppelserver. Vul een adres in onder Instellingen → Geavanceerd.", "This build has no relay yet. Fill in an address under Settings → Advanced."))
+    throw ToolException(ctx.t(NO_RELAY_NL, NO_RELAY_EN))
 } catch (_: SyncCodeUnknown) {
     throw ToolException(ctx.t("Die code klopt niet of is verlopen. Vraag op het andere toestel een nieuwe.", "That code isn't right or has expired. Ask for a new one on the other device."))
 } catch (_: SyncNeedsUpdate) {

@@ -202,7 +202,7 @@
     <string name="connect_unlink_confirm">Unlink %1$s?</string>
     <string name="connect_unlink_body">%1$s can then no longer use Hearth. You can link it again any time with a new code.</string>
     <string name="connect_no_relay">This build has no relay address</string>
-    <string name="connect_no_relay_body">ChatGPT and Claude reach Hearth through a shared relay. This version of Hearth was built without its address. Fill it in under Advanced, or install a build that has it.</string>
+    <string name="connect_no_relay_body">ChatGPT and Claude reach Hearth through a shared relay. This version of Hearth was built without its address. Install a newer version.</string>
     <string name="connect_link">Link ChatGPT or Claude</string>
     <string name="connect_link_body">Each person does this once, in their own AI app. No keys or passwords: you add this address, the app opens a Hearth page, and you type the code from this tablet.</string>
     <string name="connect_share">Share</string>
@@ -214,11 +214,6 @@
     <string name="connect_chatgpt">ChatGPT</string>
     <string name="connect_chatgpt_steps">Settings → Apps &amp; Connectors → Advanced settings: turn on Developer mode|Back in Apps &amp; Connectors: Create. Name: Hearth, paste the address, authentication: OAuth|A Hearth page opens: tap Show pairing code here and type the code there|In a chat, switch Hearth on and say e.g. “zet melk op de lijst”</string>
     <string name="connect_plan_note">Menu names change now and then. ChatGPT needs a plan with Developer mode; Claude allows custom connectors on most plans. Hearth must be open on the tablet.</string>
-    <string name="connect_advanced">Advanced</string>
-    <string name="connect_advanced_body">Running your own relay? Enter its address. Families normally never need this.</string>
-    <string name="connect_address">Now: %1$s</string>
-    <string name="connect_manual_hint">https://hearth-relay.….workers.dev</string>
-    <string name="connect_standard_relay">Back to the built-in relay</string>
     <string name="connect_ai">ChatGPT and Claude</string>
     <string name="connect_google">Google</string>
     <string name="google_backup">Backup in Google Drive</string>
@@ -441,7 +436,7 @@
     <string name="sync_body_on">This device keeps the household in step with the others: shortly after a change, every few minutes while Hearth is open, and with the button.</string>
     <string name="sync_share">Share this household</string>
     <string name="sync_join">Join with a code</string>
-    <string name="sync_no_relay">This build has no relay yet. Fill in an address under Advanced.</string>
+    <string name="sync_no_relay">This version of Hearth was built without a relay. Install a newer version to share the household across devices.</string>
     <string name="sync_busy">Syncing…</string>
     <string name="sync_last">Up to date at %1$s</string>
     <string name="sync_last_day">Up to date on %1$s at %2$s</string>

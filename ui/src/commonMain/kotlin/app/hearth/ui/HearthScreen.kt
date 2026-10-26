@@ -253,7 +253,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         Destination.CONNECT -> ConnectScreen(
                             connection, relayStatus, linkedApps, pairingCode, mcpActivity,
                             ConnectCallbacks(
-                                save = { enabled, url -> viewModel.saveConnection(enabled, url) },
+                                save = viewModel::saveConnection,
                                 showCode = viewModel::showPairingCode,
                                 hideCode = viewModel::hidePairingCode,
                                 unlink = viewModel::unlinkApp,

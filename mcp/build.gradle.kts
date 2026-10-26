@@ -8,7 +8,7 @@ plugins {
 }
 
 // The address of the one shared relay (relay/, deployed once by the maintainer). Set it with
-// -Phearth.relayUrl=… or HEARTH_RELAY_URL; families can still type another one under "Advanced".
+// -Phearth.relayUrl=… or HEARTH_RELAY_URL (CI finds it by itself; see relay/README.md). Nobody types it in the app.
 val relayUrl = (findProperty("hearth.relayUrl") as String?)?.takeIf { it.isNotBlank() }
     ?: System.getenv("HEARTH_RELAY_URL")?.takeIf { it.isNotBlank() }
     ?: ""
