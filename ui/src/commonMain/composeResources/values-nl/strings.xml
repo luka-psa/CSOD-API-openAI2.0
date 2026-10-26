@@ -83,7 +83,7 @@
     <string name="follow_up_on">Opvolgen op</string>
     <string name="move_to">Hoort bij</string>
     <string name="kind_routine">Ritme</string>
-    <string name="kind_admin">Paperassen</string>
+    <string name="kind_admin">Admin</string>
     <string name="kind_project">Grote taak</string>
     <string name="kind_appointment">Afspraak</string>
     <string name="kind_note">Huisregel</string>
@@ -353,8 +353,8 @@
     <string name="agree_empty">Nog niets om samen te vatten. Dat mag ook.</string>
     <string name="free_empty">Nog niets gepland. Wat zou deze week fijn zijn?</string>
     <string name="free_add_hint">Iets leuks, bv. filmavond vrijdag</string>
-    <string name="admin_empty">Geen paperassen open. Fijn.</string>
-    <string name="admin_add_hint">Paperassen, bv. verzekering bellen</string>
+    <string name="admin_empty">Geen admin open. Fijn.</string>
+    <string name="admin_add_hint">Admin, bv. verzekering bellen</string>
     <string name="project_add_hint">Grote taak, bv. zolder opruimen</string>
     <string name="projects_empty">Nog geen grote taken. Klussen met stappen komen hier.</string>
     <string name="day_free">vrij</string>
@@ -409,4 +409,20 @@
     <string name="task_title">Welke taak wordt het?</string>
     <string name="task_hint">bv. afwasbeurtrol maken</string>
     <string name="became_routine">werd een routine</string>
+    <string name="steps_then">daarna: %1$s</string>
+    <string name="steps_all">Alle stappen</string>
+    <string name="steps_less">Minder tonen</string>
+    <string name="steps_all_done">Alles gedaan voor vandaag</string>
+    <string name="step_up">Stap naar boven</string>
+    <string name="step_down">Stap naar beneden</string>
+    <string name="goal_plan_add">Een plek in de week</string>
+    <string name="goal_plan_title">Hoe krijgt het een plek in de week?</string>
+    <string name="goal_was">Doel: “%1$s”</string>
+    <string name="goal_plan_habit">Een ritme</string>
+    <string name="goal_plan_free">Vrije tijd</string>
+    <string name="goal_plan_step">Eén kleine stap</string>
+    <string name="goal_plan_habit_hint">bv. 10 minuten yoga</string>
+    <string name="goal_plan_free_hint">bv. gitaar spelen</string>
+    <string name="goal_plan_often">Hoe vaak?</string>
+    <string name="goal_plan_day">Op welke dag?</string>
 </resources>

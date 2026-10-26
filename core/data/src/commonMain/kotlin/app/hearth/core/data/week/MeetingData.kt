@@ -85,6 +85,10 @@ interface MeetingDao {
     @Query("SELECT * FROM reflection WHERE huddleId = :huddleId ORDER BY createdAt")
     suspend fun reflectionsOf(huddleId: String): List<ReflectionEntity>
 
+    /** Every rating of every house rule, oldest first: the last one per rule is how it goes now. */
+    @Query("SELECT * FROM reflection WHERE kind = 'RULE_CHECK' ORDER BY updatedAt")
+    fun observeAllRuleChecks(): Flow<List<ReflectionEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun putReflection(item: ReflectionEntity)
 
@@ -159,6 +163,9 @@ class MeetingRepository(
 
     val meters: Flow<List<MeterValue>> = dao.observeCurrentReflections().map { list -> list.filter { it.kind in ReflectionEntity.METERS }.map { it.toMeter() } }
     val ruleChecks: Flow<List<RuleCheck>> = dao.observeCurrentReflections().map { list -> list.filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() } }
+
+    /** How each house rule goes, by rule id: this week's rating, or the last one from an earlier meeting. */
+    val ruleEase: Flow<Map<String, Ease>> = dao.observeAllRuleChecks().map { list -> list.associate { it.text to it.toRuleCheck().ease } }
     suspend fun currentMeters(): List<MeterValue> = dao.currentReflections().filter { it.kind in ReflectionEntity.METERS }.map { it.toMeter() }
     suspend fun currentRuleChecks(): List<RuleCheck> = dao.currentReflections().filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }
     suspend fun ruleChecksOf(huddleId: String): List<RuleCheck> = dao.reflectionsOf(huddleId).filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }

@@ -52,7 +52,7 @@ enum class FrictionDirection {
     NEW_ROUTINE,
     /** Een routine aan te passen (a step, another moment). */
     CHANGE_ROUTINE,
-    /** Een taak met focus: paperassen or a grote taak, as next up. */
+    /** Een taak met focus: admin or a grote taak, as next up. */
     TASK,
 }
 

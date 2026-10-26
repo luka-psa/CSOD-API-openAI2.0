@@ -46,6 +46,8 @@ data class BacklogEntity(
     @ColumnInfo(defaultValue = "NULL") val ease: Ease? = null,
     @ColumnInfo(defaultValue = "NULL") val smallStep: String? = null,
     @ColumnInfo(defaultValue = "NULL") val anchor: Anchor? = null,
+    /** A step's place among its siblings (1 = first); older steps have none and keep the order they were added in. */
+    @ColumnInfo(defaultValue = "NULL") val position: Int? = null,
 ) {
     fun toModel() = BacklogItem(
         id, text, section, plan, plannedDate, finishBy, done, createdAt, addedById,
@@ -78,12 +80,18 @@ interface BacklogDao {
     @Query("SELECT * FROM backlog_item WHERE doneAt >= :since ORDER BY doneAt DESC")
     suspend fun doneItemsSince(since: Long): List<BacklogEntity>
 
-    /** All project steps, finished ones too, so a project can show its progress. */
-    @Query("SELECT * FROM backlog_item WHERE parentId IS NOT NULL ORDER BY createdAt")
+    /** All steps, finished ones too, so a project can show its progress; in their order. */
+    @Query("SELECT * FROM backlog_item WHERE parentId IS NOT NULL ORDER BY COALESCE(position, 0), createdAt")
     fun observeSteps(): Flow<List<BacklogEntity>>
 
-    @Query("SELECT * FROM backlog_item WHERE parentId IN (:parentIds) ORDER BY createdAt")
+    @Query("SELECT * FROM backlog_item WHERE parentId IN (:parentIds) ORDER BY COALESCE(position, 0), createdAt")
     suspend fun stepsOf(parentIds: List<String>): List<BacklogEntity>
+
+    @Query("SELECT COUNT(*) FROM backlog_item WHERE parentId = :parentId")
+    suspend fun countSteps(parentId: String): Int
+
+    @Query("UPDATE backlog_item SET position = :position, updatedAt = :now WHERE id = :id")
+    suspend fun setPosition(id: String, position: Int, now: Long)
 
     @Query("SELECT * FROM backlog_item WHERE done = 0 ORDER BY createdAt")
     suspend fun open(): List<BacklogEntity>
@@ -188,9 +196,11 @@ class BacklogRepository(
             val key = normalizeName(text)
             dao.findOpen(key, parentId)?.let { return@withWriteTransaction it.toModel() to false }
             val now = clock()
+            // A new step goes last, after the ones already there.
+            val position = parentId?.let { dao.countSteps(it) + 1 }
             val entity = BacklogEntity(
                 newId(), text.trim(), key, section, plan, date, finishBy, false, null, addedById, now, now,
-                urgent = urgent, intervalDays = intervalDays, parentId = parentId, anchor = anchor,
+                urgent = urgent, intervalDays = intervalDays, parentId = parentId, anchor = anchor, position = position,
             )
             dao.insert(entity)
             entity.toModel() to true
@@ -210,6 +220,21 @@ class BacklogRepository(
             if (pushed.isNotEmpty()) dao.addPostponed(pushed.map { it.id }, now)
         }
     }
+
+    /** Puts a step at [toIndex] (0 = first) among its siblings and numbers them all; returns the new order. */
+    suspend fun moveStep(stepId: String, toIndex: Int): List<BacklogItem> = db.withWriteTransaction {
+        val step = dao.byIds(listOf(stepId)).firstOrNull() ?: return@withWriteTransaction emptyList()
+        val parent = step.parentId ?: return@withWriteTransaction emptyList()
+        val order = dao.stepsOf(listOf(parent)).toMutableList()
+        order.removeAll { it.id == stepId }
+        order.add(toIndex.coerceIn(0, order.size), step)
+        val now = clock()
+        // Only the steps whose place changes are written.
+        order.forEachIndexed { i, s -> if (s.position != i + 1) dao.setPosition(s.id, i + 1, now) }
+        dao.stepsOf(listOf(parent)).map { it.toModel() }
+    }
+
+    suspend fun byIds(ids: List<String>): List<BacklogItem> = if (ids.isEmpty()) emptyList() else dao.byIds(ids).map { it.toModel() }
 
     suspend fun setAnchor(ids: List<String>, anchor: Anchor?) {
         if (ids.isNotEmpty()) dao.setAnchor(ids, anchor, clock())

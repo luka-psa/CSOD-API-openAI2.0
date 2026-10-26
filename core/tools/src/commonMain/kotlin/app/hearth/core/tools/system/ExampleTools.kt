@@ -98,6 +98,15 @@ class LoadExamplesTool(
         // Talked through already: it needs a house rule, still to be written in their own words.
         step { tools.markFriction.run(app.hearth.core.tools.board.MarkFrictionArgs(texts = listOf(e.friction), direction = app.hearth.core.model.FrictionDirection.RULE), ctx) }
         step { tools.addGoal.run(AddGoalArgs(e.goal, GoalScope.COUPLE, nextStep = e.goalStep), ctx) }
+        // A goal that lives in the week as a rhythm, and a house rule that already runs by itself.
+        step { tools.addGoal.run(AddGoalArgs(e.goal2), ctx) }
+        step {
+            tools.setGoalStep.run(
+                app.hearth.core.tools.board.SetGoalStepArgs(goal = e.goal2, step = e.goal2Habit, how = app.hearth.core.tools.board.GoalPlanKind.HABIT, anchor = Anchor.MORNING),
+                ctx,
+            )
+        }
+        step { tools.checkHouseRule.run(app.hearth.core.tools.week.CheckHouseRuleArgs(rule = e.rules[0], ease = app.hearth.core.model.Ease.EASY), ctx) }
         step { tools.addIdea.run(AddIdeaArgs(e.idea, e.members[0]), ctx) }
 
         // Boodschappen and Voorraad.
@@ -141,6 +150,8 @@ class LoadExamplesTool(
         val friction: String,
         val goal: String,
         val goalStep: String,
+        val goal2: String,
+        val goal2Habit: String,
         val idea: String,
         val shopping: List<Pair<String, String?>>,
         val stockLow: String,
@@ -179,6 +190,8 @@ class LoadExamplesTool(
             friction = "De vaatwasser is nooit leeg",
             goal = "Elke maand een avondje met z’n twee",
             goalStep = "Oppas vragen",
+            goal2 = "Meer bewegen",
+            goal2Habit = "10 minuten yoga",
             idea = "De was op zondag, dan is maandag rustig",
             shopping = listOf("Brood" to null, "Bananen" to null, "Paracetamol" to "Apotheek"),
             stockLow = "Eieren",
@@ -215,6 +228,8 @@ class LoadExamplesTool(
             friction = "The dishwasher is never emptied",
             goal = "A night out for the two of us every month",
             goalStep = "Ask a babysitter",
+            goal2 = "Move more",
+            goal2Habit = "10 minutes of yoga",
             idea = "Laundry on Sunday, so Monday is calm",
             shopping = listOf("Bread" to null, "Bananas" to null, "Paracetamol" to "Pharmacy"),
             stockLow = "Eggs",

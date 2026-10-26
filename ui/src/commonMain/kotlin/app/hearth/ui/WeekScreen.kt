@@ -174,7 +174,7 @@ class WeekCallbacks(
     val complete: (BacklogItem) -> Unit,
     val resolveFriction: (BoardItem, FrictionWrite) -> Unit,
     val markFriction: (BoardItem, app.hearth.core.model.FrictionDirection?) -> Unit,
-    val setGoalStep: (BoardItem, String, Boolean) -> Unit,
+    val setGoalStep: (BoardItem, GoalPlan) -> Unit,
     val addGoal: (String) -> Unit,
     val achieveGoal: (BoardItem) -> Unit,
     val finish: () -> Unit,
@@ -218,6 +218,8 @@ class MeetingState(
     val heard: List<HeardLine> = emptyList(),
     /** The summary to agree on before Klaar, while it's open. */
     val agree: List<String>? = null,
+    /** How each house rule goes, by rule id (this week's rating or the last one). */
+    val ruleEase: Map<String, Ease> = emptyMap(),
 )
 
 /** Luister mee lives above the screens, so it keeps listening while the family looks at a list. */
@@ -396,7 +398,7 @@ private fun TopicDetail(
             Spacer(Modifier.size(10.dp))
             AddRow(stringResource(Res.string.free_add_hint), { cb.addTo(it, Section.PROTECTED_TIME) }, muted = true)
         }
-        Topic.GOALS -> GoalsStep(board, cb)
+        Topic.GOALS -> GoalsStep(board, backlog, today, lang, cb)
         Topic.ADMIN -> {
             if (mine.isEmpty()) Hint(stringResource(Res.string.admin_empty))
             mine.take(8).forEach { BacklogRow(it, today, lang, onDone = { cb.complete(it) }, onOpen = {}) }
@@ -433,7 +435,7 @@ private fun TopicDetail(
             val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
             if (rules.isEmpty()) Hint(stringResource(Res.string.rules_empty))
             else Text(stringResource(Res.string.rules_review_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            rules.forEachIndexed { i, rule -> NumberedLine(i + 1, rule.text, Topic.RULES) }
+            rules.forEachIndexed { i, rule -> NumberedLine(i + 1, rule.text, Topic.RULES, meeting.ruleEase[rule.id]) }
             Spacer(Modifier.size(10.dp))
             AddRow(stringResource(Res.string.rules_add_hint), cb.addRule, muted = true)
         }
@@ -761,16 +763,17 @@ private fun BoardStep(board: List<BoardItem>, routines: List<BacklogItem>, membe
     }
 }
 
-/** "1. Schoenen uit in de gang": a numbered line in its topic's colour. */
+/** "1. Schoenen uit in de gang": a numbered line in its topic's colour, with how it goes when that's known. */
 @Composable
-internal fun NumberedLine(n: Int, text: String, topic: Topic) {
+internal fun NumberedLine(n: Int, text: String, topic: Topic, ease: Ease? = null) {
     val s = topic.style()
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 4.dp)) {
         Box(Modifier.size(28.dp).background(s.tint, CircleShape), contentAlignment = Alignment.Center) {
             Text("$n", style = MaterialTheme.typography.labelLarge, color = s.ink)
         }
         Spacer(Modifier.width(12.dp))
-        Text(text, style = MaterialTheme.typography.bodyLarge)
+        Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        ease?.let { EasePill(it) }
     }
 }
 
@@ -781,17 +784,18 @@ internal fun NumberedLine(n: Int, text: String, topic: Topic) {
  * next small step (or picks one); reached goals are celebrated on the Werkbord.
  */
 @Composable
-private fun GoalsStep(board: List<BoardItem>, cb: WeekCallbacks) {
+private fun GoalsStep(board: List<BoardItem>, backlog: List<BacklogItem>, today: LocalDate, lang: Lang, cb: WeekCallbacks) {
     var asking by remember { mutableStateOf<BoardItem?>(null) }
     val goals = board.filter { it.kind == BoardKind.GOAL && it.isOpen }
     Text(stringResource(Res.string.goals_meeting_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.size(8.dp))
     if (goals.isEmpty()) Hint(stringResource(Res.string.goals_empty))
-    goals.forEach { g -> GoalRow(g, onAchieve = { cb.achieveGoal(g) }, onStep = { asking = g }) }
+    val byId = backlog.associateBy { it.id }
+    goals.forEach { g -> GoalRow(g, g.linkedId?.let(byId::get), today, lang, onAchieve = { cb.achieveGoal(g) }, onPlan = { asking = g }) }
     Spacer(Modifier.size(10.dp))
     AddRow(stringResource(Res.string.goals_add_hint), cb.addGoal, muted = true, compact = true)
     asking?.let { g ->
-        TextDialog(stringResource(Res.string.goal_step_title), stringResource(Res.string.friction_text_hint), toggle = stringResource(Res.string.goal_step_to_week), onDone = { t, toWeek -> cb.setGoalStep(g, t, toWeek) }) { asking = null }
+        GoalPlanDialog(g, today, lang, onSave = { cb.setGoalStep(g, it) }) { asking = null }
     }
 }
 

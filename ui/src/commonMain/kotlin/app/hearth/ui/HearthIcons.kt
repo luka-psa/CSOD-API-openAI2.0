@@ -104,7 +104,7 @@ object HearthIcons {
             "c0,-1.1 -0.9,-2 -2,-2zM18,5H6c-1.1,0 -2,0.9 -2,2v2.15c1.16,0.41 2,1.52 2,2.81V14h12v-2.03c0,-1.3 0.84,-2.4 2,-2.81V7" +
             "c0,-1.1 -0.9,-2 -2,-2z",
     )
-    // Material "description": a sheet of paper, for Paperassen & afspraken.
+    // Material "description": a sheet of paper, for Admin & afspraken.
     val Paper = icon(
         "M14,2H6c-1.1,0 -1.99,0.9 -1.99,2L4,20c0,1.1 0.89,2 1.99,2H18c1.1,0 2,-0.9 2,-2V8l-6,-6zM16,18H8v-2h8v2z" +
             "M16,14H8v-2h8v2zM13,9V3.5L18.5,9H13z",

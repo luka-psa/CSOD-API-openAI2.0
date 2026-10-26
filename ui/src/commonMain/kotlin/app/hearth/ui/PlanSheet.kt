@@ -3,6 +3,10 @@ package app.hearth.ui
 import androidx.compose.foundation.layout.width
 import app.hearth.ui.resources.routine_step_add
 import app.hearth.ui.resources.routine_steps
+import app.hearth.ui.resources.step_down
+import app.hearth.ui.resources.step_up
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.draw.rotate
 import app.hearth.ui.resources.anchor_none
 import app.hearth.ui.resources.moment_title
 import app.hearth.core.model.title
@@ -98,6 +102,8 @@ class PlanActions(
     val anchor: (Anchor?) -> Unit = {},
     val addStep: (String) -> Unit = {},
     val removeStep: (BacklogItem) -> Unit = {},
+    /** Puts a step at a new place (1 = first). */
+    val moveStep: (BacklogItem, Int) -> Unit = { _, _ -> },
 )
 
 private val INTERVALS = listOf(1, 7, 14, 30, 90, null)
@@ -164,10 +170,17 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
                 TaskKind.ROUTINE -> {
                     // Its steps, in order: a sequence for the evening or a checklist for the bag.
                     Text(stringResource(Res.string.routine_steps), style = MaterialTheme.typography.titleMedium)
+                    // Numbered, with arrows to put them in the order the evening really goes.
                     steps.forEachIndexed { i, step ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("${i + 1}.", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp))
                             Text(step.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { actions.moveStep(step, i) }, enabled = i > 0) {
+                                Icon(HearthIcons.ChevronRight, stringResource(Res.string.step_up), modifier = Modifier.rotate(-90f))
+                            }
+                            IconButton(onClick = { actions.moveStep(step, i + 2) }, enabled = i < steps.lastIndex) {
+                                Icon(HearthIcons.ChevronRight, stringResource(Res.string.step_down), modifier = Modifier.rotate(90f))
+                            }
                             DeleteButton({ removingStep = step })
                         }
                     }

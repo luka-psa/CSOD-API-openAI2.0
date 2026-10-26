@@ -320,6 +320,51 @@ class AddRoutineTool(private val repo: BacklogRepository) : Tool<AddRoutineArgs,
     }
 }
 
+// ---------- move_step ----------
+
+@Serializable
+data class MoveStepArgs(
+    @Describe("Id of the step.")
+    val stepId: String? = null,
+    @Describe("The step's words, when the id isn't known.")
+    val step: String? = null,
+    @Describe("The routine or big task it belongs to (name or id); needed to find a step by its words.")
+    val parent: String? = null,
+    @Describe("Its new place in the order: 1 = first.")
+    val position: Int,
+)
+
+/** The evening goes in the order of its steps: put one at another place ("avond eten voor Ada naar bed"). */
+class MoveStepTool(private val repo: BacklogRepository) : Tool<MoveStepArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description =
+        "Change the order of a routine's (or a big task's) steps: put a step at a new place, 1 = first. Routines are " +
+            "shown and ticked in this order."
+    override val argsSerializer = MoveStepArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: MoveStepArgs, ctx: ToolContext): BacklogItemsResult {
+        val step = args.stepId?.let { id -> repo.byIds(listOf(id)).firstOrNull { it.isStep } } ?: run {
+            val words = args.step?.let(::normalizeName)?.ifEmpty { null } ?: notFound(ctx)
+            val parent = args.parent?.trim()?.ifEmpty { null }?.let { p -> repo.find(listOf(p), listOf(p)).firstOrNull { !it.isStep } }
+                ?: throw ToolException(ctx.t("Bij welke routine hoort die stap?", "Which routine does that step belong to?"))
+            val siblings = repo.stepsOf(listOf(parent.id))
+            siblings.firstOrNull { normalizeName(it.text) == words } ?: siblings.firstOrNull { normalizeName(it.text).contains(words) } ?: notFound(ctx)
+        }
+        val order = repo.moveStep(step.id, args.position - 1)
+        val place = order.indexOfFirst { it.id == step.id } + 1
+        val parentName = repo.byIds(listOfNotNull(step.parentId)).firstOrNull()?.text ?: ""
+        return BacklogItemsResult(
+            order,
+            ctx.t("“${step.text}” is nu stap $place van “$parentName”: ", "“${step.text}” is now step $place of “$parentName”: ") + order.joinToString(" → ") { it.text },
+        )
+    }
+
+    companion object {
+        const val NAME = "move_step"
+    }
+}
+
 // ---------- set_anchor ----------
 
 @Serializable

@@ -35,7 +35,7 @@ thing everywhere: in the UI, in chat, in code and in tool names. UI ships in
 | Term | Meaning | Example |
 |---|---|---|
 | **Appointment** / *Afspraak* | Something to **book** and then **attend**. Lifecycle: `TO_BOOK` → `BOOKED` (date, place) → `DONE`. It can repeat ("every year"). | Osteopath, car inspection (*autokeuring*), dentist |
-| **Admin** / *Paperassen* | Paperwork with an optional deadline (end date). Topic: *Paperassen & afspraken*. | Taxes, insurance, school forms |
+| **Admin** / *Admin* | Paperwork with an optional deadline (end date). Topic: *Admin & afspraken*. | Taxes, insurance, school forms |
 | **Project** / *Grote taak* | Bigger job made of **steps**. It can link to shopping items (materials), errands and appointments. | Hang lamps in the toilet · Clear out & clean the whole kitchen (*keuken uitkuisen*) · New cupboard |
 | **Errand** / *Rit* | A trip to one shop. It automatically shows every open shopping item for that shop. | IKEA run for the cupboard, Gamma for paint |
 | **Step** / *Stap* | A sub-task of a project (or any task). Can be assigned to a helper, but the owner stays the owner. | "Buy paint", "Remove old lamp" |
@@ -99,8 +99,8 @@ steps along), `reopen_backlog_item`, `remove_backlog_item` ⚠ (a project's step
 `add_house_rule`, `log_friction`, `add_goal` (FAMILY/COUPLE/PERSONAL), `list_board`, `mark_friction` (what it
 needs: RULE, NEW_ROUTINE, CHANGE_ROUTINE, TASK; it stays open, labelled), `resolve_friction` (in the family's own
 words: RULE → a house rule, CHANGE → a task as next up, ROUTINE → a new routine with its moment, ROUTINE_CHANGE →
-a step and/or another moment for an existing routine, LET_GO), `set_goal_step` (optionally onto the
-backlog as next up), `achieve_goal`, `remove_board_item` ⚠. `add_to_backlog` / `move_backlog_item` with
+a step and/or another moment for an existing routine, LET_GO), `set_goal_step` (a goal's place in the week: STEP, optionally onto the backlog as next up; HABIT, a
+routine at a moment; FREE_TIME, free time on a day), `achieve_goal`, `remove_board_item` ⚠. `add_to_backlog` / `move_backlog_item` with
 NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `add_stock_item`, `add_storage_spot`,
 `set_stock_state` (LOW/OUT → a linked shopping item, once; IN_STOCK takes it off), `remove_stock_item` ⚠,
 `clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
@@ -246,7 +246,7 @@ Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under ever
   the ember accent. The map of topics, icons and the user journeys: `docs/JOURNEYS.md`.
 
 **Taken** (v0.15), a dashboard of panels like Vandaag, one per work topic with the same name, icon, colour
-and glance as its weekoverleg tile: *Paperassen & afspraken* (Dringend · Met een einddatum · Wacht op antwoord ·
+and glance as its weekoverleg tile: *Admin & afspraken* (Dringend · Met een einddatum · Wacht op antwoord ·
 Open), *Grote taken* (steps with progress, add a step inline), *Huishouden* (Aan de beurt · Loopt goed · Nog geen
 ritme; the tick logs "done today", it returns after its interval), *Ritmes & routines* (per moment of the day,
 then Lijstjes and Gewoontes) and *Vrije tijd*. Each panel has its own add field and folds with a tap on its
@@ -284,7 +284,7 @@ ingredients fill in from the story (`RecipeWords`) and stay editable. Capture ba
 bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 
 **Weekoverleg** (v0.10): one page built around the household's *topics* (`Topic` in `core/model/Week.kt`):
-*Vrije tijd*, *Doelen*, *Paperassen & afspraken*, *Grote taken*, *Huishouden*, *Ritmes & routines*, *Boodschappen*, *Weekmenu*, *Frictie & ideeën*, *Huisregels* (two rows of five on the tablet). On top
+*Vrije tijd*, *Doelen*, *Admin & afspraken*, *Grote taken*, *Huishouden*, *Ritmes & routines*, *Boodschappen*, *Weekmenu*, *Frictie & ideeën*, *Huisregels* (two rows of five on the tablet). On top
 the **Luister mee** stage: a big mic with breathing rings and moving bars while it listens, the words as they come
 in, the topics as a row of dots (the one the last sentence went to glows), and the last sentences each with
 its topic chip. Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
@@ -416,6 +416,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.17: "Admin" is Dutch too; a routine's steps show small and in order (a bar, the next step, Alle stappen
+   numbered) with arrows in its sheet (`move_step`, `backlog_item.position`, DB v15); house rules show how they go
+   on the Werkbord and Vandaag ("Hoe loopt het?"); a goal gets a place in the week as a ritme, vrije tijd or a step.
    v0.16: Terugblik rates every routine and house rule on one scale; frictions first get what they need
    (huisregel, nieuwe routine, routine aanpassen, taak met focus, loslaten), then are written in the family's own
    words (`mark_friction`, `board_item.direction`, DB v14).

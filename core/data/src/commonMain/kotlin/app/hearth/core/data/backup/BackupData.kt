@@ -201,7 +201,7 @@ class BackupRepository(
     }
 
     companion object {
-        const val DATABASE_VERSION = 14
+        const val DATABASE_VERSION = 15
         private const val LOCAL_FIRST = "google."
         val JSON = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     }

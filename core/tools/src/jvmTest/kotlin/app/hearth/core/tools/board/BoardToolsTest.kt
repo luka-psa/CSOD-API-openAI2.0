@@ -11,6 +11,7 @@ import app.hearth.core.model.FrictionDirection
 import app.hearth.core.model.Topic
 import app.hearth.core.model.WeekLook
 import app.hearth.core.model.glance
+import app.hearth.core.model.topic
 import app.hearth.core.model.GoalScope
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
@@ -149,6 +150,34 @@ class BoardToolsTest {
             "Doelen:\n- Elke maand een avondje uit · volgende stap: Oppas vragen",
             tools.registry.run(tools.listBoard, ListBoardArgs(BoardKind.GOAL), nl).summary,
         )
+    }
+
+    @Test
+    fun `a goal gets a place in the week as a habit or free time for a hobby`() = runTest {
+        tools.registry.run(tools.addGoal, AddGoalArgs("Meer bewegen"), nl)
+        tools.registry.run(tools.addGoal, AddGoalArgs("Muziek maken"), nl)
+
+        assertEquals(
+            "“Meer bewegen” krijgt een ritme: “10 minuten yoga” (ochtend, elke dag).",
+            tools.registry.run(tools.setGoalStep, SetGoalStepArgs(goal = "bewegen", step = "10 minuten yoga", how = GoalPlanKind.HABIT, anchor = Anchor.MORNING), nl).summary,
+        )
+        val yoga = backlog.openItems().first { it.text == "10 minuten yoga" }
+        assertEquals(Triple(Section.HABIT, Anchor.MORNING, 1), Triple(yoga.section, yoga.anchor, yoga.intervalDays))
+        assertEquals(Topic.RHYTHM, yoga.topic)
+
+        assertEquals(
+            "“Muziek maken” krijgt vrije tijd: “Gitaar spelen” (zaterdag).",
+            tools.registry.run(tools.setGoalStep, SetGoalStepArgs(goal = "muziek", step = "gitaar spelen", how = GoalPlanKind.FREE_TIME, date = "2026-10-24"), nl).summary,
+        )
+        val guitar = backlog.openItems().first { it.text == "Gitaar spelen" }
+        assertEquals(Section.PROTECTED_TIME to "2026-10-24", guitar.section to guitar.date)
+
+        val goals = board.allItems().filter { it.kind == BoardKind.GOAL }.associateBy { it.text }
+        assertEquals(yoga.id, goals.getValue("Meer bewegen").linkedId)
+        assertEquals(guitar.id, goals.getValue("Muziek maken").linkedId)
+
+        val noDay = runCatching { tools.registry.run(tools.setGoalStep, SetGoalStepArgs(goal = "muziek", step = "Piano", how = GoalPlanKind.FREE_TIME), nl) }
+        assertEquals("Op welke dag maken jullie er tijd voor?", noDay.exceptionOrNull()?.message)
     }
 
     @Test

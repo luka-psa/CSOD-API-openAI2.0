@@ -201,7 +201,7 @@ data class WeekAgenda(
     override val summary: String,
 ) : ToolResult
 
-/** One tile of the weekoverleg: "Paperassen & afspraken: 3 open · 1 wacht op antwoord". */
+/** One tile of the weekoverleg: "Admin & afspraken: 3 open · 1 wacht op antwoord". */
 @Serializable
 data class TopicLine(val topic: Topic, val title: String, val glance: String)
 

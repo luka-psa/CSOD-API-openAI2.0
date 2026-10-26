@@ -32,6 +32,7 @@ import app.hearth.core.tools.board.FrictionOutcome
 import app.hearth.core.tools.board.LogFrictionArgs
 import app.hearth.core.tools.board.RemoveMemberArgs
 import app.hearth.core.tools.board.ResolveFrictionArgs
+import app.hearth.core.tools.backlog.MoveStepArgs
 import app.hearth.core.tools.board.MarkFrictionArgs
 import app.hearth.core.tools.board.SetGoalStepArgs
 import app.hearth.core.tools.backlog.AddProjectStepArgs
@@ -440,6 +441,11 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         tool { app.tools.registry.run(app.tools.addRoutine, AddRoutineArgs(routine.text, listOf(text), section = routine.section), it) }
     }
 
+    /** A step to another place in its routine (1 = first). */
+    fun moveStep(step: BacklogItem, position: Int) = tool {
+        app.tools.registry.run(app.tools.moveStep, MoveStepArgs(stepId = step.id, position = position), it)
+    }
+
     /** Hangs a routine on a moment of the day (null: whenever it fits). */
     fun setAnchor(item: BacklogItem, anchor: Anchor?) = tool {
         app.tools.registry.run(app.tools.setAnchor, SetAnchorArgs(itemIds = listOf(item.id), anchor = anchor), it)
@@ -530,6 +536,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val wins: StateFlow<List<Win>> = app.meeting.wins.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val meters: StateFlow<List<MeterValue>> = app.meeting.meters.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val ruleChecks: StateFlow<List<RuleCheck>> = app.meeting.ruleChecks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val ruleEase: StateFlow<Map<String, Ease>> = app.meeting.ruleEase.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
     val metersOn: StateFlow<Boolean> = app.settings.value(SetWeekMetersTool.METERS_SETTING).map { it != "false" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
     val transcript: StateFlow<List<TranscriptLine>> = app.meeting.transcript.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -730,9 +737,16 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         tool { app.tools.registry.run(app.tools.addGoal, AddGoalArgs(text, scope, member?.id), it) }
     }
 
-    fun setGoalStep(goal: BoardItem, step: String, toWeek: Boolean) {
-        if (step.isBlank()) return
-        tool { app.tools.registry.run(app.tools.setGoalStep, SetGoalStepArgs(goalId = goal.id, step = step, toWeek = toWeek), it) }
+    /** A goal's place in the week: a rhythm, free time on a day, or one small step. */
+    fun setGoalStep(goal: BoardItem, plan: GoalPlan) {
+        if (plan.text.isBlank()) return
+        tool {
+            val args = SetGoalStepArgs(
+                goalId = goal.id, step = plan.text, toWeek = plan.toWeek, how = plan.how,
+                anchor = plan.anchor, intervalDays = plan.intervalDays, date = plan.date?.toString(),
+            )
+            say(app.tools.registry.run(app.tools.setGoalStep, args, it).summary)
+        }
     }
 
     fun achieveGoal(goal: BoardItem) = tool {

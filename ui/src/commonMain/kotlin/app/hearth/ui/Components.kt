@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,9 +54,15 @@ import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Ease
 import app.hearth.core.model.isHabit
 import app.hearth.ui.resources.ease_easy
+import app.hearth.ui.resources.ease_rate
 import app.hearth.ui.resources.ease_effort
 import app.hearth.ui.resources.ease_hard
 import app.hearth.ui.resources.small_step_line
+import app.hearth.ui.resources.steps_all
+import app.hearth.ui.resources.steps_all_done
+import app.hearth.ui.resources.steps_less
+import app.hearth.ui.resources.steps_progress
+import app.hearth.ui.resources.steps_then
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
@@ -141,22 +148,81 @@ fun EmptyHint(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * A routine's steps in order, ticked per day: the evening sequence or the bag for the opvang. A ticked
- * step shows a check until tomorrow.
+ * A routine's steps, kept small and in order, ticked per day: a bar with one segment per step, then only the
+ * next step to tick (one thing at a time) and, quietly, the one after it. "Alle stappen" unfolds them numbered.
+ * Ticked steps come back tomorrow; all ticked = the routine is done for today.
  */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun RoutineSteps(steps: List<BacklogItem>, today: LocalDate, onTick: (BacklogItem) -> Unit) {
     if (steps.isEmpty()) return
-    androidx.compose.foundation.layout.FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(top = 2.dp),
-    ) {
-        steps.forEach { step ->
-            val done = step.doneOn(today)
-            ChoiceChip(step.text, done, { if (!done) onTick(step) }, icon = if (done) HearthIcons.Check else null)
+    var open by rememberSaveable(steps.first().parentId) { mutableStateOf(false) }
+    val done = steps.count { it.doneOn(today) }
+    val next = steps.firstOrNull { !it.doneOn(today) }
+    val rhythm = Topic.RHYTHM.style()
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth().padding(end = 8.dp)) {
+            steps.forEach { s ->
+                Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(50)).background(if (s.doneOn(today)) rhythm.ink else rhythm.tint))
+            }
         }
+        when {
+            open -> steps.forEachIndexed { i, s -> StepLine(i + 1, s, s.doneOn(today), s == next) { onTick(s) } }
+            next != null -> {
+                StepLine(steps.indexOf(next) + 1, next, done = false, isNext = true) { onTick(next) }
+                steps.drop(steps.indexOf(next) + 1).firstOrNull { !it.doneOn(today) }?.let {
+                    Text(
+                        stringResource(Res.string.steps_then, it.text),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 36.dp),
+                    )
+                }
+            }
+            else -> Text(stringResource(Res.string.steps_all_done), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(vertical = 6.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(Res.string.steps_progress, done, steps.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(4.dp))
+            TextButton(onClick = { open = !open }) {
+                Text(stringResource(if (open) Res.string.steps_less else Res.string.steps_all), style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+/** "3  Koken": the step's number (a check once done today), tap to tick it. The next one stands out. */
+@Composable
+private fun StepLine(n: Int, step: BacklogItem, done: Boolean, isNext: Boolean, onTick: () -> Unit) {
+    val rhythm = Topic.RHYTHM.style()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(enabled = !done, onClick = onTick).heightIn(min = 40.dp).padding(end = 8.dp),
+    ) {
+        Box(
+            Modifier.size(28.dp).background(
+                when {
+                    done -> MaterialTheme.colorScheme.secondary
+                    isNext -> rhythm.tint
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                },
+                CircleShape,
+            ).then(if (isNext) Modifier.border(2.dp, rhythm.ink, CircleShape) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (done) Icon(HearthIcons.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
+            else Text("$n", style = MaterialTheme.typography.labelMedium, color = if (isNext) rhythm.ink else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            step.text,
+            style = if (isNext) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+            color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            textDecoration = if (done) TextDecoration.LineThrough else null,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -273,7 +339,8 @@ fun BacklogRow(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
+        // With something underneath (a routine's steps), the tick or icon stays next to the name.
+        verticalAlignment = if (below != null) Alignment.Top else Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
@@ -353,6 +420,20 @@ fun easeColors(ease: Ease): Pair<Color, Color> = when (ease) {
     Ease.EASY -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.secondaryContainer
     Ease.EFFORT -> Section.RHYTHM.style().ink to Section.RHYTHM.style().tint
     Ease.HARD -> Section.PROJECT.style().ink to Section.PROJECT.style().tint
+}
+
+/** How a house rule goes: its pill (tap to change) or "Hoe loopt het?", with the same three steps as the routines. */
+@Composable
+fun EaseChooser(current: Ease?, onRate: (Ease) -> Unit) {
+    var open by androidx.compose.runtime.remember { mutableStateOf(false) }
+    Box {
+        if (current == null) ChoiceChip(stringResource(Res.string.ease_rate), false, { open = true }) else EasePill(current, onClick = { open = true })
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            Ease.entries.forEach { e ->
+                androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(e.label())) }, onClick = { open = false; onRate(e) })
+            }
+        }
+    }
 }
 
 /** The quiet X at the end of a line. It always asks before anything goes. */

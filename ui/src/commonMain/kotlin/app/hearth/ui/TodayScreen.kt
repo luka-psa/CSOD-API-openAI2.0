@@ -94,6 +94,7 @@ import app.hearth.ui.resources.today_next
 import app.hearth.ui.resources.today_planned
 import app.hearth.ui.theme.style
 import app.hearth.core.model.Topic
+import app.hearth.core.model.Ease
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -123,6 +124,8 @@ fun TodayScreen(
     onGoBoard: () -> Unit,
     onGoWeek: () -> Unit,
     onGoConnect: () -> Unit,
+    /** How each house rule goes, by rule id: its dot takes that colour. */
+    ruleEase: Map<String, Ease> = emptyMap(),
 ) {
     val names = backlog.associate { it.id to it.text }
     val routineSteps = steps.filter { it.isRoutineStep }.groupBy { it.parentId!! }
@@ -191,7 +194,7 @@ fun TodayScreen(
             if (rules.isEmpty() && frictions == 0) EmptyHint(stringResource(Res.string.dash_board_empty))
             rules.take(3).forEach { rule ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-                    Box(Modifier.size(8.dp).background(Topic.RULES.style().ink, CircleShape))
+                    Box(Modifier.size(8.dp).background(ruleEase[rule.id]?.let { easeColors(it).first } ?: Topic.RULES.style().ink, CircleShape))
                     Spacer(Modifier.width(10.dp))
                     Text(rule.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }

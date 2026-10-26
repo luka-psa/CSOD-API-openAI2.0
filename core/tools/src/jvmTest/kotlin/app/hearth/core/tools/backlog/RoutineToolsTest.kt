@@ -38,6 +38,23 @@ class RoutineToolsTest {
     fun tearDown() = db.close()
 
     @Test
+    fun `steps can change place, and new ones go last`() = runTest {
+        val routine = tools.registry.run(tools.addRoutine, AddRoutineArgs("Avondroutine", listOf("Boodschappen", "Ada naar bed doen", "Avond eten"), Anchor.EVENING), ctx).item
+        assertEquals(
+            "“Avond eten” is nu stap 2 van “Avondroutine”: Boodschappen → Avond eten → Ada naar bed doen",
+            tools.registry.run(tools.moveStep, MoveStepArgs(step = "avond eten", parent = "avondroutine", position = 2), ctx).summary,
+        )
+        tools.registry.run(tools.addRoutine, AddRoutineArgs("Avondroutine", listOf("Keuken opkuisen")), ctx)
+        assertEquals(listOf("Boodschappen", "Avond eten", "Ada naar bed doen", "Keuken opkuisen"), backlog.stepsOf(listOf(routine.id)).map { it.text })
+        // By id too, and beyond the end means last.
+        val first = backlog.stepsOf(listOf(routine.id)).first()
+        tools.registry.run(tools.moveStep, MoveStepArgs(stepId = first.id, position = 99), ctx)
+        assertEquals("Boodschappen", backlog.stepsOf(listOf(routine.id)).last().text)
+        val unknown = runCatching { tools.registry.run(tools.moveStep, MoveStepArgs(step = "koken", position = 1), ctx) }
+        assertEquals("Bij welke routine hoort die stap?", unknown.exceptionOrNull()?.message)
+    }
+
+    @Test
     fun `a routine keeps its steps in order, ticked per day`() = runTest {
         val made = tools.registry.run(tools.addRoutine, AddRoutineArgs("tas voor de opvang", listOf("luiers", "flesjes", "reservekleren"), Anchor.MORNING), ctx)
         assertEquals("Routine “Tas voor de opvang” (ochtend): Luiers → Flesjes → Reservekleren", made.summary)

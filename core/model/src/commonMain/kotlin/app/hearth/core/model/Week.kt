@@ -21,7 +21,7 @@ enum class Topic { FREE_TIME, GOALS, ADMIN, PROJECTS, HOME, RHYTHM, SHOPPING, ME
 fun Topic.title(lang: Lang): String = when (this) {
     Topic.FREE_TIME -> if (lang == Lang.NL) "Vrije tijd" else "Free time"
     Topic.GOALS -> if (lang == Lang.NL) "Doelen" else "Goals"
-    Topic.ADMIN -> if (lang == Lang.NL) "Paperassen & afspraken" else "Admin & appointments"
+    Topic.ADMIN -> if (lang == Lang.NL) "Admin & afspraken" else "Admin & appointments"
     Topic.PROJECTS -> if (lang == Lang.NL) "Grote taken" else "Big tasks"
     Topic.HOME -> if (lang == Lang.NL) "Huishouden" else "Household"
     Topic.RHYTHM -> if (lang == Lang.NL) "Ritmes & routines" else "Rhythms & routines"

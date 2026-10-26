@@ -278,7 +278,7 @@ private fun BacklogItem.daysSinceRatio(today: LocalDate): Double {
     return since / interval
 }
 
-// ---------- Paperassen & afspraken ----------
+// ---------- Admin & afspraken ----------
 
 /** Urgent · With an end date · Waiting for a reply · Open. */
 @Composable

@@ -49,7 +49,7 @@ class BacklogToolsTest {
     fun `adding with a plan says when`() = runTest {
         assertEquals("Bij Taken: “Ramen kuisen” (huishoudtaak) · morgen", add("Ramen kuisen", Section.CHORE, When.TOMORROW).summary)
         assertEquals(
-            "Bij Taken: “Belastingbrief” (paperassen) · klaar tegen zaterdag",
+            "Bij Taken: “Belastingbrief” (admin) · klaar tegen zaterdag",
             add("Belastingbrief", Section.ADMIN, When.DAY, "2026-10-24", finishBy = true).summary,
         )
     }

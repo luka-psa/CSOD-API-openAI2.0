@@ -101,7 +101,7 @@ class TaskToolsTest {
 
         val listed = tools.registry.run(tools.listBacklog, ListBacklogArgs(BacklogView.DONT_FORGET), nl)
         assertEquals(
-            "Verzekering opzeggen (paperassen, in te plannen, dringend)\nBelastingbrief (paperassen, klaar tegen zaterdag)",
+            "Verzekering opzeggen (admin, in te plannen, dringend)\nBelastingbrief (admin, klaar tegen zaterdag)",
             listed.summary,
         )
 

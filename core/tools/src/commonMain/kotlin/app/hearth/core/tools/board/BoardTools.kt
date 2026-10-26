@@ -6,6 +6,9 @@ import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Anchor
 import app.hearth.core.model.BoardStatus
+import kotlinx.datetime.LocalDate
+import app.hearth.core.model.intervalLabel
+import app.hearth.core.model.dayLabel
 import app.hearth.core.model.FrictionDirection
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.title
@@ -302,7 +305,7 @@ data class ResolveFrictionArgs(
             "ROUTINE: the routine's name. ROUTINE_CHANGE: a step to add (optional). Defaults to the friction's text, except for ROUTINE_CHANGE.",
     )
     val text: String? = null,
-    @Describe("For CHANGE: ADMIN (paperassen), PROJECT (grote taak, default) or CHORE.")
+    @Describe("For CHANGE: ADMIN (admin), PROJECT (grote taak, default) or CHORE.")
     val section: Section = Section.PROJECT,
     @Describe("For ROUTINE_CHANGE: the routine to adjust (its name or id).")
     val routine: String? = null,
@@ -440,31 +443,72 @@ class MarkFrictionTool(private val repo: BoardRepository) : Tool<MarkFrictionArg
 
 // ---------- set_goal_step / achieve_goal ----------
 
+/** How a goal gets a place in the week: one small step, a habit (yoga every morning) or free time on a day (guitar on Saturday). */
+enum class GoalPlanKind { STEP, HABIT, FREE_TIME }
+
 @Serializable
 data class SetGoalStepArgs(
     @Describe("Id of the goal.")
     val goalId: String? = null,
     @Describe("The goal's text, when the id is not known.")
     val goal: String = "",
-    @Describe("One small, concrete next step, e.g. 'Oppas vragen voor vrijdag'.")
+    @Describe("In the family's words: the small step, the habit (e.g. '10 minuten yoga') or what the free time is for (e.g. 'Gitaar spelen').")
     val step: String,
-    @Describe("Also put the step on the backlog as next up, so it shows on the dashboard.")
+    @Describe("STEP: also put the step on the backlog as next up, so it shows on the dashboard.")
     val toWeek: Boolean = false,
+    @Describe(
+        "How it gets a place in the week: STEP (one small step, default), HABIT (a routine at a moment of the day, e.g. " +
+            "yoga every morning) or FREE_TIME (time for it on a day, e.g. a hobby on Saturday).",
+    )
+    val how: GoalPlanKind = GoalPlanKind.STEP,
+    @Describe("HABIT: the moment of the day (MORNING, AFTERNOON, DINNER, EVENING, BEDTIME).")
+    val anchor: Anchor? = null,
+    @Describe("HABIT: every how many days; 1 = daily (default), 7 = weekly.")
+    val intervalDays: Int? = null,
+    @Describe("FREE_TIME: the day, ISO date (YYYY-MM-DD).")
+    val date: String? = null,
 )
 
-class SetGoalStepTool(private val repo: BoardRepository, private val backlog: BacklogRepository) : Tool<SetGoalStepArgs, BoardItemsResult> {
+/**
+ * A goal comes into the week the way it fits: often a habit ("elke dag yoga" in Ritmes & routines) or free time
+ * for a hobby (in Vrije tijd, on a day), otherwise one small step. The goal keeps a link to it.
+ */
+class SetGoalStepTool(
+    private val repo: BoardRepository,
+    private val backlog: BacklogRepository,
+    private val addRoutine: AddRoutineTool,
+) : Tool<SetGoalStepArgs, BoardItemsResult> {
     override val name = NAME
-    override val description = "Give a goal its one small next step; optionally put that step on the backlog as next up."
+    override val description =
+        "Give a goal its place in the week: a habit at a moment of the day (lands in Ritmes & routines), free time for " +
+            "it on a day (lands in Vrije tijd), or one small next step (optionally next up)."
     override val argsSerializer = SetGoalStepArgs.serializer()
     override val resultSerializer = BoardItemsResult.serializer()
 
     override suspend fun run(args: SetGoalStepArgs, ctx: ToolContext): BoardItemsResult {
         val goal = repo.find(listOfNotNull(args.goalId), listOf(args.goal).filter { it.isNotBlank() }, BoardKind.GOAL).firstOrNull { it.isOpen } ?: notFound(ctx)
-        val step = args.step.trim().ifEmpty { throw ToolException(ctx.t("Welke kleine stap?", "Which small step?")) }
-        val linked = if (args.toWeek) backlog.add(step, Section.ADMIN, Plan.NEXT, null, false, ctx.actorMemberId).first.id else goal.linkedId
+        val step = args.step.trim().replaceFirstChar { it.uppercase() }.ifEmpty { throw ToolException(ctx.t("Welke kleine stap?", "Which small step?")) }
+        val (linked, summary) = when (args.how) {
+            GoalPlanKind.STEP -> {
+                val linked = if (args.toWeek) backlog.add(step, Section.ADMIN, Plan.NEXT, null, false, ctx.actorMemberId).first.id else goal.linkedId
+                val week = if (args.toWeek) ctx.t(" Staat bij volgende.", " It's next up.") else ""
+                linked to ctx.t("“${goal.text}” · volgende stap: $step.$week", "“${goal.text}” · next step: $step.$week")
+            }
+            GoalPlanKind.HABIT -> {
+                val interval = args.intervalDays?.coerceAtLeast(1) ?: 1
+                val habit = addRoutine.run(AddRoutineArgs(step, anchor = args.anchor, section = Section.HABIT, intervalDays = interval), ctx).item
+                val details = listOfNotNull(habit.anchor?.title(ctx.lang)?.lowercase(), intervalLabel(interval, ctx.lang)).joinToString(", ")
+                habit.id to ctx.t("“${goal.text}” krijgt een ritme: “${habit.text}” ($details).", "“${goal.text}” gets a rhythm: “${habit.text}” ($details).")
+            }
+            GoalPlanKind.FREE_TIME -> {
+                val day = args.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                    ?: throw ToolException(ctx.t("Op welke dag maken jullie er tijd voor?", "On which day do you make time for it?"))
+                val free = backlog.add(step, Section.PROTECTED_TIME, Plan.DAY, day.toString(), false, ctx.actorMemberId).first
+                free.id to ctx.t("“${goal.text}” krijgt vrije tijd: “${free.text}” (${dayLabel(day, ctx.today, ctx.lang)}).", "“${goal.text}” gets free time: “${free.text}” (${dayLabel(day, ctx.today, ctx.lang)}).")
+            }
+        }
         repo.setNextStep(goal.id, step, linked)
-        val week = if (args.toWeek) ctx.t(" Staat bij volgende.", " It's next up.") else ""
-        return BoardItemsResult(listOf(goal.copy(nextStep = step, linkedId = linked)), ctx.t("“${goal.text}” · volgende stap: $step.$week", "“${goal.text}” · next step: $step.$week"))
+        return BoardItemsResult(listOf(goal.copy(nextStep = step, linkedId = linked)), summary)
     }
 
     companion object {

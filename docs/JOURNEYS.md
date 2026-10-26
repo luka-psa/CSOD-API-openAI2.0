@@ -14,7 +14,7 @@ one icon and one colour, the same on every screen (`Topic.title`, `Topic.icon()`
 |---|---|---|---|---|---|
 | Vrije tijd | sofa | pink | Taken panel | the Vrije tijd note, "vrij" days in Binnenkort | yes |
 | Doelen | star | olive | Werkbord column | — | yes (next small step) |
-| Paperassen & afspraken | sheet of paper | purple | Taken panel | Niet vergeten, Vandaag, Binnenkort | yes |
+| Admin & afspraken | sheet of paper | purple | Taken panel | Niet vergeten, Vandaag, Binnenkort | yes |
 | Grote taken | wrench | orange | Taken panel | Grote taken card | yes |
 | Huishouden | house | teal | Taken panel | In het ritme (aan de beurt) | yes |
 | Ritmes & routines | repeat arrows | amber | Taken panel (per moment of the day) | In het ritme (per moment, with steps) | yes |
@@ -50,7 +50,7 @@ accent. Ember is never a topic colour.
 ## 2. Screens
 
 - **Vandaag**: today, readable from across the room. Time views plus a card for the topics that matter today.
-- **Taken**: a dashboard of the five work topics as panels (Paperassen & afspraken, Grote taken, Huishouden,
+- **Taken**: a dashboard of the five work topics as panels (Admin & afspraken, Grote taken, Huishouden,
   Ritmes & routines, Vrije tijd), each with its glance, its own grouping and an add field. A panel folds with
   a tap on its title; on a phone they start folded, so the first look is the overview. Te sorteren on top.
 - **Weekmenu**: the week's dinners and the Recepten (typed, spoken, pasted or from a link).
@@ -66,16 +66,17 @@ Each journey: who, the trigger, the steps, and what "done" looks like.
 
 **J1. "Ik wil iets kwijt" (capture).** Anyone, any screen. Say or type it in the capture bar ("tandarts
 morgen", "melk", a pasted list, a recipe link). Hearth puts it in its topic and says where, in the topic's
-name ("Bij Taken: … (paperassen) · morgen"). Unclear? It waits in Te sorteren on top of Taken; one tap
+name ("Bij Taken: … (admin) · morgen"). Unclear? It waits in Te sorteren on top of Taken; one tap
 places it. Done: it's visible where the family will look, nothing was lost.
 
 **J2. "Wat moet er vandaag?"** A glance at the tablet in the morning. Vandaag: Niet vergeten, then today
 (vanavond eten, vrije tijd, In het ritme per moment, Volgende), Binnenkort, and the topic cards. Tick what's
 done; the counter only goes up. Done: everyone knows today without asking.
 
-**J3. "Een routine leven."** Morning or evening. Vandaag shows each routine at its moment with its steps
-(boodschappen → Mia ophalen → koken → pyjama); tick the steps, all ticked is done for today, it comes back
-tomorrow. A checklist without a moment (Tas voor de opvang) is in Lijstjes, used when needed. Set up or
+**J3. "Een routine leven."** Morning or evening. Vandaag shows each routine at its moment, small: a bar with one
+segment per step, the next step to tick and "daarna: …" (Alle stappen unfolds them numbered); tick them as the
+evening goes, all ticked is done for today, it comes back tomorrow. The order is set with arrows in the routine's
+sheet. A checklist without a moment (Tas voor de opvang) is in Lijstjes, used when needed. Set up or
 change: Taken → Ritmes & routines, or say "avondroutine: a, b en c". Habits are rated together in the
 weekoverleg, never ticked.
 
@@ -86,7 +87,7 @@ Bought = back in stock. The weekmenu adds ingredients by itself.
 Save a recipe by telling what you made, pasting a list, or pasting a link. A half-typed form never
 disappears: a tap outside, back or a swipe asks first (Verder typen / Weggooien).
 
-**J6. "Paperassen regelen."** Say it or add it in the Paperassen & afspraken panel. Dringend, a day to finish
+**J6. "Admin regelen."** Say it or add it in the Admin & afspraken panel. Dringend, a day to finish
 by, or "wacht op antwoord" with a day to follow up. It comes to Niet vergeten on Vandaag when it matters.
 Done: ticked, counted as done today.
 
@@ -105,8 +106,10 @@ or loslaten. It then shows "Huisregel te maken" in the colour of where it goes. 
 words, right away or later ("De vaatwasser is nooit leeg" becomes "Wie het laatst eet, zet hem aan"). Every
 outcome is good. Huisregels show on Vandaag and get a calm check each week in the Terugblik (never who).
 
-**J10. "Een doel."** Add it on the Werkbord (gezin, samen or persoonlijk). In the weekoverleg (Doelen) pick
-one small next step, optionally as Volgende on Taken. Reached: tick it, it moves to "Samen bereikt".
+**J10. "Een doel."** Add it on the Werkbord (gezin, samen or persoonlijk). Give it a place in the week (on the
+Werkbord or in the weekoverleg's Doelen): a *ritme* ("10 minuten yoga", ochtend, elke dag) that lands in Ritmes &
+routines, *vrije tijd* on a day ("gitaar spelen", zaterdag) that lands in Vrije tijd, or one small step (optionally
+Volgende on Taken). The goal shows that link in its colour. Reached: tick it, it moves to "Samen bereikt".
 
 **J11. "Instellen."** Instellingen: Taal first (Nederlands (Vlaams) by default, English on request), then
 ChatGPT/Claude (koppelcode), Google back-up and agenda, and Voorbeelden to see how it works.
@@ -117,5 +120,5 @@ ChatGPT/Claude (koppelcode), Google back-up and agenda, and Voorbeelden to see h
   and on Vandaag only when it matters today.
 - No new colour or icon for an existing meaning; no icon reused for a different one (table above).
 - A form with typed text uses `FormSheet` or `DiscardDialog`: nothing typed disappears without asking.
-- Dutch copy is Dutch: Taken (not backlog), paperassen (not admin), einddatum (not deadline), koppelserver
+- Dutch copy is Dutch: Taken (not backlog), einddatum (not deadline), koppelserver
   (not relay), verbonden (not online). Brand and menu names (ChatGPT, Claude, Google Drive) stay as they are.

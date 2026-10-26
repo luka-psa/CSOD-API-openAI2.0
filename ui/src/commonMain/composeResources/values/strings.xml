@@ -416,4 +416,20 @@
     <string name="task_title">Which task will it be?</string>
     <string name="task_hint">e.g. make a dishes rota</string>
     <string name="became_routine">became a routine</string>
+    <string name="steps_then">then: %1$s</string>
+    <string name="steps_all">All steps</string>
+    <string name="steps_less">Show less</string>
+    <string name="steps_all_done">All done for today</string>
+    <string name="step_up">Move step up</string>
+    <string name="step_down">Move step down</string>
+    <string name="goal_plan_add">A place in the week</string>
+    <string name="goal_plan_title">How does it get a place in the week?</string>
+    <string name="goal_was">Goal: “%1$s”</string>
+    <string name="goal_plan_habit">A rhythm</string>
+    <string name="goal_plan_free">Free time</string>
+    <string name="goal_plan_step">One small step</string>
+    <string name="goal_plan_habit_hint">e.g. 10 minutes of yoga</string>
+    <string name="goal_plan_free_hint">e.g. play guitar</string>
+    <string name="goal_plan_often">How often?</string>
+    <string name="goal_plan_day">On which day?</string>
 </resources>

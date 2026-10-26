@@ -220,7 +220,7 @@ class OrchestratorTest {
     fun `offline capture reads time words and done words`() = runTest {
         assertEquals("Bij Taken: “tandarts” (afspraak) · morgen", offline.handle("tandarts morgen", nl).text)
         assertEquals(
-            "Bij Taken: “belastingbrief” (paperassen) · klaar tegen morgen",
+            "Bij Taken: “belastingbrief” (admin) · klaar tegen morgen",
             offline.handle("belastingbrief tegen vrijdag", nl).text,
         )
         val friday = inbox.openItems().first { it.text == "belastingbrief" }
@@ -242,7 +242,7 @@ class OrchestratorTest {
             offline.handle("plantjes water geven elke week", nl).text,
         )
         assertEquals(
-            "Bij Taken: “verzekering bellen” (paperassen) · dringend",
+            "Bij Taken: “verzekering bellen” (admin) · dringend",
             offline.handle("dringend: verzekering bellen", nl).text,
         )
         assertEquals(emptyList(), shopping.openItems())

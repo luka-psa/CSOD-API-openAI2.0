@@ -111,9 +111,11 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   to the rhythm, one without to the household. A routine can have *steps* (`parentId`,
   `add_routine`): a sequence ("avondroutine: boodschappen, Mia ophalen, koken, pyjama")
   or a checklist ("paklijst opvang: luiers, flesjes"); steps are ticked per day and come
-  back tomorrow; all ticked = the routine is done today. With a moment it is daily; without
+  back tomorrow; all ticked = the routine is done today. Steps show small and in order (a bar, the next step,
+  "daarna: …", *Alle stappen* numbered); their order (`position`, `move_step`) is set with arrows in the
+  routine's sheet. With a moment it is daily; without
   one it is a *checklist* (*Lijstjes*: no rhythm, not on Vandaag, used when needed)),
-  *Paperassen & afspraken* (ADMIN/APPOINTMENT: *urgent*, an end date ("klaar tegen"), *waiting for a reply* with a
+  *Admin & afspraken* (ADMIN/APPOINTMENT: *urgent*, an end date ("klaar tegen"), *waiting for a reply* with a
   follow-up day), *Grote taken* (PROJECT: *steps* via `parentId`, a day or "dit
   weekend"), *Te sorteren* (everything else).
 - **Dashboard terms:** *Niet vergeten*, *Vandaag*, *In het ritme*,
@@ -123,10 +125,13 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Werkbord** (`board_item`, not the backlog): *Huisregel* (RULE), *Frictie*
   (FRICTION, talked through in two moves: first the meeting chooses what it needs in one tap,
   its *direction* (`FrictionDirection`, `mark_friction`): *huisregel te maken*, *nieuwe routine*,
-  *routine aanpassen* (a step and/or another moment), *taak met focus* (paperassen or a grote
+  *routine aanpassen* (a step and/or another moment), *taak met focus* (admin or a grote
   taak, as next up), or *loslaten*; then someone writes it in their own words, now or later
   (`resolve_friction`; the friction is a reminder, never the wording); every outcome is good),
-  *Doel* (GOAL, scope gezin / samen / persoonlijk, one small *next step*), *Idee* (IDEA: a way to
+  *Doel* (GOAL, scope gezin / samen / persoonlijk; gets *a place in the week* (`set_goal_step` how): a *ritme*
+  (a habit at a moment, e.g. elke dag yoga, in Ritmes & routines), *vrije tijd* on a day (a hobby, in Vrije tijd),
+  or one small *next step*; the goal shows that link in its colour). Huisregels are rated like routines
+  ("Hoe loopt het?" on the Werkbord or in the Terugblik); the last rating shows as a pill. *Idee* (IDEA: a way to
   make it easier; decided like a friction).
   *Member*: a person with a colour.
 - **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
@@ -141,12 +146,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
 - **Topics** (`Topic`): one name, icon and colour per topic on every screen (`Topic.title`, `Topic.icon()`,
-  `Topic.style()`): a card on Vandaag, a panel in **Taken** (a dashboard of panels: Paperassen & afspraken,
+  `Topic.style()`): a card on Vandaag, a panel in **Taken** (a dashboard of panels: Admin & afspraken,
   Grote taken, Huishouden, Ritmes & routines, Vrije tijd; *Te sorteren* on top; panels fold), a column on the
   Werkbord (Huisregels, Frictie & ideeën, Doelen), a tile in the weekoverleg. Ember is for time cards and
   Hearth's own voice, never a topic. A form with typed text never closes without asking (`FormSheet`,
   `DiscardDialog`: *Verder typen* / *Weggooien*).
-- **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Doelen* (next small step), *Paperassen & afspraken* (admin and appointments), *Grote taken*,
+- **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Doelen* (next small step), *Admin & afspraken* (admin and appointments), *Grote taken*,
   *Huishouden* (chores without a moment), *Ritmes & routines* (laid out per moment of the day), *Boodschappen*,
   *Weekmenu*, *Frictie & ideeën*, *Huisregels*): each a calm tile with a *glance*,
   tap to open its list. Terugblik (*Wat ging goed* = wins; two household
@@ -171,7 +176,7 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   *Back-up* (Drive app folder, *Terugzetten* asks first) and the *Hearth* calendar; setup in
   `docs/GOOGLE.md`.
 - Never invent synonyms (no "grocery", "staple", "to-do" in new code or copy). Dutch copy has no English
-  words: Taken (not backlog), paperassen (not admin), einddatum (not deadline), koppelserver (not relay).
+  words: Taken (not backlog), einddatum (not deadline), koppelserver (not relay); *admin* is fine in Dutch.
   UI ships in Dutch (Flemish), the default whatever the device says, and English (a setting);
   the local parser understands both.
 

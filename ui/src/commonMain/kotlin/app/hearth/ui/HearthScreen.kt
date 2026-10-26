@@ -127,6 +127,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val meters by viewModel.meters.collectAsStateWithLifecycle()
     val metersOn by viewModel.metersOn.collectAsStateWithLifecycle()
     val ruleChecks by viewModel.ruleChecks.collectAsStateWithLifecycle()
+    val ruleEase by viewModel.ruleEase.collectAsStateWithLifecycle()
     val ease by viewModel.ease.collectAsStateWithLifecycle()
     val transcript by viewModel.transcript.collectAsStateWithLifecycle()
     val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
@@ -179,6 +180,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             onGoBoard = { destination = Destination.BOARD },
                             onGoWeek = { destination = Destination.WEEK },
                             onGoConnect = { destination = Destination.CONNECT },
+                            ruleEase = ruleEase,
                         )
                         Destination.MENU -> MenuScreen(
                             meals, recipes, today, lang, wide, photoVersion, lang.speechTag,
@@ -194,7 +196,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, meters, metersOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardLately, agree),
+                            MeetingState(wins, meters, metersOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardLately, agree, ruleEase),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -258,7 +260,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             ),
                         )
                         Destination.BOARD -> BoardScreen(
-                            board, members, backlog.filter { it.isRoutine() && !it.done }, wide,
+                            board, members, backlog, ruleEase, today, wide,
                             BoardCallbacks(
                                 addMember = viewModel::addMember,
                                 removeMember = viewModel::removeMember,
@@ -266,6 +268,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 logFriction = viewModel::logFriction,
                                 resolveFriction = viewModel::resolveFriction,
                                 markFriction = viewModel::markFriction,
+                                rateRule = { r, e -> viewModel.checkRule(r, e) },
                                 addGoal = viewModel::addGoal,
                                 setGoalStep = viewModel::setGoalStep,
                                 achieveGoal = viewModel::achieveGoal,
@@ -351,6 +354,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                 anchor = { viewModel.setAnchor(item, it) },
                 addStep = { viewModel.addRoutineStep(item, it) },
                 removeStep = { viewModel.delete(it) },
+                moveStep = { step, place -> viewModel.moveStep(step, place) },
             ),
             onDismiss = { planning = null },
             steps = steps.filter { it.parentId == item.id && it.isRoutineStep },

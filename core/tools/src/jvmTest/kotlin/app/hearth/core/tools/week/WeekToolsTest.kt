@@ -128,7 +128,7 @@ class WeekToolsTest {
         assertEquals(listOf("Autokeuring"), agenda.deadlines.map { it.text })
         assertEquals(listOf("Rommel in de gang"), agenda.frictions.map { it.text })
         assertEquals(
-            "Terugblik: 1 ding gedaan.\nVrije tijd: Nog niets gepland.\nDoelen: Nog geen doelen.\nPaperassen & afspraken: 1 open (klaar tegen: Autokeuring).\n" +
+            "Terugblik: 1 ding gedaan.\nVrije tijd: Nog niets gepland.\nDoelen: Nog geen doelen.\nAdmin & afspraken: 1 open (klaar tegen: Autokeuring).\n" +
                 "Grote taken: Niets lopend.\nHuishouden: Nog geen huishoudtaken.\nRitmes & routines: Nog geen ritme.\n" +
                 "Boodschappen: De lijst is leeg.\nWeekmenu: 1 van 7 avonden (Pizza).\nFrictie & ideeën: 1 te bespreken (Rommel in de gang).\n" +
                 "Huisregels: Nog geen huisregels.\nMeters (samen afspreken): hoe liep het, voorstel 4; wat schuurde, voorstel 2.",

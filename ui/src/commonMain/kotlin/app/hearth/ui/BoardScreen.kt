@@ -43,6 +43,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BoardItem
+import kotlinx.datetime.LocalDate
+import app.hearth.core.model.isRoutine
+import app.hearth.core.model.Ease
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.BoardStatus
 import app.hearth.core.model.BacklogItem
@@ -108,14 +111,17 @@ class BoardCallbacks(
     val resolveFriction: (BoardItem, FrictionWrite) -> Unit,
     val markFriction: (BoardItem, FrictionDirection?) -> Unit,
     val addGoal: (String, GoalScope, Member?) -> Unit,
-    val setGoalStep: (BoardItem, String, Boolean) -> Unit,
+    val setGoalStep: (BoardItem, GoalPlan) -> Unit,
+    val rateRule: (BoardItem, Ease) -> Unit,
     val achieveGoal: (BoardItem) -> Unit,
     val delete: (BoardItem) -> Unit,
 )
 
 /** Who lives here, then three columns: Huisregels · Frictie & ideeën · Doelen. [routines] are the ones a friction can change. */
 @Composable
-fun BoardScreen(items: List<BoardItem>, members: List<Member>, routines: List<BacklogItem>, wide: Boolean, cb: BoardCallbacks) {
+fun BoardScreen(items: List<BoardItem>, members: List<Member>, backlog: List<BacklogItem>, ruleEase: Map<String, Ease>, today: LocalDate, wide: Boolean, cb: BoardCallbacks) {
+    val routines = backlog.filter { it.isRoutine() && !it.done }
+    val byId = backlog.associateBy { it.id }
     var deleting by remember { mutableStateOf<BoardItem?>(null) }
     var removing by remember { mutableStateOf<Member?>(null) }
     var asking by remember { mutableStateOf<Ask?>(null) }
@@ -131,9 +137,9 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, routines: List<Ba
         MembersRow(members, onAdd = { asking = Ask.Member }, onRemove = { removing = it })
         Spacer(Modifier.size(18.dp))
 
-        val rulesCard = @Composable { m: Modifier -> RulesCard(rules, m, cb, onOpen = { deleting = it }) }
+        val rulesCard = @Composable { m: Modifier -> RulesCard(rules, ruleEase, m, cb, onOpen = { deleting = it }) }
         val frictionsCard = @Composable { m: Modifier -> FrictionsCard(frictions, members, routines, m, cb, onOpen = { deleting = it }) }
-        val goalsCard = @Composable { m: Modifier -> GoalsCard(goals, members, m, cb, onAsk = { asking = it }, onOpen = { deleting = it }) }
+        val goalsCard = @Composable { m: Modifier -> GoalsCard(goals, members, byId, today, m, cb, onAsk = { asking = it }, onOpen = { deleting = it }) }
         if (wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 rulesCard(Modifier.weight(1f))
@@ -152,11 +158,7 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, routines: List<Ba
     asking?.let { ask ->
         when (ask) {
             Ask.Member -> TextDialog(stringResource(Res.string.member_add), stringResource(Res.string.member_name_hint), onDone = { text, _ -> cb.addMember(text) }) { asking = null }
-            is Ask.Step -> TextDialog(
-                stringResource(Res.string.goal_step_title), stringResource(Res.string.friction_text_hint),
-                toggle = stringResource(Res.string.goal_step_to_week),
-                onDone = { text, toWeek -> cb.setGoalStep(ask.goal, text, toWeek) },
-            ) { asking = null }
+            is Ask.Step -> GoalPlanDialog(ask.goal, today, LocalLang.current, onSave = { cb.setGoalStep(ask.goal, it) }) { asking = null }
         }
     }
     deleting?.let { item ->
@@ -206,7 +208,7 @@ fun MemberDot(member: Member, size: Int = 24) {
 // ---------- house rules ----------
 
 @Composable
-private fun RulesCard(rules: List<BoardItem>, modifier: Modifier, cb: BoardCallbacks, onOpen: (BoardItem) -> Unit) {
+private fun RulesCard(rules: List<BoardItem>, ease: Map<String, Ease>, modifier: Modifier, cb: BoardCallbacks, onOpen: (BoardItem) -> Unit) {
     val s = Topic.RULES.style()
     TopicCard(Topic.RULES, LocalLang.current, modifier) {
         AddRow(stringResource(Res.string.rules_add_hint), cb.addRule, muted = true, compact = true)
@@ -221,7 +223,11 @@ private fun RulesCard(rules: List<BoardItem>, modifier: Modifier, cb: BoardCallb
                     Text("${i + 1}", style = MaterialTheme.typography.labelLarge, color = s.ink)
                 }
                 Spacer(Modifier.width(14.dp))
-                Text(rule.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                // How it goes, like the routines: rated together in the Terugblik, or right here.
+                Column(Modifier.weight(1f).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(rule.text, style = MaterialTheme.typography.bodyLarge)
+                    EaseChooser(ease[rule.id]) { cb.rateRule(rule, it) }
+                }
                 DeleteButton({ onOpen(rule) })
             }
         }
@@ -277,7 +283,7 @@ private data class Owner(val scope: GoalScope, val member: Member?)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GoalsCard(goals: List<BoardItem>, members: List<Member>, modifier: Modifier, cb: BoardCallbacks, onAsk: (Ask) -> Unit, onOpen: (BoardItem) -> Unit) {
+private fun GoalsCard(goals: List<BoardItem>, members: List<Member>, backlog: Map<String, BacklogItem>, today: LocalDate, modifier: Modifier, cb: BoardCallbacks, onAsk: (Ask) -> Unit, onOpen: (BoardItem) -> Unit) {
     var owner by remember { mutableStateOf(Owner(GoalScope.FAMILY, null)) }
     val open = goals.filter { it.isOpen }
     val achieved = goals.filter { it.status == BoardStatus.ACHIEVED }.sortedByDescending { it.closedAt ?: 0 }
@@ -301,7 +307,9 @@ private fun GoalsCard(goals: List<BoardItem>, members: List<Member>, modifier: M
             listOf(stringResource(Res.string.scope_personal) to open.filter { it.scope == GoalScope.PERSONAL && (it.memberId == null || it.memberId !in byId) })
         groups.filter { it.second.isNotEmpty() }.forEach { (title, list) ->
             GroupTitle(title)
-            list.forEach { goal -> GoalRow(goal, onAchieve = { cb.achieveGoal(goal) }, onStep = { onAsk(Ask.Step(goal)) }, onDelete = { onOpen(goal) }) }
+            list.forEach { goal ->
+                GoalRow(goal, goal.linkedId?.let(backlog::get), today, LocalLang.current, onAchieve = { cb.achieveGoal(goal) }, onPlan = { onAsk(Ask.Step(goal)) }, onDelete = { onOpen(goal) })
+            }
         }
         if (achieved.isNotEmpty()) {
             GroupTitle(stringResource(Res.string.goal_achieved_title))
@@ -313,34 +321,6 @@ private fun GoalsCard(goals: List<BoardItem>, members: List<Member>, modifier: M
                 }
             }
         }
-    }
-}
-
-/** A goal with its one small next step (tap to change it); the round check means "bereikt". */
-@Composable
-internal fun GoalRow(goal: BoardItem, onAchieve: () -> Unit, onStep: () -> Unit, onDelete: (() -> Unit)? = null) {
-    Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        RoundCheck(false, onAchieve)
-        Spacer(Modifier.width(6.dp))
-        Column(Modifier.weight(1f).padding(top = 10.dp, bottom = 4.dp)) {
-            Text(goal.text, style = MaterialTheme.typography.bodyLarge)
-            val step = goal.nextStep
-            if (step != null) {
-                Text(
-                    stringResource(Res.string.next_step, step),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onStep).padding(vertical = 4.dp),
-                )
-            } else {
-                TextButton(onClick = onStep, modifier = Modifier.padding(start = 0.dp)) {
-                    Icon(HearthIcons.Add, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(Res.string.goal_step_add), style = MaterialTheme.typography.labelLarge)
-                }
-            }
-        }
-        if (onDelete != null) DeleteButton(onDelete, Modifier.padding(top = 2.dp))
     }
 }
 
