@@ -106,7 +106,11 @@ class SettingsRepository(
         private const val TABLET_KEY = "mcp.tabletKey"
 
         /** Settings that belong to this device and never travel in a backup. */
-        val DEVICE_ONLY = setOf(ENABLED, RELAY_URL, HOUSEHOLD, TABLET_KEY, "mcp.connectorSecret")
+        val DEVICE_ONLY = setOf(ENABLED, RELAY_URL, HOUSEHOLD, TABLET_KEY, "mcp.connectorSecret", SYNC_KEYS, SYNC_LAST)
+
+        /** This device's way into the household's sync (space, token, key), and when it last synced. */
+        const val SYNC_KEYS = "sync.keys"
+        const val SYNC_LAST = "sync.last"
 
         /** 64 random hex characters (two random UUIDs, from a secure random source). */
         @OptIn(ExperimentalUuidApi::class)

@@ -304,6 +304,19 @@ class OrchestratorTest {
     }
 
     @Test
+    fun `saying synchroniseer syncs, and says how to turn it on when it's off`() = runTest {
+        val backups = app.hearth.core.data.backup.BackupRepository(db)
+        val withSync = HearthTools(
+            shopping, inbox, board, app.hearth.core.data.food.StockRepository(db), app.hearth.core.data.week.WeekRepository(db),
+            app.hearth.core.data.settings.SettingsRepository(db), app.hearth.core.data.week.MeetingRepository(db), backups,
+            sync = app.hearth.core.data.sync.SyncRepository(db, backups),
+        )
+        val reply = Orchestrator(withSync.registry).handle("Synchroniseer", nl)
+        assertEquals("Dit toestel synchroniseert nog niet. Zet het aan onder Instellingen → Samen op meer toestellen.", reply.text)
+        assertEquals(emptyList(), inbox.openItems())
+    }
+
+    @Test
     fun `a win goes to the weekoverleg's look back`() = runTest {
         assertEquals("Mooi! Genoteerd bij wat goed ging: “Elke avond samen gegeten”", offline.handle("dat ging goed: elke avond samen gegeten", nl).text)
         assertEquals(emptyList(), inbox.openItems())

@@ -47,6 +47,7 @@ import app.hearth.core.model.boardKind
 import app.hearth.ai.route.AreaWords
 import app.hearth.ai.route.MeetingWords
 import app.hearth.ai.route.Spoken
+import app.hearth.core.tools.system.SyncNowTool
 import app.hearth.core.model.Topic
 import app.hearth.core.model.topic
 import app.hearth.ai.route.Place
@@ -98,6 +99,10 @@ class Orchestrator(
         LINK.find(text)?.takeIf { text.replace(it.value, "").replace(RECIPE_WORD, "").isBlank() }?.let { link ->
             val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
             return runCalls(listOf(ToolCall.of(ImportRecipeTool.NAME, ImportRecipeArgs.serializer(), ImportRecipeArgs(link.value))), local)
+        }
+        // "synchroniseer", "sync now": the household's other devices, now.
+        if (SYNC_WORDS.matches(text.trim()) && registry.contains(SyncNowTool.NAME)) {
+            return runCalls(listOf(ToolCall(SyncNowTool.NAME, kotlinx.serialization.json.JsonObject(emptyMap()))), ctx.copy(lang = KeywordRouter.language(text, ctx.lang)))
         }
         // A pasted list: a heading says where it goes; without one every line is sorted on its own.
         ListWords.extract(text)?.let { list -> return pastedList(list, ctx, history) }
@@ -447,6 +452,7 @@ class Orchestrator(
         val LINK = Regex("https?://\\S+")
         val RECIPE_WORD = Regex("(?i)\\b(?:recept|recipe)\\b[:\\s]*")
         val WIN_PREFIX = Regex("^(?:dat ging goed|wat ging goed|ging goed|went well|that went well)\\s*[:,\\-]\\s*(.+)$", RegexOption.IGNORE_CASE)
+        val SYNC_WORDS = Regex("^(?:nu |nog eens )?(?:synchroniseer|synchroniseren|synchroniseer nu|sync|sync now|synchronise|synchronize|synchronise now|synchronize now)[.!]?$", RegexOption.IGNORE_CASE)
         val SHOPPING_TALK = Regex(
             "\\b(?:we|moeten|moet|nog|wat|even|ook|kopen|halen|gaan|in de winkel|boodschappen|need to|we need|buy|pick up|get some|groceries)\\b",
             RegexOption.IGNORE_CASE,

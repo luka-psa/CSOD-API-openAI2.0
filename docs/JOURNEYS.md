@@ -46,6 +46,7 @@ accent. Ember is never a topic colour.
 | link | koppelingen (ChatGPT/Claude) |
 | flame | Hearth itself |
 | pencil | fix the words (what Luister mee misheard) |
+| circling arrows | Samen op meer toestellen (sync) |
 | light bulb | an idea |
 
 ## 2. Screens
@@ -58,7 +59,7 @@ accent. Ember is never a topic colour.
 - **Weekoverleg**: Luister mee, the ten topic tiles (tap = that topic's list), Terugblik, Deze week, Vooruitblik.
 - **Werkbord**: who lives here, then Huisregels, Frictie & ideeën and Doelen.
 - **Boodschappen**: the list per shop and the Voorraad per spot.
-- **Instellingen**: Taal, ChatGPT/Claude, Google, Voorbeelden.
+- **Instellingen**: Taal, Samen op meer toestellen, ChatGPT/Claude, Google, Voorbeelden.
 - The **capture bar** sits under every screen.
 
 ## 3. Journeys
@@ -115,8 +116,16 @@ Werkbord or in the weekoverleg's Doelen): a *ritme* ("10 minuten yoga", ochtend,
 routines, *vrije tijd* on a day ("gitaar spelen", zaterdag) that lands in Vrije tijd, or one small step (optionally
 Volgende on Taken). The goal shows that link in its colour. Reached: tick it, it moves to "Samen bereikt".
 
-**J11. "Instellen."** Instellingen: Taal first (Nederlands (Vlaams) by default, English on request), then
-ChatGPT/Claude (koppelcode), Google back-up and agenda, and Voorbeelden to see how it works.
+**J11. "Instellen."** Instellingen: Taal first (Nederlands (Vlaams) by default, English on request), then Samen op meer
+toestellen, ChatGPT/Claude (koppelcode), Google back-up and agenda, and Voorbeelden to see how it works.
+
+**J12. "Op meer toestellen."** The tablet, both phones, an iPad in the browser: one household. On the tablet,
+Instellingen → Samen op meer toestellen → *Deel dit huishouden*; it shows a code ("K7QM-3XPD"). On the phone, *Doe mee
+met een code*, type it, and choose: *Neem het huishouden over* (recommended) or *Voeg samen*. From then on it syncs by
+itself: shortly after a change, every few minutes while Hearth is open, when it comes back on screen, and with *Nu
+synchroniseren* (or say "synchroniseer"). Edits from both meet; when two people change the same thing, the latest
+change wins, and nothing anyone added is lost. *Toestel toevoegen* gives a new code for each next device. Done: the
+milk added on a phone is on the tablet's list a moment later.
 
 ## 4. Checklist for new work
 

@@ -8,11 +8,13 @@
   "durable_objects": {
     "bindings": [
       { "name": "HOUSEHOLD", "class_name": "Household" },
-      { "name": "DIRECTORY", "class_name": "Directory" }
+      { "name": "DIRECTORY", "class_name": "Directory" },
+      { "name": "SYNC", "class_name": "SyncSpace" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Household"] },
-    { "tag": "v2", "new_sqlite_classes": ["Directory"] }
+    { "tag": "v2", "new_sqlite_classes": ["Directory"] },
+    { "tag": "v3", "new_sqlite_classes": ["SyncSpace"] }
   ]
 }

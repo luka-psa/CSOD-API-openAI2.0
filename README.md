@@ -43,6 +43,13 @@ All builds are signed with `app/hearth-family.jks`, so a newer APK installs over
 household's data stays. (Uninstalling Hearth deletes its data.) The key only tells Android "this is
 the same app"; anyone with this repository can sign with it, so keep the repository private.
 
+## The household on more devices
+
+Instellingen → **Samen op meer toestellen**: tap **Deel dit huishouden** on the tablet, then **Doe mee met een code** on a
+phone (the Android app, or the web link in Safari/Chrome on an iPhone or iPad) and type the code. From then on every
+device syncs through the relay like a git remote: pull, merge, push, sealed end to end. It needs the relay
+(`HEARTH_RELAY_URL`), deployed with this version (it adds a `SyncSpace` Durable Object).
+
 ## Tablet setup (once)
 
 1. Install the APK: open it, allow "install unknown apps" for the browser or Files app when Android

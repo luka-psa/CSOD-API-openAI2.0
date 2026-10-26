@@ -18,6 +18,11 @@ import app.hearth.core.model.Lang
 import app.hearth.core.tools.HearthTools
 import app.hearth.mcp.McpServer
 import app.hearth.mcp.RelayClient
+import app.hearth.mcp.RelaySync
+import app.hearth.core.data.sync.SyncRepository
+import app.hearth.core.tools.ToolException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import app.hearth.mcp.DEFAULT_RELAY_URL
 import app.hearth.core.data.backup.BackupRepository
 import app.hearth.core.model.nowMillis
@@ -52,7 +57,7 @@ import kotlinx.coroutines.launch
  * on their own subscription) reaches the same tools over MCP.
  */
 class AppContainer(
-    db: HearthDatabase,
+    private val db: HearthDatabase,
     val googleAuth: GoogleAuth = NoGoogleAuth,
     /** The web preview starts with examples, so a first visit shows how it works. */
     examplesOnFirstRun: Boolean = false,
@@ -80,7 +85,10 @@ class AppContainer(
     val calendar = GoogleCalendarApi(googleHttp, googleAuth)
     val meeting = MeetingRepository(db)
     private val pages = WebPages(HttpClient(), directPages) { settings.connection.first().relayUrl ?: DEFAULT_RELAY_URL.ifBlank { null } }
-    val tools = HearthTools(shopping, backlog, board, stock, week, settings, meeting, backups, drive, calendar, pages)
+    /** The household on more devices: merged here, met on the relay as a sealed box. */
+    val sync = SyncRepository(db, backups)
+    private val syncCloud = RelaySync({ settings.connection.first().relayUrl })
+    val tools = HearthTools(shopping, backlog, board, stock, week, settings, meeting, backups, drive, calendar, pages, sync, syncCloud)
     val orchestrator = Orchestrator(tools.registry)
 
     /** The family's ChatGPT or Claude reaches the same tools here, through the relay. */
@@ -91,6 +99,14 @@ class AppContainer(
         const val CHECK_EVERY_MS = 60 * 60_000L
         const val BACKUP_EVERY_MS = 20 * 60 * 60_000L
         const val CALENDAR_DELAY_MS = 20_000L
+        /** A little after a change, so a burst of taps goes out as one. */
+        const val SYNC_AFTER_CHANGE_MS = 15_000L
+        /** A light check for what the others did, while Hearth is open. */
+        const val SYNC_EVERY_MS = 5 * 60_000L
+        val SYNCED_TABLES = arrayOf(
+            "shop", "shopping_item", "backlog_item", "member", "board_item", "storage_spot", "stock_item", "meal", "dish", "huddle",
+            "setting", "recipe_photo", "reflection", "transcript_line", "routine_log",
+        )
     }
 
     fun context(source: ToolSource) = ToolContext(source = source, lang = lang)
@@ -116,6 +132,60 @@ class AppContainer(
         // Connected only while it's switched on; the client reconnects by itself.
         appScope.launch { settings.connection.collect { c -> relay.connect(if (c.enabled) c.tabletUrl else null) } }
         if (googleAuth.available) keepGoogleUpToDate()
+        keepInSync()
+    }
+
+    private val syncLock = Mutex()
+    private val _syncBusy = MutableStateFlow(false)
+    /** True while this device is pulling, merging or pushing. */
+    val syncBusy: StateFlow<Boolean> = _syncBusy.asStateFlow()
+    private val _syncProblem = MutableStateFlow<String?>(null)
+    /** Why the last sync didn't go through (offline, an older Hearth); null once it does. */
+    val syncProblem: StateFlow<String?> = _syncProblem.asStateFlow()
+
+    /** One sync at a time, whoever asks (the button, a change, the clock). */
+    suspend fun <T> syncing(block: suspend () -> T): T = syncLock.withLock {
+        _syncBusy.value = true
+        try {
+            block().also { _syncProblem.value = null }
+        } catch (e: ToolException) {
+            _syncProblem.value = e.userMessage
+            throw e
+        } finally {
+            _syncBusy.value = false
+        }
+    }
+
+    /** Syncs now if this device is in a household; quietly, a failure waits for the next round. */
+    fun syncInBackground(onlyIfChanged: Boolean = false) {
+        appScope.launch { syncQuietly(onlyIfChanged) }
+    }
+
+    private suspend fun syncQuietly(onlyIfChanged: Boolean) {
+        val engine = tools.syncEngine ?: return
+        val keys = engine.keys() ?: return
+        if (onlyIfChanged && !engine.changed(keys)) return
+        runCatching { syncing { tools.registry.run(tools.syncNow!!, NoArgs(), context(ToolSource.UI)) } }
+    }
+
+    /**
+     * Like git, on its own: a little after something changes here, and every few minutes for what the others did,
+     * while Hearth is open (the tablet always is; a phone catches up when it's opened). Only when it's switched on.
+     */
+    @OptIn(FlowPreview::class)
+    private fun keepInSync() {
+        appScope.launch {
+            ready.await()
+            launch {
+                db.invalidationTracker.createFlow(*SYNCED_TABLES, emitInitialState = false)
+                    .debounce(SYNC_AFTER_CHANGE_MS)
+                    .collect { syncQuietly(onlyIfChanged = true) }
+            }
+            while (true) {
+                syncQuietly(onlyIfChanged = false)
+                delay(SYNC_EVERY_MS)
+            }
+        }
     }
 
     /**

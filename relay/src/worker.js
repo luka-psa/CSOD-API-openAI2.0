@@ -8,7 +8,12 @@
 // MCP connectors in ChatGPT and Claude expect.
 //
 // Storage: per household (a Durable Object) a hash of the tablet key and the linked AI apps with hashes
-// of their tokens; in one Directory object the pairing codes that are valid right now. No household data.
+// of their tokens; in one Directory object the pairing codes that are valid right now.
+//
+// Sync (optional, per household): the household's devices push and pull one snapshot, like a git remote.
+// It is sealed on the device (AES-GCM) with a key the relay never sees, so a SyncSpace only holds a locked
+// box, its version and a hash of the devices' shared token. A new device joins with a one-time code: the
+// relay keeps the keys sealed with that code for ten minutes, under a lookup it can't reverse.
 
 const ID = /^[A-Za-z0-9_-]{32,128}$/;
 const TIMEOUT_MS = 25_000;
@@ -38,10 +43,15 @@ export default {
     if (path === "/mcp") return cors(await mcp(request, env, origin));
     if (path === "/page") return cors(await importPage(url));
     if (path === "/image") return cors(await importImage(url));
+    if (path === "/sync/offer" && request.method === "POST") return cors(await syncOffer(request, env));
+    if (path === "/sync/claim" && request.method === "POST") return cors(await syncClaim(request, env));
 
     const [, kind, household] = path.split("/");
     if (kind === "connect" && household && ID.test(household)) {
       return env.HOUSEHOLD.get(env.HOUSEHOLD.idFromName(await sha256(household))).fetch(request);
+    }
+    if (kind === "sync" && household && ID.test(household) && (request.method === "GET" || request.method === "POST")) {
+      return cors(await env.SYNC.get(env.SYNC.idFromName(await sha256(household))).fetch(request));
     }
     return new Response("Not found", { status: 404 });
   },
@@ -331,6 +341,26 @@ async function mcp(request, env, origin) {
   return res;
 }
 
+// ---- Sync: join a household with a one-time code ----
+//
+// The device that is already in the household seals the sync keys with a key derived from the code and
+// leaves them here under a lookup derived the same slow way (PBKDF2), so neither tells the relay the code.
+// The new device types the code, derives the lookup and the key, and takes the box: once, within ten minutes.
+
+const LOOKUP = /^[A-Za-z0-9_-]{32,128}$/;
+
+async function syncOffer(request, env) {
+  const body = await request.json().catch(() => ({}));
+  if (!LOOKUP.test(body.lookup || "") || typeof body.box !== "string" || body.box.length > 4096) return new Response("Bad offer", { status: 400 });
+  return directory(env).fetch("https://directory/offer", { method: "POST", body: JSON.stringify({ lookup: body.lookup, box: body.box }) });
+}
+
+async function syncClaim(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  return directory(env).fetch("https://directory/claim", { method: "POST", body: JSON.stringify({ lookup: String(body.lookup || ""), ip }) });
+}
+
 // ---- Durable Objects ----
 
 function directory(env) {
@@ -553,6 +583,27 @@ export class Directory {
       await this.state.storage.delete([`c:${body.code}`, `h:${entry.household}`]);
       return json({ household: entry.household });
     }
+    if (url.pathname === "/offer") {
+      const expiresAt = now + CODE_TTL_MS;
+      await this.state.storage.put(`o:${body.lookup}`, { box: body.box, expiresAt });
+      await this.state.storage.setAlarm(now + CODE_TTL_MS + 60_000);
+      return json({ expiresAt });
+    }
+    if (url.pathname === "/claim") {
+      const ipKey = `ip:${body.ip}`;
+      const tries = (await this.state.storage.get(ipKey)) || { count: 0, until: now + 15 * 60_000 };
+      if (tries.until < now) Object.assign(tries, { count: 0, until: now + 15 * 60_000 });
+      if (tries.count >= MAX_FAILED_CODES) return new Response("Too many tries", { status: 429 });
+      const entry = LOOKUP.test(body.lookup) ? await this.state.storage.get(`o:${body.lookup}`) : null;
+      if (!entry || entry.expiresAt < now) {
+        tries.count++;
+        await this.state.storage.put(ipKey, tries);
+        return new Response("Unknown code", { status: 404 });
+      }
+      // One device per code: the box is gone once taken.
+      await this.state.storage.delete(`o:${body.lookup}`);
+      return json({ box: entry.box });
+    }
     return new Response("Not found", { status: 404 });
   }
 
@@ -563,10 +614,73 @@ export class Directory {
     const stale = [];
     for (const [k, v] of all) {
       if (k.startsWith("c:") && v.expiresAt < now) stale.push(k, `h:${v.household}`);
+      if (k.startsWith("o:") && v.expiresAt < now) stale.push(k);
       if (k.startsWith("ip:") && v.until < now) stale.push(k);
     }
     for (let i = 0; i < stale.length; i += 128) await this.state.storage.delete(stale.slice(i, i + 128));
-    if ([...all.keys()].some((k) => k.startsWith("c:") && !stale.includes(k))) await this.state.storage.setAlarm(now + CODE_TTL_MS);
+    if ([...all.keys()].some((k) => (k.startsWith("c:") || k.startsWith("o:")) && !stale.includes(k))) await this.state.storage.setAlarm(now + CODE_TTL_MS);
+  }
+}
+
+/**
+ * One household's sync remote: the latest sealed snapshot and its version. A push names the version it was
+ * built on; when another device pushed first it gets 409 and pulls, merges and tries again (like git).
+ * The first push sets the household's token; after that only that token can read or write.
+ */
+const SYNC_CHUNK = 100_000;
+const SYNC_LIMIT = 8_000_000;
+const SYNC_KEEP_MS = 365 * 24 * 3600_000;
+
+export class SyncSpace {
+  constructor(state) {
+    this.state = state;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    if (!ID.test(token)) return new Response("Missing token", { status: 401 });
+    const meta = await this.state.storage.get("meta");
+    if (meta && meta.token !== await sha256(token)) return new Response("Not this household", { status: 403 });
+
+    if (request.method === "GET") {
+      if (!meta) return json({ version: 0 });
+      const since = Number(url.searchParams.get("since") || -1);
+      if (since === meta.version) return json({ version: meta.version });
+      const keys = Array.from({ length: meta.chunks }, (_, i) => `d:${i}`);
+      const parts = keys.length ? await this.state.storage.get(keys) : new Map();
+      return json({ version: meta.version, data: keys.map((k) => parts.get(k) || "").join(""), updatedAt: meta.updatedAt });
+    }
+
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body.data !== "string" || !Number.isInteger(body.base)) return new Response("Bad push", { status: 400 });
+    if (body.data.length > SYNC_LIMIT) return new Response("Too big", { status: 413 });
+    const current = meta ? meta.version : 0;
+    if (body.base !== current) return json({ version: current }, 409);
+    const chunks = [];
+    for (let i = 0; i < body.data.length; i += SYNC_CHUNK) chunks.push(body.data.slice(i, i + SYNC_CHUNK));
+    const now = Date.now();
+    const next = { version: current + 1, chunks: chunks.length, token: meta ? meta.token : await sha256(token), updatedAt: now };
+    // The new chunks and their meta in one write; leftovers from a bigger snapshot go after.
+    const write = { meta: next };
+    chunks.forEach((c, i) => { write[`d:${i}`] = c; });
+    const entries = Object.entries(write);
+    if (entries.length <= 128) {
+      await this.state.storage.put(write);
+    } else {
+      await this.state.storage.transaction(async (tx) => {
+        for (let i = 0; i < entries.length; i += 128) await tx.put(Object.fromEntries(entries.slice(i, i + 128)));
+      });
+    }
+    const old = meta ? meta.chunks : 0;
+    if (old > chunks.length) await this.state.storage.delete(Array.from({ length: old - chunks.length }, (_, i) => `d:${chunks.length + i}`));
+    // A household that stops syncing for a year is forgotten.
+    await this.state.storage.setAlarm(now + SYNC_KEEP_MS);
+    return json({ version: next.version });
+  }
+
+  async alarm() {
+    await this.state.storage.deleteAll();
   }
 }
 

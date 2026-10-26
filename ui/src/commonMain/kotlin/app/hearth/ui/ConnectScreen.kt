@@ -48,6 +48,7 @@ import app.hearth.mcp.LinkedApp
 import app.hearth.mcp.PairingCode
 import app.hearth.mcp.RelayStatus
 import app.hearth.ui.resources.Res
+import app.hearth.ui.resources.sync_title
 import app.hearth.ui.resources.connect_activity
 import app.hearth.ui.resources.connect_ai
 import app.hearth.ui.resources.connect_google
@@ -116,6 +117,9 @@ fun ConnectScreen(
     googleBusy: Boolean,
     backups: List<BackupFile>?,
     googleCb: GoogleCallbacks,
+    sync: SyncState = SyncState(),
+    joinCode: app.hearth.core.tools.system.JoinCodeResult? = null,
+    syncCb: SyncCallbacks? = null,
 ) {
     var unlinking by remember { mutableStateOf<LinkedApp?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
@@ -132,6 +136,11 @@ fun ConnectScreen(
                     ChoiceChip("Nederlands (Vlaams)", current == Lang.NL, { cb.setLanguage(Lang.NL) })
                     ChoiceChip("English", current == Lang.EN, { cb.setLanguage(Lang.EN) })
                 }
+            }
+            // The household on more devices: right after the language, it's what a new device needs first.
+            if (syncCb != null) {
+                SectionTitle(stringResource(Res.string.sync_title))
+                SyncCard(sync, joinCode, syncCb)
             }
             SectionTitle(stringResource(Res.string.connect_ai))
             HearthCard(stringResource(Res.string.connect_on), HearthIcons.Link, Modifier.fillMaxWidth(), action = {

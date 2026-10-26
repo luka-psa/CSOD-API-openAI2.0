@@ -167,6 +167,9 @@ The full target list:
 - Friction: `log_friction` · `add_friction_idea` · `set_friction_status` · `idea_to_shopping` · `delete_friction` ⚠
 - Notes: `add_note` · `update_note` · `search_notes` · `delete_note` ⚠
 - System (not over MCP): `confirm_pending_action`, `cancel_pending_action`, `set_calendar_sync`, `push_to_calendar`, `backup_now`, `restore_backup` ⚠
+- Sync (v0.19, tablet only): `start_sync` (this device shares its household and gets a join code), `share_sync`
+  (a one-time code for one more device), `join_sync` ⚠ (code; takes the household over, or `keepThisDevice` adds
+  this device's things), `sync_now` (pull, merge, push; the capture bar understands "synchroniseer"), `stop_sync`
 
 ## 4. Data schema (Room)
 
@@ -210,7 +213,9 @@ adds `reflection` (WIN with text / FEELING with value 1–5, memberId, huddleId 
 deleted when the next meeting ends; summaries stay. v11 adds `routine_log` (habit id, day) and
 `reflection.suggested`; meters are FLOW / STRAIN rows, house-rule checks RULE_CHECK rows (v0.6's per-person FEELING
 rows are no longer used). v12 adds `backlog_item.postponed` (moved to a later day, Later or To plan), `ease`
-(the family's rating of a habit) and `smallStep`. v13 adds `backlog_item.anchor` (a routine's moment of the day). Auto-migrations v1→v13 keep every household's data.
+(the family's rating of a habit) and `smallStep`. v13 adds `backlog_item.anchor` (a routine's moment of the day). v16 adds
+`sync_base` (per sync space: the version and snapshot this device last agreed on with the household, the merge
+base). Auto-migrations keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
@@ -398,6 +403,29 @@ heartbeat, backoff; pairing codes, linked apps, unlink). Settings (`setting` tab
 `save_connection` tool; household id and tablet key are made on the device and never leave it except to the
 relay. Pending confirmations show on the tablet with Ja/Nee too.
 
+**Sync between devices (v0.19): the relay as a git remote.** The household's devices (the tablet, phones, an iPad in
+the browser) keep one household. Each sync is `pull`, `merge`, `push`:
+
+- **Remote:** a `SyncSpace` Durable Object per household holds one snapshot (the backup's JSON) and its version. A push
+  names the version it was built on; when another device pushed first it gets 409 and the device pulls, merges and
+  tries again. The first push sets the household's token (a hash is stored); only that token reads or writes.
+- **Sealed:** the snapshot is sealed on the device with AES-256-GCM under a household key the relay never sees
+  (`SyncCrypto`: javax.crypto on Android, WebCrypto in the browser). The relay stores a locked box, a version and a
+  token hash. Spaces untouched for a year are deleted.
+- **Joining:** a device in the household makes a one-time code (8 letters, no 0/O/1/I, "K7QM-3XPD"); the keys are
+  sealed with a key derived from it (PBKDF2, 100 000 rounds) and left under a lookup derived the same slow way, for
+  ten minutes, taken once (10 wrong tries per IP per 15 minutes). The relay never sees the code.
+- **Merge** (`SyncMerge`, three ways per row against the base): whoever changed a row since the base wins; when both
+  did, the latest change wins; a change beats a delete. Names that must be unique (two devices both made "Kelder")
+  fold into one row and what pointed at the other follows; a row whose parent was deleted elsewhere brings it back.
+  Only rows that differ are written, in one transaction. A device's own settings (language, Google, its relay link,
+  its sync keys) never travel; a restore from a backup clears the base, so the next sync adds both together.
+- **When:** about 15 s after a change, every 5 minutes while Hearth is open, when it comes back on screen, and with
+  *Nu synchroniseren*. The always-on tablet is always current; a phone catches up when opened (no background jobs).
+- **Joining a household** asks first: *Neem het huishouden over* (recommended; what is on this device goes) or
+  *Voeg samen* (what is here is added).
+- Google Agenda should stay on one device: each device would make its own "Hearth" calendar.
+
 The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, tested but not wired in.
 
 ## 8. Build slices (revised order)
@@ -428,6 +456,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.19: the household on more devices (Instellingen → Samen op meer toestellen): share it on one device, join with a
+   one-time code, and it syncs like git (pull, three-way merge, push) through the relay, sealed end to end (§7);
+   DB v16 (`sync_base`).
    v0.18: Luister mee hears thoughts, not breaths: stretches join by how they sound, each thought gives its
    conclusions (what, who, which day; "deze week" goes to Volgende), Hearth waits until a thought settles, words
    can be fixed on the stage, in Gesprek and in the Voorstel (`fix_transcript_line`), the recognizer keeps the guess

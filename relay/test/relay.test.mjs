@@ -22,6 +22,7 @@ async function relay(outboundService) {
     durableObjects: {
       HOUSEHOLD: { className: "Household", useSQLite: true },
       DIRECTORY: { className: "Directory", useSQLite: true },
+      SYNC: { className: "SyncSpace", useSQLite: true },
     },
   });
 }
@@ -215,5 +216,49 @@ test("recipe import for the web: only the JSON-LD and the photo come back", asyn
   // Only images come through /image, and only http(s) links are fetched.
   assert.equal((await mf.dispatchFetch(`${R}/image?url=${encodeURIComponent("https://kook.be/page.html")}`)).status, 404);
   assert.equal((await mf.dispatchFetch(`${R}/page?url=${encodeURIComponent("file:///etc/passwd")}`)).status, 400);
+  await mf.dispose();
+});
+
+test("sync: push and pull like a git remote, only with the household's token; join with a one-time code", async () => {
+  const mf = await relay();
+  const space = "s".repeat(43);
+  const token = "t".repeat(43);
+  const get = (since, t = token) => mf.dispatchFetch(`${R}/sync/${space}${since === undefined ? "" : `?since=${since}`}`, { headers: { authorization: `Bearer ${t}` } });
+  const push = (base, data, t = token) => mf.dispatchFetch(`${R}/sync/${space}`, { method: "POST", headers: { authorization: `Bearer ${t}`, "content-type": "application/json" }, body: JSON.stringify({ base, data }) });
+
+  // Nothing yet.
+  assert.deepEqual(await (await get()).json(), { version: 0 });
+  // The first push makes the household; a big snapshot is stored in pieces and comes back whole.
+  const big = "x".repeat(250_000);
+  assert.deepEqual(await (await push(0, big)).json(), { version: 1 });
+  const pulled = await (await get()).json();
+  assert.equal(pulled.version, 1);
+  assert.equal(pulled.data, big);
+  // Already up to date: only the version.
+  assert.deepEqual(await (await get(1)).json(), { version: 1 });
+  // Another device pushed first: 409 with the version to pull.
+  const late = await push(0, "y");
+  assert.equal(late.status, 409);
+  assert.deepEqual(await late.json(), { version: 1 });
+  // A smaller snapshot replaces the bigger one completely.
+  assert.deepEqual(await (await push(1, "small")).json(), { version: 2 });
+  assert.equal((await (await get()).json()).data, "small");
+  // Another token can't read or write this household.
+  assert.equal((await get(undefined, "u".repeat(43))).status, 403);
+  assert.equal((await push(2, "evil", "u".repeat(43))).status, 403);
+  assert.equal((await get(undefined, "short")).status, 401);
+  // The browser may call it.
+  assert.equal((await get()).headers.get("access-control-allow-origin"), "*");
+
+  // Join: a box under a lookup, taken once.
+  const lookup = "l".repeat(43);
+  const offer = await mf.dispatchFetch(`${R}/sync/offer`, { method: "POST", body: JSON.stringify({ lookup, box: "sealed-keys" }) });
+  assert.equal(offer.status, 200);
+  const claim = () => mf.dispatchFetch(`${R}/sync/claim`, { method: "POST", headers: { "cf-connecting-ip": "1.2.3.4" }, body: JSON.stringify({ lookup }) });
+  assert.deepEqual(await (await claim()).json(), { box: "sealed-keys" });
+  assert.equal((await claim()).status, 404);
+  // Guessing is slowed down.
+  for (let i = 0; i < 9; i++) await claim();
+  assert.equal((await claim()).status, 429);
   await mf.dispose();
 });

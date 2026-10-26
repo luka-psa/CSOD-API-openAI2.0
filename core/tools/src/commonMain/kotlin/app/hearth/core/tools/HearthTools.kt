@@ -93,6 +93,9 @@ class HearthTools(
     calendarApi: CalendarApi = NoGoogle,
     /** Web pages for importing a recipe from a link. */
     pages: app.hearth.core.tools.week.PageFetcher = app.hearth.core.tools.week.NoPages,
+    /** The household on more devices: the merge (on this device) and where devices meet (the relay). */
+    sync: app.hearth.core.data.sync.SyncRepository? = null,
+    syncCloud: app.hearth.core.tools.system.SyncCloud = app.hearth.core.tools.system.NoSyncCloud,
 ) {
     val addShoppingItem = AddShoppingItemTool(shopping, stock)
     val listShoppingItems = ListShoppingItemsTool(shopping)
@@ -170,6 +173,13 @@ class HearthTools(
     val loadExamples = app.hearth.core.tools.system.LoadExamplesTool(this, settings)
     val setLanguage = app.hearth.core.tools.system.SetLanguageTool(settings)
 
+    val syncEngine = sync?.let { app.hearth.core.tools.system.SyncEngine(it, settings, syncCloud) }
+    val syncNow = syncEngine?.let { app.hearth.core.tools.system.SyncNowTool(it) }
+    val startSync = syncEngine?.let { app.hearth.core.tools.system.StartSyncTool(it, syncCloud) }
+    val shareSync = syncEngine?.let { app.hearth.core.tools.system.ShareSyncTool(it, syncCloud) }
+    val joinSync = syncEngine?.let { app.hearth.core.tools.system.JoinSyncTool(it, syncCloud) }
+    val stopSync = syncEngine?.let { app.hearth.core.tools.system.StopSyncTool(it) }
+
     val registry = ToolRegistry(
         listOf(
             addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem, clearBoughtItems,
@@ -182,6 +192,6 @@ class HearthTools(
             addWin, removeWin, setWeekMeter, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, readConversation, clearTranscript, listHuddles, addIdea,
             saveRecipe, importRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples, setLanguage,
-        ) + listOfNotNull(backupNow, restoreBackup),
+        ) + listOfNotNull(backupNow, restoreBackup, syncNow, startSync, shareSync, joinSync, stopSync),
     )
 }

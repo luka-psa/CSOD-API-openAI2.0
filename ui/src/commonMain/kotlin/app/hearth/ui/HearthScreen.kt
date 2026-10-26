@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Lang
@@ -136,6 +137,13 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val voorstel by viewModel.voorstel.collectAsStateWithLifecycle()
     val heardThoughts by viewModel.heardThoughts.collectAsStateWithLifecycle()
     val vocabulary by viewModel.vocabulary.collectAsStateWithLifecycle()
+    val sync by viewModel.sync.collectAsStateWithLifecycle()
+    val joinCode by viewModel.joinCode.collectAsStateWithLifecycle()
+    // Back on screen (a tablet waking, a phone opened): catch up with the household's other devices.
+    LifecycleResumeEffect(Unit) {
+        viewModel.syncSoon()
+        onPauseOrDispose {}
+    }
     val agree by viewModel.agree.collectAsStateWithLifecycle()
     val googleBusy by viewModel.googleBusy.collectAsStateWithLifecycle()
     val backupList by viewModel.backupList.collectAsStateWithLifecycle()
@@ -262,6 +270,15 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 connectCalendar = viewModel::connectCalendar,
                                 syncCalendar = viewModel::syncCalendar,
                                 set = { b, c -> viewModel.setGoogleSync(b, c) },
+                            ),
+                            sync, joinCode,
+                            SyncCallbacks(
+                                start = viewModel::startSync,
+                                share = viewModel::shareSync,
+                                hideCode = viewModel::hideJoinCode,
+                                join = { code, keep -> viewModel.joinSync(code, keep) },
+                                syncNow = viewModel::syncNow,
+                                stop = viewModel::stopSync,
                             ),
                         )
                         Destination.BOARD -> BoardScreen(

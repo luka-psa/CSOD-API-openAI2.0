@@ -198,10 +198,13 @@ class BackupRepository(
         dao.putTranscript(backup.transcript)
         dao.putRoutineLogs(backup.routineLogs)
         dao.putPhotos(backup.photos.map { RecipePhotoEntity(it.recipeKey, Base64.decode(it.jpegBase64), it.updatedAt) })
+        // After a restore this device no longer agrees with the household's last state: its next sync adds
+        // both together instead of reading the restore as deletions.
+        db.syncDao().clearBase()
     }
 
     companion object {
-        const val DATABASE_VERSION = 15
+        const val DATABASE_VERSION = 16
         private const val LOCAL_FIRST = "google."
         val JSON = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     }

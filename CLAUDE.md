@@ -169,7 +169,13 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   ingredients. Selectors in `core/model/Week.kt`.
 - **Instellingen** (Settings; the rail's bottom item): *Taal* first (Dutch (Flemish) by default,
   English on request; `set_language`, setting `app.lang`; switching changes both the strings and
-  what tools write), then Koppelingen.
+  what tools write), then *Samen op meer toestellen*, then Koppelingen.
+- **Samen op meer toestellen** (sync, like git): one device *deelt het huishouden*, others *doen mee met een code*
+  (a one-time *join code*, 8 letters, ten minutes); each *sync* pulls, merges three ways against the *base*
+  (`sync_base`) and pushes to the household's *SyncSpace* on the relay, sealed on the device (the relay never sees
+  the key). A device's own settings (language, Google, relay link, sync keys) never travel. Tools `start_sync`,
+  `share_sync`, `join_sync` ⚠, `sync_now`, `stop_sync`; code in `core/data/sync`, `core/tools/system/SyncTools.kt`,
+  `mcp/RelaySync.kt`.
 - **Koppelingen** (ChatGPT/Claude and Google): *Relay* (`relay/`, one shared Cloudflare Worker), *connector address*
   (`<relay>/mcp`, the same for everyone), *koppelcode* / *pairing code* (6 digits on the tablet, typed on
   the relay's login page), *linked app* (*Gekoppeld*), *tablet key*. The MCP

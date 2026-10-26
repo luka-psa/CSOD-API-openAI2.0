@@ -36,8 +36,8 @@ import androidx.sqlite.execSQL
  * SQLite-in-a-web-worker in the browser (`openHearthDatabase()`), in-memory on the JVM for tests.
  */
 @Database(
-    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class, MealEntity::class, DishEntity::class, HuddleEntity::class, SettingEntity::class, RecipePhotoEntity::class, app.hearth.core.data.week.ReflectionEntity::class, app.hearth.core.data.week.TranscriptLineEntity::class, app.hearth.core.data.backlog.RoutineLogEntity::class],
-    version = 15,
+    entities = [ShopEntity::class, ShoppingItemEntity::class, BacklogEntity::class, MemberEntity::class, BoardEntity::class, StorageSpotEntity::class, StockItemEntity::class, MealEntity::class, DishEntity::class, HuddleEntity::class, SettingEntity::class, RecipePhotoEntity::class, app.hearth.core.data.week.ReflectionEntity::class, app.hearth.core.data.week.TranscriptLineEntity::class, app.hearth.core.data.backlog.RoutineLogEntity::class, app.hearth.core.data.sync.SyncBaseEntity::class],
+    version = 16,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -54,6 +54,7 @@ import androidx.sqlite.execSQL
         AutoMigration(from = 12, to = 13),
         AutoMigration(from = 13, to = 14),
         AutoMigration(from = 14, to = 15),
+        AutoMigration(from = 15, to = 16),
     ],
 )
 @ConstructedBy(HearthDatabaseConstructor::class)
@@ -68,6 +69,7 @@ abstract class HearthDatabase : RoomDatabase() {
     abstract fun settingDao(): SettingDao
     abstract fun meetingDao(): app.hearth.core.data.week.MeetingDao
     abstract fun backupDao(): app.hearth.core.data.backup.BackupDao
+    abstract fun syncDao(): app.hearth.core.data.sync.SyncDao
 }
 
 /** v5: house rules and frictions leave the backlog for the new Werkbord. */

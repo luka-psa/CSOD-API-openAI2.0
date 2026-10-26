@@ -190,7 +190,7 @@
     </plurals>
     <!-- Connect AI (MCP) -->
     <string name="nav_connect">Settings</string>
-    <string name="connect_subtitle">Language, and your own ChatGPT or Claude, Google Drive and Calendar. No API keys, no extra costs.</string>
+    <string name="connect_subtitle">Language, more devices, your own ChatGPT or Claude, Google Drive and Calendar. No API keys, no extra costs.</string>
     <string name="connect_on">Connection</string>
     <string name="connect_status_off">Off</string>
     <string name="connect_status_connecting">Connecting…</string>
@@ -435,4 +435,29 @@
     <string name="goal_plan_free_hint">e.g. play guitar</string>
     <string name="goal_plan_often">How often?</string>
     <string name="goal_plan_day">On which day?</string>
+    <string name="sync_title">On more devices</string>
+    <string name="sync_card">Sync</string>
+    <string name="sync_body_off">The same tasks, shopping and week menu on the tablet, your phones or an iPad. One device shares the household, the others join with a code. Everything travels sealed: the relay only sees a locked box.</string>
+    <string name="sync_body_on">This device keeps the household in step with the others: shortly after a change, every few minutes while Hearth is open, and with the button.</string>
+    <string name="sync_share">Share this household</string>
+    <string name="sync_join">Join with a code</string>
+    <string name="sync_no_relay">This build has no relay yet. Fill in an address under Advanced.</string>
+    <string name="sync_busy">Syncing…</string>
+    <string name="sync_last">Up to date at %1$s</string>
+    <string name="sync_last_day">Up to date on %1$s at %2$s</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_add_device">Add a device</string>
+    <string name="sync_stop">Stop on this device</string>
+    <string name="sync_stop_title">Stop syncing?</string>
+    <string name="sync_stop_body">Everything stays on this device, and the other devices simply carry on.</string>
+    <string name="sync_code_title">Code for a new device</string>
+    <string name="sync_code_hint">Type this code on the other device, under Settings → On more devices → Join with a code. It works once.</string>
+    <string name="sync_code_until">Valid until %1$s</string>
+    <string name="sync_code_done">Done</string>
+    <string name="sync_join_hint">The code is on a device that is already in, under Add a device.</string>
+    <string name="sync_join_take">Take over the household</string>
+    <string name="sync_join_take_body">Recommended. What is on this device now goes.</string>
+    <string name="sync_join_keep">Merge</string>
+    <string name="sync_join_keep_body">What is here is added to the household.</string>
+    <string name="sync_join_go">Join</string>
 </resources>

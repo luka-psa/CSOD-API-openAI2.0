@@ -79,6 +79,9 @@ import app.hearth.core.tools.week.MarkSortedArgs
 import app.hearth.core.tools.week.RemoveWinArgs
 import app.hearth.core.tools.week.TranscriptLineArgs
 import app.hearth.core.tools.week.FixLineArgs
+import app.hearth.core.data.settings.SettingsRepository
+import app.hearth.core.tools.system.JoinSyncArgs
+import app.hearth.core.tools.system.JoinCodeResult
 import app.hearth.core.tools.system.GoogleSettings
 import app.hearth.core.tools.system.NoArgs
 import app.hearth.core.tools.system.RestoreBackupArgs
@@ -219,6 +222,52 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     /** Unlinks an AI app (or all, with null). The screen asked first. */
     fun unlinkApp(id: String?) = app.relay.unlink(id)
+
+    // ---- Samen op meer toestellen: the household's sync (opt-in) ----
+
+    /** On, when this device is part of a household; when it last synced; and whether a relay exists at all. */
+    val sync: StateFlow<SyncState> = combine(
+        app.settings.value(SettingsRepository.SYNC_KEYS),
+        app.settings.value(SettingsRepository.SYNC_LAST),
+        app.settings.connection,
+        app.syncBusy,
+        app.syncProblem,
+    ) { keys, last, connection, busy, problem ->
+        SyncState(keys != null, last?.toLongOrNull(), connection.relayUrl != null, busy, problem)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SyncState())
+
+    private val _joinCode = MutableStateFlow<JoinCodeResult?>(null)
+    /** The code another device types, while it's shown. */
+    val joinCode: StateFlow<JoinCodeResult?> = _joinCode.asStateFlow()
+
+    fun startSync() = syncAction { _joinCode.value = app.tools.registry.run(app.tools.startSync!!, NoArgs(), it).also { r -> say(r.summary) } }
+    fun shareSync() = syncAction { _joinCode.value = app.tools.registry.run(app.tools.shareSync!!, NoArgs(), it) }
+    fun hideJoinCode() { _joinCode.value = null }
+
+    /** The dialog asked which way first (take the household over, or add this device's things). */
+    fun joinSync(code: String, keepThisDevice: Boolean) = syncAction {
+        say(app.tools.registry.run(app.tools.joinSync!!, JoinSyncArgs(code, keepThisDevice), it, confirmed = true).summary)
+    }
+
+    fun syncNow() = syncAction { say(app.tools.registry.run(app.tools.syncNow!!, NoArgs(), it).summary) }
+
+    fun stopSync() = syncAction {
+        _joinCode.value = null
+        say(app.tools.registry.run(app.tools.stopSync!!, NoArgs(), it).summary)
+    }
+
+    /** Back on screen (the tablet woke, the phone was opened): catch up with the others. */
+    fun syncSoon() = app.syncInBackground()
+
+    private fun syncAction(block: suspend (ToolContext) -> Unit) {
+        viewModelScope.launch {
+            try {
+                app.syncing { block(ctx(ToolSource.UI)) }
+            } catch (e: ToolException) {
+                say(e.userMessage)
+            }
+        }
+    }
 
     // ---- Google Drive backup and Google Calendar (opt-in) ----
 
@@ -851,6 +900,15 @@ data class HeardThought(val lines: List<TranscriptLine>, val proposals: List<Orc
 data class VoorstelRow(val proposal: Orchestrator.Proposal, val checked: Boolean)
 
 /** What's switched on with Google, and when it last ran (epoch ms). */
+/** The household's sync as the Instellingen card shows it. */
+data class SyncState(
+    val on: Boolean = false,
+    val lastSync: Long? = null,
+    val available: Boolean = false,
+    val busy: Boolean = false,
+    val problem: String? = null,
+)
+
 data class GoogleState(
     val backup: Boolean = false,
     val lastBackup: Long? = null,

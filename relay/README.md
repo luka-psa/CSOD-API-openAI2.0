@@ -26,7 +26,11 @@ and rotating refresh tokens (180 days). The tablet lists the linked apps and can
   its tokens.
 - One `Directory` object: the pairing codes valid right now (10 minutes, single use) and a counter of
   wrong guesses per IP (10 per 15 minutes).
-- No household data: requests and answers only pass through.
+- No readable household data: MCP requests and answers only pass through.
+- Per household that syncs (a `SyncSpace`, keyed by a hash of its space id): one snapshot of the household,
+  sealed on the device with AES-256-GCM (the relay never has the key), its version and a hash of the devices'
+  token. Forgotten after a year without syncing. In `Directory`: join offers (a sealed box under a lookup derived
+  from the code with PBKDF2; ten minutes, taken once, 10 wrong tries per IP per 15 minutes).
 
 ## Deploy (one time)
 
@@ -52,6 +56,14 @@ cd relay && npm install && npm test
 The Kotlin end-to-end test (`mcp/src/jvmTest/.../RelayEndToEndTest.kt`) runs the real tablet client
 against a live relay when `HEARTH_E2E_RELAY_URL` is set (not `HEARTH_RELAY_URL`, which only bakes the address into the builds), e.g. a Miniflare server on `http://127.0.0.1:8787`:
 pairing code, OAuth login, a tool call, unlink.
+
+## Sync between a household's devices
+
+`GET /sync/<space>?since=<version>` returns `{version}` when nothing changed, else `{version, data}`;
+`POST /sync/<space>` with `{base, data}` stores a new version, or answers 409 with the current version when another
+device pushed first (the device pulls, merges and pushes again). Both need `Authorization: Bearer <token>`; the first
+push sets it. `POST /sync/offer` `{lookup, box}` and `POST /sync/claim` `{lookup}` hand the household's keys to a
+new device once. Deploying this version adds the `SyncSpace` class (migration `v3` in `wrangler.jsonc`).
 
 ## Recipe import for the web preview
 

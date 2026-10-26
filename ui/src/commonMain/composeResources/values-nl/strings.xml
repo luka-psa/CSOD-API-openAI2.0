@@ -183,7 +183,7 @@
     </plurals>
     <!-- Connect AI (MCP) -->
     <string name="nav_connect">Instellingen</string>
-    <string name="connect_subtitle">Taal, en jullie eigen ChatGPT of Claude, Google Drive en Agenda. Geen API-sleutels, geen extra kosten.</string>
+    <string name="connect_subtitle">Taal, samen op meer toestellen, jullie eigen ChatGPT of Claude, Google Drive en Agenda. Geen API-sleutels, geen extra kosten.</string>
     <string name="connect_on">Verbinding</string>
     <string name="connect_status_off">Uit</string>
     <string name="connect_status_connecting">Verbinden…</string>
@@ -428,4 +428,29 @@
     <string name="goal_plan_free_hint">bv. gitaar spelen</string>
     <string name="goal_plan_often">Hoe vaak?</string>
     <string name="goal_plan_day">Op welke dag?</string>
+    <string name="sync_title">Samen op meer toestellen</string>
+    <string name="sync_card">Synchroniseren</string>
+    <string name="sync_body_off">Dezelfde taken, boodschappen en weekmenu op de tablet, jullie gsm’s of een iPad. Eén toestel deelt het huishouden, de andere doen mee met een code. Alles gaat versleuteld: de koppelserver ziet alleen een gesloten doos.</string>
+    <string name="sync_body_on">Dit toestel houdt het huishouden gelijk met de andere: kort na een wijziging, om de paar minuten zolang Hearth openstaat, en met de knop.</string>
+    <string name="sync_share">Deel dit huishouden</string>
+    <string name="sync_join">Doe mee met een code</string>
+    <string name="sync_no_relay">Deze versie heeft nog geen koppelserver. Vul een adres in onder Geavanceerd.</string>
+    <string name="sync_busy">Bezig met synchroniseren…</string>
+    <string name="sync_last">Bijgewerkt om %1$s</string>
+    <string name="sync_last_day">Bijgewerkt op %1$s om %2$s</string>
+    <string name="sync_now">Nu synchroniseren</string>
+    <string name="sync_add_device">Toestel toevoegen</string>
+    <string name="sync_stop">Stoppen op dit toestel</string>
+    <string name="sync_stop_title">Stoppen met synchroniseren?</string>
+    <string name="sync_stop_body">Alles blijft op dit toestel staan, en de andere toestellen gaan gewoon door.</string>
+    <string name="sync_code_title">Code voor een nieuw toestel</string>
+    <string name="sync_code_hint">Typ deze code op het andere toestel, onder Instellingen → Samen op meer toestellen → Doe mee met een code. Hij werkt één keer.</string>
+    <string name="sync_code_until">Geldig tot %1$s</string>
+    <string name="sync_code_done">Klaar</string>
+    <string name="sync_join_hint">De code staat op een toestel dat al meedoet, onder Toestel toevoegen.</string>
+    <string name="sync_join_take">Neem het huishouden over</string>
+    <string name="sync_join_take_body">Aangeraden. Wat nu op dit toestel staat, verdwijnt.</string>
+    <string name="sync_join_keep">Voeg samen</string>
+    <string name="sync_join_keep_body">Wat hier staat, komt bij het huishouden.</string>
+    <string name="sync_join_go">Doe mee</string>
 </resources>
