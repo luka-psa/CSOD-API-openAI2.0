@@ -1,5 +1,16 @@
 package app.hearth.ui
 
+import app.hearth.ai.Orchestrator
+import app.hearth.core.model.plusDays
+import app.hearth.ui.resources.place_rhythm
+import app.hearth.ui.resources.suggestion_rhythm_hint
+import app.hearth.ui.resources.suggestion_added
+import app.hearth.ui.resources.suggestion_add_now
+import app.hearth.ui.resources.suggestion_no_day
+import app.hearth.ui.resources.suggestion_when
+import app.hearth.ui.resources.suggestion_where
+import app.hearth.ui.resources.suggestion_name
+import app.hearth.ui.resources.suggestion_title
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
@@ -9,8 +20,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import app.hearth.ui.resources.save
 import app.hearth.ui.resources.cancel
-import app.hearth.ui.resources.fix_words_title
-import app.hearth.ui.resources.fix_words_hint
 import app.hearth.ui.resources.heard_this_week
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,11 +68,10 @@ import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.Ease
 import app.hearth.core.model.isRoutine
-import app.hearth.core.model.Meter
-import app.hearth.core.model.MeterValue
+import app.hearth.core.model.WeekRating
+import app.hearth.core.model.weekWord
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.title
-import app.hearth.core.model.word
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -76,16 +84,16 @@ import app.hearth.ui.resources.small_step_hint
 import app.hearth.ui.resources.small_step_line
 import app.hearth.ui.resources.small_step_title
 import app.hearth.ui.resources.habit_less_often
-import app.hearth.ui.resources.meters_agreed
-import app.hearth.ui.resources.meters_guess
-import app.hearth.ui.resources.meters_hint
-import app.hearth.ui.resources.meters_neutral
-import app.hearth.ui.resources.meters_no_agreement
-import app.hearth.ui.resources.meters_off
-import app.hearth.ui.resources.meters_ok
-import app.hearth.ui.resources.meters_switch_off
-import app.hearth.ui.resources.meters_switch_on
-import app.hearth.ui.resources.meters_title
+import app.hearth.ui.resources.week_agreed
+import app.hearth.ui.resources.week_guess
+import app.hearth.ui.resources.week_hint
+import app.hearth.ui.resources.week_neutral
+import app.hearth.ui.resources.week_no_agreement
+import app.hearth.ui.resources.week_off
+import app.hearth.ui.resources.week_ok
+import app.hearth.ui.resources.week_switch_off
+import app.hearth.ui.resources.week_switch_on
+import app.hearth.ui.resources.week_title
 import app.hearth.ui.resources.review_title
 import app.hearth.ui.resources.review_hint
 import app.hearth.ui.resources.review_empty
@@ -207,12 +215,11 @@ fun ListenPill(lines: Int, partial: String, onBack: () -> Unit, onStop: () -> Un
     }
 }
 
-/** What Luister mee heard, line by line. In the meeting that is still open, a tap on a line fixes its words. */
+/** What Luister mee heard, line by line, as it was said. What Hearth made of it is changed on the suggestions. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> Unit)?, onFix: ((String, String) -> Unit)? = null, onDismiss: () -> Unit) {
+fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> Unit)?, onDismiss: () -> Unit) {
     var clearing by remember { mutableStateOf(false) }
-    var fixing by remember { mutableStateOf<TranscriptLine?>(null) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.85f).navigationBarsPadding().padding(horizontal = 28.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -224,7 +231,7 @@ fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> 
             if (lines.isEmpty()) EmptyHint(stringResource(Res.string.transcript_empty))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(lines) { _, line ->
-                    Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).then(if (onFix != null) Modifier.clickable { fixing = line } else Modifier).padding(vertical = 2.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
                         Text(clock(line.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(52.dp).padding(top = 3.dp))
                         Text(line.text, style = MaterialTheme.typography.bodyLarge, color = if (line.sorted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     }
@@ -235,38 +242,6 @@ fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> 
     if (clearing && onClear != null) {
         ConfirmDialog(stringResource(Res.string.transcript_clear), stringResource(Res.string.transcript_clear_body), onYes = onClear) { clearing = false }
     }
-    fixing?.let { line -> if (onFix != null) FixWordsDialog(listOf(line), onFix) { fixing = null } }
-}
-
-/** Words the recognizer misheard, fixed per line: "oprecht" becomes "opgehaald". Hearth then reads them again. */
-@Composable
-fun FixWordsDialog(lines: List<TranscriptLine>, onFix: (String, String) -> Unit, onDismiss: () -> Unit) =
-    FixWordsDialog(lines.map { it.text }, onSave = { texts -> lines.zip(texts).forEach { (line, text) -> if (text != line.text.trim()) onFix(line.id, text) } }, onDismiss = onDismiss)
-
-@Composable
-fun FixWordsDialog(initial: List<String>, onSave: (List<String>) -> Unit, onDismiss: () -> Unit) {
-    val texts = remember { initial.map { it.trim() }.toMutableStateList() }
-    var asking by remember { mutableStateOf(false) }
-    val changed = initial.indices.any { texts[it].trim() != initial[it].trim() }
-    AlertDialog(
-        onDismissRequest = { if (changed) asking = true else onDismiss() },
-        title = { Text(stringResource(Res.string.fix_words_title)) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(Res.string.fix_words_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                initial.indices.forEach { i -> OutlinedTextField(texts[i], { texts[i] = it }, modifier = Modifier.fillMaxWidth()) }
-            }
-        },
-        confirmButton = {
-            FilledTonalButton(
-                onClick = { onSave(texts.mapIndexed { i, t -> t.trim().ifEmpty { initial[i].trim() } }); onDismiss() },
-                enabled = changed,
-            ) { Text(stringResource(Res.string.save)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) } },
-        containerColor = MaterialTheme.colorScheme.surface,
-    )
-    if (asking) DiscardDialog(onKeep = { asking = false }, onDiscard = { asking = false; onDismiss() })
 }
 
 @OptIn(kotlin.time.ExperimentalTime::class)
@@ -282,7 +257,7 @@ fun VoorstelSheet(
     lang: Lang,
     onMove: (Int, Place) -> Unit,
     onToggle: (Int) -> Unit,
-    onEdit: (Int, String) -> Unit,
+    onEdit: (Int, SuggestionChange) -> Unit,
     onAdd: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -322,16 +297,18 @@ fun VoorstelSheet(
 }
 
 @Composable
-private fun VoorstelLine(row: VoorstelRow, today: LocalDate, lang: Lang, onMove: (Place) -> Unit, onToggle: () -> Unit, onEdit: (String) -> Unit) {
+private fun VoorstelLine(row: VoorstelRow, today: LocalDate, lang: Lang, onMove: (Place) -> Unit, onToggle: () -> Unit, onEdit: (SuggestionChange) -> Unit) {
     var choosing by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     val p = row.proposal
+    if (editing) SuggestionSheet(p, today, lang, onSave = onEdit, onAddNow = null) { editing = false }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(MaterialTheme.colorScheme.surface).padding(horizontal = 6.dp, vertical = 4.dp),
     ) {
-        Checkbox(checked = row.checked, onCheckedChange = { onToggle() }, enabled = p.calls.isNotEmpty())
-        // Tap the words to fix them; Hearth reads them again.
+        if (row.added) Icon(HearthIcons.Check, stringResource(Res.string.suggestion_added), tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(12.dp).size(22.dp))
+        else Checkbox(checked = row.checked, onCheckedChange = { onToggle() }, enabled = p.calls.isNotEmpty())
+        // Tap it to change its name, place or day.
         Column(Modifier.weight(1f).clip(MaterialTheme.shapes.small).clickable { editing = true }.padding(vertical = 6.dp, horizontal = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -340,7 +317,7 @@ private fun VoorstelLine(row: VoorstelRow, today: LocalDate, lang: Lang, onMove:
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Spacer(Modifier.width(6.dp))
-                Icon(HearthIcons.Edit, stringResource(Res.string.fix_words_title), tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
+                Icon(HearthIcons.Edit, stringResource(Res.string.suggestion_title), tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
             }
             val day = p.date?.let { dayLabel(it, today, lang) } ?: if (p.next) stringResource(Res.string.heard_this_week) else null
             val heard = if (p.text.trim().lowercase() != p.heard.trim().lowercase()) "“${p.heard}”" else null
@@ -363,10 +340,79 @@ private fun VoorstelLine(row: VoorstelRow, today: LocalDate, lang: Lang, onMove:
     }
 }
 
+/** What the family changed on a suggestion: its words, where it goes, and its day (or "deze week"). */
+data class SuggestionChange(val text: String, val place: Place, val date: LocalDate?, val next: Boolean)
+
+/**
+ * One suggestion from the conversation, opened to change it: the name, where it goes (a task, an appointment, a
+ * rhythm…) and its day, all filled in from what was said. Bewaar keeps the change for the Voorstel; Zet erin adds it
+ * right away.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SuggestionSheet(
+    p: Orchestrator.Proposal,
+    today: LocalDate,
+    lang: Lang,
+    onSave: (SuggestionChange) -> Unit,
+    onAddNow: ((SuggestionChange) -> Unit)?,
+    onDismiss: () -> Unit,
+) {
+    var text by remember { mutableStateOf(p.text.replaceFirstChar { it.uppercase() }) }
+    var place by remember { mutableStateOf(p.place) }
+    var date by remember { mutableStateOf(p.date) }
+    var next by remember { mutableStateOf(p.next) }
+    val change = SuggestionChange(text.trim(), place, date, next && date == null)
+    val dirty = text.trim() != p.text.replaceFirstChar { it.uppercase() } || place != p.place || date != p.date || next != p.next
+    val dated = place in listOf(Place.PLANNING, Place.EVENT, Place.FREE_TIME, Place.MEAL)
+    FormSheet(dirty, onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp).padding(bottom = 28.dp).navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(stringResource(Res.string.suggestion_title), style = MaterialTheme.typography.headlineSmall)
+            if (p.heard.isNotBlank()) {
+                Text("“${p.heard.trim()}”", style = MaterialTheme.typography.bodyMedium, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            OutlinedTextField(text, { text = it }, label = { Text(stringResource(Res.string.suggestion_name)) }, modifier = Modifier.fillMaxWidth())
+            Text(stringResource(Res.string.suggestion_where), style = MaterialTheme.typography.titleMedium)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Place.entries.forEach { pl -> ChoiceChip(stringResource(pl.label()), place == pl, { place = pl }, icon = pl.icon()) }
+            }
+            if (dated) {
+                Text(stringResource(Res.string.suggestion_when), style = MaterialTheme.typography.titleMedium)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (place != Place.MEAL) {
+                        ChoiceChip(stringResource(Res.string.suggestion_no_day), date == null && !next, { date = null; next = false })
+                        ChoiceChip(stringResource(Res.string.heard_this_week).replaceFirstChar { it.uppercase() }, date == null && next, { date = null; next = true })
+                    }
+                    (0 until 7).map { today.plusDays(it) }.forEach { d ->
+                        ChoiceChip(dayLabel(d, today, lang).replaceFirstChar { it.uppercase() } + if (d.toEpochDays() - today.toEpochDays() >= 2) " ${d.day}" else "", date == d, { date = d; next = false })
+                    }
+                    // A day further away that was heard keeps its own chip.
+                    p.date?.takeIf { it > today.plusDays(6) }?.let { d -> ChoiceChip(dayLabel(d, today, lang), date == d, { date = d; next = false }) }
+                }
+            }
+            if (place == Place.RHYTHM) {
+                Text(stringResource(Res.string.suggestion_rhythm_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (onAddNow != null) {
+                    Button(onClick = { onAddNow(change); onDismiss() }, enabled = text.isNotBlank() && place != Place.NONE) { Text(stringResource(Res.string.suggestion_add_now)) }
+                }
+                FilledTonalButton(onClick = { onSave(change); onDismiss() }, enabled = text.isNotBlank()) { Text(stringResource(Res.string.save)) }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
+            }
+        }
+    }
+}
+
 fun Place.label(): StringResource = when (this) {
     Place.PLANNING -> Res.string.place_planning
     Place.EVENT -> Res.string.place_event
     Place.FREE_TIME -> Res.string.place_free
+    Place.RHYTHM -> Res.string.place_rhythm
     Place.SHOPPING -> Res.string.place_shopping
     Place.MEAL -> Res.string.place_meal
     Place.HOUSE_RULE -> Res.string.place_rule
@@ -381,6 +427,7 @@ fun Place.section(): Section = when (this) {
     Place.PLANNING -> Section.PROJECT
     Place.EVENT -> Section.APPOINTMENT
     Place.FREE_TIME -> Section.PROTECTED_TIME
+    Place.RHYTHM -> Section.RHYTHM
     Place.SHOPPING -> Section.SHOPPING
     Place.MEAL -> Section.SHOPPING
     Place.HOUSE_RULE -> Section.NOTE
@@ -395,6 +442,7 @@ fun Place.icon() = when (this) {
     Place.PLANNING -> HearthIcons.Backlog
     Place.EVENT -> HearthIcons.Calendar
     Place.FREE_TIME -> Topic.FREE_TIME.icon()
+    Place.RHYTHM -> Topic.RHYTHM.icon()
     Place.SHOPPING -> HearthIcons.Cart
     Place.MEAL -> HearthIcons.Restaurant
     Place.HOUSE_RULE -> HearthIcons.Rule
@@ -424,85 +472,13 @@ fun WinsSection(wins: List<Win>, members: List<Member>, onAdd: (String) -> Unit,
     removing?.let { w -> ConfirmDialog(stringResource(Res.string.win_remove), w.text, onYes = { onRemove(w) }) { removing = null } }
 }
 
-/**
- * The two household meters, agreed together. Hearth's guess has a ring; a tap on a step is what the family
- * agreed; "Geen akkoord" leaves it neutral. Can be switched off when it causes more friction than it helps.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun MetersSection(
-    on: Boolean,
-    meters: List<MeterValue>,
-    suggestedFlow: Int,
-    suggestedStrain: Int,
-    lang: Lang,
-    onSet: (Meter, Int?, Int?) -> Unit,
-    onSwitch: (Boolean) -> Unit,
-) {
-    if (!on) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(Res.string.meters_off), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-            TextButton(onClick = { onSwitch(true) }) { Text(stringResource(Res.string.meters_switch_on)) }
-        }
-        return
-    }
-    GroupTitle(stringResource(Res.string.meters_title))
-    Text(stringResource(Res.string.meters_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 6.dp))
-    listOf(Meter.FLOW to suggestedFlow, Meter.STRAIN to suggestedStrain).forEach { (meter, guess) ->
-        val set = meters.firstOrNull { it.meter == meter }
-        val ink = if (meter == Meter.FLOW) Section.CHORE.style().ink else Section.FRICTION.style().ink
-        // On a phone the question sits above its five steps; nothing gets squeezed into a narrow column.
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
-            val stacked = maxWidth < 520.dp
-            Column {
-                if (stacked) Text(meter.title(lang) + "?", style = MaterialTheme.typography.titleSmall)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (!stacked) Text(meter.title(lang) + "?", style = MaterialTheme.typography.titleSmall, modifier = Modifier.width(140.dp))
-                    (1..5).forEach { n ->
-                        val chosen = set != null && n <= set.value
-                        val isGuess = n == guess
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(44.dp).clip(CircleShape)
-                                .then(if (isGuess) Modifier.border(2.dp, ink.copy(alpha = 0.5f), CircleShape) else Modifier)
-                                .clickable { onSet(meter, n, guess) },
-                        ) {
-                            Icon(
-                                if (meter == Meter.FLOW) HearthIcons.Sun else HearthIcons.Bolt, n.toString(),
-                                // Not agreed yet: Hearth's guess shows faintly.
-                                tint = when {
-                                    chosen -> ink
-                                    set == null && n <= guess -> ink.copy(alpha = 0.35f)
-                                    else -> MaterialTheme.colorScheme.outline
-                                },
-                                modifier = Modifier.size(if (chosen) 26.dp else 22.dp),
-                            )
-                        }
-                    }
-                }
-                val status = when {
-                    set == null -> stringResource(Res.string.meters_guess, meter.word(guess, lang))
-                    !set.agreed -> stringResource(Res.string.meters_neutral)
-                    else -> stringResource(Res.string.meters_agreed, meter.word(set.value, lang))
-                }
-                FlowRow(
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(start = if (stacked) 0.dp else 140.dp),
-                ) {
-                    Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterVertically).padding(end = 6.dp))
-                    if (set == null) TextButton(onClick = { onSet(meter, guess, guess) }) { Text(stringResource(Res.string.meters_ok)) }
-                    TextButton(onClick = { onSet(meter, null, guess) }) { Text(stringResource(Res.string.meters_no_agreement)) }
-                }
-            }
-        }
-    }
-    TextButton(onClick = { onSwitch(false) }) { Text(stringResource(Res.string.meters_switch_off), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-}
+/** How the week went, as weather: Hearth's guess has a ring; "Geen akkoord" is an answer too. Can be switched off. */
+class WeekWeather(val on: Boolean, val rating: WeekRating?, val suggested: Ease, val onRate: (Ease?, Ease) -> Unit, val onSwitch: (Boolean) -> Unit)
 
 /**
- * Terugblik: "Hoe lopen de ritmes en huisregels?" Every routine (in the order of the day) and every house rule on the
- * same scale, decided together: loopt vanzelf, vraagt moeite, te zwaar. Never who. Not running easily? A smaller first
- * step, right there. A house rule that is too much two meetings in a row comes back as a friction.
+ * Terugblik: "Hoe liep het?" The week, every routine (in the order of the day) and every house rule on one weather
+ * scale, decided together: zon (loopt vanzelf), wolk (vraagt moeite), bliksem (te zwaar). Never who. Not running
+ * easily? A smaller first step, right there. A house rule that is too much two meetings in a row comes back as a friction.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -514,13 +490,41 @@ fun ReviewSection(
     onRateRoutine: (BacklogItem, Ease) -> Unit,
     onRateRule: (BoardItem, Ease) -> Unit,
     onSmallStep: (BacklogItem, String) -> Unit,
+    week: WeekWeather? = null,
 ) {
     var asking by remember { mutableStateOf<BacklogItem?>(null) }
     GroupTitle(stringResource(Res.string.review_title))
     Text(stringResource(Res.string.review_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
+
+    if (week != null) {
+        if (week.on) {
+            val rating = week.rating
+            val ease = rating?.ease
+            Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 10.dp)) {
+                Text(stringResource(Res.string.week_title), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(Res.string.week_hint), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FlowRow(verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    WeatherScale(ease, { week.onRate(it, week.suggested) }, guess = week.suggested)
+                    val status = when {
+                        rating == null -> stringResource(Res.string.week_guess, week.suggested.weekWord(lang))
+                        ease == null -> stringResource(Res.string.week_neutral)
+                        else -> stringResource(Res.string.week_agreed, ease.weekWord(lang))
+                    }
+                    Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterVertically).padding(horizontal = 6.dp))
+                    if (rating == null) TextButton(onClick = { week.onRate(week.suggested, week.suggested) }) { Text(stringResource(Res.string.week_ok)) }
+                    if (rating == null || ease != null) TextButton(onClick = { week.onRate(null, week.suggested) }) { Text(stringResource(Res.string.week_no_agreement)) }
+                }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp)) {
+                Text(stringResource(Res.string.week_off), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                TextButton(onClick = { week.onSwitch(true) }) { Text(stringResource(Res.string.week_switch_on)) }
+            }
+        }
+    }
+
     if (routines.isEmpty() && rules.isEmpty()) {
         Text(stringResource(Res.string.review_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, top = 4.dp))
-        return
     }
 
     @Composable
@@ -532,8 +536,9 @@ fun ReviewSection(
 
     @Composable
     fun Scale(current: Ease?, onRate: (Ease) -> Unit, extra: @Composable () -> Unit = {}) =
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-            Ease.entries.forEach { ease -> if (current == ease) EasePill(ease) else ChoiceChip(stringResource(ease.label()), false, { onRate(ease) }) }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 2.dp)) {
+            WeatherScale(current, onRate)
+            current?.let { Text(stringResource(it.label()), style = MaterialTheme.typography.labelMedium, color = easeColors(it).first, modifier = Modifier.align(Alignment.CenterVertically)) }
             extra()
         }
 
@@ -561,6 +566,9 @@ fun ReviewSection(
                 Scale(checks.firstOrNull { it.ruleId == rule.id }?.ease, { onRateRule(rule, it) })
             }
         }
+    }
+    if (week?.on == true) {
+        TextButton(onClick = { week.onSwitch(false) }) { Text(stringResource(Res.string.week_switch_off), color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
     asking?.let { h ->
         TextDialog(stringResource(Res.string.small_step_title), stringResource(Res.string.small_step_hint), onDone = { t, _ -> onSmallStep(h, t) }) { asking = null }

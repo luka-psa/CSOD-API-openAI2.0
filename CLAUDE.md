@@ -105,10 +105,14 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   het?"): *Ease* EASY "loopt vanzelf" (green) / EFFORT "vraagt moeite" (amber) /
   HARD "te zwaar" (orange, never red) with an optional *small step* ("Begin klein").
   A chore's ease comes from the `routine_log`; a task's from how often it was
-  *postponed* (2× amber, 4× orange). A routine can hang on an *Anchor*, a moment of the
-  day (ochtend, na school, rond het eten, avond, slapengaan; never a clock time): the
+  *postponed* (2× amber, 4× orange). One *weather* scale shows ease everywhere: zon (loopt vanzelf), wolk (vraagt
+  moeite), bliksem (te zwaar). A routine can hang on an *Anchor*, a moment of the
+  day (ochtend, na school, rond het eten, avond, slapengaan): the
   morning and evening routines are laid out per moment; a chore with a moment belongs
-  to the rhythm, one without to the household. A routine can have *steps* (`parentId`,
+  to the rhythm, one without to the household. What really happens on a day gets *fixed days* (`Schedule`,
+  `set_routine_schedule`): weekdays, a date or the nth weekday of the month, a time only when it is fixed ("zwemles
+  elke woensdag om 14:00"); on its day it is aan de beurt, after it it stays open until done or its next day (never
+  "late"), and it repeats in its own Google calendar *Hearth · Ritmes*. Most routines need only a moment. A routine can have *steps* (`parentId`,
   `add_routine`): a sequence ("avondroutine: boodschappen, Mia ophalen, koken, pyjama")
   or a checklist ("paklijst opvang: luiers, flesjes"); steps are ticked per day and come
   back tomorrow; all ticked = the routine is done today. Steps show small and in order (a bar, the next step,
@@ -154,18 +158,17 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Doelen* (next small step), *Admin & afspraken* (admin and appointments), *Grote taken*,
   *Huishouden* (chores without a moment), *Ritmes & routines* (laid out per moment of the day), *Boodschappen*,
   *Weekmenu*, *Frictie & ideeën*, *Huisregels*): each a calm tile with a *glance*,
-  tap to open its list. Terugblik (*Wat ging goed* = wins; two household
-  *meters*, *Hoe liep het* (FLOW) and *Wat schuurde* (STRAIN), suggested by Hearth and
-  agreed together, *Geen akkoord* = neutral; never per person, can be switched off),
-  *Hoe lopen de ritmes en huisregels?* (every routine, in the order of the day, and every house rule on
-  one scale: loopt vanzelf / vraagt moeite / te zwaar, never who; a smaller first step right there; a rule
+  tap to open its list. Terugblik (*Wat ging goed* = wins; *Hoe liep het?*: *de week* (`rate_week`, suggested by Hearth,
+  agreed together, *Geen akkoord* is an answer too; can be switched off), every routine (in the order of the day) and
+  every house rule on one weather scale from bliksem to zon, never who; a smaller first step right there; a rule
   that is too much two meetings in a row comes back as a friction),
   Deze week (7 days, plans with their colour, the meal small underneath),
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
   *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each *thought*
   (stretches joined by how they sound, never cut at a pause) with its *conclusions* in their topic's colour, once it has
-  settled, and lights up that tile (the *transcript* lasts until the next meeting; a tap fixes misheard words); *Zet op
-  zijn plek* opens the *Voorstel* (each conclusion → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers
+  settled, and lights up that tile (the *transcript* lasts until the next meeting); a tap on a conclusion opens it to
+  change its name, *Place* (taak, afspraak, ritme, …) and day, filled in from what was said (*Zet erin* adds it right
+  away); *Zet op zijn plek* opens the *Voorstel* (each conclusion → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.
 - **Instellingen** (Settings; the rail's bottom item): *Taal* first (Dutch (Flemish) by default,
   English on request; `set_language`, setting `app.lang`; switching changes both the strings and
@@ -176,9 +179,10 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   the key). A device's own settings (language, Google, relay link, sync keys) never travel. Tools `start_sync`,
   `share_sync`, `join_sync` ⚠, `sync_now`, `stop_sync`; code in `core/data/sync`, `core/tools/system/SyncTools.kt`,
   `mcp/RelaySync.kt`.
-- **Koppelingen** (ChatGPT/Claude and Google): *Relay* (`relay/`, one shared Cloudflare Worker), *connector address*
-  (`<relay>/mcp`, the same for everyone), *koppelcode* / *pairing code* (6 digits on the tablet, typed on
-  the relay's login page), *linked app* (*Gekoppeld*), *tablet key*. The MCP
+- **Koppelingen** (ChatGPT/Claude and Google): *Relay* (`relay/`, one shared Cloudflare Worker; its address is built
+  in, never typed in the app), *connector address* (`<relay>/mcp`, the same for everyone), linked in four steps (copy or
+  share the address, *Open Claude* / *Open ChatGPT* on their connector page, *Toon koppelcode*, done), *koppelcode* /
+  *pairing code* (6 digits on the tablet, typed on the relay's login page), *linked app* (*Gekoppeld*), *tablet key*. The MCP
   server lives in `mcp/`; tablet-only tools set `exposeOverMcp = false`. Google:
   *Back-up* (Drive app folder, *Terugzetten* asks first) and the *Hearth* calendar; setup in
   `docs/GOOGLE.md`.

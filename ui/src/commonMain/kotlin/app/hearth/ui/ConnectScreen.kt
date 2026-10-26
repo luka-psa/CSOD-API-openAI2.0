@@ -1,5 +1,17 @@
 package app.hearth.ui
 
+import androidx.compose.ui.platform.LocalUriHandler
+import app.hearth.ui.resources.connect_step_done
+import app.hearth.ui.resources.connect_step_code
+import app.hearth.ui.resources.connect_chatgpt_how
+import app.hearth.ui.resources.connect_claude_how
+import app.hearth.ui.resources.connect_open_chatgpt
+import app.hearth.ui.resources.connect_open_claude
+import app.hearth.ui.resources.connect_step_open
+import app.hearth.ui.resources.connect_copied
+import app.hearth.ui.resources.connect_copy
+import app.hearth.ui.resources.connect_step_copy
+import app.hearth.ui.resources.connect_share_text
 import app.hearth.ui.resources.settings_language_card
 import app.hearth.ui.resources.settings_language
 import app.hearth.core.model.Lang
@@ -55,10 +67,6 @@ import app.hearth.ui.resources.examples_card
 import app.hearth.ui.resources.examples_load
 import app.hearth.ui.resources.examples_title
 import app.hearth.ui.resources.connect_apps
-import app.hearth.ui.resources.connect_chatgpt
-import app.hearth.ui.resources.connect_chatgpt_steps
-import app.hearth.ui.resources.connect_claude
-import app.hearth.ui.resources.connect_claude_steps
 import app.hearth.ui.resources.connect_code_hide
 import app.hearth.ui.resources.connect_code_valid
 import app.hearth.ui.resources.connect_link
@@ -209,49 +217,91 @@ private fun StatusPill(status: RelayStatus) {
     }
 }
 
-/** The one Hearth address, the pairing code, and the steps for each AI app. */
+/**
+ * Linking ChatGPT or Claude, as four plain steps: copy the address (or share it to your phone), open your AI app on
+ * its connector page and add it, type the code this tablet shows, done. One tap without pasting only exists for
+ * apps listed in Claude's and ChatGPT's own directories.
+ */
 @Composable
 private fun LinkCard(connection: Connection, status: RelayStatus, code: PairingCode?, cb: ConnectCallbacks) {
     val share = rememberShare()
+    val copy = rememberCopy()
+    val links = LocalUriHandler.current
     val url = connection.connectorUrl ?: return
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) { if (copied) { delay(2_500); copied = false } }
+    val shareText = stringResource(Res.string.connect_share_text, url, CLAUDE_CONNECTORS, CHATGPT_CONNECTORS)
     HearthCard(stringResource(Res.string.connect_link), HearthIcons.Share, Modifier.fillMaxWidth()) {
         Text(stringResource(Res.string.connect_link_body), style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.size(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SelectionContainer(Modifier.weight(1f)) {
+        Spacer(Modifier.size(14.dp))
+
+        LinkStep(1, stringResource(Res.string.connect_step_copy)) {
+            SelectionContainer(Modifier.fillMaxWidth()) {
                 Text(
                     url,
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(14.dp)).padding(14.dp),
                 )
             }
-            Spacer(Modifier.width(10.dp))
-            FilledTonalButton(onClick = { share(url) }) {
-                Icon(HearthIcons.Share, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(Res.string.connect_share))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+                FilledTonalButton(onClick = { copy(url); copied = true }) { Text(stringResource(if (copied) Res.string.connect_copied else Res.string.connect_copy)) }
+                TextButton(onClick = { share(shareText) }) {
+                    Icon(HearthIcons.Share, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(Res.string.connect_share))
+                }
             }
         }
-        Spacer(Modifier.size(16.dp))
-        if (code != null && code.expiresAt > nowMillis()) {
-            CodeBox(code, cb.hideCode)
-        } else {
-            Button(
-                onClick = cb.showCode,
-                enabled = connection.enabled && status == RelayStatus.ONLINE,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(stringResource(Res.string.connect_show_code), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 6.dp)) }
+        LinkStep(2, stringResource(Res.string.connect_step_open)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FilledTonalButton(onClick = { runCatching { links.openUri(CLAUDE_CONNECTORS) } }) { Text(stringResource(Res.string.connect_open_claude)) }
+                FilledTonalButton(onClick = { runCatching { links.openUri(CHATGPT_CONNECTORS) } }) { Text(stringResource(Res.string.connect_open_chatgpt)) }
+            }
+            Text(stringResource(Res.string.connect_claude_how), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+            Text(stringResource(Res.string.connect_chatgpt_how), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
         }
-        Spacer(Modifier.size(18.dp))
-        Text(stringResource(Res.string.connect_claude), style = MaterialTheme.typography.titleSmall)
-        Steps(stringResource(Res.string.connect_claude_steps))
-        Spacer(Modifier.size(12.dp))
-        Text(stringResource(Res.string.connect_chatgpt), style = MaterialTheme.typography.titleSmall)
-        Steps(stringResource(Res.string.connect_chatgpt_steps))
-        Spacer(Modifier.size(12.dp))
+        LinkStep(3, stringResource(Res.string.connect_step_code)) {
+            if (code != null && code.expiresAt > nowMillis()) {
+                CodeBox(code, cb.hideCode)
+            } else {
+                // Switches the connection on when it is off; the code comes as soon as the tablet is online.
+                Button(
+                    onClick = cb.showCode,
+                    enabled = !connection.enabled || status == RelayStatus.ONLINE || status == RelayStatus.RETRYING,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        stringResource(if (connection.enabled && status == RelayStatus.CONNECTING) Res.string.connect_status_connecting else Res.string.connect_show_code),
+                        style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 6.dp),
+                    )
+                }
+            }
+        }
+        LinkStep(4, stringResource(Res.string.connect_step_done), last = true) {}
+        Spacer(Modifier.size(6.dp))
         Text(stringResource(Res.string.connect_plan_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+
+/** One numbered step: a small round number, what to do, and its buttons under it. */
+@Composable
+private fun LinkStep(n: Int, title: String, last: Boolean = false, content: @Composable () -> Unit) {
+    val s = app.hearth.core.model.Section.NOTE.style()
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().padding(bottom = if (last) 0.dp else 14.dp)) {
+        Box(Modifier.size(28.dp).background(s.tint, CircleShape), contentAlignment = Alignment.Center) {
+            Text("$n", style = MaterialTheme.typography.labelLarge, color = s.ink)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+            content()
+        }
+    }
+}
+
+/** Where each app adds a custom connector: Claude's connector page, ChatGPT's Developer mode switch. */
+private const val CLAUDE_CONNECTORS = "https://claude.ai/customize/connectors"
+private const val CHATGPT_CONNECTORS = "https://chatgpt.com/#settings/Connectors/Advanced"
 
 /** The pairing code, big enough to read from the sofa, with how long it still works. */
 @Composable
@@ -272,23 +322,6 @@ private fun CodeBox(code: PairingCode, onHide: () -> Unit) {
         Text(code.spaced, fontSize = 56.sp, fontWeight = FontWeight.Bold, letterSpacing = 6.sp, color = MaterialTheme.colorScheme.primary)
         Text(stringResource(Res.string.connect_code_valid, minutes), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(onClick = onHide) { Text(stringResource(Res.string.connect_code_hide)) }
-    }
-}
-
-/** "1. … | 2. …" as numbered lines. */
-@Composable
-private fun Steps(text: String) {
-    val s = app.hearth.core.model.Section.NOTE.style()
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-        text.split("|").map { it.trim() }.filter { it.isNotEmpty() }.forEachIndexed { i, step ->
-            Row(verticalAlignment = Alignment.Top) {
-                Box(Modifier.size(24.dp).background(s.tint, CircleShape), contentAlignment = Alignment.Center) {
-                    Text("${i + 1}", style = MaterialTheme.typography.labelMedium, color = s.ink)
-                }
-                Spacer(Modifier.width(10.dp))
-                Text(step, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 2.dp))
-            }
-        }
     }
 }
 

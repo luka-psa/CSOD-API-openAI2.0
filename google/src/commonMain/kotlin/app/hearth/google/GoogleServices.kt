@@ -178,11 +178,23 @@ class GoogleCalendarApi(
         if (res.status != HttpStatusCode.NotFound && res.status != HttpStatusCode.Gone) res.ok()
     }
 
+    /** All day, or an hour from [CalendarEvent.time] in this device's time zone; repeating when it has a recurrence. */
     private fun eventJson(e: CalendarEvent): String {
-        val end = LocalDate.parse(e.date).plus(DatePeriod(days = 1))
         val s = { v: String -> Json.encodeToString(String.serializer(), v) }
-        return """{"id":"${e.id}","summary":${s(e.title)},"description":${s(e.description)},""" +
-            """"start":{"date":"${e.date}"},"end":{"date":"$end"},"transparency":"transparent","reminders":{"useDefault":false}}"""
+        val time = e.time
+        val span = if (time != null) {
+            val (h, m) = time.split(":").map { it.toInt() }
+            val endH = (h + 1).coerceAtMost(23)
+            val endM = if (h == 23) 59 else m
+            val tz = timeZone()
+            fun at(hh: Int, mm: Int) = """{"dateTime":"${e.date}T${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}:00","timeZone":"$tz"}"""
+            """"start":${at(h, m)},"end":${at(endH, endM)}"""
+        } else {
+            """"start":{"date":"${e.date}"},"end":{"date":"${LocalDate.parse(e.date).plus(DatePeriod(days = 1))}"}"""
+        }
+        val repeat = e.recurrence?.let { ""","recurrence":[${s(it)}]""" } ?: ""
+        return """{"id":"${e.id}","summary":${s(e.title)},"description":${s(e.description)},$span$repeat,""" +
+            """"transparency":"transparent","reminders":{"useDefault":false}}"""
     }
 
     private fun enc(id: String) = id.replace("@", "%40").replace("#", "%23")

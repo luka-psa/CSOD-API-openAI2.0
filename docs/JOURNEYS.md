@@ -45,7 +45,8 @@ accent. Ember is never a topic colour.
 | gear | Instellingen |
 | link | koppelingen (ChatGPT/Claude) |
 | flame | Hearth itself |
-| pencil | fix the words (what Luister mee misheard) |
+| pencil | change a suggestion (name, place, day) |
+| sun · cloud · bolt | how something goes: loopt vanzelf · vraagt moeite · te zwaar (never red) |
 | circling arrows | Samen op meer toestellen (sync) |
 | light bulb | an idea |
 
@@ -79,8 +80,11 @@ done; the counter only goes up. Done: everyone knows today without asking.
 segment per step, the next step to tick and "daarna: …" (Alle stappen unfolds them numbered); tick them as the
 evening goes, all ticked is done for today, it comes back tomorrow. The order is set with arrows in the routine's
 sheet. A checklist without a moment (Tas voor de opvang) is in Lijstjes, used when needed. Set up or
-change: Taken → Ritmes & routines, or say "avondroutine: a, b en c". Habits are rated together in the
-weekoverleg, never ticked.
+change: Taken → Ritmes & routines, or say "avondroutine: a, b en c". What happens on a day gets fixed days in the
+same sheet (the weekday chips, a time only when it is fixed) or by saying it: "vuilbak buiten elke donderdag",
+"zwemles elke woensdag om 14 uur", "de eerste zaterdag van de maand containerpark". The sheet stays open while you
+change its moment, rhythm and days. With Google Agenda on, those repeat in the calendar "Hearth · Ritmes". Habits
+are rated together in the weekoverleg, never ticked.
 
 **J4. "Er is iets op."** Tap it in Voorraad (or say "melk"): it's on the list, per shop. In the shop: tick.
 Bought = back in stock. The weekmenu adds ingredients by itself.
@@ -99,11 +103,12 @@ progress and next step. Pushed back often? It turns amber, then orange: make the
 **J8. "Het weekoverleg."** Once a week, about 15 minutes, together. Vandaag suggests it near the weekend.
 Luister mee on top: talk as you talk, pauses and all. Hearth keeps a thought together ("Mia gaat donderdag naar de
 opvang … dus die moet gebracht worden … voor de rest ben ik vrij"), waits until it has settled, then shows what it
-concludes ("Naar de opvang · donderdag") and lights up that tile. Misheard a word? Tap the thought and fix it; Hearth
-reads it again. *Zet op zijn plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can
-also read the conversation and put it in place. The ten tiles are the same topics as everywhere, tap one for its list. Terugblik: wat ging goed, *Hoe lopen de ritmes en huisregels?* (each one on
-the same scale, loopt vanzelf / vraagt moeite / te zwaar, with a smaller first step right there), and the two
-meters. Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
+concludes ("Naar de opvang · donderdag") and lights up that tile. Not quite right? Tap the conclusion: its name,
+place (taak, afspraak, ritme, …) and day open, filled in from what was said; *Bewaar* or *Zet erin*. *Zet op zijn
+plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can also read the conversation and
+put it in place. The ten tiles are the same topics as everywhere, tap one for its list. Terugblik: wat ging goed,
+then *Hoe liep het?*: the week, every routine and every house rule on one weather scale (bliksem, wolk, zon), with a
+smaller first step right there. Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
 
 **J9. "Iets schuurt."** Note it on the Werkbord or say "frictie: …". In the weekoverleg (Frictie & ideeën)
 choose together what it needs, in one tap: a huisregel, a nieuwe routine, a routine aanpassen, a taak met focus,

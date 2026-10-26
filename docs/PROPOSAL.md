@@ -94,7 +94,8 @@ gets its own tables): `add_shopping_item`, `list_shopping_items`, `mark_bought`,
 ALL, TODAY, NEXT, UNPLANNED, WEEK, DONT_FORGET, ROUTINES_DUE, ROUTINES, ADMIN, PROJECTS, WAITING),
 `plan_backlog_item`, `complete_backlog_item` (a routine logs "done today" and stays; a project takes its
 steps along), `reopen_backlog_item`, `remove_backlog_item` ⚠ (a project's steps go too),
-`set_routine_interval`, `mark_urgent`, `wait_for_reply` (follow-up day), `move_backlog_item`,
+`set_routine_interval`, `set_routine_schedule` (fixed days: weekdays, a date or the nth weekday of the month, a
+time only when fixed; `add_to_backlog` and `add_routine` take the same fields), `mark_urgent`, `wait_for_reply` (follow-up day), `move_backlog_item`,
 `add_project_step` (creates the project if needed) · Werkbord: `add_member`, `remove_member` ⚠,
 `add_house_rule`, `log_friction`, `add_goal` (FAMILY/COUPLE/PERSONAL), `list_board`, `mark_friction` (what it
 needs: RULE, NEW_ROUTINE, CHANGE_ROUTINE, TASK; it stays open, labelled), `resolve_friction` (in the family's own
@@ -106,11 +107,11 @@ NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `ad
 `clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
 with the same name. · Weekoverleg: `plan_meal` (one meal per day; ingredients onto the shopping list; a known
 dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_agenda` (look back since the last
-meeting and wins, then every *topic* in a few words with its details, the meters' suggestions and the Luister mee
+meeting and wins, then every *topic* in a few words with its details, Hearth's weather for the week and the Luister mee
 transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
-`remove_win` ⚠ (tablet), `set_week_meter` (FLOW / STRAIN, agreed together for the household; empty = no
-agreement = neutral 3), `set_week_meters` (on/off, tablet), `check_house_rule` (EASY / EFFORT / HARD like the routines, never who), `rate_habit` (EASY / EFFORT / HARD),
+`remove_win` ⚠ (tablet), `rate_week` (the week's weather, EASY zon / EFFORT wolk / HARD bliksem, agreed together for the
+household; empty = no agreement), `set_week_meters` (asking it on/off, tablet), `check_house_rule` (EASY / EFFORT / HARD like the routines, never who), `rate_habit` (EASY / EFFORT / HARD),
 `import_recipe` (a link: the page's schema.org JSON-LD becomes a Recipe with ingredients, numbered steps and
 "Bron: …" as notes, and its photo; the web preview fetches through the relay's `/page` (only JSON-LD and
 og:image come back) and `/image` (images only, max 3 MB)), `set_small_step` (a habit's smallest first step), `add_routine` (a routine with its steps in order: the evening
@@ -120,7 +121,7 @@ DINNER, EVENING, BEDTIME; `add_to_backlog` takes it too),
 `list_huddles`
 (summaries), `add_transcript_line` (tablet), `read_conversation` (the meeting's lines with ids and times, for the
 family's AI: it reads for meaning, adds with the regular tools, then calls `mark_transcript_sorted`),
-`fix_transcript_line` (misheard words; only the open meeting), `clear_transcript` ⚠ (tablet),
+`fix_transcript_line` (misheard words, for the family's AI; on the tablet a conclusion is changed in its sheet), `clear_transcript` ⚠ (tablet),
 `add_idea` (Werkbord; decided with `resolve_friction` like a friction). · Recipes:
 `save_recipe` (name, ingredients, how we made it; rename keeps the photo), `list_recipes`, `remove_recipe` ⚠,
 `set_recipe_photo` (tablet only). Stock: `move_stock_item`, `remove_storage_spot` ⚠.
@@ -215,7 +216,8 @@ deleted when the next meeting ends; summaries stay. v11 adds `routine_log` (habi
 rows are no longer used). v12 adds `backlog_item.postponed` (moved to a later day, Later or To plan), `ease`
 (the family's rating of a habit) and `smallStep`. v13 adds `backlog_item.anchor` (a routine's moment of the day). v16 adds
 `sync_base` (per sync space: the version and snapshot this device last agreed on with the household, the merge
-base). Auto-migrations keep every household's data.
+base). v17 adds `backlog_item.schedule` (a routine's fixed days as JSON); the week's weather is a WEEK row in
+`reflection` (FLOW / STRAIN rows of older meetings stay but are not read). Auto-migrations keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
@@ -298,20 +300,20 @@ its *conclusions* as pills in their topic's colour ("Naar de opvang · donderdag
 (v0.18): stretches join by how they sound ("dus …", "die …", "voor de rest …", a half sentence, a fragment without
 subject or verb, a day said after a pause); "oh ja", a new subject or two minutes of silence start the next one. Hearth
 waits about four seconds after the last words ("Hearth luistert nog…") before it shows what it concludes, and a tap
-on a thought fixes words the recognizer misheard. Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
+on a conclusion opens it: its name, place (taak, afspraak, ritme, vrije tijd, …) and day, filled in from the talk,
+with *Bewaar* (for the Voorstel) and *Zet erin* (added right away). Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
 antwoord", "3 van 7 avonden"); the tile Luister mee just heard about glows too. Tapping a tile opens its list under
 the grid (free time and admin with an add field, projects with their next step and "dit weekend", chores aan de
 beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and frictions, the goals with their next small step). In Dutch *afspraken* always means appointments; house rules are *huisregels*.
-Then *Terugblik* (last meeting's summary, what got done, *Wat ging goed*, the meters) and *Deze week* (7 days, what
+Then *Terugblik* (last meeting's summary, what got done, *Wat ging goed*, *Hoe liep het?*) and *Deze week* (7 days, what
 has that day with its section colour, the meal small underneath) and *Vooruitblik* (dates after this week). There
 are no Oudjes: what has no topic waits in Taken → Te sorteren. *Klaar* first opens *Samen akkoord?*: the summary
 (by topic) to read together, with a nudge when sentences still wait in the Voorstel; *Akkoord, klaar* records it.
-Terugblik also has *Wat ging goed* (wins, X asks first) and two household meters, *Hoe liep het?* and *Wat
-schuurde?* (on by default, can be switched off). Hearth suggests (a ring and a faint fill): Hoe liep het starts at
-"goed" because small things and good habits get forgotten, "heel goed" with plenty done and no habit asking for
-attention, never below 3 (`flowSuggestion`); Wat schuurde rises with new frictions and agreements that didn't work
-(`strainSuggestion`). The family agrees with a tap, picks another step together, or taps *Geen akkoord* (neutral).
-The summary shows Hearth's guess when the family saw it differently. Terugblik (v0.16) has *Hoe lopen de ritmes en
+Terugblik also has *Wat ging goed* (wins, X asks first) and *Hoe liep het?* (v0.20): the week, every routine and every
+house rule on one weather scale, bliksem (te zwaar) → wolk (vraagt moeite) → zon (loopt vanzelf). For the week Hearth
+suggests (a ring): the sun, because small things and good habits get forgotten; a cloud when frictions and rules that
+ask too much pile up, or habits ask for attention with little done; never a bolt (`weekSuggestion`). The family agrees
+with a tap, picks another together, or taps *Geen akkoord*; asking it can be switched off. The summary shows Hearth's guess when the family saw it differently. Terugblik (v0.16) has *Hoe lopen de ritmes en
 huisregels?*: every routine (in the order of the day) and every house rule on one scale, loopt vanzelf / vraagt
 moeite / te zwaar, never who, with a smaller first step right there; a rule that is too much two meetings in a row
 comes back as a friction ("Huisregel loopt nog niet: …"). The Ritmes and Huisregels tiles show how they go and
@@ -456,12 +458,17 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.20: rhythms on fixed days (weekdays, a date or the nth weekday of the month, a time only when fixed;
+   `set_routine_schedule`, DB v17) that repeat in a second Google calendar *Hearth · Ritmes*; the routine sheet stays
+   open while its moment, rhythm and days change; one weather scale (bliksem → wolk → zon) for the week, the routines
+   and the house rules (`rate_week` replaces the two meters); Luister mee's conclusions open to change their name,
+   place (now also *Ritme*) and day; Koppelingen links ChatGPT/Claude in four plain steps with buttons to their pages.
    v0.19: the household on more devices (Instellingen → Samen op meer toestellen): share it on one device, join with a
    one-time code, and it syncs like git (pull, three-way merge, push) through the relay, sealed end to end (§7);
    DB v16 (`sync_base`).
    v0.18: Luister mee hears thoughts, not breaths: stretches join by how they sound, each thought gives its
    conclusions (what, who, which day; "deze week" goes to Volgende), Hearth waits until a thought settles, words
-   can be fixed on the stage, in Gesprek and in the Voorstel (`fix_transcript_line`), the recognizer keeps the guess
+   could be fixed (in v0.20 the conclusion itself is changed instead), the recognizer keeps the guess
    with the household's words, Flemish speech is read as plain Dutch, and the family's AI reads the conversation
    (`read_conversation`, `mark_transcript_sorted` over MCP).
    v0.17: "Admin" is Dutch too; a routine's steps show small and in order (a bar, the next step, Alle stappen

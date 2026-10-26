@@ -21,6 +21,9 @@ import app.hearth.core.tools.Describe
 import app.hearth.core.tools.Tool
 import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolException
+import app.hearth.core.model.Schedule
+import app.hearth.core.model.rhythmLabel
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
@@ -61,6 +64,73 @@ class SetRoutineIntervalTool(private val repo: BacklogRepository) : Tool<SetRout
 
     companion object {
         const val NAME = "set_routine_interval"
+    }
+}
+
+// ---------- set_routine_schedule ----------
+
+internal const val WEEKDAYS_DOC = "For a routine on fixed days of the week, e.g. [THURSDAY] or [MONDAY, WEDNESDAY, FRIDAY]."
+internal const val DAY_OF_MONTH_DOC = "For a monthly routine on a date: 1–31 ('de 1ste van de maand' = 1)."
+internal const val WEEK_OF_MONTH_DOC = "For a monthly routine on the nth weekday (give one weekday): 1–4, or -1 for the last ('eerste zaterdag' = 1)."
+internal const val TIME_DOC = "Only when it really happens at a fixed time, as HH:mm ('20:00'). Most routines have a moment of the day instead."
+
+/** Fixed days from tool arguments; a time without days means every day at that time. Null: no fixed days. */
+internal fun scheduleOf(weekdays: List<DayOfWeek>, dayOfMonth: Int?, weekOfMonth: Int?, time: String?, ctx: ToolContext): Schedule? {
+    if (dayOfMonth != null && dayOfMonth !in 1..31) throw ToolException(ctx.t("Een dag van de maand gaat van 1 tot 31.", "A day of the month is 1 to 31."))
+    if (weekOfMonth != null && weekOfMonth !in listOf(1, 2, 3, 4, -1)) throw ToolException(ctx.t("Kies de eerste tot vierde, of de laatste.", "Pick the first to fourth, or the last."))
+    val clock = time?.takeIf { it.isNotBlank() }?.let {
+        Schedule.cleanTime(it) ?: throw ToolException(ctx.t("Dat uur begrijp ik niet. Bijvoorbeeld 20:00.", "I don't understand that time. For example 20:00."))
+    }
+    return when {
+        dayOfMonth != null -> Schedule(monthDay = dayOfMonth, time = clock)
+        weekOfMonth != null && weekdays.isNotEmpty() -> Schedule(listOf(weekdays.first()), monthWeek = weekOfMonth, time = clock)
+        weekdays.isNotEmpty() -> Schedule(weekdays.distinct().sorted(), time = clock)
+        clock != null -> Schedule(DayOfWeek.entries.toList(), time = clock)
+        else -> null
+    }
+}
+
+@Serializable
+data class SetRoutineScheduleArgs(
+    @Describe("Ids of routines.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of routines, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe(WEEKDAYS_DOC)
+    val weekdays: List<DayOfWeek> = emptyList(),
+    @Describe(DAY_OF_MONTH_DOC)
+    val dayOfMonth: Int? = null,
+    @Describe(WEEK_OF_MONTH_DOC)
+    val weekOfMonth: Int? = null,
+    @Describe(TIME_DOC)
+    val time: String? = null,
+)
+
+/**
+ * Fixed days for a routine ("vuilbak buiten elke donderdag", "zwemles elke woensdag om 14:00", "huur de 1ste van de
+ * maand"). On its day it is about time; after it, it stays open until done or its next day. No days: back to roughly
+ * weekly.
+ */
+class SetRoutineScheduleTool(private val repo: BacklogRepository) : Tool<SetRoutineScheduleArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description =
+        "Give a routine fixed days: weekdays, a date of the month or the nth weekday of the month, and a time only when " +
+            "it is really fixed. No days: back to 'roughly every week'. Routines are never late."
+    override val argsSerializer = SetRoutineScheduleArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: SetRoutineScheduleArgs, ctx: ToolContext): BacklogItemsResult {
+        val schedule = scheduleOf(args.weekdays, args.dayOfMonth, args.weekOfMonth, args.time, ctx)
+        val found = repo.find(args.itemIds, args.texts).filter { !it.isStep }.ifEmpty { notFound(ctx) }
+        // Fixed days make it a routine.
+        repo.setSection(found.filter { !it.isRoutine() }.map { it.id }, Section.CHORE)
+        repo.setSchedule(found.map { it.id }, schedule)
+        val updated = repo.itemsByIds(found.map { it.id })
+        return BacklogItemsResult(updated, "${quoted(updated)} · ${updated.firstOrNull()?.let { rhythmLabel(it, ctx.lang) } ?: ""}")
+    }
+
+    companion object {
+        const val NAME = "set_routine_schedule"
     }
 }
 
@@ -282,6 +352,14 @@ data class AddRoutineArgs(
     val section: Section = Section.RHYTHM,
     @Describe("Roughly every how many days. Default: daily with a moment of the day; none for a checklist without a moment (used when needed).")
     val intervalDays: Int? = null,
+    @Describe(WEEKDAYS_DOC)
+    val weekdays: List<DayOfWeek> = emptyList(),
+    @Describe(DAY_OF_MONTH_DOC)
+    val dayOfMonth: Int? = null,
+    @Describe(WEEK_OF_MONTH_DOC)
+    val weekOfMonth: Int? = null,
+    @Describe(TIME_DOC)
+    val time: String? = null,
 )
 
 /**
@@ -302,11 +380,13 @@ class AddRoutineTool(private val repo: BacklogRepository) : Tool<AddRoutineArgs,
         val section = args.section.takeIf { it.kind == TaskKind.ROUTINE } ?: Section.RHYTHM
         // A moment of the day makes it daily; without one it's a checklist for when it's needed (the bag for the babysit).
         val interval = args.intervalDays ?: if (args.anchor != null) 1 else null
-        val (routine, added) = repo.add(title, section, Plan.UNPLANNED, null, false, ctx.actorMemberId, intervalDays = interval, anchor = args.anchor)
+        val schedule = scheduleOf(args.weekdays, args.dayOfMonth, args.weekOfMonth, args.time, ctx)
+        val (routine, added) = repo.add(title, section, Plan.UNPLANNED, null, false, ctx.actorMemberId, intervalDays = interval, anchor = args.anchor, schedule = schedule)
         if (!added && args.anchor != null && routine.anchor != args.anchor) repo.setAnchor(listOf(routine.id), args.anchor)
+        if (!added && schedule != null && routine.schedule != schedule) repo.setSchedule(listOf(routine.id), schedule)
         val steps = args.steps.map { it.trim().trim('.', ',').replaceFirstChar { c -> c.uppercase() } }.filter { it.isNotEmpty() }
         val new = steps.count { step -> repo.add(step, routine.section, Plan.UNPLANNED, null, false, ctx.actorMemberId, parentId = routine.id).second }
-        val moment = (args.anchor ?: routine.anchor)?.let { " (${it.title(ctx.lang).lowercase()})" } ?: ""
+        val moment = (schedule?.label(ctx.lang) ?: (args.anchor ?: routine.anchor)?.title(ctx.lang)?.lowercase())?.let { " ($it)" } ?: ""
         val summary = when {
             added -> ctx.t("Routine “${routine.text}”$moment: ", "Routine “${routine.text}”$moment: ") + steps.joinToString(" → ").ifEmpty { ctx.t("nog zonder stappen", "no steps yet") }
             new > 0 -> ctx.t("$new ${if (new == 1) "stap" else "stappen"} erbij in “${routine.text}”.", "$new ${if (new == 1) "step" else "steps"} added to “${routine.text}”.")

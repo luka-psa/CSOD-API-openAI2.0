@@ -12,9 +12,7 @@ import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.model.Ease
 import app.hearth.core.model.Huddle
-import app.hearth.core.model.Meter
-import app.hearth.core.model.MeterValue
-import app.hearth.core.model.NEUTRAL_METER
+import app.hearth.core.model.WeekRating
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.TranscriptLine
 import app.hearth.core.model.Win
@@ -25,8 +23,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 
 /**
- * The weekoverleg's notes: Wat ging goed (WIN, with text), the two household meters (FLOW / STRAIN, value 1–5)
- * and the house-rule check (RULE_CHECK). FEELING rows from v0.6 (per person) are no longer used.
+ * The weekoverleg's notes: Wat ging goed (WIN, with text), how the week went (WEEK, on the weather scale) and the
+ * house-rule check (RULE_CHECK). FEELING rows from v0.6 (per person) and the FLOW / STRAIN meters before v0.20 are
+ * kept in old meetings but no longer read.
  */
 @Entity(tableName = "reflection", indices = [Index("huddleId")])
 @Serializable
@@ -40,22 +39,25 @@ data class ReflectionEntity(
     @ColumnInfo(defaultValue = "NULL") val huddleId: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
-    /** Meters: what Hearth suggested. */
+    /** WEEK: what Hearth suggested (same codes as [value]). */
     @ColumnInfo(defaultValue = "NULL") val suggested: Int? = null,
 ) {
     fun toWin() = Win(id, text, memberId, huddleId, createdAt)
 
-    /** FLOW / STRAIN rows: [text] is "agreed" or "neutral". */
-    fun toMeter() = MeterValue(Meter.valueOf(kind), value ?: NEUTRAL_METER, suggested, text == AGREED, huddleId)
+    /** WEEK rows: [text] is "agreed" or "neutral" (no agreement, no weather). */
+    fun toWeek() = WeekRating(if (text == AGREED) easeOf(value) else null, suggested?.let(::easeOf), text == AGREED, huddleId)
     /** RULE_CHECK rows: [text] is the rule's id; [value] 1 = loopt vanzelf, 2 = vraagt moeite, 0 = te zwaar (older rows: 1 worked, 0 not). */
-    fun toRuleCheck() = RuleCheck(text, when (value) { 1 -> Ease.EASY; 2 -> Ease.EFFORT; else -> Ease.HARD }, huddleId)
+    fun toRuleCheck() = RuleCheck(text, easeOf(value), huddleId)
 
     companion object {
         const val WIN = "WIN"
         const val FEELING = "FEELING"
         const val RULE_CHECK = "RULE_CHECK"
+        const val WEEK = "WEEK"
         const val AGREED = "agreed"
-        val METERS = Meter.entries.map { it.name }.toSet()
+
+        fun easeOf(value: Int?) = when (value) { 1 -> Ease.EASY; 2 -> Ease.EFFORT; else -> Ease.HARD }
+        fun codeOf(ease: Ease) = when (ease) { Ease.EASY -> 1; Ease.EFFORT -> 2; Ease.HARD -> 0 }
     }
 }
 
@@ -165,34 +167,34 @@ class MeetingRepository(
 
     suspend fun deleteWin(id: String) = dao.deleteReflections(listOf(id))
 
-    val meters: Flow<List<MeterValue>> = dao.observeCurrentReflections().map { list -> list.filter { it.kind in ReflectionEntity.METERS }.map { it.toMeter() } }
+    /** How this week went, once the family said it (null: not yet). */
+    val week: Flow<WeekRating?> = dao.observeCurrentReflections().map { list -> list.firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek() }
     val ruleChecks: Flow<List<RuleCheck>> = dao.observeCurrentReflections().map { list -> list.filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() } }
 
     /** How each house rule goes, by rule id: this week's rating, or the last one from an earlier meeting. */
     val ruleEase: Flow<Map<String, Ease>> = dao.observeAllRuleChecks().map { list -> list.associate { it.text to it.toRuleCheck().ease } }
-    suspend fun currentMeters(): List<MeterValue> = dao.currentReflections().filter { it.kind in ReflectionEntity.METERS }.map { it.toMeter() }
+    suspend fun currentWeek(): WeekRating? = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek()
     suspend fun currentRuleChecks(): List<RuleCheck> = dao.currentReflections().filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }
     suspend fun ruleChecksOf(huddleId: String): List<RuleCheck> = dao.reflectionsOf(huddleId).filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }
-    suspend fun metersOf(huddleId: String): List<MeterValue> = dao.reflectionsOf(huddleId).filter { it.kind in ReflectionEntity.METERS }.map { it.toMeter() }
+    suspend fun weekOf(huddleId: String): WeekRating? = dao.reflectionsOf(huddleId).firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek()
 
-    /** The household's meter for this meeting; null [value] = no agreement, so neutral. */
-    suspend fun setMeter(meter: Meter, value: Int?, suggested: Int?): MeterValue = db.withWriteTransaction {
+    /** How the week went, agreed together; null [ease] = no agreement (no weather). Saying it again replaces it. */
+    suspend fun setWeek(ease: Ease?, suggested: Ease?): WeekRating = db.withWriteTransaction {
         val now = clock()
-        val old = dao.currentReflections().firstOrNull { it.kind == meter.name }
+        val old = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.WEEK }
         val entity = ReflectionEntity(
-            old?.id ?: newId(), meter.name, if (value == null) "neutral" else ReflectionEntity.AGREED,
-            value?.coerceIn(1, 5) ?: NEUTRAL_METER, null, null, old?.createdAt ?: now, now, suggested,
+            old?.id ?: newId(), ReflectionEntity.WEEK, if (ease == null) "neutral" else ReflectionEntity.AGREED,
+            ease?.let(ReflectionEntity::codeOf), null, null, old?.createdAt ?: now, now, suggested?.let(ReflectionEntity::codeOf),
         )
         dao.putReflection(entity)
-        entity.toMeter()
+        entity.toWeek()
     }
 
     /** How a house rule went this week; saying it again replaces it. */
     suspend fun setRuleCheck(ruleId: String, ease: Ease): RuleCheck = db.withWriteTransaction {
         val now = clock()
         val old = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.RULE_CHECK && it.text == ruleId }
-        val value = when (ease) { Ease.EASY -> 1; Ease.EFFORT -> 2; Ease.HARD -> 0 }
-        val entity = ReflectionEntity(old?.id ?: newId(), ReflectionEntity.RULE_CHECK, ruleId, value, null, null, old?.createdAt ?: now, now)
+        val entity = ReflectionEntity(old?.id ?: newId(), ReflectionEntity.RULE_CHECK, ruleId, ReflectionEntity.codeOf(ease), null, null, old?.createdAt ?: now, now)
         dao.putReflection(entity)
         entity.toRuleCheck()
     }
@@ -214,7 +216,7 @@ class MeetingRepository(
     }
 
     /**
-     * Ends the meeting: records it with its [summary], hands it this week's wins, meters, rule checks and transcript,
+     * Ends the meeting: records it with its [summary], hands it this week's wins, its weather, rule checks and transcript,
      * and lets the transcript of the meeting before go.
      */
     suspend fun close(date: String, summary: String): Huddle = db.withWriteTransaction {

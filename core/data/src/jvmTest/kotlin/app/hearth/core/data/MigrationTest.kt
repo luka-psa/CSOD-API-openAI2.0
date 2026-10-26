@@ -93,13 +93,13 @@ class MigrationTest {
         val meeting = app.hearth.core.data.week.MeetingRepository(db)
         val backlog = BacklogRepository(db)
         val wins = meeting.currentWins().map { it.text }
-        meeting.setMeter(app.hearth.core.model.Meter.FLOW, null, 5)
-        val meters = meeting.currentMeters()
+        meeting.setWeek(null, app.hearth.core.model.Ease.EASY)
+        val week = meeting.currentWeek()
         val logs = backlog.routineLogsSince("2000-01-01")
         db.close()
 
         assertEquals(listOf("Samen gewandeld"), wins)
-        assertEquals(listOf(Triple(3, 5, false)), meters.map { Triple(it.value, it.suggested, it.agreed) })
+        assertEquals(app.hearth.core.model.WeekRating(null, app.hearth.core.model.Ease.EASY, false, null), week)
         assertEquals(emptyMap(), logs)
     }
 

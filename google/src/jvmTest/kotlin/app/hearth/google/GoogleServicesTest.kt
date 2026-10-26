@@ -86,5 +86,14 @@ class GoogleServicesTest {
         assertTrue("\"reminders\":{\"useDefault\":false}" in insert, "visible beats notifications: no pings")
         assertEquals("/calendar/v3/calendars/abc%40group.calendar.google.com/events", seen.last().url.encodedPath)
         assertEquals(listOf(GoogleScopes.CALENDAR_APP_CREATED), auth.scopes.distinct())
+
+        // A rhythm at a fixed time: an hour from its time, in this device's zone, repeating.
+        cal.put(id, CalendarEvent("r1", "Zwemles", "2026-10-28", "Uit Hearth · elke woensdag om 14:00", time = "14:00", recurrence = "RRULE:FREQ=WEEKLY;BYDAY=WE"))
+        val rhythm = bodies.last()
+        assertTrue(
+            "\"start\":{\"dateTime\":\"2026-10-28T14:00:00\",\"timeZone\":\"Europe/Brussels\"},\"end\":{\"dateTime\":\"2026-10-28T15:00:00\",\"timeZone\":\"Europe/Brussels\"}" in rhythm,
+            rhythm,
+        )
+        assertTrue("\"recurrence\":[\"RRULE:FREQ=WEEKLY;BYDAY=WE\"]" in rhythm, rhythm)
     }
 }

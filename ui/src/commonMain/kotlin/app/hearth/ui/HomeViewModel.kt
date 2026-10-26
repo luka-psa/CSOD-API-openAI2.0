@@ -1,5 +1,10 @@
 package app.hearth.ui
 
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import app.hearth.ai.route.Spoken
+import app.hearth.core.model.Schedule
+import app.hearth.core.tools.backlog.SetRoutineScheduleArgs
 import app.hearth.core.tools.week.ImportRecipeArgs
 import app.hearth.core.tools.backlog.AddRoutineArgs
 import app.hearth.core.tools.system.SetLanguageArgs
@@ -51,7 +56,6 @@ import app.hearth.core.tools.system.BackupFile
 import app.hearth.ai.Orchestrator
 import app.hearth.ai.route.Place
 import app.hearth.ai.route.KeywordRouter
-import app.hearth.ai.route.MeetingWords
 import app.hearth.core.tools.week.FinishArgs
 import app.hearth.core.model.Topic
 import app.hearth.core.model.FrictionDirection
@@ -62,14 +66,13 @@ import app.hearth.core.model.Ease
 import app.hearth.core.model.easeNow
 import app.hearth.core.tools.backlog.RateHabitArgs
 import app.hearth.core.tools.backlog.SmallStepArgs
-import app.hearth.core.model.Meter
-import app.hearth.core.model.MeterValue
+import app.hearth.core.model.WeekRating
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.dayOf
 import app.hearth.core.model.isRoutine
 import app.hearth.core.tools.week.CheckHouseRuleArgs
 import app.hearth.core.tools.week.SetWeekMetersTool
-import app.hearth.core.tools.week.WeekMeterArgs
+import app.hearth.core.tools.week.RateWeekArgs
 import app.hearth.core.tools.week.WeekMetersArgs
 import app.hearth.core.model.Win
 import app.hearth.core.tools.ToolOutcome
@@ -78,7 +81,6 @@ import app.hearth.core.tools.week.ClearTranscriptArgs
 import app.hearth.core.tools.week.MarkSortedArgs
 import app.hearth.core.tools.week.RemoveWinArgs
 import app.hearth.core.tools.week.TranscriptLineArgs
-import app.hearth.core.tools.week.FixLineArgs
 import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.tools.system.JoinSyncArgs
 import app.hearth.core.tools.system.JoinCodeResult
@@ -217,7 +219,16 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** One or two examples in every section, to see how Hearth works. */
     fun loadExamples() = tool { say(app.tools.registry.run(app.tools.loadExamples, NoArgs(), it).summary) }
 
-    fun showPairingCode() = app.relay.requestPairingCode()
+    /** The code to type on the Hearth page; switches the connection on first when it is off. */
+    fun showPairingCode() {
+        viewModelScope.launch {
+            if (!connection.value.enabled) {
+                app.tools.registry.run(app.tools.saveConnection, SaveConnectionArgs(true), ctx(ToolSource.UI))
+                withTimeoutOrNull(20_000) { app.relay.status.first { it == RelayStatus.ONLINE } } ?: return@launch
+            }
+            app.relay.requestPairingCode()
+        }
+    }
     fun hidePairingCode() = app.relay.hidePairingCode()
 
     /** Unlinks an AI app (or all, with null). The screen asked first. */
@@ -486,6 +497,18 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     /** One more step at the end of a routine. */
+    /** Fixed days (and maybe a time) for a routine; null: back to roughly every week. */
+    fun setSchedule(item: BacklogItem, schedule: Schedule?) = tool {
+        app.tools.registry.run(
+            app.tools.setRoutineSchedule,
+            SetRoutineScheduleArgs(
+                itemIds = listOf(item.id), weekdays = schedule?.weekdays.orEmpty(), dayOfMonth = schedule?.monthDay,
+                weekOfMonth = schedule?.monthWeek, time = schedule?.time,
+            ),
+            it,
+        )
+    }
+
     fun addRoutineStep(routine: BacklogItem, text: String) {
         if (text.isBlank()) return
         tool { app.tools.registry.run(app.tools.addRoutine, AddRoutineArgs(routine.text, listOf(text), section = routine.section), it) }
@@ -512,7 +535,11 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
             val hint = TaskWords.extract(text)
             app.tools.registry.run(
                 app.tools.addToBacklog,
-                AddToBacklogArgs(hint.text, section, urgent = hint.urgent, intervalDays = hint.intervalDays, anchor = hint.anchor),
+                AddToBacklogArgs(
+                    hint.text, section, urgent = hint.urgent, intervalDays = hint.intervalDays, anchor = hint.anchor,
+                    weekdays = hint.schedule?.weekdays.orEmpty(), dayOfMonth = hint.schedule?.monthDay,
+                    weekOfMonth = hint.schedule?.monthWeek, time = hint.schedule?.time,
+                ),
                 it,
             )
         }
@@ -584,10 +611,10 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     // ---- Weekoverleg: what went well, how heavy, Luister mee ----
 
     val wins: StateFlow<List<Win>> = app.meeting.wins.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val meters: StateFlow<List<MeterValue>> = app.meeting.meters.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val week: StateFlow<WeekRating?> = app.meeting.week.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val ruleChecks: StateFlow<List<RuleCheck>> = app.meeting.ruleChecks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val ruleEase: StateFlow<Map<String, Ease>> = app.meeting.ruleEase.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
-    val metersOn: StateFlow<Boolean> = app.settings.value(SetWeekMetersTool.METERS_SETTING).map { it != "false" }
+    val weekOn: StateFlow<Boolean> = app.settings.value(SetWeekMetersTool.METERS_SETTING).map { it != "false" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
     val transcript: StateFlow<List<TranscriptLine>> = app.meeting.transcript.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val huddles: StateFlow<List<Huddle>> = app.meeting.huddles().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -606,14 +633,14 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Only after the person confirmed on screen. */
     fun removeWin(win: Win) = tool { app.tools.registry.run(app.tools.removeWin, RemoveWinArgs(win.id), it, confirmed = true) }
 
-    /** Agreed together; null = no agreement, so neutral. */
-    fun setMeter(meter: Meter, value: Int?, suggested: Int?) = tool {
-        app.tools.registry.run(app.tools.setWeekMeter, WeekMeterArgs(meter, value, suggested), it)
+    /** The week's weather, agreed together; null = no agreement. */
+    fun rateWeek(ease: Ease?, suggested: Ease) = tool {
+        app.tools.registry.run(app.tools.rateWeek, RateWeekArgs(ease, suggested), it)
     }
 
-    fun setMetersOn(on: Boolean) = tool { app.tools.registry.run(app.tools.setWeekMeters, WeekMetersArgs(on), it) }
+    fun setWeekOn(on: Boolean) = tool { app.tools.registry.run(app.tools.setWeekMeters, WeekMetersArgs(on), it) }
 
-    /** Did a house rule work this week? Then the suggestion for "wat schuurde" follows. */
+    /** How a house rule went this week; rules that ask a lot cloud Hearth's suggestion for the week. */
     fun checkRule(rule: BoardItem, ease: Ease) = tool {
         app.tools.registry.run(app.tools.checkHouseRule, CheckHouseRuleArgs(ruleId = rule.id, ease = ease), it)
         _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it)
@@ -640,26 +667,46 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         say(app.tools.registry.run(app.tools.addIdea, AddIdeaArgs(it.t("Makkelijker maken: ${item.text}", "Make it easier: ${item.text}")), it).summary)
     }
 
+    /** Suggestions the family changed (or added already), until the conversation is put in place. */
+    private val edits = MutableStateFlow<Map<String, SuggestionEdit>>(emptyMap())
+
     /**
      * What Luister mee heard and hasn't been put in place yet, as thoughts (pauses don't cut them), newest first,
      * each with what Hearth concludes from it.
      */
-    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members) { lines, people ->
+    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits) { lines, people, changed ->
         val open = lines.filter { !it.sorted }
         app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt })
-            .takeLast(3).reversed().map { t -> HeardThought(open.slice(t.lines), t.proposals) }
+            .takeLast(3).reversed().map { t -> thought(open.slice(t.lines), t.proposals, changed) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** A thought with what the family changed on its suggestions (by its first line and the suggestion's place in it). */
+    private fun thought(lines: List<TranscriptLine>, proposals: List<Orchestrator.Proposal>, changed: Map<String, SuggestionEdit>): HeardThought {
+        val key = lines.firstOrNull()?.id.orEmpty()
+        val edited = proposals.mapIndexed { i, p -> changed["$key#$i"] ?: SuggestionEdit(p) }
+        return HeardThought(lines, edited.map { it.proposal }, key, edited.indices.filter { edited[it].added }.toSet())
+    }
+
+    /** The family changed a suggestion in its sheet; with [now] it is added right away. */
+    fun changeSuggestion(thought: HeardThought, index: Int, change: SuggestionChange, now: Boolean) {
+        val base = thought.proposals.getOrNull(index) ?: return
+        val edited = app.orchestrator.edited(base, change.text, change.place, change.date, change.next, ctx(ToolSource.UI))
+        if (!now) {
+            edits.update { it + ("${thought.key}#$index" to SuggestionEdit(edited)) }
+            return
+        }
+        tool {
+            val done = edited.calls.mapNotNull { call -> (app.tools.registry.execute(call, it) as? ToolOutcome.Done)?.summary }
+            if (done.isNotEmpty()) edits.update { e -> e + ("${thought.key}#$index" to SuggestionEdit(edited, added = true)) }
+            say(done.joinToString(" ").ifEmpty { it.t("Dat lukte niet; het voorstel blijft staan.", "That didn't work; the suggestion stays.") })
+        }
+    }
 
     /** The household's own words (people, stock, recipes), so the recognizer hears "Mia" and not "mia's". */
     val vocabulary: StateFlow<List<String>> = combine(members, stockItems, recipes) { m, s, r ->
         (m.map { it.name } + s.map { it.name } + r.map { it.name }).map { it.trim() }.filter { it.length >= 2 }.distinct().take(80)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** The recognizer misheard: the family fixes the words and Hearth reads them again. */
-    fun fixLine(id: String, text: String) {
-        if (text.isBlank()) return
-        tool { app.tools.registry.run(app.tools.fixTranscriptLine, FixLineArgs(id, text), it) }
-    }
 
     /** The summary the family reads and agrees on before Klaar records it. */
     private val _agree = MutableStateFlow<List<String>?>(null)
@@ -690,8 +737,13 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun openVoorstel() {
         val lines = transcript.value.filter { !it.sorted }
         voorstelLines = lines.map { it.id }
-        _voorstel.value = app.orchestrator.propose(lines.map { it.text }, ctx(ToolSource.UI), members.value.map { it.name }, lines.map { it.createdAt })
-            .map { VoorstelRow(it, checked = it.place != Place.NONE && it.calls.isNotEmpty()) }
+        val c = ctx(ToolSource.UI)
+        // The same thoughts as on the stage, with what the family changed; a thought that was just talk shows once.
+        _voorstel.value = app.orchestrator.listen(lines.map { it.text }, c, members.value.map { it.name }, lines.map { it.createdAt }).flatMap { t ->
+            val heard = thought(lines.slice(t.lines), t.proposals, edits.value)
+            heard.proposals.mapIndexed { i, p -> VoorstelRow(p, checked = i !in heard.added && p.place != Place.NONE && p.calls.isNotEmpty(), added = i in heard.added) }
+                .ifEmpty { listOf(VoorstelRow(app.orchestrator.proposal(Spoken.clean(t.heard), Place.NONE, c).copy(heard = t.heard), checked = false)) }
+        }
     }
 
     fun closeVoorstel() {
@@ -707,13 +759,11 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
-    /** The words of one line were fixed: Hearth reads them again (and guesses a place if it had none). */
-    fun editVoorstel(index: Int, sentence: String) = _voorstel.update { rows ->
+    /** A suggestion changed in its sheet: its name, place and day as the family set them. */
+    fun editVoorstel(index: Int, change: SuggestionChange) = _voorstel.update { rows ->
         rows?.mapIndexed { i, row ->
-            if (i != index || sentence.isBlank()) row else {
-                val c = ctx(ToolSource.UI)
-                val place = row.proposal.place.takeIf { it != Place.NONE } ?: MeetingWords.place(sentence, c.today)
-                app.orchestrator.proposal(sentence.trim(), place, c).copy(heard = row.proposal.heard).let { p ->
+            if (i != index || row.added) row else {
+                app.orchestrator.edited(row.proposal, change.text, change.place, change.date, change.next, ctx(ToolSource.UI)).let { p ->
                     VoorstelRow(p, checked = p.place != Place.NONE && p.calls.isNotEmpty())
                 }
             }
@@ -734,6 +784,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
                 row.proposal.calls.forEach { call -> if (app.tools.registry.execute(call, it) is ToolOutcome.Done) added++ }
             }
             app.tools.registry.run(app.tools.markTranscriptSorted, MarkSortedArgs(voorstelLines), it)
+            edits.value = emptyMap()
             _messages.update { list ->
                 list + ChatMessage(
                     fromUser = false,
@@ -891,13 +942,19 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     }
 }
 
-/** A thought Luister mee heard (the lines it spans) and what Hearth concludes from it; nothing when it was just talk. */
-data class HeardThought(val lines: List<TranscriptLine>, val proposals: List<Orchestrator.Proposal>) {
+/**
+ * A thought Luister mee heard (the lines it spans) and what Hearth concludes from it; nothing when it was just talk.
+ * [key] names it while it is open; [added] are the suggestions already put in place from their sheet.
+ */
+data class HeardThought(val lines: List<TranscriptLine>, val proposals: List<Orchestrator.Proposal>, val key: String = "", val added: Set<Int> = emptySet()) {
     val text: String get() = lines.joinToString(" ") { it.text.trim() }
 }
 
-/** One sentence of the Voorstel and whether it gets added. */
-data class VoorstelRow(val proposal: Orchestrator.Proposal, val checked: Boolean)
+/** A suggestion as the family changed it, and whether it was added already. */
+data class SuggestionEdit(val proposal: Orchestrator.Proposal, val added: Boolean = false)
+
+/** One suggestion of the Voorstel and whether it gets added ([added]: it is in place already). */
+data class VoorstelRow(val proposal: Orchestrator.Proposal, val checked: Boolean, val added: Boolean = false)
 
 /** What's switched on with Google, and when it last ran (epoch ms). */
 /** The household's sync as the Instellingen card shows it. */

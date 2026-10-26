@@ -6,12 +6,13 @@ import app.hearth.core.data.food.ShoppingRepository
 import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.data.week.WeekRepository
 import app.hearth.core.data.settings.SettingsRepository
-import app.hearth.core.model.MeterValue
+import app.hearth.core.model.WeekRating
 import app.hearth.core.model.Ease
 import app.hearth.core.model.isHabit
 import app.hearth.core.model.RuleCheck
-import app.hearth.core.model.flowSuggestion
-import app.hearth.core.model.strainSuggestion
+import app.hearth.core.model.weekSuggestion
+import app.hearth.core.model.weather
+import app.hearth.core.model.weekWord
 import app.hearth.core.model.Win
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
@@ -183,11 +184,10 @@ data class WeekAgenda(
     val dueRoutines: List<BacklogItem>,
     val frictions: List<BoardItem>,
     val wins: List<Win> = emptyList(),
-    /** The two household meters: on unless switched off, with Hearth's suggestions and what was agreed so far. */
-    val metersOn: Boolean = true,
-    val suggestedFlow: Int = 4,
-    val suggestedStrain: Int = 1,
-    val meters: List<MeterValue> = emptyList(),
+    /** How the week went (its weather): asked unless switched off, with Hearth's suggestion and what was agreed so far. */
+    val weekOn: Boolean = true,
+    val suggestedWeek: Ease = Ease.EASY,
+    val week: WeekRating? = null,
     /** House rules checked this meeting (worked / not yet), never who. */
     val ruleChecks: List<RuleCheck> = emptyList(),
     /** All habits with how hard they are (the family's rating; unrated ones too, to rate in the meeting). */
@@ -236,14 +236,13 @@ class WeekoverlegAgendaTool(
         val frictions = board.allItems().filter { it.isWorkingPoint && it.isOpen }
         val goals = board.allItems().filter { it.kind == BoardKind.GOAL && it.isOpen }
         val wins = meeting.currentWins()
-        val metersOn = metersOn(settings)
-        val meters = meeting.currentMeters()
+        val weekOn = metersOn(settings)
+        val weather = meeting.currentWeek()
         val ruleChecks = meeting.currentRuleChecks()
         val habits = open.filter { it.isHabit }
         val attention = needingAttention(backlog, ctx.today).map { (item, ease) -> AttentionItem(item, ease) }
         val newFrictions = frictions.count { it.kind == BoardKind.FRICTION && it.createdAt >= since }
-        val suggestedFlow = flowSuggestion(done.size, wins.size, attention.size + habits.count { it.ease == Ease.HARD })
-        val suggestedStrain = strainSuggestion(newFrictions, ruleChecks.count { !it.worked })
+        val suggestedWeek = weekSuggestion(done.size, wins.size, attention.size + habits.count { it.ease == Ease.HARD }, newFrictions, ruleChecks.count { !it.worked })
         val transcript = meeting.currentTranscript().map { it.text }
 
         val look = WeekLook(open, board.allItems(), meals.size, openShopping, ctx.today)
@@ -275,12 +274,12 @@ class WeekoverlegAgendaTool(
                 }
                 add("${t.title}: ${t.glance}${extra.orEmpty()}.")
             }
-            if (metersOn) add(ctx.t("Meters (samen afspreken): hoe liep het, voorstel ", "Meters (agree together): how it ran, suggested ") + suggestedFlow +
-                ctx.t("; wat schuurde, voorstel ", "; what rubbed, suggested ") + suggestedStrain + ".")
+            if (weekOn) add(ctx.t("De week (samen afspreken, zon / wolk / bliksem): voorstel ", "The week (agree together, sun / cloud / lightning): suggested ") +
+                suggestedWeek.weather(ctx.lang) + " (" + suggestedWeek.weekWord(ctx.lang) + ").")
             if (transcript.isNotEmpty()) add(ctx.t("Gesprek (Luister mee):\n", "Conversation (Luister mee):\n") + transcript.joinToString("\n") { "- $it" })
         }.joinToString("\n")
 
-        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, frictions, wins, metersOn, suggestedFlow, suggestedStrain, meters, ruleChecks, habits, attention, transcript, topics, summary)
+        return WeekAgenda(since, last, done, boardWins, meals, openShopping, deadlines, routines, frictions, wins, weekOn, suggestedWeek, weather, ruleChecks, habits, attention, transcript, topics, summary)
     }
 
     companion object {

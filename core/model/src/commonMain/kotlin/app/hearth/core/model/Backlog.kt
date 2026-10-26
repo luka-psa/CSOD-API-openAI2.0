@@ -71,6 +71,8 @@ data class BacklogItem(
     val smallStep: String? = null,
     /** The moment of the day a routine belongs to ("na het eten"); null: whenever it fits. */
     val anchor: Anchor? = null,
+    /** Routine: fixed days ("elke donderdag om 20:00"); null: roughly every [intervalDays]. */
+    val schedule: Schedule? = null,
 ) {
     val localDate: LocalDate? get() = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
     val lastDoneDate: LocalDate? get() = lastDone?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

@@ -401,4 +401,25 @@ class OrchestratorTest {
         )
         assertEquals(emptyList(), shopping.openItems())
     }
+
+    @Test
+    fun `a suggestion edited in its sheet keeps the family's words, place and day`() = runTest {
+        val base = offline.propose(listOf("donderdag zal ik de kleine naar de baby opvang doen"), nl).first()
+        val thursday = LocalDate(2026, 10, 29)
+        val edited = offline.edited(base, "Mia naar de opvang", app.hearth.ai.route.Place.EVENT, thursday, next = false, nl)
+        assertEquals(listOf("Mia naar de opvang" to thursday), listOf(edited.text to edited.date))
+        offline.registryRun(edited)
+        assertEquals(listOf(Triple("Mia naar de opvang", Section.APPOINTMENT, "2026-10-29")), inbox.openItems().map { Triple(it.text, it.section, it.date) })
+
+        // A rhythm reads its days from the words: "zwemles elke woensdag om 14 uur".
+        val rhythm = offline.edited(base, "zwemles elke woensdag om 14 uur", app.hearth.ai.route.Place.RHYTHM, null, next = false, nl)
+        offline.registryRun(rhythm)
+        val swim = inbox.openItems().first { it.text == "Zwemles" }
+        assertEquals(Section.RHYTHM to "elke woensdag om 14:00", swim.section to swim.schedule?.label(Lang.NL))
+        // "Deze week" without a day goes to Volgende.
+        val next = offline.edited(base, "Afspreken met Anthony", app.hearth.ai.route.Place.PLANNING, null, next = true, nl)
+        assertEquals(true, next.next)
+    }
+
+    private suspend fun Orchestrator.registryRun(p: Orchestrator.Proposal) = p.calls.forEach { tools.registry.execute(it, nl) }
 }

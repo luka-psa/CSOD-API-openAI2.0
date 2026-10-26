@@ -45,6 +45,47 @@ class TaskToolsTest {
     private suspend fun add(args: AddToBacklogArgs, ctx: ToolContext = nl) = tools.registry.run(tools.addToBacklog, args, ctx)
 
     @Test
+    fun `a routine on fixed days is about time on its day and stays open until done`() = runTest {
+        // Thursday 22 October: "elke donderdag om 20:00".
+        val added = add(AddToBacklogArgs("Zwemles", Section.OTHER, weekdays = listOf(kotlinx.datetime.DayOfWeek.THURSDAY), time = "20u"))
+        assertEquals("Bij Taken: “Zwemles” (huishoudtaak) · elke donderdag om 20:00", added.summary)
+        val item = backlog.openItems().single()
+        assertEquals(7, item.intervalDays)
+        assertEquals(RoutineState.DUE, item.routineState(thursday))
+        // Added on a Thursday it starts now; the next days are calm until Wednesday ("tomorrow again").
+        assertEquals(RoutineState.FRESH, item.routineState(thursday.plusDays(3)))
+        assertEquals(RoutineState.SOON, item.routineState(thursday.plusDays(6)))
+        assertEquals(listOf("Zwemles"), dueRoutines(backlog.openItems(), thursday).map { it.text })
+
+        val done = tools.registry.run(tools.completeBacklogItem, BacklogRefArgs(texts = listOf("zwemles")), nl)
+        assertEquals("Gedaan: “Zwemles”. Mooi zo! Volgende keer: elke donderdag om 20:00.", done.summary)
+        val ticked = backlog.openItems().single()
+        assertEquals(RoutineState.FRESH, ticked.routineState(thursday.plusDays(1)))
+        assertEquals(RoutineState.DUE, ticked.routineState(thursday.plusDays(7)))
+        // Not done that Thursday: still open on Friday ("sinds donderdag"), never late.
+        assertEquals(RoutineState.DUE, ticked.routineState(thursday.plusDays(8)))
+
+        // The first Saturday of the month; then back to roughly every week.
+        val monthly = tools.registry.run(
+            tools.setRoutineSchedule,
+            SetRoutineScheduleArgs(texts = listOf("zwemles"), weekdays = listOf(kotlinx.datetime.DayOfWeek.SATURDAY), weekOfMonth = 1),
+            nl,
+        )
+        assertEquals("“Zwemles” · de eerste zaterdag van de maand", monthly.summary)
+        assertEquals(30, backlog.openItems().single().intervalDays)
+        assertEquals(RoutineState.DUE, backlog.openItems().single().routineState(LocalDate(2026, 11, 7)))
+        val cleared = tools.registry.run(tools.setRoutineSchedule, SetRoutineScheduleArgs(texts = listOf("zwemles")), nl)
+        assertEquals("“Zwemles” · elke week", cleared.summary)
+        assertNull(backlog.openItems().single().schedule)
+
+        val wrong = tools.registry.execute(ToolCall("set_routine_schedule", kotlinx.serialization.json.buildJsonObject {
+            put("texts", kotlinx.serialization.json.JsonArray(listOf(kotlinx.serialization.json.JsonPrimitive("zwemles"))))
+            put("time", kotlinx.serialization.json.JsonPrimitive("straks"))
+        }), nl)
+        assertTrue(wrong is ToolOutcome.Failed, wrong.toString())
+    }
+
+    @Test
     fun `a routine comes back after its interval instead of closing`() = runTest {
         val added = add(AddToBacklogArgs("Lakens verversen", Section.CHORE, intervalDays = 14))
         assertEquals("Bij Taken: “Lakens verversen” (huishoudtaak) · om de 2 weken", added.summary)

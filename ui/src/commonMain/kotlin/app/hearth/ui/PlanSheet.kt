@@ -87,10 +87,25 @@ import app.hearth.ui.resources.reply_in
 import app.hearth.ui.resources.wait_reply
 import app.hearth.ui.resources.yes
 import kotlinx.datetime.DayOfWeek
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.rememberTimePickerState
+import app.hearth.core.model.Schedule
+import app.hearth.core.model.Topic
+import app.hearth.ui.theme.style
+import app.hearth.ui.resources.fixed_days
+import app.hearth.ui.resources.fixed_days_hint
+import app.hearth.ui.resources.fixed_time
+import app.hearth.ui.resources.fixed_time_title
+import app.hearth.ui.resources.fixed_time_none
+import app.hearth.ui.resources.save
+import app.hearth.ui.resources.cancel
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
-/** Everything you can do with one item, shaped by its kind. Every choice is one tap and closes the sheet. */
+/**
+ * Everything you can do with one item, shaped by its kind. A plan is one tap and closes the sheet; a routine's
+ * moment, rhythm, days and steps change in place, so several can be set in one go.
+ */
 class PlanActions(
     val plan: (When, LocalDate?, Boolean) -> Unit,
     val done: () -> Unit,
@@ -104,6 +119,8 @@ class PlanActions(
     val removeStep: (BacklogItem) -> Unit = {},
     /** Puts a step at a new place (1 = first). */
     val moveStep: (BacklogItem, Int) -> Unit = { _, _ -> },
+    /** Fixed days (and maybe a time); null: back to roughly every week. */
+    val schedule: (Schedule?) -> Unit = {},
 )
 
 private val INTERVALS = listOf(1, 7, 14, 30, 90, null)
@@ -118,6 +135,7 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
     var finishBy by remember(item.id) { mutableStateOf(item.finishBy) }
     var removingStep by remember { mutableStateOf<BacklogItem?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val kind = item.kind
 
@@ -188,14 +206,34 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
                     // The moment of the day it belongs to: the morning routine, around dinner, bedtime.
                     Text(stringResource(Res.string.moment_title), style = MaterialTheme.typography.titleMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Anchor.entries.forEach { a -> ChoiceChip(a.title(lang), item.anchor == a, { close { actions.anchor(a) } }) }
-                        ChoiceChip(stringResource(Res.string.anchor_none), item.anchor == null, { close { actions.anchor(null) } })
+                        Anchor.entries.forEach { a -> ChoiceChip(a.title(lang), item.anchor == a, { actions.anchor(a) }) }
+                        ChoiceChip(stringResource(Res.string.anchor_none), item.anchor == null, { actions.anchor(null) })
                     }
+                    val schedule = item.schedule
                     Text(stringResource(Res.string.how_often), style = MaterialTheme.typography.titleMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         INTERVALS.forEach { days ->
-                            ChoiceChip(intervalLabel(days, lang).replaceFirstChar { it.uppercase() }, item.intervalDays == days, { close { actions.interval(days) } })
+                            ChoiceChip(intervalLabel(days, lang).replaceFirstChar { it.uppercase() }, schedule == null && item.intervalDays == days, { actions.interval(days) })
                         }
+                    }
+                    // Fixed days, for what really happens on a day (the bins, swimming lessons); a time only if it is fixed.
+                    Text(stringResource(Res.string.fixed_days), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        schedule?.label(lang)?.replaceFirstChar { it.uppercase() } ?: stringResource(Res.string.fixed_days_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (schedule != null) Topic.RHYTHM.style().ink else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val weekly = schedule?.takeIf { !it.monthly }?.weekdays.orEmpty()
+                        DayOfWeek.entries.forEach { d ->
+                            val on = d in weekly
+                            ChoiceChip(weekdayName(d, lang, short = true).replaceFirstChar { it.uppercase() }, on, {
+                                val days = if (on) weekly - d else weekly + d
+                                actions.schedule(if (days.isEmpty()) null else Schedule(days.sorted(), time = schedule?.time))
+                            })
+                        }
+                        if (schedule?.monthly == true) ChoiceChip(schedule.label(lang).substringBefore(" om "), true, { actions.schedule(null) }, icon = HearthIcons.Close)
+                        ChoiceChip(schedule?.time ?: stringResource(Res.string.fixed_time), schedule?.time != null, { pickingTime = true }, icon = HearthIcons.Later)
                     }
                     Text(stringResource(Res.string.do_on_day), style = MaterialTheme.typography.titleMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -265,6 +303,24 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
         }
     }
 
+    if (pickingTime) {
+        TimeDialog(
+            initial = item.schedule?.time,
+            onPick = { t ->
+                val current = item.schedule
+                // A time without days: every day at that time.
+                actions.schedule(
+                    when {
+                        current != null -> current.copy(time = t).takeIf { it.isSet && (t != null || it.weekdays.size < 7 || it.monthly) }
+                        t != null -> Schedule(DayOfWeek.entries.toList(), time = t)
+                        else -> null
+                    },
+                )
+                pickingTime = false
+            },
+            onDismiss = { pickingTime = false },
+        )
+    }
     removingStep?.let { step ->
         ConfirmDialog(stringResource(Res.string.delete_confirm, step.text), stringResource(Res.string.delete_confirm_body), onYes = { actions.removeStep(step) }) { removingStep = null }
     }
@@ -308,4 +364,27 @@ private fun MoveRow(item: BacklogItem, actions: PlanActions, close: (() -> Unit)
             ChoiceChip(stringResource(label), selected, { if (!selected) close { actions.move(section) } })
         }
     }
+}
+
+/** A fixed time, typed as hours and minutes; "Geen vast uur" takes it away. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimeDialog(initial: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
+    val (h, m) = initial?.split(":")?.map { it.toIntOrNull() ?: 0 } ?: listOf(20, 0)
+    val state = rememberTimePickerState(initialHour = h, initialMinute = m, is24Hour = true)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.fixed_time_title)) },
+        text = { TimeInput(state) },
+        confirmButton = {
+            FilledTonalButton(onClick = { onPick("${state.hour.toString().padStart(2, '0')}:${state.minute.toString().padStart(2, '0')}") }) {
+                Text(stringResource(Res.string.save))
+            }
+        },
+        dismissButton = {
+            if (initial != null) TextButton(onClick = { onPick(null) }) { Text(stringResource(Res.string.fixed_time_none)) }
+            else TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+    )
 }

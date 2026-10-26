@@ -32,11 +32,25 @@ fun BacklogItem.daysSinceDone(today: LocalDate): Int? =
     lastDoneDate?.let { (today.toEpochDays() - it.toEpochDays()).toInt() }
 
 fun BacklogItem.routineState(today: LocalDate): RoutineState {
+    schedule?.let { return it.state(lastDoneDate, today) }
     val interval = intervalDays ?: return if (lastDone == null) RoutineState.NEW else RoutineState.FRESH
     val since = daysSinceDone(today) ?: return RoutineState.NEW
     return when {
         since >= interval -> RoutineState.DUE
         interval > 1 && since >= interval - maxOf(1, interval / 5) -> RoutineState.SOON
+        else -> RoutineState.FRESH
+    }
+}
+
+/**
+ * On fixed days: about time on its day, and still open after it until done or its next day comes ("sinds donderdag",
+ * never "late"). Never done and its day already passed: it starts at the next one.
+ */
+private fun Schedule.state(lastDone: LocalDate?, today: LocalDate): RoutineState {
+    val last = lastOn(today)
+    return when {
+        last != null && (lastDone == null || lastDone < last) && (last == today || lastDone != null) -> RoutineState.DUE
+        nextAfter(today) == today.plusDays(1) -> RoutineState.SOON
         else -> RoutineState.FRESH
     }
 }

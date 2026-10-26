@@ -126,8 +126,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val pairingCode by viewModel.pairingCode.collectAsStateWithLifecycle()
     val google by viewModel.google.collectAsStateWithLifecycle()
     val wins by viewModel.wins.collectAsStateWithLifecycle()
-    val meters by viewModel.meters.collectAsStateWithLifecycle()
-    val metersOn by viewModel.metersOn.collectAsStateWithLifecycle()
+    val week by viewModel.week.collectAsStateWithLifecycle()
+    val weekOn by viewModel.weekOn.collectAsStateWithLifecycle()
     val ruleChecks by viewModel.ruleChecks.collectAsStateWithLifecycle()
     val ruleEase by viewModel.ruleEase.collectAsStateWithLifecycle()
     val ease by viewModel.ease.collectAsStateWithLifecycle()
@@ -207,7 +207,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, meters, metersOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleEase),
+                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleEase),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -227,8 +227,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 goMenu = { destination = Destination.MENU },
                                 addWin = viewModel::addWin,
                                 removeWin = viewModel::removeWin,
-                                setMeter = { m, v, g -> viewModel.setMeter(m, v, g) },
-                                setMetersOn = viewModel::setMetersOn,
+                                rateWeek = { e, g -> viewModel.rateWeek(e, g) },
+                                setWeekOn = viewModel::setWeekOn,
                                 checkRule = { r, e -> viewModel.checkRule(r, e) },
                                 lessOften = viewModel::lessOften,
                                 makeEasier = viewModel::makeEasier,
@@ -246,8 +246,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 moveVoorstel = { i, p -> viewModel.moveVoorstel(i, p) },
                                 toggleVoorstel = { viewModel.toggleVoorstel(it) },
                                 addVoorstel = viewModel::addVoorstel,
-                                fixLine = { id, text -> viewModel.fixLine(id, text) },
-                                editVoorstel = { i, text -> viewModel.editVoorstel(i, text) },
+                                changeSuggestion = { t, i, c, now -> viewModel.changeSuggestion(t, i, c, now) },
+                                editVoorstel = { i, c -> viewModel.editVoorstel(i, c) },
                             ),
                         )
                         Destination.CONNECT -> ConnectScreen(
@@ -360,7 +360,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
         if (dimmed) AmbientOverlay()
     }
 
-    planning?.let { item ->
+    // The sheet follows the item as it changes, so a routine's moment, rhythm and days can be set in one go.
+    planning?.let { opened -> backlog.firstOrNull { it.id == opened.id } ?: opened }?.let { item ->
         PlanSheet(
             item = item,
             today = today,
@@ -377,6 +378,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                 addStep = { viewModel.addRoutineStep(item, it) },
                 removeStep = { viewModel.delete(it) },
                 moveStep = { step, place -> viewModel.moveStep(step, place) },
+                schedule = { viewModel.setSchedule(item, it) },
             ),
             onDismiss = { planning = null },
             steps = steps.filter { it.parentId == item.id && it.isRoutineStep },

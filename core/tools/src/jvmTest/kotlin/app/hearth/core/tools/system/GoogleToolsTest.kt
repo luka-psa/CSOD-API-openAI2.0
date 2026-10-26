@@ -124,6 +124,36 @@ class GoogleToolsTest {
     }
 
     @Test
+    fun `rhythms on fixed days repeat in their own calendar, daily moments stay out`() = runTest {
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Zwemles", Section.RHYTHM, weekdays = listOf(kotlinx.datetime.DayOfWeek.WEDNESDAY), time = "14:00"), ctx)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Containerpark", Section.CHORE, weekdays = listOf(kotlinx.datetime.DayOfWeek.SATURDAY), weekOfMonth = 1), ctx)
+        tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Tanden poetsen", Section.RHYTHM, anchor = app.hearth.core.model.Anchor.BEDTIME), ctx)
+
+        val first = tools.registry.run(tools.syncCalendar, NoArgs(), ctx)
+        assertEquals(2, first.added)
+        // "Hearth" stays for planned days; the rhythms get "Hearth · Ritmes".
+        assertEquals(setOf("cal1", "cal2"), calendar.calendars.keys)
+        val rhythms = calendar.calendars.getValue("cal2").values.sortedBy { it.title }
+        assertEquals(
+            listOf(
+                listOf("Containerpark", null, "RRULE:FREQ=MONTHLY;BYDAY=1SA", "Uit Hearth · de eerste zaterdag van de maand"),
+                listOf("Zwemles", "14:00", "RRULE:FREQ=WEEKLY;BYDAY=WE", "Uit Hearth · elke woensdag om 14:00"),
+            ),
+            rhythms.map { listOf(it.title, it.time, it.recurrence, it.description) },
+        )
+        assertTrue(calendar.calendars.getValue("cal1").isEmpty())
+
+        // Ticking it off changes nothing in the calendar; a new day does, and so does going back to "roughly weekly".
+        tools.registry.run(tools.completeBacklogItem, BacklogRefArgs(texts = listOf("zwemles")), ctx)
+        assertEquals("Google Agenda is bij.", tools.registry.run(tools.syncCalendar, NoArgs(), ctx).summary)
+        tools.registry.run(tools.setRoutineSchedule, app.hearth.core.tools.backlog.SetRoutineScheduleArgs(texts = listOf("zwemles"), weekdays = listOf(kotlinx.datetime.DayOfWeek.THURSDAY)), ctx)
+        tools.registry.run(tools.setRoutineSchedule, app.hearth.core.tools.backlog.SetRoutineScheduleArgs(texts = listOf("containerpark")), ctx)
+        val next = tools.registry.run(tools.syncCalendar, NoArgs(), ctx)
+        assertEquals(Triple(0, 1, 1), Triple(next.added, next.changed, next.removed))
+        assertEquals("RRULE:FREQ=WEEKLY;BYDAY=TH", calendar.calendars.getValue("cal2").values.single().recurrence)
+    }
+
+    @Test
     fun `planned days go to Hearth's calendar, only changes are sent`() = runTest {
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Tandarts", Section.APPOINTMENT), ctx)
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Belastingbrief", Section.ADMIN), ctx)

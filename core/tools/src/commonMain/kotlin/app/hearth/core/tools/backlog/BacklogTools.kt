@@ -24,6 +24,8 @@ import app.hearth.core.tools.Tool
 import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolException
 import app.hearth.core.tools.ToolResult
+import app.hearth.core.model.rhythmLabel
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
@@ -104,6 +106,14 @@ data class AddToBacklogArgs(
     val intervalDays: Int? = null,
     @Describe("For a routine with a moment of the day: MORNING, AFTERNOON (after school), DINNER (around dinner), EVENING or BEDTIME.")
     val anchor: Anchor? = null,
+    @Describe(WEEKDAYS_DOC)
+    val weekdays: List<DayOfWeek> = emptyList(),
+    @Describe(DAY_OF_MONTH_DOC)
+    val dayOfMonth: Int? = null,
+    @Describe(WEEK_OF_MONTH_DOC)
+    val weekOfMonth: Int? = null,
+    @Describe(TIME_DOC)
+    val time: String? = null,
 )
 
 @Serializable
@@ -131,19 +141,22 @@ class AddToBacklogTool(private val repo: BacklogRepository, private val board: B
             return AddToBacklogResult(shown, added, if (added) ctx.t("Op het werkbord: “${entry.text}” ($label)", "On the board: “${entry.text}” ($label)") else ctx.t("Staat al op het werkbord: “${entry.text}”", "Already on the board: “${entry.text}”"))
         }
         val (plan, date) = resolve(args.`when`, args.date, ctx)
-        val routine = args.section.kind == TaskKind.ROUTINE
+        val schedule = scheduleOf(args.weekdays, args.dayOfMonth, args.weekOfMonth, args.time, ctx)
+        // Fixed days make it a routine.
+        val section = if (schedule != null && args.section.kind != TaskKind.ROUTINE) Section.CHORE else args.section
+        val routine = section.kind == TaskKind.ROUTINE
         val anchor = args.anchor?.takeIf { routine }
         // A routine with a moment of the day comes back daily unless said otherwise.
         val interval = (args.intervalDays ?: if (anchor != null) 1 else null)?.takeIf { it > 0 && routine }
         val (item, added) = repo.add(
-            text, args.section, plan, date?.toString(), args.finishBy && date != null, ctx.actorMemberId,
-            urgent = args.urgent, intervalDays = interval, anchor = anchor,
+            text, section, plan, date?.toString(), args.finishBy && date != null, ctx.actorMemberId,
+            urgent = args.urgent, intervalDays = interval, anchor = anchor, schedule = schedule,
         )
         val label = item.section.label(ctx.lang)
         val summary = if (added) {
             val whenText = when {
                 item.plan != Plan.UNPLANNED -> " · ${planLabel(item, ctx)}"
-                item.isRoutine() -> (item.anchor?.let { " · ${it.title(ctx.lang).lowercase()}" } ?: "") + " · ${intervalLabel(item.intervalDays, ctx.lang)}"
+                item.isRoutine() -> (item.anchor?.let { " · ${it.title(ctx.lang).lowercase()}" } ?: "") + " · ${rhythmLabel(item, ctx.lang)}"
                 else -> ""
             } + if (item.urgent) ctx.t(" · dringend", " · urgent") else ""
             ctx.t("Bij Taken: “${item.text}” ($label)$whenText", "On the backlog: “${item.text}” ($label)$whenText")
@@ -228,7 +241,7 @@ class ListBacklogTool(private val repo: BacklogRepository) : Tool<ListBacklogArg
 /** The status in words: plan, rhythm, urgency, waiting. */
 fun describe(item: BacklogItem, ctx: ToolContext): String = buildList {
     if (item.isRoutine() && item.plan != Plan.DAY) {
-        add(intervalLabel(item.intervalDays, ctx.lang))
+        add(rhythmLabel(item, ctx.lang))
         add(app.hearth.core.model.lastDoneLabel(item, ctx.today, ctx.lang))
     } else if (item.waiting) {
         add(ctx.t("wacht op antwoord", "waiting for a reply"))
@@ -302,7 +315,7 @@ class CompleteBacklogItemTool(private val repo: BacklogRepository) : Tool<Backlo
         val summary = buildList {
             if (others.isNotEmpty()) add(ctx.t("Gedaan: ${quoted(others)}. Mooi zo!", "Done: ${quoted(others)}. Nice!"))
             routines.forEach { r ->
-                val next = r.intervalDays?.let { " " + ctx.t("Volgende keer: ${intervalLabel(it, ctx.lang)}.", "Next time: ${intervalLabel(it, ctx.lang)}.") } ?: ""
+                val next = r.intervalDays?.let { rhythmLabel(r, ctx.lang) }?.let { " " + ctx.t("Volgende keer: $it.", "Next time: $it.") } ?: ""
                 add(ctx.t("Gedaan: “${r.text}”. Mooi zo!$next", "Done: “${r.text}”. Nice!$next"))
             }
         }.joinToString("\n")

@@ -337,6 +337,8 @@ class Orchestrator(
             if (fromTalk) MeetingWords.gist(body) else body, chosen,
             hint?.whenValue ?: When.UNPLANNED, hint?.date?.toString(), hint?.finishBy ?: false,
             urgent = task.urgent, intervalDays = task.intervalDays, anchor = task.anchor,
+            weekdays = task.schedule?.weekdays.orEmpty(), dayOfMonth = task.schedule?.monthDay,
+            weekOfMonth = task.schedule?.monthWeek, time = task.schedule?.time,
         )
         return ToolCall.of(AddToBacklogTool.NAME, AddToBacklogArgs.serializer(), args) to args
     }
@@ -396,6 +398,7 @@ class Orchestrator(
             Place.PLANNING -> backlog(area?.section?.takeIf { it.boardKind == null } ?: Section.OTHER)
             Place.EVENT -> backlog(Section.APPOINTMENT)
             Place.FREE_TIME -> backlog(Section.PROTECTED_TIME)
+            Place.RHYTHM -> backlog(Section.RHYTHM)
             Place.SHOPPING -> {
                 val calls = shoppingCalls(body)
                 Proposal(sentence, place, calls.joinToString(", ") { ToolJson.decodeFromJsonElement(AddShoppingItemArgs.serializer(), it.arguments).name.replaceFirstChar { c -> c.uppercase() } }, null, calls, topic = Topic.SHOPPING)
@@ -411,6 +414,54 @@ class Orchestrator(
             Place.GOAL -> board(body, ToolCall.of(AddGoalTool.NAME, AddGoalArgs.serializer(), AddGoalArgs(body, KeywordRouter.goalScope(body))), Topic.GOALS)
             Place.WIN -> board(body, ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(body)), null)
             Place.NONE -> Proposal(sentence, place, body, null, emptyList())
+        }
+    }
+
+    /**
+     * A conclusion as the family set it in its sheet: their own words for it, the place and the day they chose. The
+     * words are kept as typed (a rhythm still reads its days from them, "zwemles elke woensdag"); the chosen day wins
+     * over any day word in them.
+     */
+    fun edited(base: Proposal, text: String, place: Place, date: LocalDate?, next: Boolean, ctx: ToolContext): Proposal {
+        val words = text.trim().trimEnd('.', '!').ifEmpty { base.text }.replaceFirstChar { it.uppercase() }
+        val whenValue = when {
+            date != null -> When.DAY
+            next -> When.NEXT
+            else -> When.UNPLANNED
+        }
+        fun backlog(section: Section): Proposal {
+            val task = TaskWords.extract(words)
+            val chosen = when {
+                section != Section.OTHER -> section
+                else -> KeywordRouter.section(task.text).takeIf { it.boardKind == null && it != Section.SHOPPING && it != Section.STOCK } ?: Section.OTHER
+            }
+            val args = AddToBacklogArgs(
+                task.text.replaceFirstChar { it.uppercase() }, chosen, whenValue, date?.toString(), urgent = task.urgent,
+                intervalDays = task.intervalDays, anchor = task.anchor, weekdays = task.schedule?.weekdays.orEmpty(),
+                dayOfMonth = task.schedule?.monthDay, weekOfMonth = task.schedule?.monthWeek, time = task.schedule?.time,
+            )
+            val call = ToolCall.of(AddToBacklogTool.NAME, AddToBacklogArgs.serializer(), args)
+            return Proposal(base.sentence, place, args.text, date, listOf(call), base.heard, next = next && date == null, topic = chosen.topic())
+        }
+        fun board(call: ToolCall, topic: Topic?) = Proposal(base.sentence, place, words, null, listOf(call), base.heard, topic = topic)
+        return when (place) {
+            Place.PLANNING -> backlog(Section.OTHER)
+            Place.EVENT -> backlog(Section.APPOINTMENT)
+            Place.FREE_TIME -> backlog(Section.PROTECTED_TIME)
+            Place.RHYTHM -> backlog(Section.RHYTHM)
+            Place.SHOPPING -> shoppingCalls(words).let { calls ->
+                Proposal(base.sentence, place, words, null, calls, base.heard, topic = Topic.SHOPPING)
+            }
+            Place.MEAL -> {
+                val day = date ?: ctx.today
+                Proposal(base.sentence, place, words, day, listOf(ToolCall.of(PlanMealTool.NAME, PlanMealArgs.serializer(), PlanMealArgs(words, day.toString()))), base.heard, topic = Topic.MENU)
+            }
+            Place.HOUSE_RULE -> board(ToolCall.of(AddHouseRuleTool.NAME, AddHouseRuleArgs.serializer(), AddHouseRuleArgs(words)), Topic.RULES)
+            Place.FRICTION -> board(ToolCall.of(LogFrictionTool.NAME, LogFrictionArgs.serializer(), LogFrictionArgs(words)), Topic.FRICTION)
+            Place.IDEA -> board(ToolCall.of(AddIdeaTool.NAME, AddIdeaArgs.serializer(), AddIdeaArgs(words)), Topic.FRICTION)
+            Place.GOAL -> board(ToolCall.of(AddGoalTool.NAME, AddGoalArgs.serializer(), AddGoalArgs(words, KeywordRouter.goalScope(words))), Topic.GOALS)
+            Place.WIN -> board(ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(words)), null)
+            Place.NONE -> Proposal(base.sentence, place, words, null, emptyList(), base.heard)
         }
     }
 

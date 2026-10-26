@@ -71,7 +71,7 @@ import app.hearth.ui.resources.agree_unsorted
 import app.hearth.ui.resources.agree_yes
 import app.hearth.ui.resources.conversation_show
 import app.hearth.ui.resources.heard_this_week
-import app.hearth.ui.resources.fix_words_title
+import app.hearth.ui.resources.suggestion_added
 import app.hearth.ui.resources.listen_still
 import app.hearth.ui.resources.place_none
 import app.hearth.ui.resources.listen_hint
@@ -94,7 +94,8 @@ import kotlin.math.sin
 /**
  * Luister mee, front and centre: a big mic that breathes while it listens, the words as they come in, and the
  * last thoughts with what Hearth concludes from each. Pauses don't cut a thought; Hearth waits until it has
- * settled. A tap on a thought fixes words the recognizer misheard. The tiles below light up in the same colour.
+ * settled. A tap on a suggestion opens it: its name, place and day, filled in from what was said. The tiles below
+ * light up in the same colour.
  */
 @Composable
 fun ListenStage(
@@ -110,10 +111,11 @@ fun ListenStage(
     onToggle: () -> Unit,
     onShow: () -> Unit,
     onSort: () -> Unit,
-    onFix: (String, String) -> Unit,
+    /** A suggestion was changed (or added right away, with true). */
+    onSuggestion: (HeardThought, Int, SuggestionChange, Boolean) -> Unit,
 ) {
     val ink = AccentStyle
-    var fixing by remember { mutableStateOf<HeardThought?>(null) }
+    var opened by remember { mutableStateOf<Pair<HeardThought, Int>?>(null) }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
             .background(if (listening) ink.tint else MaterialTheme.colorScheme.surface)
@@ -161,7 +163,7 @@ fun ListenStage(
         if (heard.isNotEmpty()) {
             Spacer(Modifier.size(12.dp))
             heard.forEachIndexed { i, thought ->
-                ThoughtRow(thought, newest = i == 0, waiting = i == 0 && !settled, today = today, lang = lang, onClick = { fixing = thought })
+                ThoughtRow(thought, newest = i == 0, waiting = i == 0 && !settled, today = today, lang = lang, onOpen = { n -> opened = thought to n })
             }
         }
         if (heard.isNotEmpty() || hasLines || listening) {
@@ -174,7 +176,15 @@ fun ListenStage(
             }
         }
     }
-    fixing?.let { t -> FixWordsDialog(t.lines, onFix = onFix) { fixing = null } }
+    opened?.let { (t, n) ->
+        t.proposals.getOrNull(n)?.let { p ->
+            SuggestionSheet(
+                p, today, lang,
+                onSave = { onSuggestion(t, n, it, false) },
+                onAddNow = if (n in t.added) null else { c -> onSuggestion(t, n, c, true) },
+            ) { opened = null }
+        }
+    }
 }
 
 /** All topics as small dots: the one the last sentence went to glows, so it's visible without scrolling. */
@@ -241,31 +251,26 @@ private fun SoundBars(ink: Color) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ThoughtRow(thought: HeardThought, newest: Boolean, waiting: Boolean, today: LocalDate, lang: Lang, onClick: () -> Unit) {
+private fun ThoughtRow(thought: HeardThought, newest: Boolean, waiting: Boolean, today: LocalDate, lang: Lang, onOpen: (Int) -> Unit) {
     Column(
         Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(18.dp))
             .background(if (newest) MaterialTheme.colorScheme.surface else Color.Transparent)
-            .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Text(
-                thought.text,
-                style = if (newest) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
-                color = if (newest) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = if (newest) 4 else 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            Icon(HearthIcons.Edit, stringResource(Res.string.fix_words_title), tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp).padding(top = 2.dp))
-        }
+        Text(
+            thought.text,
+            style = if (newest) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
+            color = if (newest) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = if (newest) 4 else 2,
+            overflow = TextOverflow.Ellipsis,
+        )
         Spacer(Modifier.size(6.dp))
         when {
             waiting -> Text(stringResource(Res.string.listen_still), style = MaterialTheme.typography.labelMedium, color = AccentStyle.ink, fontStyle = FontStyle.Italic)
             thought.proposals.isEmpty() -> Text(stringResource(Res.string.place_none), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
             else -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                thought.proposals.forEach { ConclusionPill(it, today, lang) }
+                // A tap opens the suggestion to change its name, place or day.
+                thought.proposals.forEachIndexed { n, p -> ConclusionPill(p, today, lang, added = n in thought.added, onClick = { onOpen(n) }) }
             }
         }
     }
@@ -273,14 +278,17 @@ private fun ThoughtRow(thought: HeardThought, newest: Boolean, waiting: Boolean,
 
 /** "Afspreken met Anthony · deze week", with the icon and colour of where it goes. */
 @Composable
-internal fun ConclusionPill(p: Orchestrator.Proposal, today: LocalDate, lang: Lang) {
+internal fun ConclusionPill(p: Orchestrator.Proposal, today: LocalDate, lang: Lang, added: Boolean = false, onClick: (() -> Unit)? = null) {
     val s = p.topic?.style() ?: if (p.place == Place.WIN) AccentStyle else UnsortedStyle
     val day = p.date?.let { dayLabel(it, today, lang) } ?: if (p.next) stringResource(Res.string.heard_this_week) else null
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(s.tint).padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(s.tint)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
-        Icon(p.topic?.icon() ?: p.place.icon(), p.topic?.title(lang), tint = s.ink, modifier = Modifier.size(16.dp))
+        // Added already: a tick instead of its icon.
+        Icon(if (added) HearthIcons.Check else p.topic?.icon() ?: p.place.icon(), if (added) stringResource(Res.string.suggestion_added) else p.topic?.title(lang), tint = s.ink, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
         // The day always shows whole; a long text wraps (on a phone) before it gives way.
         Text(p.text.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleSmall, color = s.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))

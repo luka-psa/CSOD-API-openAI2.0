@@ -12,6 +12,8 @@ enum class Place {
     EVENT,
     /** Protected time: rest, fun, nothing planned. */
     FREE_TIME,
+    /** A routine: a moment of the day, roughly every N days, or fixed days ("elke donderdag"). */
+    RHYTHM,
     SHOPPING,
     MEAL,
     HOUSE_RULE,

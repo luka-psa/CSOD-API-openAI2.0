@@ -60,6 +60,8 @@ object HearthIcons {
     /** Rhythms and routines: what comes back at its moment of the day. */
     val Repeat = icon("M7,7h10v3l4,-4 -4,-4v3H5v6h2V7zM17,17H7v-3l-4,4 4,4v-3h12v-6h-2v4z")
     val Bolt = icon("M7,2v11h3v9l7,-12h-4l4,-8z")
+    /** Material "cloud": the middle of the weather scale (Cloud is the backup's cloud with a tick). */
+    val WeatherCloud = icon("M19.35,10.04C18.67,6.59 15.64,4 12,4 9.11,4 6.6,5.64 5.35,8.04 2.34,8.36 0,10.91 0,14c0,3.31 2.69,6 6,6h13c2.76,0 5,-2.24 5,-5 0,-2.64 -2.05,-4.78 -4.65,-4.96z")
     val Star = icon("M12,17.27L18.18,21l-1.64,-7.03L22,9.24l-7.19,-0.61L12,2 9.19,8.63 2,9.24l5.46,4.73L5.82,21z")
     val Rule = icon(
         "M19,3h-4.18C14.4,1.84 13.3,1 12,1c-1.3,0 -2.4,0.84 -2.82,2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2V5" +

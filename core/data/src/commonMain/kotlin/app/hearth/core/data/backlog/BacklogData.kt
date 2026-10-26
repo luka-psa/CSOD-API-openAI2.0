@@ -15,6 +15,7 @@ import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Ease
 import app.hearth.core.model.Anchor
 import app.hearth.core.model.Plan
+import app.hearth.core.model.Schedule
 import app.hearth.core.model.Section
 import app.hearth.core.model.newId
 import app.hearth.core.model.normalizeName
@@ -48,10 +49,12 @@ data class BacklogEntity(
     @ColumnInfo(defaultValue = "NULL") val anchor: Anchor? = null,
     /** A step's place among its siblings (1 = first); older steps have none and keep the order they were added in. */
     @ColumnInfo(defaultValue = "NULL") val position: Int? = null,
+    /** A routine's fixed days, as JSON ([Schedule]); null: roughly every [intervalDays]. */
+    @ColumnInfo(defaultValue = "NULL") val schedule: String? = null,
 ) {
     fun toModel() = BacklogItem(
         id, text, section, plan, plannedDate, finishBy, done, createdAt, addedById,
-        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep, anchor,
+        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep, anchor, Schedule.decode(schedule),
     )
 }
 
@@ -143,6 +146,9 @@ interface BacklogDao {
     @Query("UPDATE backlog_item SET intervalDays = :days, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setInterval(ids: List<String>, days: Int?, now: Long)
 
+    @Query("UPDATE backlog_item SET schedule = :schedule, intervalDays = :days, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setSchedule(ids: List<String>, schedule: String?, days: Int?, now: Long)
+
     @Query("UPDATE backlog_item SET urgent = :urgent, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setUrgent(ids: List<String>, urgent: Boolean, now: Long)
 
@@ -191,6 +197,7 @@ class BacklogRepository(
         intervalDays: Int? = null,
         parentId: String? = null,
         anchor: Anchor? = null,
+        schedule: Schedule? = null,
     ): Pair<BacklogItem, Boolean> =
         db.withWriteTransaction {
             val key = normalizeName(text)
@@ -200,7 +207,8 @@ class BacklogRepository(
             val position = parentId?.let { dao.countSteps(it) + 1 }
             val entity = BacklogEntity(
                 newId(), text.trim(), key, section, plan, date, finishBy, false, null, addedById, now, now,
-                urgent = urgent, intervalDays = intervalDays, parentId = parentId, anchor = anchor, position = position,
+                urgent = urgent, intervalDays = schedule?.intervalDays ?: intervalDays, parentId = parentId, anchor = anchor, position = position,
+                schedule = schedule?.takeIf { it.isSet }?.encode(),
             )
             dao.insert(entity)
             entity.toModel() to true
@@ -275,8 +283,16 @@ class BacklogRepository(
     private fun toDays(rows: List<RoutineLogEntity>) =
         rows.groupBy { it.itemId }.mapValues { (_, list) -> list.mapNotNull { runCatching { LocalDate.parse(it.day) }.getOrNull() } }
 
+    /** "Roughly every N days" again: a fixed schedule makes way for it. */
     suspend fun setInterval(ids: List<String>, days: Int?) {
-        if (ids.isNotEmpty()) dao.setInterval(ids, days, clock())
+        if (ids.isNotEmpty()) dao.setSchedule(ids, null, days, clock())
+    }
+
+    /** Fixed days (and maybe a time); null goes back to roughly every [intervalWhenCleared] days. */
+    suspend fun setSchedule(ids: List<String>, schedule: Schedule?, intervalWhenCleared: Int? = 7) {
+        if (ids.isEmpty()) return
+        val set = schedule?.takeIf { it.isSet }
+        dao.setSchedule(ids, set?.encode(), set?.intervalDays ?: intervalWhenCleared, clock())
     }
 
     suspend fun setUrgent(ids: List<String>, urgent: Boolean) {

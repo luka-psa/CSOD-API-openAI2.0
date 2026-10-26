@@ -28,7 +28,7 @@ import app.hearth.core.tools.week.ListHuddlesTool
 import app.hearth.core.tools.week.MarkTranscriptSortedTool
 import app.hearth.core.tools.week.RemoveWinTool
 import app.hearth.core.tools.week.CheckHouseRuleTool
-import app.hearth.core.tools.week.SetWeekMeterTool
+import app.hearth.core.tools.week.RateWeekTool
 import app.hearth.core.tools.week.SetWeekMetersTool
 import app.hearth.core.tools.week.ListMealPlanTool
 import app.hearth.core.tools.week.PlanMealTool
@@ -60,6 +60,7 @@ import app.hearth.core.tools.backlog.AddProjectStepTool
 import app.hearth.core.tools.backlog.RateHabitTool
 import app.hearth.core.tools.backlog.SetSmallStepTool
 import app.hearth.core.tools.backlog.SetAnchorTool
+import app.hearth.core.tools.backlog.SetRoutineScheduleTool
 import app.hearth.core.tools.backlog.AddRoutineTool
 import app.hearth.core.tools.backlog.AddToBacklogTool
 import app.hearth.core.tools.backlog.CompleteBacklogItemTool
@@ -119,6 +120,7 @@ class HearthTools(
     val reopenBacklogItem = ReopenBacklogItemTool(backlog)
     val removeBacklogItem = RemoveBacklogItemTool(backlog)
     val setRoutineInterval = SetRoutineIntervalTool(backlog)
+    val setRoutineSchedule = SetRoutineScheduleTool(backlog)
     val markUrgent = MarkUrgentTool(backlog)
     val waitForReply = WaitForReplyTool(backlog)
     val moveBacklogItem = MoveBacklogItemTool(backlog, board)
@@ -149,7 +151,7 @@ class HearthTools(
     val finishWeekoverleg = FinishWeekoverlegTool(week, meeting, backlog, board, settings)
     val addWin = AddWinTool(meeting, board)
     val removeWin = RemoveWinTool(meeting)
-    val setWeekMeter = SetWeekMeterTool(meeting)
+    val rateWeek = RateWeekTool(meeting)
     val setWeekMeters = SetWeekMetersTool(settings)
     val checkHouseRule = CheckHouseRuleTool(meeting, board)
     val addTranscriptLine = AddTranscriptLineTool(meeting)
@@ -185,11 +187,11 @@ class HearthTools(
             addShoppingItem, listShoppingItems, markBought, unmarkBought, removeShoppingItem, clearBoughtItems,
             listStock, addStockItem, addStorageSpot, setStockState, removeStockItem, moveStockItem, removeStorageSpot,
             addToBacklog, listBacklog, planBacklogItem, completeBacklogItem, reopenBacklogItem, removeBacklogItem,
-            setRoutineInterval, markUrgent, waitForReply, moveBacklogItem, addProjectStep, rateHabit, setSmallStep, setAnchor, addRoutine, moveStep,
+            setRoutineInterval, setRoutineSchedule, markUrgent, waitForReply, moveBacklogItem, addProjectStep, rateHabit, setSmallStep, setAnchor, addRoutine, moveStep,
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, markFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
-            addWin, removeWin, setWeekMeter, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, readConversation, clearTranscript, listHuddles, addIdea,
+            addWin, removeWin, rateWeek, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, readConversation, clearTranscript, listHuddles, addIdea,
             saveRecipe, importRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples, setLanguage,
         ) + listOfNotNull(backupNow, restoreBackup, syncNow, startSync, shareSync, joinSync, stopSync),

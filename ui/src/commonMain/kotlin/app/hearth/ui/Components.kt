@@ -68,6 +68,7 @@ import app.hearth.core.model.Plan
 import app.hearth.core.model.Section
 import app.hearth.core.model.dayLabel
 import app.hearth.core.model.intervalLabel
+import app.hearth.core.model.rhythmLabel
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.lastDoneLabel
 import app.hearth.ui.theme.HearthColors
@@ -304,8 +305,8 @@ fun statusText(item: BacklogItem, today: LocalDate, lang: Lang): String? {
             item.localDate?.let { (if (nl) "opvolgen " else "follow up ") + dayLabel(it, today, lang) },
         ).joinToString(" · ")
         // Habits are lived, not ticked: no "done" language.
-        item.isHabit && item.plan != Plan.DAY -> item.intervalDays?.let { intervalLabel(it, lang) }
-        item.isRoutine() && item.plan != Plan.DAY -> "${intervalLabel(item.intervalDays, lang)} · ${lastDoneLabel(item, today, lang)}"
+        item.isHabit && item.plan != Plan.DAY -> item.intervalDays?.let { rhythmLabel(item, lang) }
+        item.isRoutine() && item.plan != Plan.DAY -> "${rhythmLabel(item, lang)} · ${lastDoneLabel(item, today, lang)}"
         else -> planText(item, today, lang)
     }
 }
@@ -394,18 +395,63 @@ fun BacklogRow(
     }
 }
 
-/** How much something asks: green, amber or orange, with a word. Never red. */
+/** How much something asks: its weather (zon, wolk, bliksem) and a word, green to orange. Never red. */
 @Composable
 fun EasePill(ease: Ease, label: String? = null, onClick: (() -> Unit)? = null) {
     val (ink, tint) = easeColors(ease)
-    Text(
-        label ?: stringResource(ease.label()),
-        style = MaterialTheme.typography.labelMedium,
-        color = ink,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.clip(RoundedCornerShape(50)).background(tint)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-    )
+            .padding(start = 8.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+    ) {
+        Icon(ease.weatherIcon(), null, tint = ink, modifier = Modifier.size(15.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(label ?: stringResource(ease.label()), style = MaterialTheme.typography.labelMedium, color = ink)
+    }
+}
+
+/** One scale for the week, the routines and the house rules: zon (loopt vanzelf), wolk (vraagt moeite), bliksem (te zwaar). */
+fun Ease.weatherIcon(): ImageVector = when (this) {
+    Ease.EASY -> HearthIcons.Sun
+    Ease.EFFORT -> HearthIcons.WeatherCloud
+    Ease.HARD -> HearthIcons.Bolt
+}
+
+/** A small weather mark, where a coloured dot used to be. */
+@Composable
+fun WeatherMark(ease: Ease, size: androidx.compose.ui.unit.Dp = 16.dp) =
+    Icon(ease.weatherIcon(), stringResource(ease.label()), tint = easeColors(ease).first, modifier = Modifier.size(size))
+
+/**
+ * From bliksem to zon: three steps, the chosen one filled in its colour. Hearth's [guess] has a ring until the family
+ * decides. Tapping the chosen step again leaves it as it is.
+ */
+@Composable
+fun WeatherScale(current: Ease?, onRate: (Ease) -> Unit, guess: Ease? = null) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        listOf(Ease.HARD, Ease.EFFORT, Ease.EASY).forEach { e ->
+            val (ink, tint) = easeColors(e)
+            val chosen = current == e
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(44.dp).clip(CircleShape)
+                    .background(if (chosen) tint else Color.Transparent)
+                    .then(if (current == null && guess == e) Modifier.border(2.dp, ink.copy(alpha = 0.5f), CircleShape) else Modifier)
+                    .clickable { onRate(e) },
+            ) {
+                Icon(
+                    e.weatherIcon(), stringResource(e.label()),
+                    tint = when {
+                        chosen -> ink
+                        current == null && guess == e -> ink.copy(alpha = 0.55f)
+                        else -> MaterialTheme.colorScheme.outline
+                    },
+                    modifier = Modifier.size(if (chosen) 26.dp else 22.dp),
+                )
+            }
+        }
+    }
 }
 
 fun Ease.label() = when (this) {
@@ -430,7 +476,11 @@ fun EaseChooser(current: Ease?, onRate: (Ease) -> Unit) {
         if (current == null) ChoiceChip(stringResource(Res.string.ease_rate), false, { open = true }) else EasePill(current, onClick = { open = true })
         androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             Ease.entries.forEach { e ->
-                androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(e.label())) }, onClick = { open = false; onRate(e) })
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(stringResource(e.label())) },
+                    leadingIcon = { WeatherMark(e, 18.dp) },
+                    onClick = { open = false; onRate(e) },
+                )
             }
         }
     }

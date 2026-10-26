@@ -13,3 +13,12 @@ private fun shareText(text: String): Unit = js(
         else if (navigator.clipboard) { navigator.clipboard.writeText(text).catch(() => {}); }
     }""",
 )
+
+@Composable
+actual fun rememberCopy(): (String) -> Unit = ::copyText
+
+private fun copyText(text: String): Unit = js(
+    """{
+        if (navigator.clipboard) { navigator.clipboard.writeText(text).catch(() => {}); }
+    }""",
+)

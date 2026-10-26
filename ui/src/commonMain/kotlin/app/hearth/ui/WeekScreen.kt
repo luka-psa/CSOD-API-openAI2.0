@@ -82,10 +82,9 @@ import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Huddle
 import app.hearth.core.model.Member
 import app.hearth.core.model.TranscriptLine
-import app.hearth.core.model.Meter
 import app.hearth.core.model.Ease
 import app.hearth.core.model.isHabit
-import app.hearth.core.model.MeterValue
+import app.hearth.core.model.WeekRating
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.Win
 import app.hearth.ai.route.Place
@@ -183,8 +182,9 @@ class WeekCallbacks(
     val goMenu: () -> Unit,
     val addWin: (String) -> Unit,
     val removeWin: (Win) -> Unit,
-    val setMeter: (Meter, Int?, Int?) -> Unit,
-    val setMetersOn: (Boolean) -> Unit,
+    /** How the week went, agreed together: (weather or null for no agreement, Hearth's suggestion). */
+    val rateWeek: (Ease?, Ease) -> Unit,
+    val setWeekOn: (Boolean) -> Unit,
     val checkRule: (BoardItem, Ease) -> Unit,
     val lessOften: (BacklogItem) -> Unit,
     val makeEasier: (BacklogItem) -> Unit,
@@ -202,16 +202,16 @@ class WeekCallbacks(
     val moveVoorstel: (Int, Place) -> Unit,
     val toggleVoorstel: (Int) -> Unit,
     val addVoorstel: () -> Unit,
-    /** Words Luister mee misheard, fixed by the family: (line id, text). */
-    val fixLine: (String, String) -> Unit = { _, _ -> },
-    val editVoorstel: (Int, String) -> Unit = { _, _ -> },
+    /** A suggestion of Luister mee changed in its sheet; with true, added right away. */
+    val changeSuggestion: (HeardThought, Int, SuggestionChange, Boolean) -> Unit = { _, _, _, _ -> },
+    val editVoorstel: (Int, SuggestionChange) -> Unit = { _, _ -> },
 )
 
 /** The Weekoverleg's own notes: the look back, Luister mee and the summaries. */
 class MeetingState(
     val wins: List<Win>,
-    val meters: List<MeterValue>,
-    val metersOn: Boolean,
+    val week: WeekRating?,
+    val weekOn: Boolean,
     val ruleChecks: List<RuleCheck>,
     val members: List<Member>,
     val transcript: List<TranscriptLine>,
@@ -309,7 +309,7 @@ fun WeekScreen(
                 onToggle = listen.toggle,
                 onShow = { showing = true },
                 onSort = cb.openVoorstel,
-                onFix = cb.fixLine,
+                onSuggestion = cb.changeSuggestion,
             )
             Spacer(Modifier.size(gap))
 
@@ -342,11 +342,7 @@ fun WeekScreen(
                         onRateRoutine = cb.rateHabit,
                         onRateRule = cb.checkRule,
                         onSmallStep = cb.smallStep,
-                    )
-                    Spacer(Modifier.size(14.dp))
-                    MetersSection(
-                        meeting.metersOn, meeting.meters, agenda?.suggestedFlow ?: 4, agenda?.suggestedStrain ?: 1, lang,
-                        onSet = cb.setMeter, onSwitch = cb.setMetersOn,
+                        week = WeekWeather(meeting.weekOn, meeting.week, agenda?.suggestedWeek ?: Ease.EASY, cb.rateWeek, cb.setWeekOn),
                     )
                 }
             }
@@ -373,7 +369,7 @@ fun WeekScreen(
         }
     }
     when (showing) {
-        true -> TranscriptSheet(stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript, onFix = cb.fixLine) { showing = null }
+        true -> TranscriptSheet(stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript) { showing = null }
         false -> TranscriptSheet(stringResource(Res.string.transcript_last), meeting.lastTranscript, onClear = null) { showing = null }
         null -> {}
     }
@@ -447,7 +443,7 @@ private fun TopicDetail(
             Days(meals, dishes, today, lang, cb)
             CardAction(stringResource(Res.string.week_recipes), cb.goMenu)
         }
-        Topic.FRICTION -> BoardStep(board, backlog.filter { it.isRoutine() && !it.done }, meeting.members, lang, heavy = meeting.meters.any { it.meter == Meter.STRAIN && it.value >= 4 }, cb)
+        Topic.FRICTION -> BoardStep(board, backlog.filter { it.isRoutine() && !it.done }, meeting.members, lang, heavy = meeting.week?.ease == Ease.HARD, cb)
         Topic.RULES -> {
             val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
             if (rules.isEmpty()) Hint(stringResource(Res.string.rules_empty))

@@ -16,10 +16,9 @@ import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Ease
 import app.hearth.core.model.easeNow
 import app.hearth.core.model.isHabit
-import app.hearth.core.model.Meter
 import app.hearth.core.model.title
-import app.hearth.core.model.word
-import app.hearth.core.model.MeterValue
+import app.hearth.core.model.WeekRating
+import app.hearth.core.model.weekWord
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.dayOf
 import app.hearth.core.model.isRoutine
@@ -104,58 +103,51 @@ class RemoveWinTool(private val meeting: MeetingRepository) : Tool<RemoveWinArgs
     }
 }
 
-// ---------- the two meters ----------
+// ---------- how the week went ----------
 
 @Serializable
-data class WeekMeterArgs(
-    @Describe("FLOW: how the week ran (1 moeizaam – 5 heel goed). STRAIN: what rubbed (1 niets – 5 veel).")
-    val meter: Meter,
-    @Describe("What the household agreed on together, 1–5. Leave empty when there is no agreement: it counts as neutral (3).")
-    val value: Int? = null,
+data class RateWeekArgs(
+    @Describe("How the week went, agreed together: EASY (zon, liep vanzelf), EFFORT (wolk, vroeg moeite) or HARD (bliksem, was zwaar). Leave empty when there is no agreement.")
+    val ease: Ease? = null,
     @Describe("What Hearth suggested, if it was shown.")
-    val suggested: Int? = null,
+    val suggested: Ease? = null,
 )
 
 @Serializable
-data class WeekMeterResult(val meter: MeterValue, override val summary: String) : ToolResult
+data class RateWeekResult(val week: WeekRating, override val summary: String) : ToolResult
 
-/** The household agrees on a meter together; no agreement is a fine answer too (neutral). */
-class SetWeekMeterTool(private val meeting: MeetingRepository) : Tool<WeekMeterArgs, WeekMeterResult> {
+/** The household agrees on the week's weather together; no agreement is a fine answer too. Never about one person. */
+class RateWeekTool(private val meeting: MeetingRepository) : Tool<RateWeekArgs, RateWeekResult> {
     override val name = NAME
     override val description =
-        "Set one of the weekoverleg's two household meters, agreed together: FLOW (how the week ran) or STRAIN (what " +
-            "rubbed). Never about one person. No agreement: leave value empty, it counts as neutral."
-    override val argsSerializer = WeekMeterArgs.serializer()
-    override val resultSerializer = WeekMeterResult.serializer()
+        "Say how the week went for the household, agreed together, on the weather scale: zon (EASY), wolk (EFFORT), " +
+            "bliksem (HARD). Never about one person. No agreement: leave ease empty."
+    override val argsSerializer = RateWeekArgs.serializer()
+    override val resultSerializer = RateWeekResult.serializer()
 
-    override suspend fun run(args: WeekMeterArgs, ctx: ToolContext): WeekMeterResult {
-        if (args.value != null && args.value !in 1..5) throw ToolException(ctx.t("Kies iets van 1 tot 5.", "Pick 1 to 5."))
-        val value = meeting.setMeter(args.meter, args.value, args.suggested)
-        val title = meterTitle(args.meter, ctx)
-        val summary = if (value.agreed) ctx.t("$title: ${meterWord(args.meter, value.value, ctx)}. Samen afgesproken.", "$title: ${meterWord(args.meter, value.value, ctx)}. Agreed together.")
-        else ctx.t("$title: geen akkoord, dus neutraal. Ook dat is een antwoord.", "$title: no agreement, so neutral. That's an answer too.")
-        return WeekMeterResult(value, summary)
+    override suspend fun run(args: RateWeekArgs, ctx: ToolContext): RateWeekResult {
+        val week = meeting.setWeek(args.ease, args.suggested)
+        val ease = week.ease
+        val summary = if (ease != null) ctx.t("De week ${ease.weekWord(ctx.lang)}. Samen afgesproken.", "The week ${ease.weekWord(ctx.lang)}. Agreed together.")
+        else ctx.t("De week: geen akkoord. Ook dat is een antwoord.", "The week: no agreement. That's an answer too.")
+        return RateWeekResult(week, summary)
     }
 
     companion object {
-        const val NAME = "set_week_meter"
+        const val NAME = "rate_week"
     }
 }
 
-internal fun meterTitle(meter: Meter, ctx: ToolContext) = meter.title(ctx.lang)
-
-internal fun meterWord(meter: Meter, value: Int, ctx: ToolContext) = meter.word(value, ctx.lang)
-
 @Serializable
-data class WeekMetersArgs(@Describe("Show the two meters in the weekoverleg.") val enabled: Boolean)
+data class WeekMetersArgs(@Describe("Ask how the week went (the weather) in the weekoverleg.") val enabled: Boolean)
 
 @Serializable
 data class WeekMetersResult(val enabled: Boolean, override val summary: String) : ToolResult
 
-/** The meters can be switched off when they cause more friction than they take away. */
+/** Rating the week can be switched off when it causes more friction than it takes away. */
 class SetWeekMetersTool(private val settings: SettingsRepository) : Tool<WeekMetersArgs, WeekMetersResult> {
     override val name = NAME
-    override val description = "Switch the weekoverleg's two meters on or off (tablet only)."
+    override val description = "Switch asking how the week went (its weather) on or off in the weekoverleg (tablet only)."
     override val exposeOverMcp = false
     override val argsSerializer = WeekMetersArgs.serializer()
     override val resultSerializer = WeekMetersResult.serializer()
@@ -164,7 +156,7 @@ class SetWeekMetersTool(private val settings: SettingsRepository) : Tool<WeekMet
         settings.put(METERS_SETTING, args.enabled.toString())
         return WeekMetersResult(
             args.enabled,
-            if (args.enabled) ctx.t("De meters staan aan.", "The meters are on.") else ctx.t("De meters staan uit. Aanzetten kan altijd.", "The meters are off. You can switch them on any time."),
+            if (args.enabled) ctx.t("Het weer van de week staat aan.", "The week's weather is on.") else ctx.t("Het weer van de week staat uit. Aanzetten kan altijd.", "The week's weather is off. You can switch it on any time."),
         )
     }
 
@@ -445,7 +437,7 @@ data class HuddleResult(
 ) : ToolResult
 
 /**
- * Ends the meeting and writes its summary (kept for good): what went well, the two meters (with Hearth's
+ * Ends the meeting and writes its summary (kept for good): what went well, how the week went (with Hearth's
  * guess when the family saw it differently), agreements that didn't work yet, habits asking for attention,
  * what was agreed, the working points, what got a day, and the meals.
  */
@@ -468,7 +460,7 @@ class FinishWeekoverlegTool(
         val since = last?.createdAt ?: ctx.today.plusDays(-7).atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
         val names = board.allMembers().associate { it.id to it.name }
         val wins = meeting.currentWins()
-        val meters = if (metersOn(settings)) meeting.currentMeters() else emptyList()
+        val weather = if (metersOn(settings)) meeting.currentWeek() else null
         val checks = meeting.currentRuleChecks()
         val checkedBefore = last?.let { meeting.ruleChecksOf(it.id) }.orEmpty()
         val attention = needingAttention(backlog, ctx.today)
@@ -490,14 +482,16 @@ class FinishWeekoverlegTool(
                     done.size.takeIf { it > 0 }?.let { ctx.t("$it ${if (it == 1) "ding" else "dingen"} gedaan", "$it ${if (it == 1) "thing" else "things"} done") },
                 )).joinToString("; "))
             }
-            meters.sortedBy { it.meter }.forEach { m ->
-                val guess = m.suggested
-                val note = when {
-                    !m.agreed -> ctx.t(" (geen akkoord: neutraal)", " (no agreement: neutral)")
-                    guess != null && guess != m.value -> ctx.t(" (Hearth dacht: ${meterWord(m.meter, guess, ctx)})", " (Hearth thought: ${meterWord(m.meter, guess, ctx)})")
-                    else -> ""
-                }
-                add(meterTitle(m.meter, ctx) + ": " + meterWord(m.meter, m.value, ctx) + note)
+            weather?.let { w ->
+                val ease = w.ease
+                val guess = w.suggested
+                add(
+                    ctx.t("De week: ", "The week: ") + when {
+                        ease == null -> ctx.t("geen akkoord", "no agreement")
+                        guess != null && guess != ease -> ease.weekWord(ctx.lang) + ctx.t(" (Hearth dacht: ${guess.weekWord(ctx.lang)})", " (Hearth thought: ${guess.weekWord(ctx.lang)})")
+                        else -> ease.weekWord(ctx.lang)
+                    },
+                )
             }
             // How the agreements went, like the routines below; the hardest first.
             val rated = checks.sortedByDescending { it.ease }.mapNotNull { c -> boardItems.firstOrNull { it.id == c.ruleId }?.let { it to c.ease } }

@@ -194,7 +194,8 @@ fun TodayScreen(
             if (rules.isEmpty() && frictions == 0) EmptyHint(stringResource(Res.string.dash_board_empty))
             rules.take(3).forEach { rule ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-                    Box(Modifier.size(8.dp).background(ruleEase[rule.id]?.let { easeColors(it).first } ?: Topic.RULES.style().ink, CircleShape))
+                    // How it goes, as weather; not rated yet: a quiet dot.
+                    ruleEase[rule.id]?.let { WeatherMark(it) } ?: Box(Modifier.padding(4.dp).size(8.dp).background(Topic.RULES.style().ink, CircleShape))
                     Spacer(Modifier.width(10.dp))
                     Text(rule.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }

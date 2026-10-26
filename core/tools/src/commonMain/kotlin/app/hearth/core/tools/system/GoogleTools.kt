@@ -5,6 +5,9 @@ import app.hearth.core.data.backup.BackupRepository
 import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Plan
+import app.hearth.core.model.Schedule
+import app.hearth.core.model.dayOf
+import app.hearth.core.model.isRoutine
 import app.hearth.core.model.nowMillis
 import app.hearth.core.tools.Describe
 import app.hearth.core.tools.Tool
@@ -31,9 +34,19 @@ interface BackupStore {
     suspend fun delete(id: String)
 }
 
-/** One all-day event in Hearth's own calendar. [id] is stable, so pushing again updates it. */
+/**
+ * One event in a calendar Hearth made: all day, or at [time] ("20:00") for a rhythm at a fixed time. [recurrence] is an
+ * RRULE for a rhythm on fixed days, starting on [date]. [id] is stable, so pushing again updates it.
+ */
 @Serializable
-data class CalendarEvent(val id: String, val title: String, val date: String, val description: String)
+data class CalendarEvent(
+    val id: String,
+    val title: String,
+    val date: String,
+    val description: String,
+    val time: String? = null,
+    val recurrence: String? = null,
+)
 
 /** Google Calendar, limited to the one calendar Hearth made itself. */
 interface CalendarApi {
@@ -52,6 +65,9 @@ object GoogleSettings {
     const val CALENDAR_ON = "google.calendar"
     const val CALENDAR_ID = "google.calendarId"
     const val CALENDAR_PUSHED = "google.calendarPushed"
+    /** The second calendar, "Hearth · Ritmes": rhythms on fixed days as repeating events. */
+    const val RHYTHM_CALENDAR_ID = "google.rhythmCalendarId"
+    const val RHYTHM_PUSHED = "google.rhythmCalendarPushed"
     const val LAST_SYNC = "google.lastCalendarSync"
 }
 
@@ -219,11 +235,35 @@ class SyncCalendarTool(
     override val resultSerializer = CalendarSyncResult.serializer()
 
     override suspend fun run(args: NoArgs, ctx: ToolContext): CalendarSyncResult = google(ctx) {
-        val wanted = backlog.openItems().mapNotNull { eventFor(it, ctx) }.associateBy { it.id }
-        val pushed = settings.currentValue(GoogleSettings.CALENDAR_PUSHED)?.let { runCatching { JSON.decodeFromString(PUSHED, it) }.getOrNull() }.orEmpty()
-        val calendarId = calendar.ensureCalendar(settings.currentValue(GoogleSettings.CALENDAR_ID), "Hearth")
-        val fresh = calendarId != settings.currentValue(GoogleSettings.CALENDAR_ID)
-        if (fresh) settings.put(GoogleSettings.CALENDAR_ID, calendarId)
+        val open = backlog.openItems()
+        val days = push("Hearth", GoogleSettings.CALENDAR_ID, GoogleSettings.CALENDAR_PUSHED, open.mapNotNull { eventFor(it, ctx) }, always = true)
+        // Rhythms on fixed days go in their own calendar, so it can be shown or hidden on its own.
+        val rhythms = push(
+            ctx.t("Hearth · Ritmes", "Hearth · Rhythms"), GoogleSettings.RHYTHM_CALENDAR_ID, GoogleSettings.RHYTHM_PUSHED,
+            open.mapNotNull { rhythmEventFor(it, ctx) }, always = false,
+        )
+        settings.put(GoogleSettings.LAST_SYNC, clock().toString())
+        val (added, changed, removed) = Triple(days.first + rhythms.first, days.second + rhythms.second, days.third + rhythms.third)
+        val summary = if (added + changed + removed == 0) {
+            ctx.t("Google Agenda is bij.", "Google Calendar is up to date.")
+        } else {
+            ctx.t("Google Agenda bijgewerkt.", "Google Calendar updated.")
+        }
+        CalendarSyncResult(added, changed, removed, summary)
+    }
+
+    /**
+     * Brings one calendar in line with [events]: only what changed since last time is sent. With [always] false the
+     * calendar is only made once there is something to put in it. Returns added, changed, removed.
+     */
+    private suspend fun push(name: String, idKey: String, pushedKey: String, events: List<CalendarEvent>, always: Boolean): Triple<Int, Int, Int> {
+        val wanted = events.associateBy { it.id }
+        val pushed = settings.currentValue(pushedKey)?.let { runCatching { JSON.decodeFromString(PUSHED, it) }.getOrNull() }.orEmpty()
+        val existing = settings.currentValue(idKey)
+        if (!always && wanted.isEmpty() && pushed.isEmpty()) return Triple(0, 0, 0)
+        val calendarId = calendar.ensureCalendar(existing, name)
+        val fresh = calendarId != existing
+        if (fresh) settings.put(idKey, calendarId)
         val known = if (fresh) emptyMap() else pushed
 
         val now = known.toMutableMap()
@@ -245,15 +285,21 @@ class SyncCalendarTool(
             }
         } finally {
             // Remember what did go through, so a dropped connection never pushes twice.
-            settings.put(GoogleSettings.CALENDAR_PUSHED, JSON.encodeToString(PUSHED, now))
+            settings.put(pushedKey, JSON.encodeToString(PUSHED, now))
         }
-        settings.put(GoogleSettings.LAST_SYNC, clock().toString())
-        val summary = if (added + changed + removed == 0) {
-            ctx.t("Google Agenda is bij.", "Google Calendar is up to date.")
-        } else {
-            ctx.t("Google Agenda bijgewerkt.", "Google Calendar updated.")
-        }
-        CalendarSyncResult(added, changed, removed, summary)
+        return Triple(added, changed, removed)
+    }
+
+    /** A rhythm on fixed days, repeating from its first day after it got its schedule (so the event stays the same). */
+    private fun rhythmEventFor(item: BacklogItem, ctx: ToolContext): CalendarEvent? {
+        val schedule = item.schedule?.takeIf { !item.done && item.isRoutine() } ?: return null
+        val from = dayOf(item.createdAt)
+        val first = if (schedule.occursOn(from)) from else schedule.nextAfter(from) ?: return null
+        return CalendarEvent(
+            "r" + item.id.lowercase().filter { it in '0'..'9' || it in 'a'..'v' },
+            item.text, first.toString(), ctx.t("Uit Hearth · ", "From Hearth · ") + schedule.label(ctx.lang),
+            time = schedule.time, recurrence = rrule(schedule),
+        )
     }
 
     private fun eventFor(item: BacklogItem, ctx: ToolContext): CalendarEvent? {
@@ -269,10 +315,25 @@ class SyncCalendarTool(
         return CalendarEvent(id, title, date.toString(), ctx.t("Uit Hearth", "From Hearth"))
     }
 
-    private fun fingerprint(e: CalendarEvent) = "${e.title}|${e.date}".hashCode().toString(16)
+    private fun fingerprint(e: CalendarEvent) =
+        (if (e.recurrence == null && e.time == null) "${e.title}|${e.date}" else "${e.title}|${e.date}|${e.time}|${e.recurrence}|${e.description}").hashCode().toString(16)
 
     private companion object {
         val JSON = Json { ignoreUnknownKeys = true }
         val PUSHED = MapSerializer(String.serializer(), String.serializer())
+    }
+}
+
+private val RRULE_DAYS = listOf("MO", "TU", "WE", "TH", "FR", "SA", "SU")
+
+/** The RRULE for a rhythm's fixed days: weekly on its days, monthly on a date or on the nth weekday. */
+internal fun rrule(s: Schedule): String {
+    val day = s.monthDay
+    val week = s.monthWeek
+    return when {
+        day != null -> "RRULE:FREQ=MONTHLY;BYMONTHDAY=${if (day >= 31) -1 else day}"
+        week != null -> "RRULE:FREQ=MONTHLY;BYDAY=$week${RRULE_DAYS[s.weekdays.first().ordinal]}"
+        s.weekdays.size >= 7 -> "RRULE:FREQ=DAILY"
+        else -> "RRULE:FREQ=WEEKLY;BYDAY=" + s.weekdays.sorted().joinToString(",") { RRULE_DAYS[it.ordinal] }
     }
 }

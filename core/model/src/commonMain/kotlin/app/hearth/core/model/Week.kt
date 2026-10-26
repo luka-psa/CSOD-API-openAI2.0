@@ -171,19 +171,12 @@ data class Win(val id: String, val text: String, val memberId: String?, val hudd
 data class TranscriptLine(val id: String, val text: String, val huddleId: String?, val createdAt: Long, val sorted: Boolean = false)
 
 /**
- * The two meters of the weekoverleg, agreed together for the household (never per person, never about
- * someone): how the week ran, and what rubbed. Hearth suggests, the family decides; no agreement = 3.
+ * How the week went, agreed together for the household (never per person, never about someone), on the same weather
+ * scale as the routines and house rules: zon (liep vanzelf), wolk (vroeg moeite), bliksem (was zwaar). Hearth
+ * suggests, the family decides; no agreement ([agreed] false) is an answer too and gives no weather.
  */
-enum class Meter {
-    /** Hoe liep het? 1 moeizaam … 5 heel goed. */
-    FLOW,
-    /** Wat schuurde? 1 niets … 5 veel. */
-    STRAIN,
-}
-
-/** A meter as the family set it, with what Hearth had suggested ([agreed] false: no consensus, so neutral). */
 @Serializable
-data class MeterValue(val meter: Meter, val value: Int, val suggested: Int?, val agreed: Boolean, val huddleId: String?)
+data class WeekRating(val ease: Ease?, val suggested: Ease?, val agreed: Boolean, val huddleId: String?)
 
 /**
  * How a house rule went this week, on the same scale as the routines: loopt vanzelf, vraagt moeite, te zwaar.
@@ -194,46 +187,23 @@ data class RuleCheck(val ruleId: String, val ease: Ease, val huddleId: String?) 
     val worked: Boolean get() = ease != Ease.HARD
 }
 
-/** The value used when the family doesn't agree. */
-const val NEUTRAL_METER = 3
-
 /**
- * Hoe liep het: starts at "goed" (4) because the small things and good habits are always forgotten; "heel goed"
- * with plenty done or celebrated and no habit asking for attention; never suggested below 3.
+ * Starts at the sun: the small things and good habits are always forgotten. A cloud when frictions pile up or habits
+ * ask for attention with little done. Never a bolt: that is for the family to say.
  */
-fun flowSuggestion(done: Int, wins: Int, needingAttention: Int): Int = when {
-    done + wins * 2 >= 12 && needingAttention == 0 -> 5
-    done + wins == 0 && needingAttention > 1 -> 3
-    else -> 4
+fun weekSuggestion(done: Int, wins: Int, needingAttention: Int, newFrictions: Int, rulesTooHard: Int): Ease =
+    if (newFrictions + rulesTooHard >= 2 || (done + wins == 0 && needingAttention > 1)) Ease.EFFORT else Ease.EASY
+
+/** The weather of a step on the scale, for words and screen readers: "zon", "wolk", "bliksem". */
+fun Ease.weather(lang: Lang): String = when (this) {
+    Ease.EASY -> if (lang == Lang.NL) "zon" else "sun"
+    Ease.EFFORT -> if (lang == Lang.NL) "wolk" else "cloud"
+    Ease.HARD -> if (lang == Lang.NL) "bliksem" else "lightning"
 }
 
-/** Wat schuurde: from frictions noted this week and house rules that didn't work yet (at most two of each count). */
-fun strainSuggestion(newFrictions: Int, rulesNotYet: Int): Int =
-    (1 + minOf(newFrictions, 2) + minOf(rulesNotYet, 2)).coerceIn(1, 5)
-
-/** "Hoe liep het" / "Wat schuurde". */
-fun Meter.title(lang: Lang): String = when (this) {
-    Meter.FLOW -> if (lang == Lang.NL) "Hoe liep het" else "How it ran"
-    Meter.STRAIN -> if (lang == Lang.NL) "Wat schuurde" else "What rubbed"
-}
-
-/** A meter's value in words; kind on purpose (no "bad", no "fail"). */
-fun Meter.word(value: Int, lang: Lang): String {
-    val nl = lang == Lang.NL
-    return when (this) {
-        Meter.FLOW -> when (value) {
-            1 -> if (nl) "moeizaam" else "hard going"
-            2 -> if (nl) "wat stroef" else "a bit stiff"
-            3 -> if (nl) "oké" else "okay"
-            4 -> if (nl) "goed" else "good"
-            else -> if (nl) "heel goed" else "very good"
-        }
-        Meter.STRAIN -> when (value) {
-            1 -> if (nl) "niets" else "nothing"
-            2 -> if (nl) "een beetje" else "a little"
-            3 -> if (nl) "wat" else "some"
-            4 -> if (nl) "best veel" else "quite a lot"
-            else -> if (nl) "veel" else "a lot"
-        }
-    }
+/** How the week went in words; kind on purpose: "liep vanzelf", "vroeg moeite", "was zwaar". */
+fun Ease.weekWord(lang: Lang): String = when (this) {
+    Ease.EASY -> if (lang == Lang.NL) "liep vanzelf" else "went smoothly"
+    Ease.EFFORT -> if (lang == Lang.NL) "vroeg moeite" else "took effort"
+    Ease.HARD -> if (lang == Lang.NL) "was zwaar" else "was heavy"
 }

@@ -97,7 +97,7 @@ internal fun GoalRow(goal: BoardItem, linked: BacklogItem?, today: LocalDate, la
             when {
                 linked != null && !linked.done && (topic == Topic.RHYTHM || topic == Topic.FREE_TIME) -> {
                     val s = topic.style()
-                    val detail = if (topic == Topic.RHYTHM) listOfNotNull(linked.anchor?.title(lang), intervalLabel(linked.intervalDays, lang)).joinToString(" · ")
+                    val detail = if (topic == Topic.RHYTHM) listOfNotNull(linked.anchor?.title(lang), app.hearth.core.model.rhythmLabel(linked, lang)).joinToString(" · ")
                     else linked.localDate?.let { dayLabel(it, today, lang) } ?: ""
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
