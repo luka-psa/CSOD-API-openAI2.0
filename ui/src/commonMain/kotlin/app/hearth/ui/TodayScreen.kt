@@ -74,7 +74,6 @@ import app.hearth.ui.resources.done_today_none
 import app.hearth.ui.resources.free_all_done
 import app.hearth.ui.resources.free_light
 import app.hearth.ui.resources.free_nothing
-import app.hearth.ui.resources.free_title
 import app.hearth.ui.resources.free_weekend
 import app.hearth.ui.resources.greeting_afternoon
 import app.hearth.ui.resources.greeting_evening
@@ -94,6 +93,15 @@ import app.hearth.ui.resources.today_next
 import app.hearth.ui.resources.today_planned
 import app.hearth.ui.theme.style
 import app.hearth.core.model.Topic
+import app.hearth.core.model.TopicGroup
+import app.hearth.core.model.WeekLook
+import app.hearth.core.model.glance
+import app.hearth.core.model.topic
+import app.hearth.core.model.topics
+import androidx.compose.foundation.layout.ColumnScope
+import app.hearth.ui.resources.menu_tonight_empty
+import app.hearth.ui.resources.nav_menu
+import app.hearth.ui.resources.today_nothing
 import app.hearth.core.model.Ease
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
@@ -122,6 +130,7 @@ fun TodayScreen(
     onGoTasks: () -> Unit,
     onGoShopping: () -> Unit,
     onGoBoard: () -> Unit,
+    onGoMenu: () -> Unit,
     onGoWeek: () -> Unit,
     onGoConnect: () -> Unit,
     /** How each house rule goes, by rule id: its dot takes that colour. */
@@ -131,12 +140,20 @@ fun TodayScreen(
     val routineSteps = steps.filter { it.isRoutineStep }.groupBy { it.parentId!! }
     val urgent = dontForget(backlog, today)
     val planned = plannedToday(backlog, today)
-    // In the order the day goes: the morning routine first, whatever fits last.
-    val rhythm = dueRoutines(backlog, today).sortedBy { it.anchor?.ordinal ?: Int.MAX_VALUE }
+    val due = dueRoutines(backlog, today)
+    // Routines with a moment, in the order the day goes; chores without one belong to the household.
+    val rhythm = due.filter { it.topic == Topic.RHYTHM }.sortedBy { it.anchor?.ordinal ?: Int.MAX_VALUE }
+    val chores = due.filter { it.topic == Topic.HOME }
+    val hasRhythm = backlog.any { it.topic == Topic.RHYTHM }
     val next = backlog.filter { it.plan == Plan.NEXT && !it.waiting }
     val projects = backlog.filter { it.kind == TaskKind.PROJECT && !it.isStep }
     val dueToday = planned.size + urgent.count { it.urgent || (it.localDate?.let { d -> d <= today } ?: false) }
     val upcoming = (1..6).map { today.plusDays(it) }.map { it to plannedOn(backlog, it) }
+    // Admin that isn't already above (Niet vergeten, Vandaag, Volgende, Binnenkort): waiting for a reply, still open.
+    val above = (urgent + planned + next + upcoming.flatMap { it.second }).map { it.id }.toSet()
+    val admin = backlog.filter { it.topic == Topic.ADMIN && it.id !in above }.sortedBy { !it.waiting }
+    // Free time this week, on its day.
+    val freeSoon = (0..6).flatMap { d -> plannedOn(backlog, today.plusDays(d)) }.filter { it.topic == Topic.FREE_TIME }
 
     @Composable
     fun ItemRow(item: BacklogItem) = BacklogRow(
@@ -153,16 +170,9 @@ fun TodayScreen(
     }
     val todayCard = @Composable { m: Modifier ->
         HearthCard(stringResource(Res.string.today_planned), HearthIcons.Sun, m) {
-            meals.firstOrNull { it.date == today.toString() }?.let { Tonight(it.dish) }
-            FreeTime(dueToday, doneToday, lang)
-            // With nothing due, the free-time note above says it all.
-            if (planned.isEmpty() && rhythm.isEmpty() && dueToday > 0) EmptyHint(stringResource(Res.string.today_empty))
+            // What's planned for today; the rhythm, free time and dinner have their own tiles below.
+            if (planned.isEmpty() && next.isEmpty()) EmptyHint(stringResource(Res.string.today_nothing))
             planned.forEach { ItemRow(it) }
-            if (rhythm.isNotEmpty() || planned.isNotEmpty()) {
-                SubHeader(stringResource(Res.string.dash_rhythm))
-                if (rhythm.isEmpty()) EmptyHint(stringResource(Res.string.dash_rhythm_empty))
-                rhythm.take(6).forEach { ItemRow(it) }
-            }
             if (next.isNotEmpty()) {
                 SubHeader(stringResource(Res.string.today_next))
                 next.take(4).forEach { item ->
@@ -176,57 +186,102 @@ fun TodayScreen(
     val comingUpCard = @Composable { m: Modifier ->
         HearthCard(stringResource(Res.string.dash_coming_up), HearthIcons.Calendar, m, action = { CardAction(stringResource(Res.string.open_tasks), onGoTasks, compact = wide) }) {
             upcoming.forEach { (day, items) -> DayLine(day, items, today, lang, names, onOpenItem) }
-            upcoming.firstOrNull { (day, items) -> day.isWeekend && items.isEmpty() }?.let { (day, _) ->
-                Spacer(Modifier.size(10.dp))
-                Hint(stringResource(Res.string.free_weekend, weekdayName(day.dayOfWeek, lang).replaceFirstChar { it.uppercase() }))
+        }
+    }
+
+    // The household's topics under the day, in the same order and groups as everywhere: the tasks, then food and
+    // the Werkbord on a shelf. A topic shows when it has something for today; dinner and free time always do.
+    val look = WeekLook(backlog, board, meals.size, shopping.sumOf { sec -> sec.items.count { !it.bought } }, today)
+    @Composable
+    fun Card(topic: Topic, m: Modifier, action: @Composable () -> Unit, content: @Composable ColumnScope.() -> Unit) =
+        // The same few words as its weekoverleg tile; free time lists its days itself.
+        TopicCard(topic, lang, m, glance = topic.glance(look, lang).takeIf { topic != Topic.FREE_TIME }, action = action, content = content)
+    // Topic cards open their home with just the arrow, so a name never has to break (the shelf is narrow on a phone).
+    val toTasks = @Composable { CardAction(stringResource(Res.string.open_tasks), onGoTasks, compact = true) }
+    val cards: Map<Topic, @Composable (Modifier) -> Unit> = buildMap {
+        if (admin.isNotEmpty()) put(Topic.ADMIN) { m -> Card(Topic.ADMIN, m, toTasks) { admin.take(4).forEach { ItemRow(it) } } }
+        if (projects.isNotEmpty()) put(Topic.PROJECTS) { m ->
+            Card(Topic.PROJECTS, m, toTasks) { projects.take(4).forEach { project -> ProjectLine(project, steps.filter { it.parentId == project.id }, today, lang) { onOpenItem(project) } } }
+        }
+        if (chores.isNotEmpty()) put(Topic.HOME) { m -> Card(Topic.HOME, m, toTasks) { chores.take(5).forEach { ItemRow(it) } } }
+        if (hasRhythm) put(Topic.RHYTHM) { m ->
+            // In the order the day goes: the morning routine first, whatever fits last.
+            Card(Topic.RHYTHM, m, toTasks) {
+                if (rhythm.isEmpty()) EmptyHint(stringResource(Res.string.dash_rhythm_empty))
+                rhythm.take(8).forEach { ItemRow(it) }
+            }
+        }
+        put(Topic.FREE_TIME) { m ->
+            Card(Topic.FREE_TIME, m, toTasks) {
+                FreeTime(dueToday, doneToday)
+                freeSoon.forEach { ItemRow(it) }
+                upcoming.firstOrNull { (day, items) -> day.isWeekend && items.isEmpty() }?.let { (day, _) ->
+                    Spacer(Modifier.size(8.dp))
+                    Hint(stringResource(Res.string.free_weekend, weekdayName(day.dayOfWeek, lang).replaceFirstChar { it.uppercase() }))
+                }
+            }
+        }
+        put(Topic.MENU) { m ->
+            Card(Topic.MENU, m, { CardAction(stringResource(Res.string.nav_menu), onGoMenu, compact = true) }) {
+                meals.firstOrNull { it.date == today.toString() }?.let { Tonight(it.dish) } ?: EmptyHint(stringResource(Res.string.menu_tonight_empty))
+                meals.filter { it.date > today.toString() }.sortedBy { it.date }.take(2).forEach { meal ->
+                    runCatching { LocalDate.parse(meal.date) }.getOrNull()?.let { day -> MealLine(dayLabel(day, today, lang), meal.dish) }
+                }
+            }
+        }
+        put(Topic.SHOPPING) { m ->
+            Card(Topic.SHOPPING, m, { CardAction(stringResource(Res.string.open_list), onGoShopping, compact = true) }) {
+                val open = shopping.flatMap { sec -> sec.items.filterNot { it.bought } }
+                if (open.isEmpty()) EmptyHint(stringResource(Res.string.shopping_summary_empty))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    open.forEach { item ->
+                        Text(
+                            item.name,
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
+        put(Topic.RULES) { m ->
+            val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
+            val frictions = board.count { it.kind == BoardKind.FRICTION && it.isOpen }
+            Card(Topic.RULES, m, { CardAction(stringResource(Res.string.nav_board), onGoBoard, compact = true) }) {
+                if (rules.isEmpty() && frictions == 0) EmptyHint(stringResource(Res.string.dash_board_empty))
+                rules.take(3).forEach { rule ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
+                        // How it goes, as weather; not rated yet: a quiet dot.
+                        ruleEase[rule.id]?.let { WeatherMark(it) } ?: Box(Modifier.padding(4.dp).size(8.dp).background(Topic.RULES.style().ink, CircleShape))
+                        Spacer(Modifier.width(10.dp))
+                        Text(rule.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                if (frictions > 0) {
+                    Spacer(Modifier.size(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onGoBoard).padding(vertical = 4.dp),
+                    ) {
+                        Icon(Topic.FRICTION.icon(), null, tint = Topic.FRICTION.style().ink, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(pluralStringResource(Res.plurals.dash_board_frictions, frictions, frictions), style = MaterialTheme.typography.labelLarge, color = Topic.FRICTION.style().ink)
+                    }
+                }
             }
         }
     }
-    val projectsCard = @Composable { m: Modifier ->
-        TopicCard(Topic.PROJECTS, lang, m, action = { CardAction(stringResource(Res.string.open_tasks), onGoTasks, compact = wide) }) {
-            projects.take(4).forEach { project -> ProjectLine(project, steps.filter { it.parentId == project.id }, today, lang) { onOpenItem(project) } }
-        }
-    }
-    val boardCard = @Composable { m: Modifier ->
-        val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
-        val frictions = board.count { it.kind == BoardKind.FRICTION && it.isOpen }
-        TopicCard(Topic.RULES, lang, m, action = { CardAction(stringResource(Res.string.nav_board), onGoBoard, compact = wide) }) {
-            if (rules.isEmpty() && frictions == 0) EmptyHint(stringResource(Res.string.dash_board_empty))
-            rules.take(3).forEach { rule ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-                    // How it goes, as weather; not rated yet: a quiet dot.
-                    ruleEase[rule.id]?.let { WeatherMark(it) } ?: Box(Modifier.padding(4.dp).size(8.dp).background(Topic.RULES.style().ink, CircleShape))
-                    Spacer(Modifier.width(10.dp))
-                    Text(rule.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            if (frictions > 0) {
-                Spacer(Modifier.size(6.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onGoBoard).padding(vertical = 4.dp),
-                ) {
-                    Icon(Topic.FRICTION.icon(), null, tint = Topic.FRICTION.style().ink, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(pluralStringResource(Res.plurals.dash_board_frictions, frictions, frictions), style = MaterialTheme.typography.labelLarge, color = Topic.FRICTION.style().ink)
-                }
-            }
-        }
-    }
-    val shoppingCard = @Composable { m: Modifier ->
-        TopicCard(Topic.SHOPPING, lang, m, action = { CardAction(stringResource(Res.string.open_list), onGoShopping, compact = wide) }) {
-            val open = shopping.flatMap { s -> s.items.filterNot { it.bought } }
-            if (open.isEmpty()) EmptyHint(stringResource(Res.string.shopping_summary_empty))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                open.forEach { item ->
-                    Text(
-                        item.name,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    )
-                }
+    fun group(g: TopicGroup) = g.topics.mapNotNull { cards[it] }
+
+    @Composable
+    fun ShelfCards() = Shelf(Modifier.fillMaxWidth()) {
+        listOf(TopicGroup.FOOD, TopicGroup.BOARD).forEach { g ->
+            val mine = group(g)
+            if (mine.isNotEmpty()) {
+                GroupLabel(g, lang)
+                mine.forEach { it(Modifier.fillMaxWidth()) }
             }
         }
     }
@@ -235,21 +290,37 @@ fun TodayScreen(
         Header(lang, doneToday, wide, onGoConnect)
         Spacer(Modifier.size(20.dp))
         val gap = if (wide) 20.dp else 16.dp
+        val tasks = group(TopicGroup.TASKS)
         if (wide) {
+            // The day first (what must not slip, today, the days ahead), then the topics right under it: the tasks two
+            // by two in their order, food and the Werkbord on the shelf under Binnenkort.
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
-                    dontForgetCard(Modifier.fillMaxWidth())
-                    shoppingCard(Modifier.fillMaxWidth())
-                    boardCard(Modifier.fillMaxWidth())
-                    if (wins.isNotEmpty()) WinsCard(wins, onGoWeek, Modifier.fillMaxWidth())
-                }
-                Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                Column(Modifier.weight(2.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
                     if (suggestHuddle) HuddleCard(onGoWeek)
-                    todayCard(Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                            dontForgetCard(Modifier.fillMaxWidth())
+                            if (wins.isNotEmpty()) WinsCard(wins, onGoWeek, Modifier.fillMaxWidth())
+                        }
+                        Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                            todayCard(Modifier.fillMaxWidth())
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GroupLabel(TopicGroup.TASKS, lang, Modifier.padding(top = 4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                                tasks.filterIndexed { i, _ -> i % 2 == 0 }.forEach { it(Modifier.fillMaxWidth()) }
+                            }
+                            Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                                tasks.filterIndexed { i, _ -> i % 2 == 1 }.forEach { it(Modifier.fillMaxWidth()) }
+                            }
+                        }
+                    }
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
                     comingUpCard(Modifier.fillMaxWidth())
-                    if (projects.isNotEmpty()) projectsCard(Modifier.fillMaxWidth())
+                    ShelfCards()
                 }
             }
         } else {
@@ -258,9 +329,9 @@ fun TodayScreen(
                 if (urgent.isNotEmpty()) dontForgetCard(Modifier.fillMaxWidth())
                 todayCard(Modifier.fillMaxWidth())
                 comingUpCard(Modifier.fillMaxWidth())
-                if (projects.isNotEmpty()) projectsCard(Modifier.fillMaxWidth())
-                shoppingCard(Modifier.fillMaxWidth())
-                boardCard(Modifier.fillMaxWidth())
+                GroupLabel(TopicGroup.TASKS, lang, Modifier.padding(top = 6.dp))
+                tasks.forEach { it(Modifier.fillMaxWidth()) }
+                ShelfCards()
                 if (wins.isNotEmpty()) WinsCard(wins, onGoWeek, Modifier.fillMaxWidth())
             }
         }
@@ -310,7 +381,7 @@ private fun HuddleCard(onStart: () -> Unit) {
 
 /** Free time, generated from how full today is. No durations needed: nothing left means free. */
 @Composable
-private fun FreeTime(dueToday: Int, doneToday: Int, lang: Lang) {
+private fun FreeTime(dueToday: Int, doneToday: Int) {
     val load = dayLoad(dueToday)
     val text = when {
         load == DayLoad.FREE && doneToday > 0 -> stringResource(Res.string.free_all_done)
@@ -318,17 +389,15 @@ private fun FreeTime(dueToday: Int, doneToday: Int, lang: Lang) {
         load == DayLoad.LIGHT -> stringResource(Res.string.free_light)
         else -> return
     }
-    val s = Topic.FREE_TIME.style()
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).background(s.tint, MaterialTheme.shapes.medium).padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Icon(Topic.FREE_TIME.icon(), null, tint = s.ink, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(stringResource(Res.string.free_title), style = MaterialTheme.typography.titleSmall, color = s.ink)
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-        }
+    Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
+}
+
+/** "Morgen   Curry met kip": a meal later this week, small under tonight's. */
+@Composable
+private fun MealLine(day: String, dish: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp)) {
+        Text(day.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(96.dp))
+        Text(dish, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

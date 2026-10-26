@@ -14,6 +14,8 @@
     <!-- Today -->
     <string name="today_planned">Today</string>
     <string name="today_empty">Nothing planned. Pick something from the backlog when you’re ready.</string>
+    <string name="today_nothing">Nothing planned today. The rhythms and the rest are below.</string>
+    <string name="menu_tonight_empty">Nothing planned for tonight yet.</string>
     <string name="today_next">Next up</string>
     <string name="shopping_summary_empty">Nothing needed right now.</string>
     <string name="open_list">Open list</string>
@@ -152,6 +154,10 @@
     <string name="stock_add_hint">Add to %1$s</string>
     <string name="stock_remove_body">It leaves the stock. The shopping list stays as it is.</string>
     <string name="on_list">on the list</string>
+    <string name="at_home">at home</string>
+    <string name="menu_tab_hint">What we eat this week. Tap what’s missing: it goes on the list.</string>
+    <string name="menu_tab_empty">Nothing on the menu yet.</string>
+    <string name="menu_tab_plan">Plan the menu</string>
     <string name="all_bought">All bought. Nice!</string>
     <string name="clear_bought">Clear bought (%1$d)</string>
     <string name="clear_bought_confirm">Clear everything bought?</string>

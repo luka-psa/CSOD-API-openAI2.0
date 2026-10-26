@@ -15,8 +15,26 @@ data class Huddle(val id: String, val heldOn: String, val createdAt: Long, val s
  * The household's topics, one name, icon and colour each, the same on every screen: a tile in the
  * weekoverleg (Luister mee lights up the one a sentence lands in), a panel in Taken, a column on the
  * Werkbord, a card on Vandaag. So the whole household fits on one screen and nobody has to hold it in their head.
+ * Always in this order, in three groups ([group]): the tasks, then food, then the Werkbord.
  */
-enum class Topic { FREE_TIME, GOALS, ADMIN, PROJECTS, HOME, RHYTHM, SHOPPING, MENU, FRICTION, RULES }
+enum class Topic { ADMIN, PROJECTS, HOME, RHYTHM, FREE_TIME, MENU, SHOPPING, RULES, FRICTION, GOALS }
+
+/** The three kinds of topics, side by side on every screen: what there is to do, what we eat, what we agree on. */
+enum class TopicGroup { TASKS, FOOD, BOARD }
+
+val Topic.group: TopicGroup get() = when (this) {
+    Topic.ADMIN, Topic.PROJECTS, Topic.HOME, Topic.RHYTHM, Topic.FREE_TIME -> TopicGroup.TASKS
+    Topic.MENU, Topic.SHOPPING -> TopicGroup.FOOD
+    Topic.RULES, Topic.FRICTION, Topic.GOALS -> TopicGroup.BOARD
+}
+
+fun TopicGroup.title(lang: Lang): String = when (this) {
+    TopicGroup.TASKS -> if (lang == Lang.NL) "Taken" else "Tasks"
+    TopicGroup.FOOD -> if (lang == Lang.NL) "Eten" else "Food"
+    TopicGroup.BOARD -> if (lang == Lang.NL) "Werkbord" else "Board"
+}
+
+val TopicGroup.topics: List<Topic> get() = Topic.entries.filter { it.group == this }
 
 fun Topic.title(lang: Lang): String = when (this) {
     Topic.FREE_TIME -> if (lang == Lang.NL) "Vrije tijd" else "Free time"

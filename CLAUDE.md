@@ -156,14 +156,17 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
 - **Topics** (`Topic`): one name, icon and colour per topic on every screen (`Topic.title`, `Topic.icon()`,
-  `Topic.style()`): a card on Vandaag, a panel in **Taken** (a dashboard of panels: Admin & afspraken,
+  `Topic.style()`), always in one order and three groups (`TopicGroup`): *Taken* (Admin & afspraken, Grote taken,
+  Huishouden, Ritmes & routines, Vrije tijd), *Eten* (Weekmenu, Boodschappen), *Werkbord* (Huisregels, Frictie &
+  ideeën, Doelen); side by side, Eten and Werkbord sit on a *shelf* (`Shelf`) next to the tasks. The rail follows it:
+  Vandaag, Taken, Weekmenu, Boodschappen, Werkbord, Weekoverleg. A card on Vandaag (below the day), a panel in **Taken** (a dashboard of panels: Admin & afspraken,
   Grote taken, Huishouden, Ritmes & routines, Vrije tijd; *Te sorteren* on top; panels fold), a column on the
   Werkbord (Huisregels, Frictie & ideeën, Doelen), a tile in the weekoverleg. Ember is for time cards and
   Hearth's own voice, never a topic. A form with typed text never closes without asking (`FormSheet`,
   `DiscardDialog`: *Verder typen* / *Weggooien*).
-- **Weekoverleg:** one page by *Topic* (*Vrije tijd*, *Doelen* (next small step), *Admin & afspraken* (admin and appointments), *Grote taken*,
-  *Huishouden* (chores without a moment), *Ritmes & routines* (laid out per moment of the day), *Boodschappen*,
-  *Weekmenu*, *Frictie & ideeën*, *Huisregels*): each a calm tile with a *glance*,
+- **Weekoverleg:** one page by *Topic* (*Admin & afspraken* (admin and appointments), *Grote taken*, *Huishouden*
+  (chores without a moment), *Ritmes & routines* (laid out per moment of the day), *Vrije tijd*; on the shelf *Weekmenu*,
+  *Boodschappen*, *Huisregels*, *Frictie & ideeën*, *Doelen* (next small step)): each a calm tile with a *glance*,
   tap to open its list. Terugblik (*Wat ging goed* = wins; *Hoe liep het?*: *de week* (`rate_week`, suggested by Hearth,
   agreed together, *Geen akkoord* is an answer too; can be switched off), every routine (in the order of the day) and
   every house rule on one weather scale from bliksem to zon, never who; a smaller first step right there; a rule

@@ -26,6 +26,8 @@ object HearthColors {
     val Canvas = Color(0xFFF6F2EC)
     val Card = Color(0xFFFFFFFF)
     val CardMuted = Color(0xFFF9F6F1)
+    /** A shelf a shade deeper than the canvas: what sits on it reads as secondary (food and the Werkbord next to the tasks). */
+    val Shelf = Color(0xFFEFE9E0)
     val Ink = Color(0xFF231E1A)
     val InkSoft = Color(0xFF6E655D)
     val InkFaint = Color(0xFFA39A92)

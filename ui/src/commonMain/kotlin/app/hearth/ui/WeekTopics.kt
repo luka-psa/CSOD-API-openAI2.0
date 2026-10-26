@@ -61,6 +61,9 @@ import kotlinx.datetime.LocalDate
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Section
 import app.hearth.core.model.Topic
+import androidx.compose.ui.unit.Dp
+import app.hearth.core.model.topics
+import app.hearth.core.model.TopicGroup
 import app.hearth.core.model.title
 import app.hearth.ui.resources.Res
 import app.hearth.ui.resources.agree_empty
@@ -297,25 +300,56 @@ internal fun ConclusionPill(p: Orchestrator.Proposal, today: LocalDate, lang: La
 }
 
 /**
- * The household at a glance: one calm tile per topic, a few words each. Tap one to open it below; the
- * topic Luister mee just heard about glows.
+ * The household at a glance: one calm tile per topic, a few words each, in the order and groups used everywhere:
+ * the tasks on the left, food and the Werkbord on a shelf beside them. Tap one to open it below; the topic Luister mee
+ * just heard about glows.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TopicGrid(glances: List<Pair<Topic, String>>, selected: Topic?, lit: Set<Topic>, lang: Lang, onSelect: (Topic) -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val gap = 12.dp
-        // Ten topics: two rows of five on the tablet.
-        val columns = when {
-            maxWidth >= 1000.dp -> 5
-            maxWidth >= 600.dp -> 4
-            else -> 2
+    val byTopic = glances.toMap()
+    val gap = 12.dp
+    // The shelf's own padding, so its tiles line up three to a row like the tasks.
+    val shelfPad = 14.dp * 2
+
+    @Composable
+    fun Tiles(group: TopicGroup, width: Dp) = FlowRow(horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) {
+        group.topics.forEach { topic ->
+            byTopic[topic]?.let { glance -> TopicTile(topic, glance, topic == selected, topic in lit, lang, Modifier.width(width)) { onSelect(topic) } }
         }
-        // A hair narrower than the exact share, so rounding never pushes the last tile to the next row.
-        val width = (maxWidth - gap * (columns - 1)) / columns - 1.dp
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) {
-            glances.forEach { (topic, glance) ->
-                TopicTile(topic, glance, topic == selected, topic in lit, lang, Modifier.width(width)) { onSelect(topic) }
+    }
+
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Three tiles to a row on the tablet and in between, two on a phone. A hair narrower than the exact share,
+        // so rounding never pushes the last tile to the next row.
+        fun tile(space: Dp, columns: Int) = (space - gap * (columns - 1)) / columns - 1.dp
+        if (maxWidth >= 1000.dp) {
+            val half = (maxWidth - gap) / 2
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                Column(Modifier.width(half), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GroupLabel(TopicGroup.TASKS, lang)
+                    Tiles(TopicGroup.TASKS, tile(half, 3))
+                }
+                Shelf(Modifier.width(half)) {
+                    GroupLabel(TopicGroup.FOOD, lang)
+                    Tiles(TopicGroup.FOOD, tile(half - shelfPad, 3))
+                    GroupLabel(TopicGroup.BOARD, lang)
+                    Tiles(TopicGroup.BOARD, tile(half - shelfPad, 3))
+                }
+            }
+        } else {
+            val full = maxWidth
+            val columns = if (full >= 600.dp) 3 else 2
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                GroupLabel(TopicGroup.TASKS, lang)
+                Tiles(TopicGroup.TASKS, tile(full, columns))
+                Spacer(Modifier.size(2.dp))
+                Shelf(Modifier.fillMaxWidth()) {
+                    GroupLabel(TopicGroup.FOOD, lang)
+                    Tiles(TopicGroup.FOOD, tile(full - shelfPad, columns))
+                    GroupLabel(TopicGroup.BOARD, lang)
+                    Tiles(TopicGroup.BOARD, tile(full - shelfPad, columns))
+                }
             }
         }
     }

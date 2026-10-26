@@ -128,10 +128,12 @@ class WeekToolsTest {
         assertEquals(listOf("Autokeuring"), agenda.deadlines.map { it.text })
         assertEquals(listOf("Rommel in de gang"), agenda.frictions.map { it.text })
         assertEquals(
-            "Terugblik: 1 ding gedaan.\nVrije tijd: Nog niets gepland.\nDoelen: Nog geen doelen.\nAdmin & afspraken: 1 open (klaar tegen: Autokeuring).\n" +
-                "Grote taken: Niets lopend.\nHuishouden: Nog geen huishoudtaken.\nRitmes & routines: Nog geen ritme.\n" +
-                "Boodschappen: De lijst is leeg.\nWeekmenu: 1 van 7 avonden (Pizza).\nFrictie & ideeën: 1 te bespreken (Rommel in de gang).\n" +
-                "Huisregels: Nog geen huisregels.\nDe week (samen afspreken, zon / wolk / bliksem): voorstel zon (liep vanzelf).",
+            // The topics in the order of every screen: the tasks, food, the Werkbord.
+            "Terugblik: 1 ding gedaan.\nAdmin & afspraken: 1 open (klaar tegen: Autokeuring).\nGrote taken: Niets lopend.\n" +
+                "Huishouden: Nog geen huishoudtaken.\nRitmes & routines: Nog geen ritme.\nVrije tijd: Nog niets gepland.\n" +
+                "Weekmenu: 1 van 7 avonden (Pizza).\nBoodschappen: De lijst is leeg.\n" +
+                "Huisregels: Nog geen huisregels.\nFrictie & ideeën: 1 te bespreken (Rommel in de gang).\nDoelen: Nog geen doelen.\n" +
+                "De week (samen afspreken, zon / wolk / bliksem): voorstel zon (liep vanzelf).",
             agenda.summary,
         )
 

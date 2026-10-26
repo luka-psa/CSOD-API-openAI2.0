@@ -11,6 +11,8 @@
 
     <string name="today_planned">Vandaag</string>
     <string name="today_empty">Niets gepland. Kies iets uit Taken wanneer je er klaar voor bent.</string>
+    <string name="today_nothing">Niets gepland vandaag. De ritmes en de rest staan hieronder.</string>
+    <string name="menu_tonight_empty">Nog niets voor vanavond.</string>
     <string name="today_next">Volgende</string>
     <string name="shopping_summary_empty">Niets nodig op dit moment.</string>
     <string name="open_list">Open lijst</string>
@@ -145,6 +147,10 @@
     <string name="stock_add_hint">Toevoegen aan %1$s</string>
     <string name="stock_remove_body">Het verdwijnt uit de voorraad. De boodschappenlijst blijft zoals ze is.</string>
     <string name="on_list">op de lijst</string>
+    <string name="at_home">in huis</string>
+    <string name="menu_tab_hint">Wat we deze week eten. Tik op wat nog ontbreekt: het gaat op de lijst.</string>
+    <string name="menu_tab_empty">Nog niets op het weekmenu.</string>
+    <string name="menu_tab_plan">Weekmenu plannen</string>
     <string name="all_bought">Alles gekocht. Top!</string>
     <string name="clear_bought">Gekochte wissen (%1$d)</string>
     <string name="clear_bought_confirm">Alles wat gekocht is wissen?</string>

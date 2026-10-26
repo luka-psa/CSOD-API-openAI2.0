@@ -1,11 +1,21 @@
 package app.hearth.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Topic
+import app.hearth.core.model.TopicGroup
 import app.hearth.core.model.title
+import app.hearth.ui.theme.HearthColors
 import app.hearth.ui.theme.style
 
 // One topic, one name, one icon, one colour, on every screen. The name lives in core (Topic.title, so the
@@ -35,3 +45,16 @@ fun TopicCard(
     onTitleClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) = HearthCard(topic.title(lang), topic.icon(), modifier, action, topic.style(), glance, onTitleClick, content)
+
+/** "Taken", "Eten", "Werkbord" above their tiles, so the three groups read the same on every screen. */
+@Composable
+fun GroupLabel(group: TopicGroup, lang: Lang, modifier: Modifier = Modifier) =
+    Text(group.title(lang), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier.padding(start = 6.dp))
+
+/** The secondary side: food and the Werkbord on a shelf a shade deeper than the canvas, next to the tasks. */
+@Composable
+fun Shelf(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) = Column(
+    modifier.background(HearthColors.Shelf, RoundedCornerShape(32.dp)).padding(14.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+    content = content,
+)

@@ -232,7 +232,7 @@ Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional sto
 Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under every screen.
 
 ```
- Vandaag (dashboard) | Taken | Weekmenu | Weekoverleg | Werkbord | Boodschappen      (Koppelingen at the bottom)
+ Vandaag (dashboard) | Taken | Weekmenu | Boodschappen | Werkbord | Weekoverleg      (Instellingen at the bottom)
 ```
 
 **Vandaag: the tablet dashboard** (three columns on the tablet, one on a phone):
@@ -255,6 +255,12 @@ Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under ever
   gedaan…"), one or two things means a light day; in *Binnenkort* empty days read "vrij" and the first free
   weekend day is called out.
 - **Binnenkort**: the next six days with what's on them. **Grote taken**: progress and the next step.
+- **Topics under the day** (v0.22): below Niet vergeten, Vandaag and Binnenkort come the topic cards in the one order
+  of every screen (`Topic`, `TopicGroup`): Admin & afspraken (what isn't above yet), Grote taken, Huishouden (aan de
+  beurt), Ritmes & routines (per moment, with steps), Vrije tijd (today's note, free time this week, a free weekend
+  day), each with the same glance as its weekoverleg tile; then on a shelf Weekmenu (vanavond and the next days),
+  Boodschappen and Huisregels. The weekoverleg tiles use the same groups: the tasks left, Eten and Werkbord on the
+  shelf on the right.
 - **One topic, one look** (v0.15): every topic (`Topic`) has one name, icon and colour on every screen: a card
   on Vandaag (Boodschappen, Huisregels, Grote taken), a panel in Taken, a column on the Werkbord, a tile in the
   weekoverleg. Time cards (Vandaag, Niet vergeten, Binnenkort, Deze week, Terugblik) and Hearth's own voice keep
@@ -475,6 +481,10 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.22: one order for the topics everywhere, in three groups (Taken; Eten: Weekmenu, Boodschappen; Werkbord:
+   Huisregels, Frictie & ideeën, Doelen): the weekoverleg tiles (tasks left, the rest on a shelf), Vandaag (the day on
+   top, the topic cards below, Ritmes & routines and Vrije tijd now their own cards), the rail (Weekmenu right above
+   Boodschappen, Weekoverleg last); Boodschappen gets a Weekmenu tab with each meal's ingredients.
    v0.21: the habit coach (the four laws of Atomic Habits) in each habit's sheet and in the Terugblik: one rating per
    meeting is kept (HABIT_CHECK), frictions about a habit point to a law, and Hearth suggests one thing (smaller when too
    much, one law when it takes effort, a step bigger after three sunny meetings); *iets leuks erbij* (`set_habit_pairing`,

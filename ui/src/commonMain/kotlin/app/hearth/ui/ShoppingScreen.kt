@@ -41,7 +41,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import app.hearth.core.model.Lang
+import app.hearth.core.model.Meal
 import app.hearth.core.model.ShopKind
+import app.hearth.core.model.Topic
+import app.hearth.core.model.dayLabel
+import app.hearth.core.model.normalizeName
+import kotlinx.datetime.LocalDate
+import app.hearth.ui.resources.at_home
+import app.hearth.ui.resources.menu_tab_empty
+import app.hearth.ui.resources.menu_tab_hint
+import app.hearth.ui.resources.menu_tab_plan
+import app.hearth.ui.resources.nav_menu
 import app.hearth.core.model.ShoppingItem
 import app.hearth.core.model.StockItem
 import app.hearth.core.model.StockState
@@ -83,7 +94,12 @@ class ShoppingCallbacks(
     val removeStock: (StockItem) -> Unit,
     val moveStock: (StockItem, StorageSpot) -> Unit,
     val removeSpot: (StorageSpot) -> Unit,
+    /** To the Weekmenu, when there's nothing planned yet. */
+    val goMenu: () -> Unit = {},
 )
+
+/** The Weekmenu tab among the storage spots (not a spot id). */
+private const val MENU_TAB = "menu"
 
 /**
  * The shared shopping list (grouped by shop) next to the stock (per room or topic): one tap on a stock
@@ -94,6 +110,9 @@ fun ShoppingScreen(
     sections: List<ShopSection>,
     spots: List<StorageSpot>,
     stock: List<StockItem>,
+    meals: List<Meal>,
+    today: LocalDate,
+    lang: Lang,
     wide: Boolean,
     cb: ShoppingCallbacks,
 ) {
@@ -111,7 +130,7 @@ fun ShoppingScreen(
         if (wide) {
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 ListPanel(sections, cb, onRemove = { removing = it }, onClear = { clearing = true }, modifier = Modifier.weight(1f), compact = false)
-                StockPanel(spots, stock, cb, onRemove = { removingStock = it }, onAddSpot = { addingSpot = true }, onMove = { moving = it }, onRemoveSpot = { removingSpot = it }, modifier = Modifier.weight(1.1f))
+                StockPanel(spots, stock, Menu(meals, sections, today, lang), cb, onRemove = { removingStock = it }, onAddSpot = { addingSpot = true }, onMove = { moving = it }, onRemoveSpot = { removingSpot = it }, modifier = Modifier.weight(1.1f))
             }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -119,7 +138,7 @@ fun ShoppingScreen(
                 ChoiceChip(stringResource(Res.string.stock_title), showStock, { showStock = true }, icon = HearthIcons.Home)
             }
             Spacer(Modifier.size(12.dp))
-            if (showStock) StockPanel(spots, stock, cb, onRemove = { removingStock = it }, onAddSpot = { addingSpot = true }, onMove = { moving = it }, onRemoveSpot = { removingSpot = it }, modifier = Modifier.weight(1f))
+            if (showStock) StockPanel(spots, stock, Menu(meals, sections, today, lang), cb, onRemove = { removingStock = it }, onAddSpot = { addingSpot = true }, onMove = { moving = it }, onRemoveSpot = { removingSpot = it }, modifier = Modifier.weight(1f))
             else ListPanel(sections, cb, onRemove = { removing = it }, onClear = { clearing = true }, modifier = Modifier.weight(1f), compact = true)
         }
     }
@@ -223,6 +242,7 @@ private fun ItemRow(item: ShoppingItem, onToggle: (ShoppingItem) -> Unit, onRemo
 private fun StockPanel(
     spots: List<StorageSpot>,
     stock: List<StockItem>,
+    menu: Menu,
     cb: ShoppingCallbacks,
     onRemove: (StockItem) -> Unit,
     onAddSpot: () -> Unit,
@@ -231,9 +251,12 @@ private fun StockPanel(
     modifier: Modifier,
 ) {
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    val selected = spots.firstOrNull { it.id == selectedId } ?: spots.firstOrNull()
+    // The week's menu first: what we cook decides what we buy. It's open by default while there is a menu.
+    val onMenu = selectedId == MENU_TAB || (selectedId == null && menu.meals.isNotEmpty())
+    val selected = if (onMenu) null else spots.firstOrNull { it.id == selectedId } ?: spots.firstOrNull()
     Column(modifier) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 16.dp)) {
+            item(key = MENU_TAB) { ChoiceChip(stringResource(Res.string.nav_menu), onMenu, { selectedId = MENU_TAB }, icon = Topic.MENU.icon()) }
             items(spots, key = { it.id }) { spot ->
                 val needed = stock.count { it.spotId == spot.id && it.state != StockState.IN_STOCK }
                 ChoiceChip(spot.name, spot.id == selected?.id, { selectedId = spot.id }, badge = needed, onLongClick = { onRemoveSpot(spot) })
@@ -243,6 +266,10 @@ private fun StockPanel(
         Spacer(Modifier.size(12.dp))
         ListSurface(Modifier.weight(1f)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
+                if (onMenu) {
+                    MenuIngredients(menu, stock, cb)
+                    return@Column
+                }
                 Text(stringResource(Res.string.stock_hint) + " " + stringResource(Res.string.stock_hold_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.size(12.dp))
                 if (selected != null) {
@@ -252,6 +279,69 @@ private fun StockPanel(
                     Spacer(Modifier.size(16.dp))
                     AddRow(stringResource(Res.string.stock_add_hint, selected.name), { cb.addStock(it, selected) }, muted = true, compact = true)
                 }
+            }
+        }
+    }
+}
+
+/** This week's meals for the Weekmenu tab, with what's on the list already. */
+private class Menu(val meals: List<Meal>, sections: List<ShopSection>, val today: LocalDate, val lang: Lang) {
+    val onList: Set<String> = sections.flatMap { it.items }.filter { !it.bought }.map { normalizeName(it.name) }.toSet()
+}
+
+/**
+ * The Weekmenu tab: each meal of the week with its ingredients. What's on the list shows it; what isn't goes on it with
+ * one tap, so the list and the menu never drift apart.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MenuIngredients(menu: Menu, stock: List<StockItem>, cb: ShoppingCallbacks) {
+    val inHouse = stock.filter { it.state == StockState.IN_STOCK }.map { normalizeName(it.name) }.toSet()
+    Text(stringResource(Res.string.menu_tab_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.size(12.dp))
+    if (menu.meals.isEmpty()) {
+        EmptyHint(stringResource(Res.string.menu_tab_empty))
+        TextButton(onClick = cb.goMenu) { Text(stringResource(Res.string.menu_tab_plan)) }
+        return
+    }
+    menu.meals.sortedBy { it.date }.forEach { meal ->
+        val day = runCatching { LocalDate.parse(meal.date) }.getOrNull()
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+            Text(
+                day?.let { dayLabel(it, menu.today, menu.lang).replaceFirstChar { c -> c.uppercase() } }.orEmpty(),
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(96.dp),
+            )
+            Text(meal.dish, style = MaterialTheme.typography.titleMedium)
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            meal.ingredients.forEach { name ->
+                val key = normalizeName(name)
+                IngredientChip(name, key in menu.onList, key in inHouse) { cb.add(name) }
+            }
+        }
+        Spacer(Modifier.size(16.dp))
+    }
+}
+
+/** On the list (cart, "op de lijst"), at home, or a tap away from the list. */
+@Composable
+private fun IngredientChip(name: String, listed: Boolean, atHome: Boolean, onAdd: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clip(RoundedCornerShape(14.dp))
+            .background(if (listed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background)
+            .clickable(enabled = !listed, onClick = onAdd).heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 6.dp),
+    ) {
+        Icon(
+            when { listed -> HearthIcons.Cart; atHome -> HearthIcons.Check; else -> HearthIcons.Add },
+            null, tint = if (listed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(name, style = MaterialTheme.typography.bodyMedium)
+            when {
+                listed -> Text(stringResource(Res.string.on_list), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                atHome -> Text(stringResource(Res.string.at_home), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

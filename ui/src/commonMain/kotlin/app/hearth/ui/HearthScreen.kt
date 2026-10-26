@@ -78,12 +78,14 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 enum class Destination(val icon: ImageVector, val label: StringResource, val inNav: Boolean = true) {
+    // In the order of the topics everywhere: the tasks, food (menu before shopping), the Werkbord, then the meeting
+    // that brings them together.
     TODAY(HearthIcons.Sun, Res.string.nav_today),
     TASKS(HearthIcons.Backlog, Res.string.nav_tasks),
     MENU(HearthIcons.Restaurant, Res.string.nav_menu),
-    WEEK(HearthIcons.People, Res.string.nav_week),
-    BOARD(HearthIcons.Board, Res.string.nav_board),
     SHOPPING(HearthIcons.Cart, Res.string.nav_shopping),
+    BOARD(HearthIcons.Board, Res.string.nav_board),
+    WEEK(HearthIcons.People, Res.string.nav_week),
     CONNECT(HearthIcons.Settings, Res.string.nav_connect, inNav = false),
 }
 
@@ -191,6 +193,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             onGoTasks = { destination = Destination.TASKS },
                             onGoShopping = { destination = Destination.SHOPPING },
                             onGoBoard = { destination = Destination.BOARD },
+                            onGoMenu = { destination = Destination.MENU },
                             onGoWeek = { destination = Destination.WEEK },
                             onGoConnect = { destination = Destination.CONNECT },
                             ruleEase = ruleEase,
@@ -316,7 +319,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             ),
                         )
                         Destination.SHOPPING -> ShoppingScreen(
-                            shopping, spots, stock, wide,
+                            shopping, spots, stock, meals, today, lang, wide,
                             ShoppingCallbacks(
                                 toggleBought = viewModel::toggleBought,
                                 add = viewModel::addShopping,
@@ -328,6 +331,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 removeStock = viewModel::removeStock,
                                 moveStock = viewModel::moveStock,
                                 removeSpot = viewModel::removeSpot,
+                                goMenu = { destination = Destination.MENU },
                             ),
                         )
                     }
