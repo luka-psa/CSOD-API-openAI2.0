@@ -125,7 +125,7 @@ class HearthTools(
     val waitForReply = WaitForReplyTool(backlog)
     val moveBacklogItem = MoveBacklogItemTool(backlog, board)
     val addProjectStep = AddProjectStepTool(backlog)
-    val rateHabit = RateHabitTool(backlog, meeting)
+    val rateHabit = RateHabitTool(backlog, meeting, board)
     val setSmallStep = SetSmallStepTool(backlog)
     val setHabitPairing = app.hearth.core.tools.backlog.SetHabitPairingTool(backlog)
     val reviewHabit = app.hearth.core.tools.backlog.ReviewHabitTool(backlog, meeting, board)

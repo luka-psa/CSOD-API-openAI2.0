@@ -6,6 +6,7 @@ import app.hearth.core.data.week.MeetingRepository
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.HabitReview
+import app.hearth.core.model.HabitStage
 import app.hearth.core.model.frictionsAbout
 import app.hearth.core.model.habitReview
 import app.hearth.core.model.isHabit
@@ -324,11 +325,15 @@ data class RateHabitArgs(
  * Habits are lived, not ticked off; the family says how hard one is. Atomic Habits: a hard habit asks for a
  * smaller first step, not more effort.
  */
-class RateHabitTool(private val repo: BacklogRepository, private val meeting: MeetingRepository) : Tool<RateHabitArgs, BacklogItemsResult> {
+class RateHabitTool(
+    private val repo: BacklogRepository,
+    private val meeting: MeetingRepository,
+    private val board: BoardRepository,
+) : Tool<RateHabitArgs, BacklogItemsResult> {
     override val name = NAME
     override val description =
         "Say how hard a habit is for the household: EASY, EFFORT or HARD. Shown as its weather (zon, wolk, bliksem; " +
-            "never red); one rating per meeting is kept for review_habit. A hard habit gets a smaller first step (set_small_step)."
+            "never red); one rating per meeting is kept for review_habit, and the answer says the one thing to try next."
     override val argsSerializer = RateHabitArgs.serializer()
     override val resultSerializer = BacklogItemsResult.serializer()
 
@@ -338,10 +343,13 @@ class RateHabitTool(private val repo: BacklogRepository, private val meeting: Me
         // One rating per meeting is kept, so the habit coach sees how it goes over the weeks.
         found.forEach { meeting.setHabitCheck(it.id, args.ease) }
         val names = found.joinToString(", ") { "“${it.text}”" }
+        // One habit: the coach's one thing to try, the same as on the screen.
+        val tip = found.singleOrNull()?.takeIf { it.isHabit }?.let { reviewHabits(listOf(it), repo, meeting, board, ctx).single() }
+            ?.takeIf { it.stage != HabitStage.NEW && it.stage != HabitStage.STEADY }?.tips?.firstOrNull()?.text
         val summary = when (args.ease) {
-            Ease.EASY -> ctx.t("$names loopt vanzelf. Mooi.", "$names runs easily. Nice.")
-            Ease.EFFORT -> ctx.t("$names vraagt moeite. Een kleinere eerste stap kan helpen.", "$names takes effort. A smaller first step can help.")
-            Ease.HARD -> ctx.t("$names is te zwaar. Wat is een kleinere eerste stap?", "$names is too much. What's a smaller first step?")
+            Ease.EASY -> ctx.t("$names loopt vanzelf. Mooi.", "$names runs easily. Nice.") + (tip?.let { " $it" } ?: "")
+            Ease.EFFORT -> ctx.t("$names vraagt moeite. ", "$names takes effort. ") + (tip ?: ctx.t("Een kleinere eerste stap kan helpen.", "A smaller first step can help."))
+            Ease.HARD -> ctx.t("$names is te zwaar. ", "$names is too much. ") + (tip ?: ctx.t("Wat is een kleinere eerste stap?", "What's a smaller first step?"))
         }
         return BacklogItemsResult(found.map { it.copy(ease = args.ease) }, summary)
     }

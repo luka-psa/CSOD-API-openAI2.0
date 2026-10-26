@@ -64,6 +64,7 @@ import app.hearth.ui.resources.kind_admin
 import app.hearth.ui.resources.kind_project
 import app.hearth.ui.resources.moment_title
 import app.hearth.core.model.HabitLaw
+import app.hearth.core.model.isAbout
 import app.hearth.core.model.lawOf
 import app.hearth.ui.resources.change_how
 import app.hearth.ui.resources.change_moment
@@ -246,7 +247,8 @@ private fun DirectionTag(text: String, style: SectionStyle, topic: Topic) {
 private fun WriteDialog(item: BoardItem, direction: FrictionDirection, routines: List<BacklogItem>, lang: Lang, onWrite: (FrictionWrite) -> Unit, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf("") }
     var anchor by remember { mutableStateOf<Anchor?>(null) }
-    var routine by remember { mutableStateOf<BacklogItem?>(null) }
+    // The routine the friction names is already chosen ("we vergeten de bedden": Bedden opmaken).
+    var routine by remember { mutableStateOf(routines.firstOrNull { item.isAbout(it) }.takeIf { direction == FrictionDirection.CHANGE_ROUTINE }) }
     var section by remember { mutableStateOf(Section.PROJECT) }
     var asking by remember { mutableStateOf(false) }
     val law = remember(item.text) { lawOf(item.text) }

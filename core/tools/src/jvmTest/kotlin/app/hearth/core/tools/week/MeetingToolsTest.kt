@@ -126,7 +126,7 @@ class MeetingToolsTest {
     fun `habits are rated together and get a small first step, tasks count their postponements`() = runTest {
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Na het eten de tafel afruimen", Section.HABIT), nl)
         assertEquals(
-            "“Na het eten de tafel afruimen” is te zwaar. Wat is een kleinere eerste stap?",
+            "“Na het eten de tafel afruimen” is te zwaar. Begin met de versie van twee minuten.",
             tools.registry.run(tools.rateHabit, RateHabitArgs(texts = listOf("tafel afruimen"), ease = Ease.HARD), nl).summary,
         )
         assertEquals("Begin klein: “Eigen bord naar de keuken”.", tools.registry.run(tools.setSmallStep, SmallStepArgs(texts = listOf("tafel afruimen"), step = "eigen bord naar de keuken"), nl).summary)

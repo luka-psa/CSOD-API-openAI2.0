@@ -144,11 +144,8 @@ object HearthIcons {
             "M8.5,11c0.83,0 1.5,-0.67 1.5,-1.5S9.33,8 8.5,8 7,8.67 7,9.5 7.67,11 8.5,11zM12,17.5c2.33,0 4.31,-1.46 5.11,-3.5H6.89" +
             "c0.8,2.04 2.78,3.5 5.11,3.5z",
     )
-    // Material "stairs": the third law, make it easy (one small step at a time).
-    val Stairs = icon(
-        "M19,3H5C3.9,3 3,3.9 3,5v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2V5C21,3.9 20.1,3 19,3z" +
-            "M18,8h-2.5v3.5h-3V15h-3v3H6v-2h2.5v-3.5h3V9h3V6H18V8z",
-    )
+    // A staircase: the third law, make it easy (one small step at a time).
+    val Stairs = icon("M3,21V17H7.5V12.5H12V8H16.5V3.5H21V21Z")
 
     private fun icon(path: String): ImageVector =
         ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
