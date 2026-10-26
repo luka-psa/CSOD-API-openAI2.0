@@ -46,6 +46,9 @@ import app.hearth.core.model.TaskKind
 import app.hearth.core.model.boardKind
 import app.hearth.ai.route.AreaWords
 import app.hearth.ai.route.MeetingWords
+import app.hearth.ai.route.Spoken
+import app.hearth.core.model.Topic
+import app.hearth.core.model.topic
 import app.hearth.ai.route.Place
 import app.hearth.core.model.plusDays
 import app.hearth.core.tools.board.AddIdeaArgs
@@ -325,7 +328,8 @@ class Orchestrator(
         if (task.intervalDays != null && chosen.kind != TaskKind.ROUTINE) chosen = Section.CHORE
         if (task.urgent && chosen == Section.OTHER) chosen = Section.ADMIN
         val args = AddToBacklogArgs(
-            if (fromTalk) body.replaceFirstChar { it.uppercase() } else body, chosen,
+            // Talk reads as an item: "moet ik afspreken met Anthony" -> "Afspreken met Anthony".
+            if (fromTalk) MeetingWords.gist(body) else body, chosen,
             hint?.whenValue ?: When.UNPLANNED, hint?.date?.toString(), hint?.finishBy ?: false,
             urgent = task.urgent, intervalDays = task.intervalDays, anchor = task.anchor,
         )
@@ -334,8 +338,9 @@ class Orchestrator(
 
     // ---------- Luister mee: the weekoverleg's conversation, sorted ----------
 
-    /** One sentence of the conversation and where it would go. [calls] run when the family says yes. */
+    /** One thing concluded from the conversation and where it would go. [calls] run when the family says yes. */
     data class Proposal(
+        /** The words it rests on (cleaned); fix them and Hearth reads it again. */
         val sentence: String,
         val place: Place,
         /** What the new item will say. */
@@ -343,13 +348,30 @@ class Orchestrator(
         /** The day it gets, if any. */
         val date: LocalDate?,
         val calls: List<ToolCall>,
+        /** Everything said about it, as heard. */
+        val heard: String = sentence,
+        /** "Deze week": no day yet, it goes to Volgende. */
+        val next: Boolean = false,
+        /** The topic it lands in (null: a win, or just talk). */
+        val topic: Topic? = null,
     )
 
-    /** Every sentence of [lines] with its best guess; just talk comes back as [Place.NONE]. */
-    fun propose(lines: List<String>, ctx: ToolContext): List<Proposal> =
-        MeetingWords.sentences(lines).map { proposal(it, MeetingWords.place(it, ctx.today), ctx) }
+    /** A thought of the conversation and what Hearth concludes from it (nothing, when it was just talk). */
+    data class Talk(val heard: String, val lines: IntRange, val proposals: List<Proposal>)
 
-    /** The same sentence put somewhere else (the family tapped another place). */
+    /** The conversation as thoughts, each with its conclusions. [people] are the household's names. */
+    fun listen(lines: List<String>, ctx: ToolContext, people: Collection<String> = emptyList(), times: List<Long>? = null): List<Talk> =
+        MeetingWords.thoughts(lines, ctx.today, people, times).map { t ->
+            Talk(t.heard, t.lines, t.conclusions.map { c -> proposal(c.sentence, c.place, ctx).copy(heard = c.heard) })
+        }
+
+    /** Every conclusion of [lines]; a thought that was just talk comes back once, as [Place.NONE]. */
+    fun propose(lines: List<String>, ctx: ToolContext, people: Collection<String> = emptyList(), times: List<Long>? = null): List<Proposal> =
+        listen(lines, ctx, people, times).flatMap { t ->
+            t.proposals.ifEmpty { listOf(proposal(Spoken.clean(t.heard), Place.NONE, ctx).copy(heard = t.heard)) }
+        }
+
+    /** The same words put somewhere else (the family tapped another place), or read again after a fix. */
     fun proposal(sentence: String, place: Place, ctx: ToolContext): Proposal {
         val local = ctx.copy(lang = KeywordRouter.language(sentence, ctx.lang))
         val area = AreaWords.extract(sentence)
@@ -362,27 +384,27 @@ class Orchestrator(
                 When.DAY -> args.date?.let { LocalDate.parse(it) }
                 else -> null
             }
-            return Proposal(sentence, place, args.text, date, listOf(call))
+            return Proposal(sentence, place, args.text, date, listOf(call), next = args.`when` == When.NEXT, topic = args.section.topic())
         }
-        fun board(text: String, call: ToolCall) = Proposal(sentence, place, text, null, listOf(call))
+        fun board(text: String, call: ToolCall, topic: Topic?) = Proposal(sentence, place, text, null, listOf(call), topic = topic)
         return when (place) {
             Place.PLANNING -> backlog(area?.section?.takeIf { it.boardKind == null } ?: Section.OTHER)
             Place.EVENT -> backlog(Section.APPOINTMENT)
             Place.FREE_TIME -> backlog(Section.PROTECTED_TIME)
             Place.SHOPPING -> {
                 val calls = shoppingCalls(body)
-                Proposal(sentence, place, calls.joinToString(", ") { ToolJson.decodeFromJsonElement(AddShoppingItemArgs.serializer(), it.arguments).name.replaceFirstChar { c -> c.uppercase() } }, null, calls)
+                Proposal(sentence, place, calls.joinToString(", ") { ToolJson.decodeFromJsonElement(AddShoppingItemArgs.serializer(), it.arguments).name.replaceFirstChar { c -> c.uppercase() } }, null, calls, topic = Topic.SHOPPING)
             }
             Place.MEAL -> {
                 val meal = MealWords.extract(body, local.today) ?: MealWords.extract(sentence, local.today)
-                if (meal == null) Proposal(sentence, place, body, null, emptyList())
-                else Proposal(sentence, place, meal.dish, meal.date, listOf(ToolCall.of(PlanMealTool.NAME, PlanMealArgs.serializer(), PlanMealArgs(meal.dish, meal.date.toString()))))
+                if (meal == null) Proposal(sentence, place, body, null, emptyList(), topic = Topic.MENU)
+                else Proposal(sentence, place, meal.dish, meal.date, listOf(ToolCall.of(PlanMealTool.NAME, PlanMealArgs.serializer(), PlanMealArgs(meal.dish, meal.date.toString()))), topic = Topic.MENU)
             }
-            Place.HOUSE_RULE -> MeetingWords.ruleText(body).let { board(it, ToolCall.of(AddHouseRuleTool.NAME, AddHouseRuleArgs.serializer(), AddHouseRuleArgs(it))) }
-            Place.FRICTION -> board(body, ToolCall.of(LogFrictionTool.NAME, LogFrictionArgs.serializer(), LogFrictionArgs(body)))
-            Place.IDEA -> board(body, ToolCall.of(AddIdeaTool.NAME, AddIdeaArgs.serializer(), AddIdeaArgs(body)))
-            Place.GOAL -> board(body, ToolCall.of(AddGoalTool.NAME, AddGoalArgs.serializer(), AddGoalArgs(body, KeywordRouter.goalScope(body))))
-            Place.WIN -> board(body, ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(body)))
+            Place.HOUSE_RULE -> MeetingWords.ruleText(body).let { board(it, ToolCall.of(AddHouseRuleTool.NAME, AddHouseRuleArgs.serializer(), AddHouseRuleArgs(it)), Topic.RULES) }
+            Place.FRICTION -> board(body, ToolCall.of(LogFrictionTool.NAME, LogFrictionArgs.serializer(), LogFrictionArgs(body)), Topic.FRICTION)
+            Place.IDEA -> board(body, ToolCall.of(AddIdeaTool.NAME, AddIdeaArgs.serializer(), AddIdeaArgs(body)), Topic.FRICTION)
+            Place.GOAL -> board(body, ToolCall.of(AddGoalTool.NAME, AddGoalArgs.serializer(), AddGoalArgs(body, KeywordRouter.goalScope(body))), Topic.GOALS)
+            Place.WIN -> board(body, ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(body)), null)
             Place.NONE -> Proposal(sentence, place, body, null, emptyList())
         }
     }

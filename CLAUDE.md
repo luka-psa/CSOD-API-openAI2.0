@@ -162,9 +162,10 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   that is too much two meetings in a row comes back as a friction),
   Deze week (7 days, plans with their colour, the meal small underneath),
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
-  *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each sentence
-  with its topic and lights up that tile (the *transcript* lasts until the next meeting); *Zet op zijn plek* opens the
-  *Voorstel* (each sentence → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers
+  *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each *thought*
+  (stretches joined by how they sound, never cut at a pause) with its *conclusions* in their topic's colour, once it has
+  settled, and lights up that tile (the *transcript* lasts until the next meeting; a tap fixes misheard words); *Zet op
+  zijn plek* opens the *Voorstel* (each conclusion → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.
 - **Instellingen** (Settings; the rail's bottom item): *Taal* first (Dutch (Flemish) by default,
   English on request; `set_language`, setting `app.lang`; switching changes both the strings and

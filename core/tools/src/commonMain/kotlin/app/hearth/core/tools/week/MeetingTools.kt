@@ -38,6 +38,7 @@ import app.hearth.core.tools.ToolResult
 import app.hearth.core.tools.board.member
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlin.time.ExperimentalTime
 
@@ -281,8 +282,8 @@ data class MarkSortedResult(val count: Int, override val summary: String) : Tool
 
 class MarkTranscriptSortedTool(private val meeting: MeetingRepository) : Tool<MarkSortedArgs, MarkSortedResult> {
     override val name = NAME
-    override val description = "Mark what Luister mee heard as sorted, so it isn't proposed again (tablet only)."
-    override val exposeOverMcp = false
+    override val description = "Mark lines of the weekoverleg's conversation as sorted once what they say has been added, so the tablet " +
+        "doesn't propose them again. Use the ids from read_conversation."
     override val argsSerializer = MarkSortedArgs.serializer()
     override val resultSerializer = MarkSortedResult.serializer()
 
@@ -293,6 +294,82 @@ class MarkTranscriptSortedTool(private val meeting: MeetingRepository) : Tool<Ma
 
     companion object {
         const val NAME = "mark_transcript_sorted"
+    }
+}
+
+@Serializable
+data class FixLineArgs(
+    @Describe("Id of the line, from read_conversation.") val lineId: String,
+    @Describe("What was really said.") val text: String,
+)
+
+@Serializable
+data class FixLineResult(val lineId: String, val text: String, override val summary: String) : ToolResult
+
+/** The recognizer mishears now and then ("oprecht" for "opgehaald"); the family, or their AI, fixes the words. */
+class FixTranscriptLineTool(private val meeting: MeetingRepository) : Tool<FixLineArgs, FixLineResult> {
+    override val name = NAME
+    override val description = "Fix the words of one line Luister mee heard in this weekoverleg, when the recognizer misheard " +
+        "(a name, a Flemish word). Only lines of the meeting that is still open."
+    override val argsSerializer = FixLineArgs.serializer()
+    override val resultSerializer = FixLineResult.serializer()
+
+    override suspend fun run(args: FixLineArgs, ctx: ToolContext): FixLineResult {
+        val text = args.text.trim().ifEmpty { throw ToolException(ctx.t("Wat werd er gezegd?", "What was said?")) }
+        if (!meeting.fixLine(args.lineId, text)) {
+            throw ToolException(ctx.t("Die zin vind ik niet meer in dit weekoverleg.", "I can't find that line in this meeting anymore."))
+        }
+        return FixLineResult(args.lineId, text, ctx.t("Verbeterd: “$text”", "Fixed: “$text”"))
+    }
+
+    companion object {
+        const val NAME = "fix_transcript_line"
+    }
+}
+
+@Serializable
+class ReadConversationArgs
+
+@Serializable
+data class ConversationLine(val id: String, val time: String, val text: String, val sorted: Boolean)
+
+@Serializable
+data class ReadConversationResult(val lines: List<ConversationLine>, override val summary: String) : ToolResult
+
+/**
+ * The weekoverleg's conversation for the family's own AI: it understands dialect and half sentences far better than
+ * the tablet's quick sorter, so it can draw the conclusions and add them with the regular tools.
+ */
+class ReadConversationTool(private val meeting: MeetingRepository, private val zone: () -> TimeZone = { TimeZone.currentSystemDefault() }) :
+    Tool<ReadConversationArgs, ReadConversationResult> {
+    override val name = NAME
+    override val readOnly = true
+    override val description = "Read what Luister mee heard in this week's weekoverleg (weekly family meeting), line by line as the " +
+        "speech recognizer wrote it down: a new line at every pause, so one thought often spans several lines, and words can be " +
+        "misheard (Flemish speech). Read it for meaning: draw the conclusions (what, who, which day), add each with the regular " +
+        "tools (add_to_backlog, add_shopping_item, plan_meal, add_house_rule, log_friction, add_goal, add_win), then call " +
+        "mark_transcript_sorted with the ids you handled. Lines marked sorted were already put in place on the tablet."
+    override val argsSerializer = ReadConversationArgs.serializer()
+    override val resultSerializer = ReadConversationResult.serializer()
+
+    @OptIn(kotlin.time.ExperimentalTime::class)
+    override suspend fun run(args: ReadConversationArgs, ctx: ToolContext): ReadConversationResult {
+        val lines = meeting.currentTranscript().map { line ->
+            val at = kotlin.time.Instant.fromEpochMilliseconds(line.createdAt).toLocalDateTime(zone())
+            ConversationLine(line.id, "${at.hour.toString().padStart(2, '0')}:${at.minute.toString().padStart(2, '0')}", line.text, line.sorted)
+        }
+        val open = lines.count { !it.sorted }
+        val summary = when {
+            lines.isEmpty() -> ctx.t("Luister mee heeft in dit weekoverleg nog niets gehoord.", "Luister mee hasn't heard anything in this meeting yet.")
+            open == 0 -> ctx.t("Alles uit het gesprek staat al op zijn plek.", "Everything from the conversation is already in place.")
+            else -> ctx.t("$open zinnen nog niet op hun plek:\n", "$open lines not in place yet:\n") +
+                lines.filter { !it.sorted }.joinToString("\n") { "${it.time}  ${it.text}" }
+        }
+        return ReadConversationResult(lines, summary)
+    }
+
+    companion object {
+        const val NAME = "read_conversation"
     }
 }
 

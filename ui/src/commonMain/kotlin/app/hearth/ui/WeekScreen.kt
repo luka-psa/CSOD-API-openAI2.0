@@ -64,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -201,6 +202,9 @@ class WeekCallbacks(
     val moveVoorstel: (Int, Place) -> Unit,
     val toggleVoorstel: (Int) -> Unit,
     val addVoorstel: () -> Unit,
+    /** Words Luister mee misheard, fixed by the family: (line id, text). */
+    val fixLine: (String, String) -> Unit = { _, _ -> },
+    val editVoorstel: (Int, String) -> Unit = { _, _ -> },
 )
 
 /** The Weekoverleg's own notes: the look back, Luister mee and the summaries. */
@@ -214,13 +218,16 @@ class MeetingState(
     val lastTranscript: List<TranscriptLine>,
     val huddles: List<Huddle>,
     val voorstel: List<VoorstelRow>?,
-    /** What Luister mee heard lately, newest first, with its topic. */
-    val heard: List<HeardLine> = emptyList(),
+    /** What Luister mee heard lately as thoughts, newest first, with what Hearth concludes. */
+    val heard: List<HeardThought> = emptyList(),
     /** The summary to agree on before Klaar, while it's open. */
     val agree: List<String>? = null,
     /** How each house rule goes, by rule id (this week's rating or the last one). */
     val ruleEase: Map<String, Ease> = emptyMap(),
 )
+
+/** How long Hearth waits after the last words before it concludes a thought. */
+private const val SETTLE_MS = 4_000L
 
 /** Luister mee lives above the screens, so it keeps listening while the family looks at a list. */
 class ListenControl(val available: Boolean, val listening: Boolean, val partial: String, val toggle: () -> Unit)
@@ -281,18 +288,28 @@ fun WeekScreen(
                 return@Column
             }
             val gap = if (wide) 20.dp else 16.dp
-            val lit = meeting.heard.take(2).mapNotNull { it.topic }.toSet()
+            // A thought is only concluded once it has settled: people pause mid-thought, and the next words may go on with it.
+            var settled by remember { mutableStateOf(true) }
+            LaunchedEffect(meeting.heard.firstOrNull()?.text, listen.partial, listen.listening) {
+                settled = false
+                if (listen.listening) delay(SETTLE_MS)
+                settled = true
+            }
+            val lit = meeting.heard.drop(if (settled) 0 else 1).firstOrNull()?.proposals?.mapNotNull { it.topic }?.toSet() ?: emptySet()
             ListenStage(
                 available = listen.available,
                 listening = listen.listening,
                 partial = listen.partial,
                 heard = meeting.heard,
+                settled = settled,
                 hasLines = meeting.transcript.isNotEmpty(),
                 lit = lit,
+                today = today,
                 lang = lang,
                 onToggle = listen.toggle,
                 onShow = { showing = true },
                 onSort = cb.openVoorstel,
+                onFix = cb.fixLine,
             )
             Spacer(Modifier.size(gap))
 
@@ -356,12 +373,12 @@ fun WeekScreen(
         }
     }
     when (showing) {
-        true -> TranscriptSheet(stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript) { showing = null }
+        true -> TranscriptSheet(stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript, onFix = cb.fixLine) { showing = null }
         false -> TranscriptSheet(stringResource(Res.string.transcript_last), meeting.lastTranscript, onClear = null) { showing = null }
         null -> {}
     }
     meeting.voorstel?.let { rows ->
-        VoorstelSheet(rows, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.addVoorstel, cb.closeVoorstel)
+        VoorstelSheet(rows, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.editVoorstel, cb.addVoorstel, cb.closeVoorstel)
     }
     meeting.agree?.let { lines ->
         AgreeSheet(

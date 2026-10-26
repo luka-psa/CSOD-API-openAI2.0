@@ -21,6 +21,8 @@ import app.hearth.core.tools.board.AddIdeaTool
 import app.hearth.core.tools.week.AddTranscriptLineTool
 import app.hearth.core.tools.week.AddWinTool
 import app.hearth.core.tools.week.ClearTranscriptTool
+import app.hearth.core.tools.week.FixTranscriptLineTool
+import app.hearth.core.tools.week.ReadConversationTool
 import app.hearth.core.tools.week.FinishWeekoverlegTool
 import app.hearth.core.tools.week.ListHuddlesTool
 import app.hearth.core.tools.week.MarkTranscriptSortedTool
@@ -150,6 +152,8 @@ class HearthTools(
     val addTranscriptLine = AddTranscriptLineTool(meeting)
     val clearTranscript = ClearTranscriptTool(meeting)
     val markTranscriptSorted = MarkTranscriptSortedTool(meeting)
+    val fixTranscriptLine = FixTranscriptLineTool(meeting)
+    val readConversation = ReadConversationTool(meeting)
     val listHuddles = ListHuddlesTool(meeting)
     val saveRecipe = SaveRecipeTool(week)
     val importRecipe = app.hearth.core.tools.week.ImportRecipeTool(week, pages)
@@ -175,7 +179,7 @@ class HearthTools(
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, markFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
-            addWin, removeWin, setWeekMeter, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, clearTranscript, listHuddles, addIdea,
+            addWin, removeWin, setWeekMeter, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, readConversation, clearTranscript, listHuddles, addIdea,
             saveRecipe, importRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples, setLanguage,
         ) + listOfNotNull(backupNow, restoreBackup),

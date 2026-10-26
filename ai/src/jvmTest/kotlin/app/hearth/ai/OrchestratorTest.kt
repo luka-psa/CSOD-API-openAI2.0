@@ -294,7 +294,7 @@ class OrchestratorTest {
         offline.handle("verlof van 3 tot 7 november", saturday)
         val heard = offline.propose(listOf("oma is jarig op 12 december en dan gaan we volgende maand op vakantie"), saturday)
         assertEquals(
-            listOf(app.hearth.ai.route.Place.EVENT to "Oma is jarig", app.hearth.ai.route.Place.EVENT to "Gaan we op vakantie"),
+            listOf(app.hearth.ai.route.Place.EVENT to "Oma is jarig", app.hearth.ai.route.Place.EVENT to "Op vakantie"),
             heard.map { it.place to it.text },
         )
         assertEquals(listOf("2026-12-12", "2026-11-01"), heard.map { it.date.toString() })
@@ -334,14 +334,15 @@ class OrchestratorTest {
                 app.hearth.ai.route.Place.FRICTION to "Het stoort me dat de was altijd blijft liggen",
                 app.hearth.ai.route.Place.HOUSE_RULE to "De kinderen gaan om 8 uur slapen",
                 app.hearth.ai.route.Place.IDEA to "Misschien kunnen we de was op zondag doen dan is maandag rustiger",
+                // "ja dat is goed" goes on about the garage: heard with it, nothing of its own.
                 app.hearth.ai.route.Place.PLANNING to "Garage opruimen",
-                app.hearth.ai.route.Place.NONE to "Ja dat is goed",
             ),
             proposals.map { it.place to it.text },
         )
         assertEquals("2026-10-27", proposals[1].date.toString())
         assertEquals("2026-10-25", proposals[2].date.toString())
         assertEquals("2026-10-24", proposals[8].date.toString())
+        assertEquals("garage opruimen dit weekend ja dat is goed", proposals[8].heard)
 
         // Moving a sentence elsewhere, then adding everything: the same tools as everywhere else.
         val moved = offline.proposal(proposals[7].sentence, app.hearth.ai.route.Place.HOUSE_RULE, saturday)

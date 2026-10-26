@@ -3,6 +3,7 @@ package app.hearth.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,14 +19,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import app.hearth.ai.route.Spoken
 
 /**
  * Android's recognizer stops after every pause, so Luister mee starts it again right away until stopped.
- * It asks for on-device recognition where the language pack is installed, so the talk stays on the tablet.
+ * It asks for on-device recognition where the language pack is installed, so the talk stays on the tablet,
+ * leans towards the household's own words (Android 13+), and of its guesses keeps the one that names them.
  */
 @Composable
 actual fun rememberTranscriber(
     language: String,
+    vocabulary: List<String>,
     onLine: (String) -> Unit,
     onPartial: (String) -> Unit,
     onActive: (Boolean) -> Unit,
@@ -35,6 +39,7 @@ actual fun rememberTranscriber(
     val partial by rememberUpdatedState(onPartial)
     val active by rememberUpdatedState(onActive)
     val lang by rememberUpdatedState(language)
+    val words by rememberUpdatedState(vocabulary)
     val available = remember { SpeechRecognizer.isRecognitionAvailable(context) }
     val recognizer = remember { if (available) SpeechRecognizer.createSpeechRecognizer(context) else null }
     val handler = remember { Handler(Looper.getMainLooper()) }
@@ -48,7 +53,13 @@ actual fun rememberTranscriber(
                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang)
                 .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-                .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2_500L),
+                .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2_500L)
+                .apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && words.isNotEmpty()) {
+                        putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(words.take(50)))
+                    }
+                },
         )
     }
 
@@ -62,7 +73,7 @@ actual fun rememberTranscriber(
                 results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.let(partial)
             }
             override fun onResults(results: Bundle?) {
-                results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }?.let(line)
+                results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.let { Spoken.pick(it, words) }?.let(line)
                 partial("")
                 again(100)
             }

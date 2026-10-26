@@ -39,6 +39,13 @@ class TimeWordsTest {
     }
 
     @Test
+    fun `this week has no day yet, it goes to Volgende`() {
+        val hint = TimeWords.extractAnywhere("deze week moet ik afspreken met Anthony", today)!!
+        assertEquals(When.NEXT to "moet ik afspreken met Anthony", hint.whenValue to hint.text)
+        assertEquals(null, hint.date)
+    }
+
+    @Test
     fun `amounts are not dates`() {
         assertEquals(null, TimeWords.extractAnywhere("2 kg appels", today))
         assertEquals(null, TimeWords.extractAnywhere("om 8 uur gaan slapen", today))

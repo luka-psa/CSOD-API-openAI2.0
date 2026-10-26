@@ -78,6 +78,7 @@ import app.hearth.core.tools.week.ClearTranscriptArgs
 import app.hearth.core.tools.week.MarkSortedArgs
 import app.hearth.core.tools.week.RemoveWinArgs
 import app.hearth.core.tools.week.TranscriptLineArgs
+import app.hearth.core.tools.week.FixLineArgs
 import app.hearth.core.tools.system.GoogleSettings
 import app.hearth.core.tools.system.NoArgs
 import app.hearth.core.tools.system.RestoreBackupArgs
@@ -590,26 +591,25 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         say(app.tools.registry.run(app.tools.addIdea, AddIdeaArgs(it.t("Makkelijker maken: ${item.text}", "Make it easier: ${item.text}")), it).summary)
     }
 
-    /** What Luister mee heard and hasn't been put in place yet, newest first, with the topic it would go to. */
-    val heardLately: StateFlow<List<HeardLine>> = transcript
-        .map { lines -> MeetingWords.sentences(lines.filter { !it.sorted }.map { it.text }).takeLast(4).reversed().map(::heardLine) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /**
+     * What Luister mee heard and hasn't been put in place yet, as thoughts (pauses don't cut them), newest first,
+     * each with what Hearth concludes from it.
+     */
+    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members) { lines, people ->
+        val open = lines.filter { !it.sorted }
+        app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt })
+            .takeLast(3).reversed().map { t -> HeardThought(open.slice(t.lines), t.proposals) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private fun heardLine(sentence: String): HeardLine {
-        val place = MeetingWords.place(sentence, today())
-        val section = KeywordRouter.section(sentence)
-        val topic = when (place) {
-            Place.PLANNING -> if (TaskWords.extract(sentence).anchor != null) Topic.RHYTHM else section.topic()
-            Place.EVENT -> if (section == Section.APPOINTMENT || section == Section.ADMIN) Topic.ADMIN else Topic.FREE_TIME
-            Place.FREE_TIME -> Topic.FREE_TIME
-            Place.SHOPPING -> Topic.SHOPPING
-            Place.MEAL -> Topic.MENU
-            Place.HOUSE_RULE -> Topic.RULES
-            Place.FRICTION, Place.IDEA -> Topic.FRICTION
-            Place.GOAL -> Topic.GOALS
-            Place.WIN, Place.NONE -> null
-        }
-        return HeardLine(sentence, place, topic)
+    /** The household's own words (people, stock, recipes), so the recognizer hears "Mia" and not "mia's". */
+    val vocabulary: StateFlow<List<String>> = combine(members, stockItems, recipes) { m, s, r ->
+        (m.map { it.name } + s.map { it.name } + r.map { it.name }).map { it.trim() }.filter { it.length >= 2 }.distinct().take(80)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The recognizer misheard: the family fixes the words and Hearth reads them again. */
+    fun fixLine(id: String, text: String) {
+        if (text.isBlank()) return
+        tool { app.tools.registry.run(app.tools.fixTranscriptLine, FixLineArgs(id, text), it) }
     }
 
     /** The summary the family reads and agrees on before Klaar records it. */
@@ -641,7 +641,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun openVoorstel() {
         val lines = transcript.value.filter { !it.sorted }
         voorstelLines = lines.map { it.id }
-        _voorstel.value = app.orchestrator.propose(lines.map { it.text }, ctx(ToolSource.UI))
+        _voorstel.value = app.orchestrator.propose(lines.map { it.text }, ctx(ToolSource.UI), members.value.map { it.name }, lines.map { it.createdAt })
             .map { VoorstelRow(it, checked = it.place != Place.NONE && it.calls.isNotEmpty()) }
     }
 
@@ -652,8 +652,21 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** The family tapped another place for a sentence. */
     fun moveVoorstel(index: Int, place: Place) = _voorstel.update { rows ->
         rows?.mapIndexed { i, row ->
-            if (i != index) row else app.orchestrator.proposal(row.proposal.sentence, place, ctx(ToolSource.UI)).let { p ->
+            if (i != index) row else app.orchestrator.proposal(row.proposal.sentence, place, ctx(ToolSource.UI)).copy(heard = row.proposal.heard).let { p ->
                 VoorstelRow(p, checked = p.place != Place.NONE && p.calls.isNotEmpty())
+            }
+        }
+    }
+
+    /** The words of one line were fixed: Hearth reads them again (and guesses a place if it had none). */
+    fun editVoorstel(index: Int, sentence: String) = _voorstel.update { rows ->
+        rows?.mapIndexed { i, row ->
+            if (i != index || sentence.isBlank()) row else {
+                val c = ctx(ToolSource.UI)
+                val place = row.proposal.place.takeIf { it != Place.NONE } ?: MeetingWords.place(sentence, c.today)
+                app.orchestrator.proposal(sentence.trim(), place, c).copy(heard = row.proposal.heard).let { p ->
+                    VoorstelRow(p, checked = p.place != Place.NONE && p.calls.isNotEmpty())
+                }
             }
         }
     }
@@ -829,8 +842,10 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     }
 }
 
-/** A sentence Luister mee just heard, and the topic tile it lights up (null: just talk, a win, or still to sort). */
-data class HeardLine(val text: String, val place: Place, val topic: Topic?)
+/** A thought Luister mee heard (the lines it spans) and what Hearth concludes from it; nothing when it was just talk. */
+data class HeardThought(val lines: List<TranscriptLine>, val proposals: List<Orchestrator.Proposal>) {
+    val text: String get() = lines.joinToString(" ") { it.text.trim() }
+}
 
 /** One sentence of the Voorstel and whether it gets added. */
 data class VoorstelRow(val proposal: Orchestrator.Proposal, val checked: Boolean)

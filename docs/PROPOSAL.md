@@ -118,7 +118,9 @@ sequence or a checklist like the bag for the opvang; saying it again adds the mi
 day with `complete_backlog_item`, and all ticked logs the routine for today), `set_anchor` (a routine's moment of the day: MORNING, AFTERNOON,
 DINNER, EVENING, BEDTIME; `add_to_backlog` takes it too),
 `list_huddles`
-(summaries), `add_transcript_line` / `mark_transcript_sorted` (tablet), `clear_transcript` ⚠ (tablet),
+(summaries), `add_transcript_line` (tablet), `read_conversation` (the meeting's lines with ids and times, for the
+family's AI: it reads for meaning, adds with the regular tools, then calls `mark_transcript_sorted`),
+`fix_transcript_line` (misheard words; only the open meeting), `clear_transcript` ⚠ (tablet),
 `add_idea` (Werkbord; decided with `resolve_friction` like a friction). · Recipes:
 `save_recipe` (name, ingredients, how we made it; rename keeps the photo), `list_recipes`, `remove_recipe` ⚠,
 `set_recipe_photo` (tablet only). Stock: `move_stock_item`, `remove_storage_spot` ⚠.
@@ -286,8 +288,12 @@ bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 **Weekoverleg** (v0.10): one page built around the household's *topics* (`Topic` in `core/model/Week.kt`):
 *Vrije tijd*, *Doelen*, *Admin & afspraken*, *Grote taken*, *Huishouden*, *Ritmes & routines*, *Boodschappen*, *Weekmenu*, *Frictie & ideeën*, *Huisregels* (two rows of five on the tablet). On top
 the **Luister mee** stage: a big mic with breathing rings and moving bars while it listens, the words as they come
-in, the topics as a row of dots (the one the last sentence went to glows), and the last sentences each with
-its topic chip. Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
+in, the topics as a row of dots (the one the last thought went to glows), and the last *thoughts*, each with
+its *conclusions* as pills in their topic's colour ("Naar de opvang · donderdag"). A pause never cuts a thought
+(v0.18): stretches join by how they sound ("dus …", "die …", "voor de rest …", a half sentence, a fragment without
+subject or verb, a day said after a pause); "oh ja", a new subject or two minutes of silence start the next one. Hearth
+waits about four seconds after the last words ("Hearth luistert nog…") before it shows what it concludes, and a tap
+on a thought fixes words the recognizer misheard. Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
 antwoord", "3 van 7 avonden"); the tile Luister mee just heard about glows too. Tapping a tile opens its list under
 the grid (free time and admin with an add field, projects with their next step and "dit weekend", chores aan de
 beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and frictions, the goals with their next small step). In Dutch *afspraken* always means appointments; house rules are *huisregels*.
@@ -311,12 +317,18 @@ they were postponed (2× amber, 4× orange; saying a task again with a later day
 lists both and offers *Minder vaak* (interval ×2) or *Makkelijker maken* (an idea on the Werkbord). In Taken habits
 have their own group with the rhythm icon and a "Hoe loopt het?" chip; never "late". **Luister mee** (it keeps listening while the family opens the list, the
 stock or the tasks, with a small "Terug naar het overleg" bar there): continuous transcription during the meeting (Web Speech;
-Android restarts its recognizer after each pause and prefers on-device recognition). *Gesprek* shows what was
-heard; *Zet op zijn plek* opens the Voorstel: each sentence with its guessed place (Taken, Afspraak, Vrije tijd,
+Android restarts its recognizer after each pause and prefers on-device recognition; both ask for three guesses and keep
+the one with the household's own words, names, stock and recipes, which they also get as hints where the platform
+supports it: phrase hints in the browser, biasing strings on Android 13+). What Hearth reads is cleaned first
+(`Spoken`: "euh", "allee", "gewoon" out; "da", "ge", "nie", "'k" as plain Dutch); the transcript keeps what was said.
+*Gesprek* shows what was heard (tap a line to fix it); *Zet op zijn plek* opens the Voorstel: each conclusion,
+grouped by topic, with what was said around it (tap the words to fix them and Hearth reads them again) and its
+guessed place (Taken, Afspraak, Vrije tijd,
 Boodschappen, Weekmenu, Huisregel, Frictie, Idee, Doel, Ging goed, Gewoon gepraat; *Agenda* takes dates further
 ahead too: "verlof van 3 tot 7 november", "oma is jarig op 12/12", "volgende maand op vakantie"), all ticked, a tap on the
-place moves it, *Toevoegen* runs the same tools. Sorting is local (`MeetingWords` + the capture-bar rules,
-`Orchestrator.propose`); the family's own AI can read the transcript through `weekoverleg_agenda`.
+place moves it, *Toevoegen* runs the same tools. A thought that was just talk comes once, as *Gewoon gepraat*.
+Sorting is local (`MeetingWords.thoughts` + the capture-bar rules, `Orchestrator.listen` / `propose`); the family's own
+AI understands dialect and half sentences far better and reads the conversation through `read_conversation`.
 The dashboard shows *Wat ging goed* until the meeting takes it along; "dat ging goed: …" in the capture bar adds one.
 The dashboard shows "Vanavond: <dish>" and, Friday to Sunday when no meeting was held for 6 days, a calm
 "Tijd voor het weekoverleg?" card with Start.
@@ -416,6 +428,11 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.18: Luister mee hears thoughts, not breaths: stretches join by how they sound, each thought gives its
+   conclusions (what, who, which day; "deze week" goes to Volgende), Hearth waits until a thought settles, words
+   can be fixed on the stage, in Gesprek and in the Voorstel (`fix_transcript_line`), the recognizer keeps the guess
+   with the household's words, Flemish speech is read as plain Dutch, and the family's AI reads the conversation
+   (`read_conversation`, `mark_transcript_sorted` over MCP).
    v0.17: "Admin" is Dutch too; a routine's steps show small and in order (a bar, the next step, Alle stappen
    numbered) with arrows in its sheet (`move_step`, `backlog_item.position`, DB v15); house rules show how they go
    on the Werkbord and Vandaag ("Hoe loopt het?"); a goal gets a place in the week as a ritme, vrije tijd or a step.

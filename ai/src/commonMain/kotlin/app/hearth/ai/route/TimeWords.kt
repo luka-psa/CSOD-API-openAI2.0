@@ -37,9 +37,10 @@ object TimeWords {
     }
 
     // A day anywhere in a sentence, for talk: "zaterdag doen we niks", "we gaan volgende dinsdag naar de tandarts".
+    // "Deze week" has no day yet: it goes to Volgende.
     private val anywhere = Regex(
         "(?:^|\\s)(?:(tegen|voor|by|before)\\s+)?(?:(?:op|on|next|volgende|deze|this)\\s+)?" +
-            "(vandaag|today|morgen|tomorrow|${weekdays.keys.joinToString("|")}|dit\\s+weekend|this\\s+weekend|weekend)(?=[\\s,.!?]|$)",
+            "(vandaag|today|morgen|tomorrow|${weekdays.keys.joinToString("|")}|dit\\s+weekend|this\\s+weekend|weekend|deze\\s+week|this\\s+week|in\\s+de\\s+loop\\s+van\\s+de\\s+week)(?=[\\s,.!?]|$)",
         RegexOption.IGNORE_CASE,
     )
 
@@ -132,6 +133,7 @@ object TimeWords {
         return when {
             word == "vandaag" || word == "today" -> TimeHint(rest, When.TODAY, null, finishBy)
             word == "morgen" || word == "tomorrow" -> TimeHint(rest, When.TOMORROW, null, finishBy)
+            word.endsWith(" week") -> TimeHint(rest, When.NEXT, null, false)
             word.endsWith("weekend") -> {
                 val delta = (5 - today.dayOfWeek.ordinal + 7) % 7
                 TimeHint(rest, When.DAY, today.plusDays(delta), finishBy)

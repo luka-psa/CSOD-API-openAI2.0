@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -133,7 +134,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
     val huddles by viewModel.huddles.collectAsStateWithLifecycle()
     val voorstel by viewModel.voorstel.collectAsStateWithLifecycle()
-    val heardLately by viewModel.heardLately.collectAsStateWithLifecycle()
+    val heardThoughts by viewModel.heardThoughts.collectAsStateWithLifecycle()
+    val vocabulary by viewModel.vocabulary.collectAsStateWithLifecycle()
     val agree by viewModel.agree.collectAsStateWithLifecycle()
     val googleBusy by viewModel.googleBusy.collectAsStateWithLifecycle()
     val backupList by viewModel.backupList.collectAsStateWithLifecycle()
@@ -151,6 +153,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     var partial by remember { mutableStateOf("") }
     val transcriber = rememberTranscriber(
         language = if (lang == Lang.NL) "nl-BE" else "en-GB",
+        vocabulary = vocabulary,
         onLine = viewModel::heard,
         onPartial = { partial = it },
         onActive = { listening = it; if (!it) partial = "" },
@@ -196,7 +199,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, meters, metersOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardLately, agree, ruleEase),
+                            MeetingState(wins, meters, metersOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleEase),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -235,6 +238,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 moveVoorstel = { i, p -> viewModel.moveVoorstel(i, p) },
                                 toggleVoorstel = { viewModel.toggleVoorstel(it) },
                                 addVoorstel = viewModel::addVoorstel,
+                                fixLine = { id, text -> viewModel.fixLine(id, text) },
+                                editVoorstel = { i, text -> viewModel.editVoorstel(i, text) },
                             ),
                         )
                         Destination.CONNECT -> ConnectScreen(
@@ -446,7 +451,7 @@ private fun BottomBar(selected: Destination, counts: Map<Destination, Int>, onSe
                     }
                 },
                 // A touch smaller than labelSmall, so "Weekoverleg" fits a sixth of a phone.
-                label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.sp), maxLines = 1, softWrap = false) },
+                label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = (-0.1).sp), maxLines = 1, softWrap = false, overflow = TextOverflow.Visible) },
                 // Six places on a phone: only the selected one shows its name.
                 alwaysShowLabel = false,
                 colors = NavigationBarItemDefaults.colors(

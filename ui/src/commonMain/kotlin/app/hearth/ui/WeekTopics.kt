@@ -39,6 +39,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,7 +54,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.hearth.ai.Orchestrator
 import app.hearth.ai.route.Place
+import app.hearth.core.model.dayLabel
+import kotlinx.datetime.LocalDate
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Section
 import app.hearth.core.model.Topic
@@ -64,7 +70,10 @@ import app.hearth.ui.resources.agree_title
 import app.hearth.ui.resources.agree_unsorted
 import app.hearth.ui.resources.agree_yes
 import app.hearth.ui.resources.conversation_show
-import app.hearth.ui.resources.heard_just
+import app.hearth.ui.resources.heard_this_week
+import app.hearth.ui.resources.fix_words_title
+import app.hearth.ui.resources.listen_still
+import app.hearth.ui.resources.place_none
 import app.hearth.ui.resources.listen_hint
 import app.hearth.ui.resources.listen_live
 import app.hearth.ui.resources.listen_on
@@ -83,23 +92,28 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 /**
- * Luister mee, front and centre: a big mic that breathes while it listens, the words as they come in,
- * and the last sentences with the topic each one goes to. The tiles below light up in the same colour.
+ * Luister mee, front and centre: a big mic that breathes while it listens, the words as they come in, and the
+ * last thoughts with what Hearth concludes from each. Pauses don't cut a thought; Hearth waits until it has
+ * settled. A tap on a thought fixes words the recognizer misheard. The tiles below light up in the same colour.
  */
 @Composable
 fun ListenStage(
     available: Boolean,
     listening: Boolean,
     partial: String,
-    heard: List<HeardLine>,
+    heard: List<HeardThought>,
+    settled: Boolean,
     hasLines: Boolean,
     lit: Set<Topic>,
+    today: LocalDate,
     lang: Lang,
     onToggle: () -> Unit,
     onShow: () -> Unit,
     onSort: () -> Unit,
+    onFix: (String, String) -> Unit,
 ) {
     val ink = AccentStyle
+    var fixing by remember { mutableStateOf<HeardThought?>(null) }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
             .background(if (listening) ink.tint else MaterialTheme.colorScheme.surface)
@@ -146,7 +160,9 @@ fun ListenStage(
         }
         if (heard.isNotEmpty()) {
             Spacer(Modifier.size(12.dp))
-            heard.forEachIndexed { i, line -> HeardRow(line, newest = i == 0, lang = lang) }
+            heard.forEachIndexed { i, thought ->
+                ThoughtRow(thought, newest = i == 0, waiting = i == 0 && !settled, today = today, lang = lang, onClick = { fixing = thought })
+            }
         }
         if (heard.isNotEmpty() || hasLines || listening) {
             Spacer(Modifier.size(8.dp))
@@ -158,6 +174,7 @@ fun ListenStage(
             }
         }
     }
+    fixing?.let { t -> FixWordsDialog(t.lines, onFix = onFix) { fixing = null } }
 }
 
 /** All topics as small dots: the one the last sentence went to glows, so it's visible without scrolling. */
@@ -218,30 +235,56 @@ private fun SoundBars(ink: Color) {
     )
 }
 
-/** "Mia moet naar de tandarts" → Admin: the sentence with the topic it goes to. */
+/**
+ * One thought as it was said, and under it what Hearth concludes: "Naar de opvang · donderdag" in the colour of
+ * its topic. While the newest one may still go on, Hearth only says it is listening.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HeardRow(line: HeardLine, newest: Boolean, lang: Lang) {
-    val topic = line.topic
-    val s = topic?.style() ?: UnsortedStyle
+private fun ThoughtRow(thought: HeardThought, newest: Boolean, waiting: Boolean, today: LocalDate, lang: Lang, onClick: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(18.dp))
+            .background(if (newest) MaterialTheme.colorScheme.surface else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Text(
+                thought.text,
+                style = if (newest) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
+                color = if (newest) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = if (newest) 4 else 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            Icon(HearthIcons.Edit, stringResource(Res.string.fix_words_title), tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp).padding(top = 2.dp))
+        }
+        Spacer(Modifier.size(6.dp))
+        when {
+            waiting -> Text(stringResource(Res.string.listen_still), style = MaterialTheme.typography.labelMedium, color = AccentStyle.ink, fontStyle = FontStyle.Italic)
+            thought.proposals.isEmpty() -> Text(stringResource(Res.string.place_none), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+            else -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                thought.proposals.forEach { ConclusionPill(it, today, lang) }
+            }
+        }
+    }
+}
+
+/** "Afspreken met Anthony · deze week", with the icon and colour of where it goes. */
+@Composable
+internal fun ConclusionPill(p: Orchestrator.Proposal, today: LocalDate, lang: Lang) {
+    val s = p.topic?.style() ?: if (p.place == Place.WIN) AccentStyle else UnsortedStyle
+    val day = p.date?.let { dayLabel(it, today, lang) } ?: if (p.next) stringResource(Res.string.heard_this_week) else null
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(16.dp))
-            .background(if (newest) MaterialTheme.colorScheme.surface else Color.Transparent)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(s.tint).padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.clip(RoundedCornerShape(50)).background(s.tint).padding(horizontal = 10.dp, vertical = 5.dp),
-        ) {
-            Icon(topic?.icon() ?: line.place.icon(), null, tint = s.ink, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(topic?.title(lang) ?: stringResource(line.place.label()), style = MaterialTheme.typography.labelMedium, color = s.ink, maxLines = 1)
-        }
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(line.text, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (newest) Text(stringResource(Res.string.heard_just), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Icon(p.topic?.icon() ?: p.place.icon(), p.topic?.title(lang), tint = s.ink, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        // The day always shows whole; a long text wraps (on a phone) before it gives way.
+        Text(p.text.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleSmall, color = s.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        if (day != null) Text("  ·  $day", style = MaterialTheme.typography.labelMedium, color = s.ink, maxLines = 1, softWrap = false)
     }
 }
 

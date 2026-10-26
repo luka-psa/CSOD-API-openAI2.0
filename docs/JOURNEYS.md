@@ -45,6 +45,7 @@ accent. Ember is never a topic colour.
 | gear | Instellingen |
 | link | koppelingen (ChatGPT/Claude) |
 | flame | Hearth itself |
+| pencil | fix the words (what Luister mee misheard) |
 | light bulb | an idea |
 
 ## 2. Screens
@@ -95,8 +96,11 @@ Done: ticked, counted as done today.
 progress and next step. Pushed back often? It turns amber, then orange: make the first step smaller.
 
 **J8. "Het weekoverleg."** Once a week, about 15 minutes, together. Vandaag suggests it near the weekend.
-Luister mee on top (each sentence lands on a tile, which lights up); the ten tiles are the same topics as
-everywhere, tap one for its list. Terugblik: wat ging goed, *Hoe lopen de ritmes en huisregels?* (each one on
+Luister mee on top: talk as you talk, pauses and all. Hearth keeps a thought together ("Mia gaat donderdag naar de
+opvang … dus die moet gebracht worden … voor de rest ben ik vrij"), waits until it has settled, then shows what it
+concludes ("Naar de opvang · donderdag") and lights up that tile. Misheard a word? Tap the thought and fix it; Hearth
+reads it again. *Zet op zijn plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can
+also read the conversation and put it in place. The ten tiles are the same topics as everywhere, tap one for its list. Terugblik: wat ging goed, *Hoe lopen de ritmes en huisregels?* (each one on
 the same scale, loopt vanzelf / vraagt moeite / te zwaar, with a smaller first step right there), and the two
 meters. Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
 

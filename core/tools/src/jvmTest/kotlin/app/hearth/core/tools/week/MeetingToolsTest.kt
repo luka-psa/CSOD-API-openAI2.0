@@ -208,6 +208,29 @@ class MeetingToolsTest {
     }
 
     @Test
+    fun `misheard words are fixed, and the family's AI reads the conversation and marks what it placed`() = runTest {
+        val line = tools.registry.run(tools.addTranscriptLine, TranscriptLineArgs("dus die moet oprecht worden"), nl).line
+        tools.registry.run(tools.addTranscriptLine, TranscriptLineArgs("deze week moet ik afspreken met Anthony"), nl)
+        val fixed = tools.registry.run(tools.fixTranscriptLine, FixLineArgs(line.id, " dus die moet opgehaald worden "), nl)
+        assertEquals("Verbeterd: “dus die moet opgehaald worden”", fixed.summary)
+        assertEquals("dus die moet opgehaald worden", meeting.currentTranscript().first().text)
+
+        val read = tools.registry.run(tools.readConversation, ReadConversationArgs(), nl)
+        assertEquals(listOf("dus die moet opgehaald worden", "deze week moet ik afspreken met Anthony"), read.lines.map { it.text })
+        assertTrue(read.summary.startsWith("2 zinnen nog niet op hun plek:"))
+        // Over MCP: read, add, then mark what was handled.
+        val overMcp = tools.registry.specs.filter { it.exposeOverMcp }.map { it.name }
+        assertTrue("read_conversation" in overMcp && "mark_transcript_sorted" in overMcp && "fix_transcript_line" in overMcp)
+        tools.registry.run(tools.markTranscriptSorted, MarkSortedArgs(read.lines.map { it.id }), nl)
+        assertEquals("Alles uit het gesprek staat al op zijn plek.", tools.registry.run(tools.readConversation, ReadConversationArgs(), nl).summary)
+
+        // A meeting that ended keeps its words as they were.
+        tools.registry.run(tools.finishWeekoverleg, FinishArgs(), nl)
+        val gone = runCatching { tools.registry.run(tools.fixTranscriptLine, FixLineArgs(line.id, "iets anders"), nl) }.exceptionOrNull()
+        assertIs<ToolException>(gone)
+    }
+
+    @Test
     fun `an idea waits on the board and is decided like a friction`() = runTest {
         val idea = tools.registry.run(tools.addIdea, AddIdeaArgs("idee: de was op zondag"), nl)
         assertEquals("Goed idee, het staat op het werkbord: “De was op zondag”", idea.summary)
