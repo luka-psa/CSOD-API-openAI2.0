@@ -297,7 +297,7 @@ data class ResolveFrictionArgs(
     val texts: List<String> = emptyList(),
     @Describe(
         "RULE (we agree on a house rule), CHANGE (a task with focus: paperwork or a big task, as next up), ROUTINE " +
-            "(a new routine), ROUTINE_CHANGE (adjust an existing routine: a step and/or another moment) or LET_GO.",
+            "(a new routine), ROUTINE_CHANGE (adjust an existing routine along the four laws: another moment, something nice with it, a smaller first step and/or a step) or LET_GO.",
     )
     val outcome: FrictionOutcome,
     @Describe(
@@ -311,6 +311,10 @@ data class ResolveFrictionArgs(
     val routine: String? = null,
     @Describe("For ROUTINE and ROUTINE_CHANGE: the moment of the day (MORNING, AFTERNOON, DINNER, EVENING, BEDTIME).")
     val anchor: Anchor? = null,
+    @Describe("For ROUTINE_CHANGE: a smaller first step (make it easy), e.g. 'twee minuten opruimen'.")
+    val smallStep: String? = null,
+    @Describe("For ROUTINE_CHANGE: something nice with it (make it attractive), e.g. 'met muziek', 'samen'.")
+    val pairing: String? = null,
 )
 
 class ResolveFrictionTool(
@@ -335,8 +339,13 @@ class ResolveFrictionTool(
             backlog.find(listOf(ref), listOf(ref)).firstOrNull { it.isRoutine() }
                 ?: throw ToolException(ctx.t("Die routine vind ik niet. Kies er een uit Ritmes & routines.", "I can't find that routine. Pick one from Rhythms & routines."))
         }
-        if (routine != null && custom == null && args.anchor == null) {
-            throw ToolException(ctx.t("Wat verandert er: een stap erbij, of een ander moment?", "What changes: an extra step, or another moment?"))
+        val smallStep = args.smallStep?.trim()?.replaceFirstChar { it.uppercase() }?.ifEmpty { null }
+        val pairing = args.pairing?.trim()?.trimEnd('.')?.replaceFirstChar { it.lowercase() }?.ifEmpty { null }
+        if (routine != null && custom == null && args.anchor == null && smallStep == null && pairing == null) {
+            throw ToolException(
+                ctx.t("Wat verandert er: een ander moment, iets leuks erbij, kleiner beginnen of een stap erbij?",
+                    "What changes: another moment, something nice with it, starting smaller or an extra step?"),
+            )
         }
         val lines = frictions.map { friction ->
             val words = custom ?: friction.text
@@ -360,11 +369,15 @@ class ResolveFrictionTool(
                 }
                 FrictionOutcome.ROUTINE_CHANGE -> {
                     val r = routine!!
-                    addRoutine.run(AddRoutineArgs(r.text, steps = listOfNotNull(custom), anchor = args.anchor, section = r.section), ctx)
+                    if (custom != null || args.anchor != null) addRoutine.run(AddRoutineArgs(r.text, steps = listOfNotNull(custom), anchor = args.anchor, section = r.section), ctx)
+                    smallStep?.let { backlog.setSmallStep(listOf(r.id), it) }
+                    pairing?.let { backlog.setPairing(listOf(r.id), it) }
                     repo.close(friction.id, BoardStatus.BECAME_ROUTINE, r.id)
                     val what = listOfNotNull(
-                        custom?.let { ctx.t("stap erbij: $it", "new step: $it") },
                         args.anchor?.let { ctx.t("nu ", "now ") + it.title(ctx.lang).lowercase() },
+                        pairing?.let { ctx.t("erbij: $it", "with it: $it") },
+                        smallStep?.let { ctx.t("begin klein: $it", "start small: $it") },
+                        custom?.let { ctx.t("stap erbij: $it", "new step: $it") },
                     ).joinToString(", ")
                     ctx.t("“${friction.text}”: “${r.text}” past zich aan ($what)", "“${friction.text}”: “${r.text}” changes ($what)")
                 }

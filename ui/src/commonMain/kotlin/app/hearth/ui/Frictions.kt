@@ -63,7 +63,16 @@ import app.hearth.ui.resources.friction_was
 import app.hearth.ui.resources.kind_admin
 import app.hearth.ui.resources.kind_project
 import app.hearth.ui.resources.moment_title
-import app.hearth.ui.resources.routine_change_moment
+import app.hearth.core.model.HabitLaw
+import app.hearth.core.model.lawOf
+import app.hearth.ui.resources.change_how
+import app.hearth.ui.resources.change_moment
+import app.hearth.ui.resources.change_pair
+import app.hearth.ui.resources.change_small
+import app.hearth.ui.resources.change_sounds_like
+import app.hearth.ui.resources.change_step
+import app.hearth.ui.resources.pairing_hint
+import app.hearth.ui.resources.small_step_hint
 import app.hearth.ui.resources.routine_change_step
 import app.hearth.ui.resources.routine_change_title
 import app.hearth.ui.resources.routine_new_hint
@@ -92,7 +101,24 @@ data class FrictionWrite(
     val section: Section = Section.PROJECT,
     val routine: BacklogItem? = null,
     val anchor: Anchor? = null,
+    /** A routine change: a smaller first step (make it easy). */
+    val smallStep: String? = null,
+    /** A routine change: something nice with it (make it attractive). */
+    val pairing: String? = null,
 )
+
+/**
+ * How a routine changes after a friction, along the four laws: another moment (obvious), something nice with it
+ * (attractive), start smaller (easy), or one step more. The friction's words pick the likely one.
+ */
+private enum class RoutineChange { MOMENT, PAIR, SMALLER, STEP }
+
+private fun HabitLaw?.change(): RoutineChange = when (this) {
+    HabitLaw.OBVIOUS -> RoutineChange.MOMENT
+    HabitLaw.ATTRACTIVE -> RoutineChange.PAIR
+    HabitLaw.EASY -> RoutineChange.SMALLER
+    else -> RoutineChange.STEP
+}
 
 /** Choose what it needs, write it, or let it go. */
 class FrictionActions(
@@ -223,6 +249,8 @@ private fun WriteDialog(item: BoardItem, direction: FrictionDirection, routines:
     var routine by remember { mutableStateOf<BacklogItem?>(null) }
     var section by remember { mutableStateOf(Section.PROJECT) }
     var asking by remember { mutableStateOf(false) }
+    val law = remember(item.text) { lawOf(item.text) }
+    var change by remember { mutableStateOf(law.change()) }
     val focus = remember { FocusRequester() }
     // Straight to typing, except when a routine has to be picked first.
     LaunchedEffect(Unit) { if (direction != FrictionDirection.CHANGE_ROUTINE) focus.requestFocus() }
@@ -234,7 +262,7 @@ private fun WriteDialog(item: BoardItem, direction: FrictionDirection, routines:
         FrictionDirection.TASK -> Res.string.task_title to Res.string.task_hint
     }
     val ready = when (direction) {
-        FrictionDirection.CHANGE_ROUTINE -> routine != null && (text.isNotBlank() || anchor != null)
+        FrictionDirection.CHANGE_ROUTINE -> routine != null && (if (change == RoutineChange.MOMENT) anchor != null else text.isNotBlank())
         else -> text.isNotBlank()
     }
     val write = {
@@ -243,7 +271,14 @@ private fun WriteDialog(item: BoardItem, direction: FrictionDirection, routines:
             when (direction) {
                 FrictionDirection.RULE -> FrictionWrite(FrictionOutcome.RULE, words)
                 FrictionDirection.NEW_ROUTINE -> FrictionWrite(FrictionOutcome.ROUTINE, words, anchor = anchor)
-                FrictionDirection.CHANGE_ROUTINE -> FrictionWrite(FrictionOutcome.ROUTINE_CHANGE, words, routine = routine, anchor = anchor)
+                FrictionDirection.CHANGE_ROUTINE -> FrictionWrite(
+                    FrictionOutcome.ROUTINE_CHANGE,
+                    text = words.takeIf { change == RoutineChange.STEP },
+                    routine = routine,
+                    anchor = anchor.takeIf { change == RoutineChange.MOMENT },
+                    smallStep = words.takeIf { change == RoutineChange.SMALLER },
+                    pairing = words.takeIf { change == RoutineChange.PAIR },
+                )
                 FrictionDirection.TASK -> FrictionWrite(FrictionOutcome.CHANGE, words, section = section)
             },
         )
@@ -269,11 +304,32 @@ private fun WriteDialog(item: BoardItem, direction: FrictionDirection, routines:
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         routines.forEach { r -> ChoiceChip(r.text, routine?.id == r.id, { routine = r }, icon = Topic.RHYTHM.icon()) }
                     }
+                    // What changes, one per law; what the friction says picks the likely one.
+                    Text(stringResource(Res.string.change_how), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    law?.let { Text(stringResource(Res.string.change_sounds_like, it.title(lang).lowercase()), style = MaterialTheme.typography.labelMedium, color = Topic.RHYTHM.style().ink) }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChoiceChip(stringResource(Res.string.change_moment), change == RoutineChange.MOMENT, { change = RoutineChange.MOMENT }, icon = HabitLaw.OBVIOUS.icon())
+                        ChoiceChip(stringResource(Res.string.change_pair), change == RoutineChange.PAIR, { change = RoutineChange.PAIR }, icon = HabitLaw.ATTRACTIVE.icon())
+                        ChoiceChip(stringResource(Res.string.change_small), change == RoutineChange.SMALLER, { change = RoutineChange.SMALLER }, icon = HabitLaw.EASY.icon())
+                        ChoiceChip(stringResource(Res.string.change_step), change == RoutineChange.STEP, { change = RoutineChange.STEP }, icon = HearthIcons.Add)
+                    }
                 }
-                OutlinedTextField(text, { text = it }, placeholder = { Text(stringResource(hint)) }, singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(focus))
+                val changeHint = when (change) {
+                    RoutineChange.PAIR -> Res.string.pairing_hint
+                    RoutineChange.SMALLER -> Res.string.small_step_hint
+                    else -> hint
+                }
+                if (direction != FrictionDirection.CHANGE_ROUTINE || change != RoutineChange.MOMENT) {
+                    OutlinedTextField(
+                        text, { text = it },
+                        placeholder = { Text(stringResource(if (direction == FrictionDirection.CHANGE_ROUTINE) changeHint else hint)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                    )
+                }
                 when (direction) {
                     FrictionDirection.NEW_ROUTINE -> Moments(stringResource(Res.string.moment_title))
-                    FrictionDirection.CHANGE_ROUTINE -> Moments(stringResource(Res.string.routine_change_moment))
+                    FrictionDirection.CHANGE_ROUTINE -> if (change == RoutineChange.MOMENT) Moments(stringResource(Res.string.moment_title))
                     FrictionDirection.TASK -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ChoiceChip(stringResource(Res.string.kind_admin), section == Section.ADMIN, { section = Section.ADMIN }, icon = Topic.ADMIN.icon())
                         ChoiceChip(stringResource(Res.string.kind_project), section == Section.PROJECT, { section = Section.PROJECT }, icon = Topic.PROJECTS.icon())

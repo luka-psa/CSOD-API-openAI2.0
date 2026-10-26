@@ -2,6 +2,17 @@ package app.hearth.core.tools.backlog
 
 import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
+import app.hearth.core.data.week.MeetingRepository
+import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.BoardKind
+import app.hearth.core.model.HabitReview
+import app.hearth.core.model.frictionsAbout
+import app.hearth.core.model.habitReview
+import app.hearth.core.model.isHabit
+import app.hearth.core.model.line
+import app.hearth.core.model.tag
+import app.hearth.core.model.weather
+import app.hearth.core.tools.ToolResult
 import app.hearth.core.model.boardKind
 import app.hearth.core.model.stripBoardPrefix
 import app.hearth.core.model.Ease
@@ -313,17 +324,19 @@ data class RateHabitArgs(
  * Habits are lived, not ticked off; the family says how hard one is. Atomic Habits: a hard habit asks for a
  * smaller first step, not more effort.
  */
-class RateHabitTool(private val repo: BacklogRepository) : Tool<RateHabitArgs, BacklogItemsResult> {
+class RateHabitTool(private val repo: BacklogRepository, private val meeting: MeetingRepository) : Tool<RateHabitArgs, BacklogItemsResult> {
     override val name = NAME
     override val description =
-        "Say how hard a habit is for the household: EASY, EFFORT or HARD. Shown as a colour (never red); a hard " +
-            "habit gets a smaller first step (set_small_step)."
+        "Say how hard a habit is for the household: EASY, EFFORT or HARD. Shown as its weather (zon, wolk, bliksem; " +
+            "never red); one rating per meeting is kept for review_habit. A hard habit gets a smaller first step (set_small_step)."
     override val argsSerializer = RateHabitArgs.serializer()
     override val resultSerializer = BacklogItemsResult.serializer()
 
     override suspend fun run(args: RateHabitArgs, ctx: ToolContext): BacklogItemsResult {
         val found = repo.find(args.itemIds, args.texts).ifEmpty { notFound(ctx) }
         repo.setEase(found.map { it.id }, args.ease)
+        // One rating per meeting is kept, so the habit coach sees how it goes over the weeks.
+        found.forEach { meeting.setHabitCheck(it.id, args.ease) }
         val names = found.joinToString(", ") { "“${it.text}”" }
         val summary = when (args.ease) {
             Ease.EASY -> ctx.t("$names loopt vanzelf. Mooi.", "$names runs easily. Nice.")
@@ -512,3 +525,114 @@ class SetSmallStepTool(private val repo: BacklogRepository) : Tool<SmallStepArgs
         const val NAME = "set_small_step"
     }
 }
+
+// ---------- set_habit_pairing ----------
+
+@Serializable
+data class SetPairingArgs(
+    @Describe("Ids of habits.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of habits, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("Something nice that goes with it: 'met muziek', 'samen met Mia', 'daarna koffie'. Empty removes it.")
+    val pairing: String = "",
+)
+
+/** Atomic Habits' second law, make it attractive: something nice that goes with the habit, shown with it. */
+class SetHabitPairingTool(private val repo: BacklogRepository) : Tool<SetPairingArgs, BacklogItemsResult> {
+    override val name = NAME
+    override val description =
+        "Make a habit attractive (the second law of Atomic Habits): pair it with something nice, like music, doing it " +
+            "together or a treat after. Shown with the habit on the screen."
+    override val argsSerializer = SetPairingArgs.serializer()
+    override val resultSerializer = BacklogItemsResult.serializer()
+
+    override suspend fun run(args: SetPairingArgs, ctx: ToolContext): BacklogItemsResult {
+        val found = repo.find(args.itemIds, args.texts).filter { it.isRoutine() }.ifEmpty { notFound(ctx) }
+        val pairing = args.pairing.trim().trimEnd('.').replaceFirstChar { it.lowercase() }.ifEmpty { null }
+        repo.setPairing(found.map { it.id }, pairing)
+        val names = found.joinToString(", ") { "“${it.text}”" }
+        val summary = pairing?.let { ctx.t("$names, en erbij: $it.", "$names, and with it: $it.") }
+            ?: ctx.t("$names zonder iets erbij.", "$names without anything with it.")
+        return BacklogItemsResult(found.map { it.copy(pairing = pairing) }, summary)
+    }
+
+    companion object {
+        const val NAME = "set_habit_pairing"
+    }
+}
+
+// ---------- review_habit ----------
+
+@Serializable
+data class ReviewHabitArgs(
+    @Describe("Id of the habit.")
+    val itemId: String? = null,
+    @Describe("The habit's name, when the id isn't known. Empty with no id: every habit that asks for something.")
+    val text: String? = null,
+)
+
+@Serializable
+data class ReviewHabitResult(val items: List<BacklogItem>, val reviews: List<HabitReview>, override val summary: String) : ToolResult
+
+/** The habit coach for the habits (or all of them), the same as on the tablet. */
+internal suspend fun reviewHabits(habits: List<BacklogItem>, backlog: BacklogRepository, meeting: MeetingRepository, board: BoardRepository, ctx: ToolContext): List<HabitReview> {
+    val boardItems = board.allItems()
+    val steps = backlog.stepsOf(habits.map { it.id }).groupBy { it.parentId }
+    return habits.map { h ->
+        val goal = boardItems.firstOrNull { it.kind == BoardKind.GOAL && it.isOpen && it.linkedId == h.id }?.text
+        habitReview(h, meeting.habitHistory(h.id), frictionsAbout(h, boardItems, ctx.today), steps[h.id]?.size ?: 0, goal, ctx.lang)
+    }
+}
+
+/**
+ * Atomic Habits' four laws for one habit: its weather over the meetings, the frictions about it, how each law is in
+ * place, and what to try next. Read-only, so a family's own AI can think it through with them and then change one
+ * thing with the other tools.
+ */
+class ReviewHabitTool(
+    private val backlog: BacklogRepository,
+    private val meeting: MeetingRepository,
+    private val board: BoardRepository,
+) : Tool<ReviewHabitArgs, ReviewHabitResult> {
+    override val name = NAME
+    override val description =
+        "Review a habit with the four laws of Atomic Habits (make it obvious, attractive, easy, satisfying): its weather " +
+            "per weekoverleg, the frictions talked about it, how each law is in place, and Hearth's suggestion. Without a " +
+            "habit: every habit that asks for something. Suggest one change at a time and apply it with set_anchor or " +
+            "set_routine_schedule (obvious), set_habit_pairing (attractive), set_small_step, set_routine_interval or " +
+            "move_step (easy) and add_win (satisfying). Smaller when it is too much; one step bigger only after it ran " +
+            "easily three meetings in a row. Never streaks, never blame."
+    override val argsSerializer = ReviewHabitArgs.serializer()
+    override val resultSerializer = ReviewHabitResult.serializer()
+
+    override suspend fun run(args: ReviewHabitArgs, ctx: ToolContext): ReviewHabitResult {
+        val asked = args.itemId != null || !args.text.isNullOrBlank()
+        val habits = if (asked) {
+            backlog.find(listOfNotNull(args.itemId), listOfNotNull(args.text?.trim()?.ifEmpty { null })).filter { it.isRoutine() }.ifEmpty { notFound(ctx) }
+        } else {
+            backlog.openItems().filter { it.isHabit }
+        }
+        val all = reviewHabits(habits, backlog, meeting, board, ctx)
+        val shown = if (asked) all else all.filter { it.tips.isNotEmpty() }
+        val items = shown.mapNotNull { r -> habits.firstOrNull { it.id == r.itemId } }
+        if (shown.isEmpty()) {
+            return ReviewHabitResult(emptyList(), emptyList(), ctx.t("Alle gewoontes lopen. Niets aan veranderen.", "Every habit runs. Nothing to change."))
+        }
+        val summary = shown.joinToString("\n\n") { r -> describeReview(items.first { it.id == r.itemId }, r, ctx) }
+        return ReviewHabitResult(items, shown, summary)
+    }
+
+    companion object {
+        const val NAME = "review_habit"
+    }
+}
+
+/** A few lines a person (or their AI) can read: the stage, the weather, what was said, the four laws, what to try. */
+private fun describeReview(habit: BacklogItem, r: HabitReview, ctx: ToolContext): String = buildList {
+    add("“${habit.text}” · ${r.stage.line(ctx.lang)}")
+    if (r.ratings.isNotEmpty()) add(ctx.t("Weer per overleg: ", "Weather per meeting: ") + r.ratings.takeLast(6).joinToString(", ") { it.weather(ctx.lang) })
+    if (r.frictions.isNotEmpty()) add(ctx.t("Besproken: ", "Talked about: ") + r.frictions.takeLast(3).joinToString("; ") { "“$it”" })
+    add(r.laws.joinToString(" · ") { l -> "${l.law.title(ctx.lang)}: ${l.now ?: ctx.t("nog niets", "nothing yet")}" })
+    r.tips.forEach { add(ctx.t("Probeer", "Try") + " (${it.tag(ctx.lang)}): ${it.text}") }
+}.joinToString("\n")

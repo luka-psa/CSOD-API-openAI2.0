@@ -130,6 +130,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val weekOn by viewModel.weekOn.collectAsStateWithLifecycle()
     val ruleChecks by viewModel.ruleChecks.collectAsStateWithLifecycle()
     val ruleEase by viewModel.ruleEase.collectAsStateWithLifecycle()
+    val habitChecks by viewModel.habitChecks.collectAsStateWithLifecycle()
+    val habitReviews by viewModel.habitReviews.collectAsStateWithLifecycle()
     val ease by viewModel.ease.collectAsStateWithLifecycle()
     val transcript by viewModel.transcript.collectAsStateWithLifecycle()
     val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
@@ -207,7 +209,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleEase),
+                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleEase, habitChecks, habitReviews),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -248,6 +250,9 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 addVoorstel = viewModel::addVoorstel,
                                 changeSuggestion = { t, i, c, now -> viewModel.changeSuggestion(t, i, c, now) },
                                 editVoorstel = { i, c -> viewModel.editVoorstel(i, c) },
+                                habitTip = { i, t -> viewModel.applyTip(i, t) },
+                                pairing = { i, t -> viewModel.setPairing(i, t) },
+                                openItem = { planning = it },
                             ),
                         )
                         Destination.CONNECT -> ConnectScreen(
@@ -379,9 +384,13 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                 removeStep = { viewModel.delete(it) },
                 moveStep = { step, place -> viewModel.moveStep(step, place) },
                 schedule = { viewModel.setSchedule(item, it) },
+                pairing = { viewModel.setPairing(item, it) },
+                smallStep = { viewModel.setSmallStep(item, it) },
+                tip = { viewModel.applyTip(item, it) },
             ),
             onDismiss = { planning = null },
             steps = steps.filter { it.parentId == item.id && it.isRoutineStep },
+            review = habitReviews[item.id],
         )
     }
     deleting?.let { item ->

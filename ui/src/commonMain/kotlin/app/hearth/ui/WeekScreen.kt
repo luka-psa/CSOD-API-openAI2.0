@@ -84,6 +84,8 @@ import app.hearth.core.model.Member
 import app.hearth.core.model.TranscriptLine
 import app.hearth.core.model.Ease
 import app.hearth.core.model.isHabit
+import app.hearth.core.model.HabitReview
+import app.hearth.core.model.HabitTip
 import app.hearth.core.model.WeekRating
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.Win
@@ -205,6 +207,12 @@ class WeekCallbacks(
     /** A suggestion of Luister mee changed in its sheet; with true, added right away. */
     val changeSuggestion: (HeardThought, Int, SuggestionChange, Boolean) -> Unit = { _, _, _, _ -> },
     val editVoorstel: (Int, SuggestionChange) -> Unit = { _, _ -> },
+    /** A coach tip that needs no words. */
+    val habitTip: (BacklogItem, HabitTip) -> Unit = { _, _ -> },
+    /** Something nice with a habit. */
+    val pairing: (BacklogItem, String) -> Unit = { _, _ -> },
+    /** Opens an item's sheet (a routine's moment, days and steps). */
+    val openItem: (BacklogItem) -> Unit = {},
 )
 
 /** The Weekoverleg's own notes: the look back, Luister mee and the summaries. */
@@ -224,6 +232,10 @@ class MeetingState(
     val agree: List<String>? = null,
     /** How each house rule goes, by rule id (this week's rating or the last one). */
     val ruleEase: Map<String, Ease> = emptyMap(),
+    /** Each habit's weather in this meeting, by habit id (not rated yet: missing). */
+    val habitChecks: Map<String, Ease> = emptyMap(),
+    /** The habit coach per habit (the four laws), by habit id. */
+    val habitReviews: Map<String, HabitReview> = emptyMap(),
 )
 
 /** How long Hearth waits after the last words before it concludes a thought. */
@@ -342,6 +354,7 @@ fun WeekScreen(
                         onRateRoutine = cb.rateHabit,
                         onRateRule = cb.checkRule,
                         onSmallStep = cb.smallStep,
+                        coach = HabitCoaching(meeting.habitChecks, meeting.habitReviews, cb.habitTip, cb.pairing, cb.openItem),
                         week = WeekWeather(meeting.weekOn, meeting.week, agenda?.suggestedWeek ?: Ease.EASY, cb.rateWeek, cb.setWeekOn),
                     )
                 }

@@ -38,7 +38,10 @@ accent. Ember is never a topic colour.
 | flag | needs attention by a time: Niet vergeten, "klaar tegen", Dringend |
 | calendar | days: Binnenkort, Deze week, plan a day, Google Agenda |
 | clock | later: Vooruitblik, Later, wacht op antwoord, minder vaak |
-| heart | what went well, Samen |
+| heart | what went well, Samen, and the habit coach's *Voldoening* |
+| eye | the habit coach's *Zichtbaar* (a moment, a day) |
+| smile | the habit coach's *Aantrekkelijk* (iets leuks erbij) |
+| stairs | the habit coach's *Makkelijk* (begin klein) |
 | check list | the Taken screen |
 | people | the Weekoverleg |
 | grid | the Werkbord |
@@ -84,7 +87,10 @@ change: Taken → Ritmes & routines, or say "avondroutine: a, b en c". What happ
 same sheet (the weekday chips, a time only when it is fixed) or by saying it: "vuilbak buiten elke donderdag",
 "zwemles elke woensdag om 14 uur", "de eerste zaterdag van de maand containerpark". The sheet stays open while you
 change its moment, rhythm and days. With Google Agenda on, those repeat in the calendar "Hearth · Ritmes". Habits
-are rated together in the weekoverleg, never ticked.
+are rated together in the weekoverleg, never ticked. A habit's sheet starts with *Zo blijft het hangen*: its weather per
+meeting, what was said about it, and the four laws (zichtbaar, aantrekkelijk, makkelijk, voldoening) two by two; tap one
+to fill it in (iets leuks erbij, a smaller first step). Hearth suggests one thing: smaller when it's too much, one law
+when it takes effort, a step bigger once it ran easily three meetings in a row.
 
 **J4. "Er is iets op."** Tap it in Voorraad (or say "melk"): it's on the list, per shop. In the shop: tick.
 Bought = back in stock. The weekmenu adds ingredients by itself.
@@ -107,12 +113,15 @@ concludes ("Naar de opvang · donderdag") and lights up that tile. Not quite rig
 place (taak, afspraak, ritme, …) and day open, filled in from what was said; *Bewaar* or *Zet erin*. *Zet op zijn
 plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can also read the conversation and
 put it in place. The ten tiles are the same topics as everywhere, tap one for its list. Terugblik: wat ging goed,
-then *Hoe liep het?*: the week, every routine and every house rule on one weather scale (bliksem, wolk, zon), with a
-smaller first step right there. Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
+then *Hoe liep het?*: the week, every routine and every house rule on one weather scale (bliksem, wolk, zon); a habit
+shows last time's weather as a ring and the earlier ones small, and the coach's one tip right there (one tap, or its
+sheet opens). Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
 
 **J9. "Iets schuurt."** Note it on the Werkbord or say "frictie: …". In the weekoverleg (Frictie & ideeën)
 choose together what it needs, in one tap: a huisregel, a nieuwe routine, a routine aanpassen, a taak met focus,
-or loslaten. It then shows "Huisregel te maken" in the colour of where it goes. Someone writes it in their own
+or loslaten. It then shows "Huisregel te maken" in the colour of where it goes. *Routine aanpassen* is written along the
+four laws: another moment, iets leuks erbij, kleiner beginnen or a step erbij, and the friction's words already pick
+one ("we vergeten het": another moment). Someone writes it in their own
 words, right away or later ("De vaatwasser is nooit leeg" becomes "Wie het laatst eet, zet hem aan"). Every
 outcome is good. Huisregels show on Vandaag and get a calm check each week in the Terugblik (never who).
 

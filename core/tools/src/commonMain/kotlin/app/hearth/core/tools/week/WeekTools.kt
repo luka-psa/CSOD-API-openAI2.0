@@ -9,6 +9,8 @@ import app.hearth.core.data.settings.SettingsRepository
 import app.hearth.core.model.WeekRating
 import app.hearth.core.model.Ease
 import app.hearth.core.model.isHabit
+import app.hearth.core.model.HabitStage
+import app.hearth.core.model.tag
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.weekSuggestion
 import app.hearth.core.model.weather
@@ -276,6 +278,12 @@ class WeekoverlegAgendaTool(
             }
             if (weekOn) add(ctx.t("De week (samen afspreken, zon / wolk / bliksem): voorstel ", "The week (agree together, sun / cloud / lightning): suggested ") +
                 suggestedWeek.weather(ctx.lang) + " (" + suggestedWeek.weekWord(ctx.lang) + ").")
+            // The habit coach: what to try for habits that are too much, take effort or are ready to grow.
+            val coach = app.hearth.core.tools.backlog.reviewHabits(habits, backlog, meeting, board, ctx).filter { it.stage != HabitStage.NEW && it.tips.isNotEmpty() }
+            if (coach.isNotEmpty()) add(ctx.t("Gewoontes (vier wetten, review_habit): ", "Habits (four laws, review_habit): ") + coach.joinToString("; ") { r ->
+                val tip = r.tips.first()
+                "${habits.first { it.id == r.itemId }.text} – ${tip.tag(ctx.lang)}: ${tip.text}"
+            })
             if (transcript.isNotEmpty()) add(ctx.t("Gesprek (Luister mee):\n", "Conversation (Luister mee):\n") + transcript.joinToString("\n") { "- $it" })
         }.joinToString("\n")
 

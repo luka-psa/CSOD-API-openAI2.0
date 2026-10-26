@@ -73,6 +73,8 @@ data class BacklogItem(
     val anchor: Anchor? = null,
     /** Routine: fixed days ("elke donderdag om 20:00"); null: roughly every [intervalDays]. */
     val schedule: Schedule? = null,
+    /** Habit: something nice that goes with it ("met muziek", "samen met Mia", "daarna koffie"). */
+    val pairing: String? = null,
 ) {
     val localDate: LocalDate? get() = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
     val lastDoneDate: LocalDate? get() = lastDone?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

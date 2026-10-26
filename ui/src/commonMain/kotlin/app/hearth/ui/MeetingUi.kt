@@ -82,6 +82,13 @@ import app.hearth.ui.resources.ease_postponed
 import app.hearth.ui.resources.small_step_add
 import app.hearth.ui.resources.small_step_hint
 import app.hearth.ui.resources.small_step_line
+import app.hearth.ui.resources.pairing_line
+import app.hearth.ui.resources.coach_before
+import app.hearth.ui.resources.coach_said
+import app.hearth.core.model.HabitReview
+import app.hearth.core.model.HabitStage
+import app.hearth.core.model.HabitTip
+import app.hearth.core.model.TipAction
 import app.hearth.ui.resources.small_step_title
 import app.hearth.ui.resources.habit_less_often
 import app.hearth.ui.resources.week_agreed
@@ -491,8 +498,10 @@ fun ReviewSection(
     onRateRule: (BoardItem, Ease) -> Unit,
     onSmallStep: (BacklogItem, String) -> Unit,
     week: WeekWeather? = null,
+    coach: HabitCoaching? = null,
 ) {
     var asking by remember { mutableStateOf<BacklogItem?>(null) }
+    var pairing by remember { mutableStateOf<BacklogItem?>(null) }
     GroupTitle(stringResource(Res.string.review_title))
     Text(stringResource(Res.string.review_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
 
@@ -545,15 +554,50 @@ fun ReviewSection(
     if (routines.isNotEmpty()) {
         Heading(Topic.RHYTHM)
         routines.forEach { r ->
+            val review = coach?.reviews?.get(r.id)
             Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
                 Text(r.text, style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    listOfNotNull(r.anchor?.title(lang), r.smallStep?.let { stringResource(Res.string.small_step_line, it) }).joinToString("  ·  ").ifEmpty { stringResource(Res.string.anchor_none) },
+                    listOfNotNull(
+                        r.anchor?.title(lang),
+                        r.pairing?.let { stringResource(Res.string.pairing_line, it) },
+                        r.smallStep?.let { stringResource(Res.string.small_step_line, it) },
+                    ).joinToString("  ·  ").ifEmpty { stringResource(Res.string.anchor_none) },
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (r.smallStep != null) Topic.RHYTHM.style().ink else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (r.smallStep != null || r.pairing != null) Topic.RHYTHM.style().ink else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Scale(r.ease, { onRateRoutine(r, it) }) {
-                    if (r.ease != null && r.ease != Ease.EASY) TextButton(onClick = { asking = r }) { Text(stringResource(Res.string.small_step_add)) }
+                if (coach == null) {
+                    Scale(r.ease, { onRateRoutine(r, it) }) {
+                        if (r.ease != null && r.ease != Ease.EASY) TextButton(onClick = { asking = r }) { Text(stringResource(Res.string.small_step_add)) }
+                    }
+                } else {
+                    // This meeting's weather, with last time's as Hearth's ring; the earlier ones small beside it.
+                    val now = coach.checks[r.id]
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 2.dp)) {
+                        WeatherScale(now, { onRateRoutine(r, it) }, guess = r.ease)
+                        now?.let { Text(stringResource(it.label()), style = MaterialTheme.typography.labelMedium, color = easeColors(it).first, modifier = Modifier.align(Alignment.CenterVertically)) }
+                        val before = review?.ratings.orEmpty().let { if (now != null) it.dropLast(1) else it }.takeLast(5)
+                        if (before.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.align(Alignment.CenterVertically).padding(start = 4.dp)) {
+                                Text(stringResource(Res.string.coach_before), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                before.forEach { WeatherMark(it, 14.dp) }
+                            }
+                        }
+                    }
+                    review?.frictions?.lastOrNull()?.let {
+                        Text(stringResource(Res.string.coach_said, "“$it”"), style = MaterialTheme.typography.bodySmall, color = Topic.FRICTION.style().ink, modifier = Modifier.padding(top = 2.dp))
+                    }
+                    // One thing to try, when it's too much, takes effort, was talked about, or is ready to grow.
+                    review?.tips?.firstOrNull()?.takeIf { review.stage != HabitStage.NEW && review.stage != HabitStage.STEADY }?.let { tip ->
+                        CoachTip(tip, lang, onClick = {
+                            when {
+                                tip.action.oneTap -> coach.onTip(r, tip)
+                                tip.action == TipAction.SMALL_STEP -> asking = r
+                                tip.action == TipAction.PAIR -> pairing = r
+                                else -> coach.onOpen(r)
+                            }
+                        }, modifier = Modifier.padding(top = 6.dp, end = 4.dp))
+                    }
                 }
             }
         }
@@ -573,7 +617,18 @@ fun ReviewSection(
     asking?.let { h ->
         TextDialog(stringResource(Res.string.small_step_title), stringResource(Res.string.small_step_hint), onDone = { t, _ -> onSmallStep(h, t) }) { asking = null }
     }
+    pairing?.let { h -> PairingDialog(h.pairing, { coach?.onPairing?.invoke(h, it) }) { pairing = null } }
 }
+
+/** The habit coach in the Terugblik: this meeting's weather per habit, the coach per habit, and what its tips do. */
+class HabitCoaching(
+    val checks: Map<String, Ease>,
+    val reviews: Map<String, HabitReview>,
+    val onTip: (BacklogItem, HabitTip) -> Unit,
+    val onPairing: (BacklogItem, String) -> Unit,
+    /** Tips that point at the routine's moment, days or steps open its sheet. */
+    val onOpen: (BacklogItem) -> Unit,
+)
 
 /** Chores that slip and tasks that keep being postponed: smaller, easier or less often. */
 @OptIn(ExperimentalLayoutApi::class)

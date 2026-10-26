@@ -95,7 +95,7 @@ class BoardToolsTest {
         assertEquals("Welke routine passen we aan?", noRoutine.exceptionOrNull()?.message)
         tools.registry.run(tools.addRoutine, AddRoutineArgs("Avondroutine", anchor = Anchor.EVENING), nl)
         val nothing = runCatching { tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("tassen"), outcome = FrictionOutcome.ROUTINE_CHANGE, routine = "avondroutine"), nl) }
-        assertEquals("Wat verandert er: een stap erbij, of een ander moment?", nothing.exceptionOrNull()?.message)
+        assertEquals("Wat verandert er: een ander moment, iets leuks erbij, kleiner beginnen of een stap erbij?", nothing.exceptionOrNull()?.message)
         tools.registry.run(tools.resolveFriction, ResolveFrictionArgs(texts = listOf("tassen"), outcome = FrictionOutcome.ROUTINE_CHANGE, routine = "avondroutine", anchor = Anchor.BEDTIME), nl)
         assertEquals(Anchor.BEDTIME, backlog.openItems().first { it.text == "Avondroutine" }.anchor)
     }

@@ -46,6 +46,7 @@ import app.hearth.core.tools.backlog.BacklogRefArgs
 import app.hearth.core.tools.backlog.MarkUrgentArgs
 import app.hearth.core.tools.backlog.MoveBacklogArgs
 import app.hearth.core.tools.backlog.SetRoutineIntervalArgs
+import app.hearth.core.tools.backlog.SetPairingArgs
 import app.hearth.core.tools.backlog.WaitForReplyArgs
 import app.hearth.core.tools.backlog.PlanBacklogArgs
 import app.hearth.core.tools.backlog.When
@@ -63,6 +64,14 @@ import app.hearth.core.model.topic
 import app.hearth.core.tools.board.AddIdeaArgs
 import app.hearth.core.model.TranscriptLine
 import app.hearth.core.model.Ease
+import app.hearth.core.model.BoardKind
+import app.hearth.core.model.HabitReview
+import app.hearth.core.model.isHabit
+import app.hearth.core.model.HabitTip
+import app.hearth.core.model.TipAction
+import app.hearth.core.model.celebrateWords
+import app.hearth.core.model.frictionsAbout
+import app.hearth.core.model.habitReview
 import app.hearth.core.model.easeNow
 import app.hearth.core.tools.backlog.RateHabitArgs
 import app.hearth.core.tools.backlog.SmallStepArgs
@@ -614,6 +623,37 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val week: StateFlow<WeekRating?> = app.meeting.week.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val ruleChecks: StateFlow<List<RuleCheck>> = app.meeting.ruleChecks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val ruleEase: StateFlow<Map<String, Ease>> = app.meeting.ruleEase.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Each habit's weather in the meeting that's still to come, by habit id. */
+    val habitChecks: StateFlow<Map<String, Ease>> = app.meeting.habitChecks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** The habit coach for every habit (the four laws), by habit id: the same as review_habit gives an AI. */
+    val habitReviews: StateFlow<Map<String, HabitReview>> = combine(backlog, steps, board, app.meeting.habitHistory, combine(lang, today) { l, d -> l to d }) { items, allSteps, boardItems, history, (l, day) ->
+        val counts = allSteps.groupingBy { it.parentId }.eachCount()
+        items.filter { it.isHabit && !it.done }.associate { h ->
+            val goal = boardItems.firstOrNull { it.kind == BoardKind.GOAL && it.isOpen && it.linkedId == h.id }?.text
+            h.id to habitReview(h, history[h.id].orEmpty(), frictionsAbout(h, boardItems, day), counts[h.id] ?: 0, goal, l)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Something nice with a habit (make it attractive); empty removes it. */
+    fun setPairing(item: BacklogItem, pairing: String) = tool {
+        say(app.tools.registry.run(app.tools.setHabitPairing, SetPairingArgs(itemIds = listOf(item.id), pairing = pairing), it).summary)
+    }
+
+    /** A coach tip that needs no words: less or more often, the whole habit again, or say it in Wat ging goed. */
+    fun applyTip(item: BacklogItem, tip: HabitTip) {
+        when (tip.action) {
+            TipAction.LESS_OFTEN -> lessOften(item)
+            TipAction.MORE_OFTEN -> tool {
+                val days = ((item.intervalDays ?: 2) / 2).coerceAtLeast(1)
+                say(app.tools.registry.run(app.tools.setRoutineInterval, SetRoutineIntervalArgs(itemIds = listOf(item.id), days = days), it).summary)
+            }
+            TipAction.WHOLE -> setSmallStep(item, "")
+            TipAction.CELEBRATE -> tool { say(app.tools.registry.run(app.tools.addWin, AddWinArgs(celebrateWords(item, it.lang)), it).summary) }
+            else -> {}
+        }
+    }
     val weekOn: StateFlow<Boolean> = app.settings.value(SetWeekMetersTool.METERS_SETTING).map { it != "false" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
     val transcript: StateFlow<List<TranscriptLine>> = app.meeting.transcript.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -835,7 +875,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun resolveFriction(item: BoardItem, write: FrictionWrite) = tool {
         val args = ResolveFrictionArgs(
             itemIds = listOf(item.id), outcome = write.outcome, text = write.text, section = write.section,
-            routine = write.routine?.id, anchor = write.anchor,
+            routine = write.routine?.id, anchor = write.anchor, smallStep = write.smallStep, pairing = write.pairing,
         )
         say(app.tools.registry.run(app.tools.resolveFriction, args, it).summary)
     }

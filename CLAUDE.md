@@ -112,7 +112,13 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   to the rhythm, one without to the household. What really happens on a day gets *fixed days* (`Schedule`,
   `set_routine_schedule`): weekdays, a date or the nth weekday of the month, a time only when it is fixed ("zwemles
   elke woensdag om 14:00"); on its day it is aan de beurt, after it it stays open until done or its next day (never
-  "late"), and it repeats in its own Google calendar *Hearth · Ritmes*. Most routines need only a moment. A routine can have *steps* (`parentId`,
+  "late"), and it repeats in its own Google calendar *Hearth · Ritmes*. Most routines need only a moment. The *habit
+  coach* (`habitReview` in `core/model/Habit.kt`, `review_habit`) applies Atomic Habits' four laws to a habit:
+  *Zichtbaar* (moment, days), *Aantrekkelijk* (*iets leuks erbij*, `pairing`, `set_habit_pairing`; or its goal),
+  *Makkelijk* (small step, fewer steps, less often), *Voldoening* (Wat ging goed; never streaks). It reads the weather per
+  meeting (HABIT_CHECK rows, one per meeting) and the frictions about it (`lawOf` picks the law from their words) and
+  suggests one thing: smaller when too much, one law when it takes effort or a friction is open, a step bigger after
+  three sunny meetings. It lives in the habit's sheet (*Zo blijft het hangen*) and shows its tip in the Terugblik. A routine can have *steps* (`parentId`,
   `add_routine`): a sequence ("avondroutine: boodschappen, Mia ophalen, koken, pyjama")
   or a checklist ("paklijst opvang: luiers, flesjes"); steps are ticked per day and come
   back tomorrow; all ticked = the routine is done today. Steps show small and in order (a bar, the next step,
@@ -129,7 +135,7 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Werkbord** (`board_item`, not the backlog): *Huisregel* (RULE), *Frictie*
   (FRICTION, talked through in two moves: first the meeting chooses what it needs in one tap,
   its *direction* (`FrictionDirection`, `mark_friction`): *huisregel te maken*, *nieuwe routine*,
-  *routine aanpassen* (a step and/or another moment), *taak met focus* (admin or a grote
+  *routine aanpassen* (along the four laws: another moment, iets leuks erbij, kleiner beginnen or a step), *taak met focus* (admin or a grote
   taak, as next up), or *loslaten*; then someone writes it in their own words, now or later
   (`resolve_friction`; the friction is a reminder, never the wording); every outcome is good),
   *Doel* (GOAL, scope gezin / samen / persoonlijk; gets *a place in the week* (`set_goal_step` how): a *ritme*

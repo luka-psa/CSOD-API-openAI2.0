@@ -75,6 +75,7 @@ class LoadExamplesTool(
         step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[0]), ease = Ease.EASY), ctx) }
         step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[1]), ease = Ease.HARD), ctx) }
         step { tools.setSmallStep.run(SmallStepArgs(texts = listOf(e.habits[1]), step = e.smallStep), ctx) }
+        step { tools.setHabitPairing.run(app.hearth.core.tools.backlog.SetPairingArgs(texts = listOf(e.habits[0]), pairing = e.pairing), ctx) }
 
         // Admin: a deadline, and one waiting for a reply.
         task(e.admin[0], Section.ADMIN, When.DAY, day(10), finishBy = true)
@@ -139,6 +140,8 @@ class LoadExamplesTool(
         val bag: Pair<String, List<String>>,
         val evening: Pair<String, List<String>>,
         val smallStep: String,
+        /** Something nice with the first habit (the second law: make it attractive). */
+        val pairing: String,
         val admin: List<String>,
         val appointment: String,
         val project: String,
@@ -179,6 +182,7 @@ class LoadExamplesTool(
             bag = "Tas voor de opvang" to listOf("Luiers", "Flesjes", "Reservekleren", "Knuffel"),
             evening = "Avondroutine" to listOf("Boodschappen halen", "Mia ophalen bij de opvang", "Koken", "Pyjama aan"),
             smallStep = "Alleen de boekentassen bij de deur",
+            pairing = "met muziek op",
             admin = listOf("Belastingaangifte invullen", "Verzekering bellen over de fiets"),
             appointment = "Tandarts voor Mia",
             project = "IKEA kast",
@@ -217,6 +221,7 @@ class LoadExamplesTool(
             bag = "Bag for daycare" to listOf("Diapers", "Bottles", "Spare clothes", "Cuddly toy"),
             evening = "Evening routine" to listOf("Get groceries", "Pick up Mia from daycare", "Cook", "Pyjamas on"),
             smallStep = "Just the school bags by the door",
+            pairing = "with music on",
             admin = listOf("Do the tax return", "Call the insurance about the bike"),
             appointment = "Dentist for Mia",
             project = "IKEA wardrobe",

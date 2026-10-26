@@ -86,7 +86,7 @@ class HearthTools(
     stock: StockRepository,
     week: WeekRepository,
     settings: SettingsRepository,
-    /** The Weekoverleg's notes (wins, meters, house-rule check, Luister mee, summaries). */
+    /** The Weekoverleg's notes (wins, the week's weather, house-rule and habit checks, Luister mee, summaries). */
     meeting: MeetingRepository,
     /** The household as one file; with [backupStore] and [calendarApi] for the opt-in Google features. */
     backups: BackupRepository? = null,
@@ -125,8 +125,10 @@ class HearthTools(
     val waitForReply = WaitForReplyTool(backlog)
     val moveBacklogItem = MoveBacklogItemTool(backlog, board)
     val addProjectStep = AddProjectStepTool(backlog)
-    val rateHabit = RateHabitTool(backlog)
+    val rateHabit = RateHabitTool(backlog, meeting)
     val setSmallStep = SetSmallStepTool(backlog)
+    val setHabitPairing = app.hearth.core.tools.backlog.SetHabitPairingTool(backlog)
+    val reviewHabit = app.hearth.core.tools.backlog.ReviewHabitTool(backlog, meeting, board)
     val setAnchor = SetAnchorTool(backlog)
     val addRoutine = AddRoutineTool(backlog)
     val moveStep = app.hearth.core.tools.backlog.MoveStepTool(backlog)
@@ -188,6 +190,7 @@ class HearthTools(
             listStock, addStockItem, addStorageSpot, setStockState, removeStockItem, moveStockItem, removeStorageSpot,
             addToBacklog, listBacklog, planBacklogItem, completeBacklogItem, reopenBacklogItem, removeBacklogItem,
             setRoutineInterval, setRoutineSchedule, markUrgent, waitForReply, moveBacklogItem, addProjectStep, rateHabit, setSmallStep, setAnchor, addRoutine, moveStep,
+            setHabitPairing, reviewHabit,
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, markFriction, setGoalStep,
             achieveGoal, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,

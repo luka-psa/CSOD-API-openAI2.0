@@ -58,6 +58,7 @@ import app.hearth.ui.resources.ease_rate
 import app.hearth.ui.resources.ease_effort
 import app.hearth.ui.resources.ease_hard
 import app.hearth.ui.resources.small_step_line
+import app.hearth.ui.resources.pairing_line
 import app.hearth.ui.resources.steps_all
 import app.hearth.ui.resources.steps_all_done
 import app.hearth.ui.resources.steps_less
@@ -387,6 +388,9 @@ fun BacklogRow(
             }
             item.smallStep?.let {
                 Text(stringResource(Res.string.small_step_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink)
+            }
+            item.pairing?.let {
+                Text(stringResource(Res.string.pairing_line, it), style = MaterialTheme.typography.labelMedium, color = Section.HABIT.style().ink)
             }
             below?.invoke()
         }

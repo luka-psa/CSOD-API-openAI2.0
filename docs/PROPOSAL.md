@@ -111,7 +111,11 @@ meeting and wins, then every *topic* in a few words with its details, Hearth's w
 transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `rate_week` (the week's weather, EASY zon / EFFORT wolk / HARD bliksem, agreed together for the
-household; empty = no agreement), `set_week_meters` (asking it on/off, tablet), `check_house_rule` (EASY / EFFORT / HARD like the routines, never who), `rate_habit` (EASY / EFFORT / HARD),
+household; empty = no agreement), `set_week_meters` (asking it on/off, tablet), `check_house_rule` (EASY / EFFORT / HARD like the routines, never who), `rate_habit` (EASY / EFFORT / HARD; one rating per
+meeting is kept for the habit coach), `review_habit` (read-only: the four laws of Atomic Habits for a habit, or for every
+habit that asks for something: its weather per meeting, the frictions about it, how each law is in place and what to try,
+so a family's AI can think it through and change one thing with the other tools), `set_habit_pairing` (make it attractive:
+something nice with a habit, "met muziek", "samen"),
 `import_recipe` (a link: the page's schema.org JSON-LD becomes a Recipe with ingredients, numbered steps and
 "Bron: …" as notes, and its photo; the web preview fetches through the relay's `/page` (only JSON-LD and
 og:image come back) and `/image` (images only, max 3 MB)), `set_small_step` (a habit's smallest first step), `add_routine` (a routine with its steps in order: the evening
@@ -217,7 +221,9 @@ rows are no longer used). v12 adds `backlog_item.postponed` (moved to a later da
 (the family's rating of a habit) and `smallStep`. v13 adds `backlog_item.anchor` (a routine's moment of the day). v16 adds
 `sync_base` (per sync space: the version and snapshot this device last agreed on with the household, the merge
 base). v17 adds `backlog_item.schedule` (a routine's fixed days as JSON); the week's weather is a WEEK row in
-`reflection` (FLOW / STRAIN rows of older meetings stay but are not read). Auto-migrations keep every household's data.
+`reflection` (FLOW / STRAIN rows of older meetings stay but are not read). v18 adds `backlog_item.pairing` (something
+nice with a habit); a habit's weather per meeting is a HABIT_CHECK row in `reflection` (text = the habit's id).
+Auto-migrations keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
 
@@ -322,7 +328,18 @@ the family rates each one together (*Ease*: loopt vanzelf green / vraagt moeite 
 can give it a *small step* ("Begin klein: …"). Chores get their ease from the `routine_log`; tasks from how often
 they were postponed (2× amber, 4× orange; saying a task again with a later day moves it and counts). *Vraagt aandacht*
 lists both and offers *Minder vaak* (interval ×2) or *Makkelijker maken* (an idea on the Werkbord). In Taken habits
-have their own group with the rhythm icon and a "Hoe loopt het?" chip; never "late". **Luister mee** (it keeps listening while the family opens the list, the
+have their own group with the rhythm icon and a "Hoe loopt het?" chip; never "late". The **habit coach** (v0.21,
+`habitReview` in `core/model/Habit.kt`, the same for the screen, `review_habit` and the agenda) applies the four laws of
+Atomic Habits to one habit: *Zichtbaar* (a moment or fixed days), *Aantrekkelijk* (*iets leuks erbij*, `pairing`, or the
+goal it serves), *Makkelijk* (the small step, fewer steps, less often) and *Voldoening* (said in Wat ging goed; it shows
+how often it ran easily, never a streak). From its weather per meeting and the frictions about it (linked when written,
+or naming it while open; the friction's words pick the law, `lawOf`: "we vergeten het" is zichtbaar, "geen zin"
+aantrekkelijk, "te veel" makkelijk, "niemand ziet het" voldoening) it has a stage: *nieuw* (a moment and the two-minute
+version), *te zwaar* (smaller, not harder), *vraagt moeite* or an open friction (change one law), *loopt*, and *loopt
+vanzelf* three meetings in a row (one step bigger: the whole version, a bit more often or a step more). It lives in the
+habit's sheet (*Zo blijft het hangen*: the weather per meeting, the tip, the four laws two by two, tap one to fill it) and
+shows its one tip under the habit in the Terugblik. A friction marked *routine aanpassen* is written along the laws too:
+another moment, iets leuks erbij, kleiner beginnen or a step (`resolve_friction` takes `smallStep` and `pairing`). **Luister mee** (it keeps listening while the family opens the list, the
 stock or the tasks, with a small "Terug naar het overleg" bar there): continuous transcription during the meeting (Web Speech;
 Android restarts its recognizer after each pause and prefers on-device recognition; both ask for three guesses and keep
 the one with the household's own words, names, stock and recipes, which they also get as hints where the platform
@@ -458,6 +475,10 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.21: the habit coach (the four laws of Atomic Habits) in each habit's sheet and in the Terugblik: one rating per
+   meeting is kept (HABIT_CHECK), frictions about a habit point to a law, and Hearth suggests one thing (smaller when too
+   much, one law when it takes effort, a step bigger after three sunny meetings); *iets leuks erbij* (`set_habit_pairing`,
+   DB v18); `review_habit` gives a family's AI the same review; a routine change from a friction goes along the laws.
    v0.20: rhythms on fixed days (weekdays, a date or the nth weekday of the month, a time only when fixed;
    `set_routine_schedule`, DB v17) that repeat in a second Google calendar *Hearth · Ritmes*; the routine sheet stays
    open while its moment, rhythm and days change; one weather scale (bliksem → wolk → zon) for the week, the routines

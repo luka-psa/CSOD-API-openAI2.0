@@ -51,10 +51,12 @@ data class BacklogEntity(
     @ColumnInfo(defaultValue = "NULL") val position: Int? = null,
     /** A routine's fixed days, as JSON ([Schedule]); null: roughly every [intervalDays]. */
     @ColumnInfo(defaultValue = "NULL") val schedule: String? = null,
+    /** A habit's nice thing that goes with it ("met muziek"). */
+    @ColumnInfo(defaultValue = "NULL") val pairing: String? = null,
 ) {
     fun toModel() = BacklogItem(
         id, text, section, plan, plannedDate, finishBy, done, createdAt, addedById,
-        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep, anchor, Schedule.decode(schedule),
+        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep, anchor, Schedule.decode(schedule), pairing,
     )
 }
 
@@ -113,6 +115,9 @@ interface BacklogDao {
 
     @Query("UPDATE backlog_item SET smallStep = :step, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setSmallStep(ids: List<String>, step: String?, now: Long)
+
+    @Query("UPDATE backlog_item SET pairing = :pairing, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setPairing(ids: List<String>, pairing: String?, now: Long)
 
     @Query("SELECT * FROM routine_log WHERE day >= :fromDay")
     fun observeLogs(fromDay: String): Flow<List<RoutineLogEntity>>
@@ -254,6 +259,10 @@ class BacklogRepository(
 
     suspend fun setSmallStep(ids: List<String>, step: String?) {
         if (ids.isNotEmpty()) dao.setSmallStep(ids, step?.trim()?.ifEmpty { null }, clock())
+    }
+
+    suspend fun setPairing(ids: List<String>, pairing: String?) {
+        if (ids.isNotEmpty()) dao.setPairing(ids, pairing?.trim()?.ifEmpty { null }, clock())
     }
 
     suspend fun setDone(ids: List<String>, done: Boolean) {

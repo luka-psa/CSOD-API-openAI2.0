@@ -1,6 +1,17 @@
 package app.hearth.ui
 
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.rememberCoroutineScope
+import app.hearth.core.model.HabitLaw
+import app.hearth.core.model.HabitReview
+import app.hearth.core.model.HabitTip
+import app.hearth.core.model.TipAction
+import app.hearth.ui.resources.small_step_hint
+import app.hearth.ui.resources.small_step_title
+import kotlinx.coroutines.launch
 import app.hearth.ui.resources.routine_step_add
 import app.hearth.ui.resources.routine_steps
 import app.hearth.ui.resources.step_down
@@ -121,6 +132,12 @@ class PlanActions(
     val moveStep: (BacklogItem, Int) -> Unit = { _, _ -> },
     /** Fixed days (and maybe a time); null: back to roughly every week. */
     val schedule: (Schedule?) -> Unit = {},
+    /** Habits: something nice with it (empty removes it). */
+    val pairing: (String) -> Unit = {},
+    /** Habits: a smaller first step (empty removes it). */
+    val smallStep: (String) -> Unit = {},
+    /** Habits: a coach tip that needs no words (less or more often, the whole version, Wat ging goed). */
+    val tip: (HabitTip) -> Unit = {},
 )
 
 private val INTERVALS = listOf(1, 7, 14, 30, 90, null)
@@ -129,10 +146,26 @@ private val INTERVALS = listOf(1, 7, 14, 30, 90, null)
  * Routines: how often, or give it a day. Admin: urgent, waiting for a reply, a deadline or a day.
  * Projects and steps: a day or the weekend. Unsorted items first ask where they belong.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActions, onDismiss: () -> Unit, steps: List<BacklogItem> = emptyList()) {
+fun PlanSheet(
+    item: BacklogItem,
+    today: LocalDate,
+    lang: Lang,
+    actions: PlanActions,
+    onDismiss: () -> Unit,
+    steps: List<BacklogItem> = emptyList(),
+    review: HabitReview? = null,
+) {
     var finishBy by remember(item.id) { mutableStateOf(item.finishBy) }
+    var pairing by remember { mutableStateOf(false) }
+    var smallStep by remember { mutableStateOf(false) }
+    // A tip that points at a part of this sheet (a moment, a day, the steps) scrolls to it.
+    val scope = rememberCoroutineScope()
+    val stepsAt = remember { BringIntoViewRequester() }
+    val momentAt = remember { BringIntoViewRequester() }
+    val daysAt = remember { BringIntoViewRequester() }
+    fun show(at: BringIntoViewRequester) { scope.launch { at.bringIntoView() } }
     var removingStep by remember { mutableStateOf<BacklogItem?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var pickingTime by remember { mutableStateOf(false) }
@@ -186,8 +219,32 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
 
             when (kind) {
                 TaskKind.ROUTINE -> {
+                    // A habit's coach first: how it goes, and the one thing that would make it stick.
+                    review?.let { r ->
+                        HabitCoach(
+                            r, lang,
+                            onTip = { tip ->
+                                when (tip.action) {
+                                    TipAction.PAIR -> pairing = true
+                                    TipAction.SMALL_STEP -> smallStep = true
+                                    TipAction.MOMENT -> show(momentAt)
+                                    TipAction.DAYS -> show(daysAt)
+                                    TipAction.FEWER_STEPS, TipAction.ADD_STEP -> show(stepsAt)
+                                    else -> actions.tip(tip)
+                                }
+                            },
+                            onLaw = { law ->
+                                when (law) {
+                                    HabitLaw.OBVIOUS -> show(momentAt)
+                                    HabitLaw.ATTRACTIVE -> pairing = true
+                                    HabitLaw.EASY -> smallStep = true
+                                    HabitLaw.SATISFYING -> {}
+                                }
+                            },
+                        )
+                    }
                     // Its steps, in order: a sequence for the evening or a checklist for the bag.
-                    Text(stringResource(Res.string.routine_steps), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(Res.string.routine_steps), style = MaterialTheme.typography.titleMedium, modifier = Modifier.bringIntoViewRequester(stepsAt))
                     // Numbered, with arrows to put them in the order the evening really goes.
                     steps.forEachIndexed { i, step ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -204,7 +261,7 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
                     }
                     AddRow(stringResource(Res.string.routine_step_add), actions.addStep, compact = true)
                     // The moment of the day it belongs to: the morning routine, around dinner, bedtime.
-                    Text(stringResource(Res.string.moment_title), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(Res.string.moment_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.bringIntoViewRequester(momentAt))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Anchor.entries.forEach { a -> ChoiceChip(a.title(lang), item.anchor == a, { actions.anchor(a) }) }
                         ChoiceChip(stringResource(Res.string.anchor_none), item.anchor == null, { actions.anchor(null) })
@@ -217,7 +274,7 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
                         }
                     }
                     // Fixed days, for what really happens on a day (the bins, swimming lessons); a time only if it is fixed.
-                    Text(stringResource(Res.string.fixed_days), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(Res.string.fixed_days), style = MaterialTheme.typography.titleMedium, modifier = Modifier.bringIntoViewRequester(daysAt))
                     Text(
                         schedule?.label(lang)?.replaceFirstChar { it.uppercase() } ?: stringResource(Res.string.fixed_days_hint),
                         style = MaterialTheme.typography.bodyMedium,
@@ -303,6 +360,10 @@ fun PlanSheet(item: BacklogItem, today: LocalDate, lang: Lang, actions: PlanActi
         }
     }
 
+    if (pairing) PairingDialog(item.pairing, actions.pairing) { pairing = false }
+    if (smallStep) {
+        TextDialog(stringResource(Res.string.small_step_title), stringResource(Res.string.small_step_hint), onDone = { t, _ -> actions.smallStep(t) }) { smallStep = false }
+    }
     if (pickingTime) {
         TimeDialog(
             initial = item.schedule?.time,

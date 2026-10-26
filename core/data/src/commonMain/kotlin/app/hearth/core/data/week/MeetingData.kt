@@ -53,6 +53,8 @@ data class ReflectionEntity(
         const val WIN = "WIN"
         const val FEELING = "FEELING"
         const val RULE_CHECK = "RULE_CHECK"
+        /** A habit's weather in one meeting: [text] is the habit's id, [value] as for RULE_CHECK. */
+        const val HABIT_CHECK = "HABIT_CHECK"
         const val WEEK = "WEEK"
         const val AGREED = "agreed"
 
@@ -90,6 +92,13 @@ interface MeetingDao {
     /** Every rating of every house rule, oldest first: the last one per rule is how it goes now. */
     @Query("SELECT * FROM reflection WHERE kind = 'RULE_CHECK' ORDER BY updatedAt")
     fun observeAllRuleChecks(): Flow<List<ReflectionEntity>>
+
+    /** Every habit's weather, meeting by meeting, oldest first. */
+    @Query("SELECT * FROM reflection WHERE kind = 'HABIT_CHECK' ORDER BY createdAt")
+    fun observeAllHabitChecks(): Flow<List<ReflectionEntity>>
+
+    @Query("SELECT * FROM reflection WHERE kind = 'HABIT_CHECK' AND text = :itemId ORDER BY createdAt")
+    suspend fun habitChecksOf(itemId: String): List<ReflectionEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun putReflection(item: ReflectionEntity)
@@ -173,6 +182,17 @@ class MeetingRepository(
 
     /** How each house rule goes, by rule id: this week's rating, or the last one from an earlier meeting. */
     val ruleEase: Flow<Map<String, Ease>> = dao.observeAllRuleChecks().map { list -> list.associate { it.text to it.toRuleCheck().ease } }
+    /** This meeting's weather per habit, by habit id (not rated yet: missing). */
+    val habitChecks: Flow<Map<String, Ease>> = dao.observeCurrentReflections().map { list ->
+        list.filter { it.kind == ReflectionEntity.HABIT_CHECK }.associate { it.text to ReflectionEntity.easeOf(it.value) }
+    }
+
+    /** Each habit's weather per meeting, oldest first, by habit id: what the habit coach reads. */
+    val habitHistory: Flow<Map<String, List<Ease>>> = dao.observeAllHabitChecks().map { list ->
+        list.groupBy { it.text }.mapValues { (_, rows) -> rows.map { ReflectionEntity.easeOf(it.value) } }
+    }
+
+    suspend fun habitHistory(itemId: String): List<Ease> = dao.habitChecksOf(itemId).map { ReflectionEntity.easeOf(it.value) }
     suspend fun currentWeek(): WeekRating? = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek()
     suspend fun currentRuleChecks(): List<RuleCheck> = dao.currentReflections().filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }
     suspend fun ruleChecksOf(huddleId: String): List<RuleCheck> = dao.reflectionsOf(huddleId).filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }
@@ -197,6 +217,13 @@ class MeetingRepository(
         val entity = ReflectionEntity(old?.id ?: newId(), ReflectionEntity.RULE_CHECK, ruleId, ReflectionEntity.codeOf(ease), null, null, old?.createdAt ?: now, now)
         dao.putReflection(entity)
         entity.toRuleCheck()
+    }
+
+    /** How a habit went since the last meeting; saying it again replaces it, so each meeting keeps one. */
+    suspend fun setHabitCheck(itemId: String, ease: Ease): Unit = db.withWriteTransaction {
+        val now = clock()
+        val old = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.HABIT_CHECK && it.text == itemId }
+        dao.putReflection(ReflectionEntity(old?.id ?: newId(), ReflectionEntity.HABIT_CHECK, itemId, ReflectionEntity.codeOf(ease), null, null, old?.createdAt ?: now, now))
     }
 
     suspend fun addLine(text: String): TranscriptLine {
