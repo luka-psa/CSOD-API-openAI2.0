@@ -38,3 +38,15 @@ FunctionGemma is a Gemma model: it is provided under and subject to the Gemma Te
   the global layers use 10000 and the output drifts). `ortloop.py` checks the export against torch.
 - Host `tokenizer.json`, `model.onnx` and `model.onnx.data` side by side and build with
   `-Phearth.interpreterUrl=<that folder>` (or `HEARTH_INTERPRETER_URL`); without it the option stays hidden.
+
+## Results so far
+
+| | handwritten test (60) | windows, round-1 kind (50) | windows, round-2 kind (60) |
+|---|---|---|---|
+| Round 1 (`gen.py`, 400 steps) | 38 % fully right, 57 % right actions | 28 % / 44 % | – |
+| Round 2 (+ `gen2.py`, 750 steps from round 1, lr 5e-5) | 60 % / 75 % | 78 % / 86 % | 80 % / 92 % |
+
+"Fully right": every action with its words and day. What still goes wrong on the handwritten test: words it never saw are
+copied with a slip ("appelsen", "Keuringfeestje"); a few kinds mixed up (a weekly pizza evening as a meal, a rule as a
+routine); talk read as an action now and then ("a lot of meetings"). Putting each word back to the closest word said
+helps only one conversation, so the app doesn't do it.
