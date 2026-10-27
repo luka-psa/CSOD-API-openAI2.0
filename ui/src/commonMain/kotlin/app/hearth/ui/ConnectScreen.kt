@@ -1,5 +1,6 @@
 package app.hearth.ui
 
+import app.hearth.ai.interpret.Interpreting
 import app.hearth.ai.sense.SmartListening
 import app.hearth.ui.resources.smart_title
 import app.hearth.ui.resources.smart_card
@@ -95,6 +96,10 @@ import app.hearth.ui.resources.connect_status_retrying
 import app.hearth.ui.resources.connect_subtitle
 import app.hearth.ui.resources.connect_unlink_body
 import app.hearth.ui.resources.connect_unlink_confirm
+import app.hearth.ui.resources.interpreter_body
+import app.hearth.ui.resources.interpreter_card
+import app.hearth.ui.resources.interpreter_loading
+import app.hearth.ui.resources.interpreter_ready
 import app.hearth.ui.resources.nav_connect
 import app.hearth.ui.theme.style
 import kotlinx.coroutines.delay
@@ -111,6 +116,9 @@ class ConnectCallbacks(
     /** Smarter listening on or off on this device. */
     val setSmartListening: (Boolean) -> Unit = {},
     val retrySmartListening: () -> Unit = {},
+    /** Understanding conversations on or off on this device. */
+    val setInterpreter: (Boolean) -> Unit = {},
+    val retryInterpreter: () -> Unit = {},
 )
 
 /**
@@ -135,6 +143,8 @@ fun ConnectScreen(
     syncCb: SyncCallbacks? = null,
     listening: SmartListening.State = SmartListening.State.Off,
     listeningAvailable: Boolean = false,
+    interpreter: Interpreting.State = Interpreting.State.Off,
+    interpreterAvailable: Boolean = false,
 ) {
     var unlinking by remember { mutableStateOf<LinkedApp?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
@@ -152,10 +162,9 @@ fun ConnectScreen(
                     ChoiceChip("English", current == Lang.EN, { cb.setLanguage(Lang.EN) })
                 }
             }
-            if (listeningAvailable) {
-                SectionTitle(stringResource(Res.string.smart_title))
-                SmartListeningCard(listening, cb)
-            }
+            if (listeningAvailable || interpreterAvailable) SectionTitle(stringResource(Res.string.smart_title))
+            if (listeningAvailable) SmartListeningCard(listening, cb)
+            if (interpreterAvailable) InterpreterCard(interpreter, cb)
             // The household on more devices: right after the language, it's what a new device needs first.
             if (syncCb != null) {
                 SectionTitle(stringResource(Res.string.sync_title))
@@ -385,6 +394,45 @@ private fun SmartListeningCard(state: SmartListening.State, cb: ConnectCallbacks
                 Spacer(Modifier.size(12.dp))
                 Text(stringResource(Res.string.smart_failed, state.reason), style = MaterialTheme.typography.bodyMedium)
                 TextButton(onClick = cb.retrySmartListening) { Text(stringResource(Res.string.smart_retry)) }
+            }
+        }
+    }
+}
+
+/**
+ * Gesprekken begrijpen: a small language model on this device reads the whole weekoverleg (what came back, what changed)
+ * and names what was decided. Off by default; on, it downloads once and says when it's ready. Off removes it again.
+ */
+@Composable
+private fun InterpreterCard(state: Interpreting.State, cb: ConnectCallbacks) {
+    HearthCard(stringResource(Res.string.interpreter_card), HearthIcons.Chat, Modifier.fillMaxWidth(), action = {
+        Switch(checked = state != Interpreting.State.Off, onCheckedChange = { cb.setInterpreter(it) })
+    }) {
+        Text(stringResource(Res.string.interpreter_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        when (state) {
+            Interpreting.State.Off -> {}
+            is Interpreting.State.Downloading -> {
+                Spacer(Modifier.size(12.dp))
+                Text(stringResource(Res.string.smart_downloading, (state.progress * 100).toInt()), style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.size(6.dp))
+                androidx.compose.material3.LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth(), drawStopIndicator = {})
+            }
+            Interpreting.State.Loading -> {
+                Spacer(Modifier.size(12.dp))
+                Text(stringResource(Res.string.interpreter_loading), style = MaterialTheme.typography.labelLarge)
+            }
+            Interpreting.State.Ready -> {
+                Spacer(Modifier.size(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(HearthIcons.Check, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(Res.string.interpreter_ready), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                }
+            }
+            is Interpreting.State.Failed -> {
+                Spacer(Modifier.size(12.dp))
+                Text(stringResource(Res.string.smart_failed, state.reason), style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = cb.retryInterpreter) { Text(stringResource(Res.string.smart_retry)) }
             }
         }
     }

@@ -531,4 +531,8 @@
     <string name="smart_ready">Ready: Luister mee reads along with the model.</string>
     <string name="smart_failed">That didn’t work: %1$s</string>
     <string name="smart_retry">Try again</string>
+    <string name="interpreter_card">Understanding conversations</string>
+    <string name="interpreter_body">A bigger language model reads the whole weekly meeting: what comes back, what you decide differently after all, and what you finally agree. It runs on this device itself, so what you say goes nowhere. Switching it on downloads it once (about 270 MB); switching it off removes it again. It reads again after each sentence, so a suggestion may still shift a little.</string>
+    <string name="interpreter_loading">Loading the model, one moment…</string>
+    <string name="interpreter_ready">Ready: Luister mee reads the whole conversation.</string>
 </resources>

@@ -21,6 +21,7 @@ import app.hearth.core.model.Shop
 import app.hearth.core.model.ShoppingItem
 import app.hearth.core.model.nowMillis
 import app.hearth.core.model.today
+import app.hearth.core.model.weekdayName
 import app.hearth.core.tools.ToolContext
 import app.hearth.core.tools.ToolException
 import app.hearth.core.tools.ToolSource
@@ -143,8 +144,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collectLatest
+import app.hearth.ai.interpret.Interpreting
 import app.hearth.ai.sense.Reading
 import app.hearth.ai.sense.SmartListening
+import app.hearth.core.tools.system.InterpreterArgs
 import app.hearth.core.tools.system.SmartListeningArgs
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -721,6 +724,9 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Suggestions the family changed (or added already), until the conversation is put in place. */
     private val edits = MutableStateFlow<Map<String, SuggestionEdit>>(emptyMap())
 
+    /** What the interpreter found, by the line it comes from (null: it isn't on, or hasn't read this meeting yet). */
+    private val interpreted = MutableStateFlow<Map<String, List<Orchestrator.Proposal>>?>(null)
+
     /** Counts up each time the sentence model has read new sentences. */
     private val senseRead = MutableStateFlow(0)
 
@@ -728,11 +734,42 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
      * What Luister mee heard and hasn't been put in place yet, as thoughts (pauses don't cut them), newest first,
      * each with what Hearth concludes from it.
      */
-    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead) { lines, people, changed, _ ->
+    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead, interpreted) { lines, people, changed, _, found ->
         val open = lines.filter { !it.sorted }
         app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt }, sense())
-            .takeLast(3).reversed().map { t -> thought(open.slice(t.lines), t.proposals, changed).copy(stage = t.stage) }
+            .takeLast(3).reversed().map { t ->
+                val said = open.slice(t.lines)
+                // The interpreter read the whole conversation: what it found on these lines replaces the rules' guess.
+                val proposals = if (found == null) t.proposals else said.flatMap { found[it.id].orEmpty() }
+                thought(said, proposals, changed).copy(stage = t.stage)
+            }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Understanding conversations: on, ready, and how far its download is. */
+    val interpreting: StateFlow<Interpreting.State> = app.interpreting.state
+    val interpretingAvailable: Boolean get() = app.interpreting.available
+
+    fun setInterpreter(on: Boolean) = tool { say(app.tools.registry.run(app.tools.setInterpreter, InterpreterArgs(on), it).summary) }
+
+    fun retryInterpreter() {
+        viewModelScope.launch { app.interpreting.start() }
+    }
+
+    /**
+     * Each change in the conversation is read again by the interpreter, in the background (a newer line cancels a
+     * reading in progress). A changed plan replaces what it said before; what was settled earlier stays.
+     */
+    private val interpreterReading = viewModelScope.launch {
+        combine(transcript, app.interpreting.state) { lines, state -> lines to state }.collectLatest { (lines, state) ->
+            if (state != Interpreting.State.Ready) { interpreted.value = null; return@collectLatest }
+            val open = lines.filter { !it.sorted }
+            if (open.isEmpty()) { interpreted.value = null; return@collectLatest }
+            val c = ctx(ToolSource.UI)
+            val found = withContext(Dispatchers.Default) { app.interpreting.read(open.map { it.text }, spokenDate(today())) } ?: return@collectLatest
+            interpreted.value = found.mapNotNull { f -> open.getOrNull(f.line)?.let { line -> app.orchestrator.proposalOf(f.action, line.text, c)?.let { line.id to it } } }
+                .groupBy({ it.first }, { it.second })
+        }
+    }
 
     /** Smarter listening: on, ready, and how far its download is. */
     val listening: StateFlow<SmartListening.State> = app.listening.state
@@ -1061,3 +1098,7 @@ data class GoogleState(
     val calendar: Boolean = false,
     val lastSync: Long? = null,
 )
+
+/** The day as the interpreter learned it: "dinsdag 27 oktober". */
+private fun spokenDate(day: kotlinx.datetime.LocalDate): String =
+    "${weekdayName(day.dayOfWeek, Lang.NL)} ${day.day} ${listOf("januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december")[day.month.ordinal]}"

@@ -386,6 +386,57 @@ class Orchestrator(
             t.proposals.ifEmpty { listOf(proposal(Spoken.clean(t.heard), Place.NONE, ctx).copy(heard = t.heard)) }
         }
 
+    /**
+     * What the interpreter read (one action) as a suggestion: the same tools as everywhere else, the day and time read
+     * from its words like any sentence. [heard] is the line it came from. Questions ("wat staat er morgen?") are not
+     * suggestions; null for those.
+     */
+    fun proposalOf(action: app.hearth.ai.interpret.Action, heard: String, ctx: ToolContext): Proposal? {
+        val local = ctx.copy(lang = KeywordRouter.language(heard, ctx.lang))
+        val a = action.args
+        fun text(vararg extra: String?) = (listOf(a["text"]) + extra).filterNotNull().filter { it.isNotBlank() }.joinToString(" ")
+        fun backlog(place: Place, section: Section, words: String): Proposal {
+            val (call, args) = backlogCall(words, section, local, fromTalk = false)
+            val date = when (args.`when`) {
+                When.TODAY -> local.today
+                When.TOMORROW -> local.today.plusDays(1)
+                When.DAY -> args.date?.let { LocalDate.parse(it) }
+                else -> null
+            }
+            return Proposal(heard, place, args.text, date, listOf(call), heard = heard, next = args.`when` == When.NEXT, topic = args.section.topic())
+        }
+        fun board(place: Place, text: String, call: ToolCall, topic: Topic?) = Proposal(heard, place, text, null, listOf(call), heard = heard, topic = topic)
+        return when (action.name) {
+            "add_task" -> backlog(Place.PLANNING, Section.OTHER, text(a["day"]))
+            "add_appointment" -> backlog(Place.EVENT, Section.APPOINTMENT, text(a["day"], a["time"]))
+            "add_free_time" -> backlog(Place.FREE_TIME, Section.PROTECTED_TIME, text(a["day"]))
+            "add_routine" -> backlog(Place.RHYTHM, Section.RHYTHM, text(a["when"]))
+            "add_shopping" -> {
+                val calls = shoppingCalls(a["items"].orEmpty())
+                if (calls.isEmpty()) null
+                else Proposal(heard, Place.SHOPPING, calls.joinToString(", ") { ToolJson.decodeFromJsonElement(AddShoppingItemArgs.serializer(), it.arguments).name.replaceFirstChar { c -> c.uppercase() } }, null, calls, heard = heard, topic = Topic.SHOPPING)
+            }
+            "plan_meal" -> {
+                val dish = a["dish"]?.takeIf { it.isNotBlank() } ?: return null
+                // A day on its own ("vrijdag") reads like the end of a sentence.
+                val date = a["day"]?.let { TimeWords.extractAnywhere("eten ${it}", local.today) }?.let { h ->
+                    when (h.whenValue) {
+                        When.TODAY -> local.today
+                        When.TOMORROW -> local.today.plusDays(1)
+                        else -> h.date
+                    }
+                } ?: local.today
+                Proposal(heard, Place.MEAL, dish, date, listOf(ToolCall.of(PlanMealTool.NAME, PlanMealArgs.serializer(), PlanMealArgs(dish, date.toString()))), heard = heard, topic = Topic.MENU)
+            }
+            "add_house_rule" -> text().ifBlank { null }?.let { board(Place.HOUSE_RULE, it, ToolCall.of(AddHouseRuleTool.NAME, AddHouseRuleArgs.serializer(), AddHouseRuleArgs(it)), Topic.RULES) }
+            "log_friction" -> text().ifBlank { null }?.let { board(Place.FRICTION, it, ToolCall.of(LogFrictionTool.NAME, LogFrictionArgs.serializer(), LogFrictionArgs(it)), Topic.FRICTION) }
+            "add_idea" -> text().ifBlank { null }?.let { board(Place.IDEA, it, ToolCall.of(AddIdeaTool.NAME, AddIdeaArgs.serializer(), AddIdeaArgs(it)), Topic.FRICTION) }
+            "add_goal" -> text().ifBlank { null }?.let { board(Place.GOAL, it, ToolCall.of(AddGoalTool.NAME, AddGoalArgs.serializer(), AddGoalArgs(it, KeywordRouter.goalScope(heard))), Topic.GOALS) }
+            "add_win" -> text().ifBlank { null }?.let { board(Place.WIN, it, ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(it)), null) }
+            else -> null
+        }
+    }
+
     /** The same words put somewhere else (the family tapped another place), or read again after a fix. */
     fun proposal(sentence: String, place: Place, ctx: ToolContext): Proposal {
         val local = ctx.copy(lang = KeywordRouter.language(sentence, ctx.lang))

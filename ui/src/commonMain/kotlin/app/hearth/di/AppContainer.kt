@@ -1,5 +1,8 @@
 package app.hearth.di
 
+import app.hearth.ai.interpret.Interpreting
+import app.hearth.ai.interpret.InterpreterRuntime
+import app.hearth.ai.interpret.NoInterpreterRuntime
 import app.hearth.ai.sense.NoSenseRuntime
 import app.hearth.ai.sense.SenseRuntime
 import app.hearth.ai.sense.SmartListening
@@ -69,6 +72,8 @@ class AppContainer(
     directPages: Boolean = true,
     /** Where this device keeps and runs the sentence model for smarter listening (none: the rules alone). */
     senseRuntime: SenseRuntime = NoSenseRuntime,
+    /** Where this device keeps and runs the interpreter that reads a whole weekoverleg (none: not on this device). */
+    interpreterRuntime: InterpreterRuntime = NoInterpreterRuntime,
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -98,6 +103,8 @@ class AppContainer(
     val orchestrator = Orchestrator(tools.registry)
     /** Smarter listening: the sentence model next to the rules, once switched on in Instellingen. */
     val listening = SmartListening(senseRuntime)
+    /** The interpreter: reads the conversation as a whole and names what was decided, once switched on. */
+    val interpreting = Interpreting(interpreterRuntime)
 
     /** The family's ChatGPT or Claude reaches the same tools here, through the relay. */
     val mcp = McpServer(tools.registry) { context(ToolSource.MCP) }
@@ -143,6 +150,14 @@ class AppContainer(
                 when {
                     on == "true" -> listening.start()
                     listening.state.value != SmartListening.State.Off -> listening.stop()
+                }
+            }
+        }
+        appScope.launch {
+            settings.value(AppSettings.INTERPRETER).collectLatest { on ->
+                when {
+                    on == "true" -> interpreting.start()
+                    interpreting.state.value != Interpreting.State.Off -> interpreting.stop()
                 }
             }
         }

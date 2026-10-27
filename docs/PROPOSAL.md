@@ -111,7 +111,7 @@ meeting and wins, then every *topic* in a few words with its details, Hearth's s
 transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary, wins grouped by topic; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `rate_week` (how the week went, `score` 0–5, agreed together for the household; empty = no
-agreement), `set_week_meters` (asking it on/off, tablet), `set_smart_listening` (the sentence model for Luister mee on this device, on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
+agreement), `set_week_meters` (asking it on/off, tablet), `set_smart_listening` (the sentence model for Luister mee on this device, on/off, tablet), `set_interpreter` (the interpreter that reads the whole weekoverleg, on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
 `rate_habit` (`score` 0–5; one score per meeting is kept for the habit coach; all three still take the older `ease`
 EASY / EFFORT / HARD, read as 5 / 3 / 1), `review_habit` (read-only: the four laws of Atomic Habits for a habit, or for
 every habit that asks for something: its score per meeting, the frictions about it, how each law is in place and what to try,
@@ -497,6 +497,14 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
    besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,
    the rule it ends in does; looking back at ourselves is never written down.
+   v0.24: *Gesprekken begrijpen* (Instellingen, `set_interpreter`, off by default, device-only, tablet only; hidden
+   while the build has no `hearth.interpreterUrl`): FunctionGemma 270M, fine-tuned on Hearth's weekoverleg
+   (`ai/interpret`), int4 ONNX (≈ 270 MB, downloaded once, ONNX Runtime on the tablet). It reads the conversation as a
+   whole: `MeetingReader` gives it the last 12 lines plus up to 6 earlier ones that share words with what is said now
+   (a topic coming back), and it answers with Hearth actions (`add_task`, `add_appointment`, `plan_meal`,
+   `house_rule`, `friction`, `win`, …, and the questions `show_agenda` / `show_list` for later). Each new line is read
+   again: a changed plan replaces what it said before; what was settled earlier stays. Its findings replace the
+   rules' suggestions on the lines they come from (`Orchestrator.proposalOf`); the stages still come from the rules.
    *Wat ging goed* walks past every topic (a tile each, with what got done there and one-tap wins Hearth saw;
    `add_win` takes a `topic`, DB v20); the Terugblik rates on a scale from 0 to 5 (routines, house rules, the week; `score` on `rate_habit`,
    `check_house_rule`, `rate_week`; DB v19), and every rated routine and house rule carries a score badge (weather and

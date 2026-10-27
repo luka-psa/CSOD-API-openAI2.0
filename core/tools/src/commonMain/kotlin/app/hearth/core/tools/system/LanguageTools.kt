@@ -15,6 +15,7 @@ object AppSettings {
     const val LANGUAGE = "app.lang"
     /** "true" when this device reads the weekoverleg with the sentence model. */
     const val SMART_LISTENING = SettingsRepository.SMART_LISTENING
+    const val INTERPRETER = SettingsRepository.INTERPRETER
 }
 
 @Serializable
@@ -68,5 +69,34 @@ class SetSmartListeningTool(private val settings: SettingsRepository) : Tool<Sma
 
     companion object {
         const val NAME = "set_smart_listening"
+    }
+}
+
+@Serializable
+data class InterpreterArgs(@Describe("True: read the weekoverleg as a whole conversation with the interpreter (downloads it once, about 270 MB).") val enabled: Boolean)
+
+@Serializable
+data class InterpreterResult(val enabled: Boolean, override val summary: String) : ToolResult
+
+/**
+ * Understanding conversations on this device: a small language model reads the weekoverleg as a whole (what came back,
+ * what changed) and names what was decided. Switching it on downloads it once; switching it off removes it again.
+ */
+class SetInterpreterTool(private val settings: SettingsRepository) : Tool<InterpreterArgs, InterpreterResult> {
+    override val name = NAME
+    override val description = "Switch understanding conversations on or off on this device (a language model for Luister mee; tablet only)."
+    override val exposeOverMcp = false
+    override val argsSerializer = InterpreterArgs.serializer()
+    override val resultSerializer = InterpreterResult.serializer()
+
+    override suspend fun run(args: InterpreterArgs, ctx: ToolContext): InterpreterResult {
+        settings.put(AppSettings.INTERPRETER, args.enabled.toString())
+        val summary = if (args.enabled) ctx.t("Gesprekken begrijpen staat aan. Het model komt één keer binnen.", "Understanding conversations is on. The model downloads once.")
+        else ctx.t("Gesprekken begrijpen staat uit.", "Understanding conversations is off.")
+        return InterpreterResult(args.enabled, summary)
+    }
+
+    companion object {
+        const val NAME = "set_interpreter"
     }
 }

@@ -422,4 +422,22 @@ class OrchestratorTest {
     }
 
     private suspend fun Orchestrator.registryRun(p: Orchestrator.Proposal) = p.calls.forEach { tools.registry.execute(it, nl) }
+
+    @Test
+    fun `what the interpreter read becomes a suggestion through the same tools`() = runTest {
+        // 22 October 2026 is a Thursday: "zaterdag" is the 24th.
+        fun read(name: String, vararg args: Pair<String, String>, heard: String = "") =
+            offline.proposalOf(app.hearth.ai.interpret.Action(name, args.toMap()), heard, nl)
+        val task = read("add_task", "text" to "De garantie van de wasmachine opzoeken", "day" to "zaterdag")!!
+        assertEquals(app.hearth.ai.route.Place.PLANNING, task.place)
+        assertEquals(LocalDate(2026, 10, 24), task.date)
+        val meal = read("plan_meal", "dish" to "Pizza", "day" to "vrijdag")!!
+        assertEquals(app.hearth.ai.route.Place.MEAL to LocalDate(2026, 10, 23), meal.place to meal.date)
+        assertEquals("Melk, Eieren", read("add_shopping", "items" to "melk, eieren")!!.text)
+        assertEquals(app.hearth.ai.route.Place.HOUSE_RULE, read("add_house_rule", "text" to "Schermen uit om negen uur")!!.place)
+        // Questions are answered, not written down.
+        assertEquals(null, read("show_agenda", "day" to "morgen"))
+        for (p in listOf(task, meal)) p.calls.forEach { assertTrue(tools.registry.execute(it, nl) is app.hearth.core.tools.ToolOutcome.Done) }
+        assertEquals("Pizza", app.hearth.core.data.week.WeekRepository(db).mealOn("2026-10-23")?.dish)
+    }
 }

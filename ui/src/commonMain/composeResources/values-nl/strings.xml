@@ -524,4 +524,8 @@
     <string name="smart_ready">Klaar: Luister mee leest mee met het model.</string>
     <string name="smart_failed">Dat lukte niet: %1$s</string>
     <string name="smart_retry">Opnieuw proberen</string>
+    <string name="interpreter_card">Gesprekken begrijpen</string>
+    <string name="interpreter_body">Een groter taalmodel leest het hele weekoverleg: wat terugkomt, wat jullie toch anders beslissen, en wat er uiteindelijk afgesproken is. Het draait op dit toestel zelf, dus wat jullie zeggen gaat nergens heen. Aanzetten laadt het één keer binnen (ongeveer 270 MB); uitzetten haalt het weer weg. Het leest na elke zin opnieuw, dus het voorstel kan nog even bijschuiven.</string>
+    <string name="interpreter_loading">Het model wordt geladen, even geduld…</string>
+    <string name="interpreter_ready">Klaar: Luister mee leest het hele gesprek.</string>
 </resources>

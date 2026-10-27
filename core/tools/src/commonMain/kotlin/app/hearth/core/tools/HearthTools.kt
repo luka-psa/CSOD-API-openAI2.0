@@ -177,6 +177,7 @@ class HearthTools(
     val loadExamples = app.hearth.core.tools.system.LoadExamplesTool(this, settings)
     val setLanguage = app.hearth.core.tools.system.SetLanguageTool(settings)
     val setSmartListening = app.hearth.core.tools.system.SetSmartListeningTool(settings)
+    val setInterpreter = app.hearth.core.tools.system.SetInterpreterTool(settings)
 
     val syncEngine = sync?.let { app.hearth.core.tools.system.SyncEngine(it, settings, syncCloud) }
     val syncNow = syncEngine?.let { app.hearth.core.tools.system.SyncNowTool(it) }
@@ -197,7 +198,7 @@ class HearthTools(
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
             addWin, removeWin, rateWeek, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, readConversation, clearTranscript, listHuddles, addIdea,
             saveRecipe, importRecipe, listRecipes, removeRecipe, setRecipePhoto,
-            saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples, setLanguage, setSmartListening,
+            saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples, setLanguage, setSmartListening, setInterpreter,
         ) + listOfNotNull(backupNow, restoreBackup, syncNow, startSync, shareSync, joinSync, stopSync),
     )
 }

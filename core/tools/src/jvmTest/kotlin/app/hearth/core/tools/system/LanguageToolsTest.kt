@@ -47,4 +47,14 @@ class LanguageToolsTest {
         tools.registry.run(tools.setSmartListening, SmartListeningArgs(false), ctx)
         assertEquals("false", settings.currentValue(AppSettings.SMART_LISTENING))
     }
+
+    @Test
+    fun `understanding conversations is a setting of this device, never shared`() = runTest {
+        assertEquals("Gesprekken begrijpen staat aan. Het model komt één keer binnen.", tools.registry.run(tools.setInterpreter, InterpreterArgs(true), ctx).summary)
+        assertEquals("true", settings.currentValue(AppSettings.INTERPRETER))
+        kotlin.test.assertTrue(AppSettings.INTERPRETER in SettingsRepository.DEVICE_ONLY)
+        assertFalse(tools.registry.specs.first { it.name == SetInterpreterTool.NAME }.exposeOverMcp)
+        tools.registry.run(tools.setInterpreter, InterpreterArgs(false), ctx)
+        assertEquals("false", settings.currentValue(AppSettings.INTERPRETER))
+    }
 }

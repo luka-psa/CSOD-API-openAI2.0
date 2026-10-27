@@ -157,6 +157,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val doneToday by viewModel.doneToday.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val smartListening by viewModel.listening.collectAsStateWithLifecycle()
+    val interpreterState by viewModel.interpreting.collectAsStateWithLifecycle()
 
     var destination by destinationState
     var planning by remember { mutableStateOf<BacklogItem?>(null) }
@@ -271,6 +272,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 setLanguage = viewModel::setLanguage,
                                 setSmartListening = viewModel::setSmartListening,
                                 retrySmartListening = viewModel::retrySmartListening,
+                                setInterpreter = viewModel::setInterpreter,
+                                retryInterpreter = viewModel::retryInterpreter,
                             ),
                             google, viewModel.googleAvailable, googleBusy, backupList,
                             GoogleCallbacks(
@@ -294,6 +297,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             ),
                             listening = smartListening,
                             listeningAvailable = viewModel.listeningAvailable,
+                            interpreter = interpreterState,
+                            interpreterAvailable = viewModel.interpretingAvailable,
                         )
                         Destination.BOARD -> BoardScreen(
                             board, members, backlog, ruleScores, today, wide,
