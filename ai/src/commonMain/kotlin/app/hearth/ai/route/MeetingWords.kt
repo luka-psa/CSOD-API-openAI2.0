@@ -31,10 +31,47 @@ enum class Place {
 data class Conclusion(val sentence: String, val place: Place, val heard: String)
 
 /**
+ * What a clause does in the conversation. Only what is decided becomes something: a plain plan ("donderdag moet de auto
+ * naar de garage"), an agreement ("we spreken af dat …"), or a suggestion the other one says yes to.
+ */
+enum class Move {
+    /** "ja", "dat kan ik doen", "mij ook": says yes to what was just said. */
+    AGREE,
+    /** "zouden we …", "misschien kan jij …", "wat als we …": an option, not yet decided. */
+    PROPOSAL,
+    /** "ik weet niet of dat lukt", "maar dan …", "nee": not this option. */
+    DOUBT,
+    /** "hoe was jouw week?", "wat staat er op de planning?". */
+    QUESTION,
+    /** "ik was moe", "ik heb de was niet opgevolgd", "fijn dat we samen aten": about the week that was. */
+    LOOK_BACK,
+    /** "we spreken af dat …", "vanaf nu …": decided together. */
+    DECISION,
+    /** Anything else: a plan, a fact, a complaint, or just talk. */
+    STATEMENT,
+}
+
+/** Where a thought is in the conversation; while it concludes nothing, the stage shows what Hearth understood. */
+enum class Stage {
+    /** Bijpraten: how was your week. */
+    TALK,
+    /** Looking back: what went well, what we didn't do so well. */
+    LOOK_BACK,
+    /** What's next: days, plans, who does what. */
+    PLANNING,
+    /** Something that rubs. */
+    CONCERN,
+    /** Options on the table, nothing decided yet. */
+    BRAINSTORM,
+    /** Decided or agreed. */
+    DECISION,
+}
+
+/**
  * Stretches of talk that belong together, however long the pauses between them: "Mia gaat donderdag naar de
  * opvang" … "dus die moet gebracht worden" … "voor de rest ben ik vrij". [lines] are the indexes it was heard in.
  */
-data class Thought(val heard: String, val lines: IntRange, val conclusions: List<Conclusion>)
+data class Thought(val heard: String, val lines: IntRange, val conclusions: List<Conclusion>, val stage: Stage = Stage.TALK)
 
 /**
  * Sorts what was said in the weekoverleg. People pause mid-thought, so a pause is never where Hearth cuts: stretches
@@ -56,6 +93,13 @@ object MeetingWords {
                     prev == null || quiet || SWITCH.containsMatchIn(said) -> groups += Group(i, parts.toMutableList())
                     // "ja", "oké": heard, but nothing to add.
                     isAck(said) -> prev.extra(i, sentence)
+                    // "dat kan ik doen", "mij ook": a yes to what was just said, part of it.
+                    move(said) == Move.AGREE -> prev.extra(i, sentence)
+                    // While options are on the table, the next option or doubt is part of the same brainstorm.
+                    prev.brainstorm && move(said).let { it == Move.PROPOSAL || it == Move.DOUBT } -> {
+                        prev.parts += parts
+                        prev.end = i
+                    }
                     // A half sentence and its rest: "deze week moet ik afspreken met" … "Anthony".
                     DANGLING_END.containsMatchIn(prev.parts.last().raw) || words(said).all { it in TIME_WORDS } -> {
                         prev.parts.last().raw += " " + parts.first().raw
@@ -70,8 +114,12 @@ object MeetingWords {
                 }
             }
         }
+        // "kan jij Mia dan ophalen": "dan" is the last day said before.
+        var lastDay: String? = null
         return groups.map { g ->
-            Thought(lines.subList(g.start, g.end + 1).joinToString(" ") { it.trim() }.trim(), g.start..g.end, conclude(g.parts, today, people))
+            val (conclusions, stage) = conclude(g.parts, today, people, lastDay)
+            g.parts.forEach { p -> DAY_WORD.findAll(p.raw).lastOrNull()?.let { lastDay = it.value } }
+            Thought(lines.subList(g.start, g.end + 1).joinToString(" ") { it.trim() }.trim(), g.start..g.end, conclusions, stage)
         }
     }
 
@@ -128,6 +176,8 @@ object MeetingWords {
 
     private class Group(val start: Int, val parts: MutableList<Part>) {
         var end = start
+        /** Options are on the table. */
+        val brainstorm: Boolean get() = parts.any { move(Spoken.clean(it.raw)) == Move.PROPOSAL }
         /** Heard and kept with the thought, but nothing to conclude from. */
         fun extra(i: Int, raw: String) {
             parts += Part(raw, main = false)
@@ -140,36 +190,160 @@ object MeetingWords {
         .flatMap { point -> point.split(SUBORDINATE).map { it.trim().trim(',').trim() }.filter { it.isNotEmpty() }.mapIndexed { n, c -> Part(c, main = n == 0) } }
         .ifEmpty { listOf(Part(sentence, main = true)) }
 
-    private class Building(val sentence: String, val place: Place, val day: Pair<When, LocalDate?>?, val heard: StringBuilder)
+    private class Building(val sentence: String, val place: Place, val day: Pair<When, LocalDate?>?, val heard: StringBuilder, val agreed: Boolean = false)
 
-    private fun conclude(parts: List<Part>, today: LocalDate, people: Collection<String>): List<Conclusion> {
+    /**
+     * A thought's conclusions, by what each clause does: plans and agreements count; questions, looking back on
+     * ourselves and doubts are talk; an option counts once the other says yes (and only if no agreement follows that
+     * replaces it); a single "misschien kunnen we …" on its own is an idea for the Werkbord. Looking back keeps what
+     * went well and what rubs, never who did what.
+     */
+    private fun conclude(parts: List<Part>, today: LocalDate, people: Collection<String>, lastDay: String?): Pair<List<Conclusion>, Stage> {
         // "die gaat donderdag naar de opvang" is about the one person this thought names.
         val who = people.filter { name -> name.isNotBlank() && parts.any { word(name).containsMatchIn(it.raw) } }.singleOrNull()
         val out = mutableListOf<Building>()
         var before = ""
+        var pending: Pair<String, StringBuilder>? = null
+        val moves = mutableListOf<Move>()
+        var options = 0
+        var lookingBack = false
+        var lone: Pair<String, StringBuilder>? = null
+        // One idea, said and left there: for the Werkbord, decided later like a friction.
+        fun park() {
+            pending?.takeIf { options == 1 && out.none { it.agreed } && IDEA.containsMatchIn(it.first) }?.let { idea ->
+                out += Building(idea.first, Place.IDEA, null, idea.second)
+                lone = idea
+            }
+            pending = null
+        }
         for (part in parts) {
             val said = Spoken.clean(part.raw)
             val sentence = who?.let { name -> PRONOUN_SUBJECT.replace(said) { m -> name + m.groupValues[1] } } ?: said
-            val place = if (said.isBlank() || isAck(said)) Place.NONE else place(sentence, today)
-            val day = TimeWords.extractAnywhere(sentence, today)?.let { it.whenValue to it.date }
-            val last = out.lastOrNull()
-            val own = when {
-                place == Place.NONE -> false
-                last == null || part.main -> true
-                // More about the same thing ("vrije tijd, gewoon bezoeken"), unless it names another day.
-                place == Place.FREE_TIME || place == last.place -> day != null && day != last.day
-                else -> true
-            }
-            when {
-                own -> {
-                    out += Building(sentence, place, day, StringBuilder((before + " " + part.raw).trim()))
+            var move = if (said.isBlank()) Move.AGREE else move(said)
+            // "oké dus dan elke avond tien minuten": while options are on the table, a plain sentence is another option.
+            if (move == Move.STATEMENT && options > 0 && out.none { it.place == Place.HOUSE_RULE } && REFINE.containsMatchIn(LEAD_ACKS.replace(said.lowercase(), ""))) move = Move.PROPOSAL
+            if (move == Move.LOOK_BACK) lookingBack = true
+            moves += move
+            fun hear() = (out.lastOrNull()?.heard ?: pending?.second)?.append(" ")?.append(part.raw) ?: run { before = (before + " " + part.raw).trim() }
+            when (move) {
+                Move.PROPOSAL -> {
+                    options++
+                    pending = sentence to StringBuilder((before + " " + part.raw).trim())
                     before = ""
                 }
-                last != null -> last.heard.append(" ").append(part.raw)
-                else -> before = (before + " " + part.raw).trim()
+                Move.AGREE -> {
+                    val (option, heard) = pending ?: run { hear(); continue }
+                    heard.append(" ").append(part.raw)
+                    val text = withDay(option(option), lastDay)
+                    val place = place(text, today).let { if (it == Place.NONE || it == Place.IDEA) Place.PLANNING else it }
+                    out += Building(text, place, TimeWords.extractAnywhere(text, today)?.let { it.whenValue to it.date }, heard, agreed = true)
+                    pending = null
+                }
+                Move.DOUBT -> {
+                    pending?.second?.append(" ")?.append(part.raw) ?: hear()
+                    pending = null
+                }
+                Move.DECISION -> {
+                    // The agreement replaces the options agreed on the way to it.
+                    out.removeAll { it.agreed }
+                    pending = null
+                    out += Building(sentence, Place.HOUSE_RULE, null, StringBuilder((before + " " + part.raw).trim()))
+                    before = ""
+                }
+                Move.QUESTION -> hear()
+                Move.LOOK_BACK -> {
+                    // What went well, or what rubs; "ik heb de was niet opgevolgd" is said, not written down.
+                    val place = when {
+                        WIN.containsMatchIn(said) && !NOT_GOOD.containsMatchIn(said) -> Place.WIN
+                        FRICTION.containsMatchIn(said) && !SELF.containsMatchIn(said) -> Place.FRICTION
+                        else -> Place.NONE
+                    }
+                    if (place == Place.NONE) hear()
+                    else {
+                        out += Building(about(sentence), place, null, StringBuilder((before + " " + part.raw).trim()))
+                        before = ""
+                    }
+                }
+                Move.STATEMENT -> {
+                    var place = if (isAck(said)) Place.NONE else place(sentence, today)
+                    // Something to do needs a day, a "moeten", or to read as an item ("de verzekering bellen").
+                    if (place in TASK_PLACES && !forward(said, today)) place = Place.NONE
+                    if (lookingBack && place in TASK_PLACES && !MODAL.containsMatchIn(said)) place = Place.NONE
+                    val day = TimeWords.extractAnywhere(sentence, today)?.let { it.whenValue to it.date }
+                    val last = out.lastOrNull()
+                    val own = when {
+                        place == Place.NONE -> false
+                        last == null || part.main -> true
+                        // More about the same thing ("vrije tijd, gewoon bezoeken"), unless it names another day.
+                        place == Place.FREE_TIME || place == last.place -> day != null && day != last.day
+                        else -> true
+                    }
+                    when {
+                        own -> {
+                            // On to something else: an option still open is settled first, so a "ja" is about this.
+                            park()
+                            val text = if (place == Place.FRICTION || place == Place.WIN) about(sentence) else sentence
+                            out += Building(text, place, day, StringBuilder((before + " " + part.raw).trim()))
+                            before = ""
+                        }
+                        else -> hear()
+                    }
+                }
             }
         }
-        return out.map { Conclusion(it.sentence, it.place, it.heard.toString().trim()) }
+        park()
+        val stage = when {
+            out.any { it.agreed || it.place == Place.HOUSE_RULE } -> Stage.DECISION
+            options > 0 && lone == null -> Stage.BRAINSTORM
+            out.any { it.place == Place.FRICTION } -> Stage.CONCERN
+            lookingBack || out.any { it.place == Place.WIN } -> Stage.LOOK_BACK
+            out.isNotEmpty() || Move.QUESTION in moves && PLAN_TALK.containsMatchIn(parts.joinToString(" ") { it.raw }) -> Stage.PLANNING
+            else -> Stage.TALK
+        }
+        return out.map { Conclusion(it.sentence, it.place, it.heard.toString().trim()) } to stage
+    }
+
+    /** What a clause does: says yes, offers an option, doubts, asks, looks back, decides, or states. */
+    fun move(said: String): Move {
+        val full = said.lowercase().trim()
+        val t = LEAD_ACKS.replace(full, "").trim()
+        val w = words(t)
+        if (w.isEmpty()) return if (words(full).any { it in NO }) Move.DOUBT else Move.AGREE
+        if (isAck(t)) return if (w.any { it in NO }) Move.DOUBT else Move.AGREE
+        if (w.size <= 8 && AGREE.containsMatchIn(t)) return Move.AGREE
+        if (TENTATIVE.containsMatchIn(t)) return Move.PROPOSAL
+        if (RULE.containsMatchIn(t)) return Move.DECISION
+        if (DOUBT.containsMatchIn(t)) return Move.DOUBT
+        if (full.endsWith("?") || QUESTION.containsMatchIn(t)) return Move.QUESTION
+        if ((PAST.containsMatchIn(t) || REFLECT.containsMatchIn(t)) && !MODAL.containsMatchIn(t)) return Move.LOOK_BACK
+        return Move.STATEMENT
+    }
+
+    /** "misschien kan jij Mia dan ophalen" → "Mia dan ophalen": the option itself, once agreed. */
+    private fun option(sentence: String): String {
+        var t = sentence.trim()
+        repeat(3) { t = LEAD_TALK.replace(t, "").trim(); t = OPTION_LEAD.replace(t, "").trim() }
+        return t.ifBlank { sentence.trim() }
+    }
+
+    /** "dan" means the last day said: "Mia dan ophalen" after "donderdag" → "Mia donderdag ophalen". */
+    private fun withDay(text: String, lastDay: String?): String =
+        if (lastDay == null || DAY_WORD.containsMatchIn(text)) text else THEN.replaceFirst(text, lastDay)
+
+    /** "fijn dat we samen aten", "wat ik niet leuk vind is dat de keuken vol staat" → what it is about, as a sentence. */
+    private fun about(sentence: String): String {
+        val m = ABOUT_THAT.find(sentence) ?: return sentence.trim().replaceFirstChar { it.uppercase() }
+        val rest = sentence.substring(m.range.last + 1).trim().trim(',', '.').trim()
+        if (words(rest).size < 3) return sentence.trim().replaceFirstChar { it.uppercase() }
+        return AreaWords.mainClause(rest).replaceFirstChar { it.uppercase() }
+    }
+
+    /** A plan has somewhere to go: a day, a moment, a "moeten", or it reads as an item ("de verzekering bellen"). */
+    private fun forward(said: String, today: LocalDate): Boolean {
+        val t = LEAD_TALK.replace(said.lowercase(), "").trim()
+        val w = words(t)
+        return MODAL.containsMatchIn(t) || TimeWords.extractAnywhere(t, today) != null || RHYTHM_WORDS.containsMatchIn(t) ||
+            (w.none { it in SUBJECTS || it in FINITE || it in PRONOUN_WORDS } && w.lastOrNull()?.endsWith("en") == true)
     }
 
     private fun words(text: String) = text.lowercase().split(Regex("[^\\p{L}\\p{N}'’]+")).filter { it.isNotEmpty() }
@@ -177,6 +351,8 @@ object MeetingWords {
     private fun word(w: String) = Regex("(?<![\\p{L}])${Regex.escape(w)}(?![\\p{L}])", RegexOption.IGNORE_CASE)
 
     private fun isAck(text: String) = words(text).all { it in ACKS }
+
+    private val TASK_PLACES = setOf(Place.PLANNING, Place.EVENT, Place.FREE_TIME, Place.RHYTHM)
 
     /** "dus …", "die …", "voor de rest …": goes on about what was just said. */
     private fun continues(said: String): Boolean = CONTINUATION.containsMatchIn(LEAD_ACKS.replace(said.lowercase(), ""))
@@ -205,7 +381,14 @@ object MeetingWords {
         val m = RULE_LEAD.find(sentence) ?: return sentence.trim().replaceFirstChar { it.uppercase() }
         val rest = sentence.substring(m.range.last + 1).trim().trim(',').trim()
         if (rest.isEmpty()) return sentence.trim().replaceFirstChar { it.uppercase() }
-        return (if (m.value.trimEnd().endsWith("dat")) AreaWords.mainClause(rest) else rest).replaceFirstChar { it.uppercase() }
+        if (!m.value.trimEnd().endsWith("dat")) return rest.replaceFirstChar { it.uppercase() }
+        // "dat we elke avond de keuken opruimen": what we do, as the rule says it ("Elke avond de keuken opruimen");
+        // moving "opruimen" forward would break it ("we ruimen … op").
+        val words = rest.split(Regex("\\s+"))
+        if (words.size >= 3 && words.first().lowercase() in setOf("we", "wij") && words.last().lowercase().endsWith("en")) {
+            return words.drop(1).joinToString(" ").replaceFirstChar { it.uppercase() }
+        }
+        return AreaWords.mainClause(rest).replaceFirstChar { it.uppercase() }
     }
 
     private val SENTENCE_END = Regex("(?<=[.!?])\\s+")
@@ -222,10 +405,11 @@ object MeetingWords {
         RegexOption.IGNORE_CASE,
     )
     private val ACKS = setOf(
-        "ja", "jaja", "jep", "nee", "neen", "oké", "okee", "ok", "okay", "goed", "prima", "top", "inderdaad", "juist", "klopt", "precies", "zeker",
+        "ja", "jaja", "jep", "nee", "neen", "mja", "hmm", "hm", "mm", "mmm", "euh", "uhm", "oké", "okee", "ok", "okay", "goed", "prima", "top", "inderdaad", "juist", "klopt", "precies", "zeker",
         "allee", "bon", "zo", "mhm", "yes", "yeah", "no", "right", "sure", "fine", "great",
     )
-    private val LEAD_ACKS = Regex("^(?:(?:ja|nee|neen|oké|okee|ok|okay|goed|allee|bon|yes|yeah|no|right)[,.!]?\\s+)+", RegexOption.IGNORE_CASE)
+    private val LEAD_ACKS = Regex("^(?:(?:ja|nee|neen|oké|okee|ok|okay|goed|allee|bon|mja|hmm|hm|euh|yes|yeah|no|right)[,.!]?\\s+)+", RegexOption.IGNORE_CASE)
+    private val NO = setOf("nee", "neen", "no")
     private val CONTINUATION = Regex(
         "^(?:dat|die|dus|want|omdat|zodat|maar|en|of|dan|daar|daarom|daardoor|daarvoor|daarna|voor de rest|verder|anders|tenzij|behalve|hij|zij|hem|haar|" +
             "toch|ook|alleen|nadien|achteraf|erna|ervoor|zodra|terwijl|met|voor|naar|om|tegen|bij|van|op|zo|" +
@@ -265,13 +449,73 @@ object MeetingWords {
     private val PRONOUN_SUBJECT = Regex("^(?:dat|die|hij|zij)(\\s+(?:gaat|moet|heeft|komt|mag|wil|kan|is|zal))(?![\\p{L}])", RegexOption.IGNORE_CASE)
 
     private val RULE_LEAD = Regex(
-        "^(?:.*?\\s)?(?:we spreken af dat|we hebben afgesproken dat|afgesproken dat|de afspraak is dat|vanaf nu|voortaan|from now on|we agreed that|let's agree that|the rule is that)\\s*",
+        "^(?:.*?\\s)?(?:we spreken af dat|spreken we af dat|we hebben afgesproken dat|afgesproken dat|de afspraak is dat|vanaf nu|voortaan|from now on|we agreed that|let's agree that|the rule is that)\\s*",
         RegexOption.IGNORE_CASE,
     )
-    private val RULE = anyOf(listOf("we spreken af", "afgesproken", "afspraak is", "vanaf nu", "voortaan", "huisregel", "from now on", "we agreed", "let's agree", "house rule", "the rule is"))
+    private val RULE = anyOf(listOf("we spreken af", "spreken we af", "afgesproken dat", "we hebben afgesproken", "afspraak is", "vanaf nu", "voortaan", "huisregel", "from now on", "we agreed", "let's agree", "house rule", "the rule is"))
+
+    /** A yes to what was just said. Short: "dat kan ik doen", "lijkt me haalbaar", "mij ook", "afgesproken". */
+    private val AGREE = Regex(
+        "^(?:afgesproken|akkoord|deal|top|prima|goed zo|doen we|is goed|dat is goed|klinkt goed|goed idee|mee eens|zeker)[.!]?$|" +
+            "(?<![\\p{L}])(?:kan ik (?:wel )?doen|doe ik|dat doen we|dat lijkt me|lijkt me (?:wel )?(?:goed|haalbaar|prima|oké|een goed idee)|klinkt goed|" +
+            "(?:mij|ik) ook|herken ik|mee eens|goed idee|dat was (?:fijn|leuk|tof)|sounds good|i can do that|me too|agreed|good idea)(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    /** An option: offered, not decided. */
+    private val TENTATIVE = Regex(
+        "^(?:of\\s+)?(?:misschien|zouden we|zou je|zou jij|kunnen we|kan jij|kun jij|kan je|kun je|zullen we|wat als|wat denk je van|wat vind je van|stel dat|" +
+            "maybe|what if|how about|could we|could you|can you|shall we|should we)(?![\\p{L}])|(?<![\\p{L}])(?:of misschien|of anders)(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    /** The words before the option itself. */
+    private val OPTION_LEAD = Regex(
+        "^(?:of|misschien|anders|dat|stel dat|wat als|wat denk je van|wat vind je van|zouden we|zou je|zou jij|kunnen we|kan jij|kun jij|kan je|kun je|zullen we|" +
+            "niet|gewoon|eens|maybe|what if|how about|could we|could you|can you|shall we|should we)(?![\\p{L}])[,]?\\s*",
+        RegexOption.IGNORE_CASE,
+    )
+    private val DOUBT = Regex(
+        "^(?:maar|but)\\s+(?:dan|als|wat als|then|what if|if)(?![\\p{L}])|(?<![\\p{L}])(?:ik weet niet of|ik weet het niet|weet ik niet|ik weet niet|ik twijfel|niet zeker|lukt dat wel|gaat dat lukken|dat gaat niet|liever niet|" +
+            "i'm not sure|not sure|i doubt|rather not)(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    private val QUESTION = Regex(
+        "^(?:hoe|wanneer|wie|waar|welke|hoeveel|waarom|wat (?:staat|doen|is er|hebben|moeten|gaan|eten|vind jij|denk jij|zeg jij)|heb je|hebben we|moeten we nog|" +
+            "how|when|who|where|which|why|what (?:is|do|are|did))(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    /** About the week that was: past tense ("de was" is the laundry). */
+    private val PAST = Regex(
+        "(?<![\\p{L}])(?<!de )(?:was|waren|vond|vonden|had|hadden|deed|deden|ging|gingen|kwam|kwamen|liep|liepen|lukte|gelukt|gedaan|gegeten|geweest|opgevolgd|" +
+            "vergeten|gisteren|vorige week|was|were|did|went|had|forgot|yesterday|last week)(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    /** Looking at ourselves: "ik denk dat ik het uitstel", "had ik moeten". Said, not written down. */
+    private val REFLECT = Regex(
+        "(?<![\\p{L}])(?:ik denk dat ik|ik stel|stel ik|ik vergeet|mijn fout|had ik moeten|heb ik niet|ik heb .* niet|i think i|my fault|i should have)(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    private val SELF = Regex("(?<![\\p{L}])(?:ik|mijn|i|my)(?![\\p{L}])", RegexOption.IGNORE_CASE)
+    private val NOT_GOOD = Regex("(?<![\\p{L}])(?:niet|nie|geen|not|never)\\s+(?:\\p{L}+\\s+)?(?:goed|fijn|leuk|well|good)", RegexOption.IGNORE_CASE)
+    /** "… vind is dat", "fijn dat", "blij dat": what follows is what it's about. */
+    private val ABOUT_THAT = Regex(
+        "^.*?(?:goed|fijn|leuk|blij|trots|jammer|vervelend|stoort|ergert|vind|vond|is|was|glad|happy|annoying|bothers me)\\s+(?:het\\s+)?(?:me\\s+|mij\\s+)?(?:dat|that)\\s+",
+        RegexOption.IGNORE_CASE,
+    )
+    private val PLAN_TALK = anyOf(listOf("planning", "volgende week", "deze week", "next week", "this week", "plan"))
+    private val RHYTHM_WORDS = anyOf(listOf("elke", "iedere", "om de", "every", "each"))
+    private val PRONOUN_WORDS = setOf("dat", "die", "het", "dit", "er", "that", "it")
+    private val DAY_WORD = anyOf(
+        listOf(
+            "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag", "vandaag", "vanavond", "morgen", "overmorgen",
+            "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "today", "tonight", "tomorrow",
+        ),
+    )
+    /** "dus dan elke avond …": narrows the option on the table. */
+    private val REFINE = Regex("^(?:dus|dan|zo|so|then)(?![\\p{L}])", RegexOption.IGNORE_CASE)
+    private val THEN = Regex("(?<![\\p{L}])(?:dan|then)(?![\\p{L}])", RegexOption.IGNORE_CASE)
     private val WIN = anyOf(
         listOf(
-            "ging goed", "gingen goed", "liep goed", "fijn dat", "blij dat", "trots", "goed gedaan", "is gelukt", "zijn gelukt", "lukte", "top dat", "leuk dat",
+            "ging goed", "gingen goed", "liep goed", "fijn dat", "goed dat", "was fijn", "was leuk", "deugd", "blij dat", "trots", "goed gedaan", "is gelukt", "zijn gelukt", "lukte", "top dat", "leuk dat",
             "went well", "glad that", "proud", "well done", "worked well", "great that", "nice that", "happy that",
         ),
     )
@@ -283,7 +527,7 @@ object MeetingWords {
     )
     private val FRICTION = anyOf(
         listOf(
-            "erger me", "ergert", "stoort", "frustrerend", "frustreert", "frustratie", "gefrustreerd", "irritant", "ergerlijk", "lastig dat", "altijd weer",
+            "erger me", "ergert", "stoort", "niet leuk", "niet zo leuk", "niet fijn", "jammer dat", "vervelend", "frustrerend", "frustreert", "frustratie", "gefrustreerd", "irritant", "ergerlijk", "lastig dat", "altijd weer",
             "nooit", "ambetant", "beu", "op mijn zenuwen", "keel uit", "zot van", "kwaad", "frustrating", "frustrated", "annoying", "annoys", "annoyed",
             "bugs me", "drives me", "always", "never",
         ),

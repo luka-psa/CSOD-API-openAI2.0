@@ -3,6 +3,7 @@ package app.hearth.ai
 import app.hearth.ai.route.MeetingWords
 import app.hearth.ai.route.Place
 import app.hearth.ai.route.Spoken
+import app.hearth.ai.route.Stage
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -124,5 +125,75 @@ class MeetingWordsTest {
         // A tie keeps the recognizer's first guess.
         assertEquals("we eten pasta", Spoken.pick(listOf("we eten pasta", "we eten basta"), vocabulary))
         assertEquals("melk", Spoken.pick(listOf("melk"), emptyList()))
+    }
+
+    /**
+     * Two people in the weekoverleg, thinking out loud: catching up, looking back at themselves, what's next, what
+     * rubs, a brainstorm on a rule and the rule they agree on. Only what is decided becomes something.
+     */
+    @Test
+    fun aRealConversationOnlyTurnsDecisionsIntoThings() {
+        val sunday = LocalDate(2026, 10, 25)
+        val heard = listOf(
+            "oké hoe was jouw week eigenlijk",
+            "ja best druk op het werk maar ik vond het wel goed dat we woensdag samen gegeten hebben",
+            "ja dat was fijn",
+            "ik was wel moe donderdag",
+            "ik heb eerlijk gezegd de was niet goed opgevolgd deze week",
+            "nee dat ligt nog allemaal in de mand",
+            "ik denk dat ik het gewoon altijd uitstel tot het weekend",
+            "mja dat herken ik wel",
+            "wat staat er volgende week eigenlijk op de planning",
+            "dinsdag heeft Mia tandarts",
+            "en ik moet donderdag de auto naar de garage brengen",
+            "misschien kan jij Mia dan ophalen",
+            "ja dat kan ik doen",
+            "wat ik niet zo leuk vind is dat de keuken 's avonds altijd vol staat",
+            "ja dat stoort mij ook",
+            "zouden we niet kunnen afspreken dat wie kookt niet afwast",
+            "hmm of misschien dat we gewoon voor het slapengaan samen tien minuten opruimen",
+            "ik weet niet of dat gaat lukken elke dag",
+            "wat als we het alleen op weekdagen doen",
+            "ja maar dan blijft het weekend een rommel",
+            "oké dus dan elke avond maar maximaal tien minuten",
+            "ja dat lijkt me haalbaar",
+            "goed dan spreken we af dat we elke avond voor het slapengaan tien minuten samen de keuken opruimen",
+            "afgesproken",
+        )
+        val thoughts = MeetingWords.thoughts(heard, sunday, people = listOf("Mia", "Sam", "Lien"))
+        assertEquals(
+            listOf(
+                // Catching up and looking back at ourselves: talk, except what went well.
+                Stage.TALK to emptyList(),
+                Stage.LOOK_BACK to listOf(Place.WIN to "We hebben woensdag samen gegeten"),
+                Stage.LOOK_BACK to emptyList(),
+                Stage.LOOK_BACK to emptyList(),
+                Stage.LOOK_BACK to emptyList(),
+                // What's next: the plans, and the suggestion the other said yes to (on the day said before).
+                Stage.PLANNING to emptyList(),
+                Stage.PLANNING to listOf(Place.EVENT to "dinsdag heeft Mia tandarts", Place.EVENT to "en ik moet donderdag de auto naar de garage brengen"),
+                Stage.DECISION to listOf(Place.EVENT to "Mia donderdag ophalen"),
+                // What rubs, once, in its own words; "dat stoort mij ook" agrees.
+                Stage.CONCERN to listOf(Place.FRICTION to "De keuken staat 's avonds altijd vol"),
+                // The brainstorm gives no ideas of its own, only the rule they agree on.
+                Stage.DECISION to listOf(Place.HOUSE_RULE to "goed dan spreken we af dat we elke avond voor het slapengaan tien minuten samen de keuken opruimen"),
+            ),
+            thoughts.map { t -> t.stage to t.conclusions.map { it.place to it.sentence } },
+        )
+        assertEquals("Elke avond voor het slapengaan tien minuten samen de keuken opruimen", MeetingWords.ruleText(thoughts.last().conclusions.single().sentence))
+    }
+
+    @Test
+    fun optionsWithoutAYesStayTalk() {
+        val monday = LocalDate(2026, 10, 26)
+        // A brainstorm that ends without a decision.
+        val open = MeetingWords.thoughts(listOf("zouden we de was op zondag doen", "of misschien op woensdag", "ik weet het niet"), monday).single()
+        assertEquals(Stage.BRAINSTORM to emptyList<Place>(), open.stage to open.conclusions.map { it.place })
+        // A suggestion that gets a no.
+        val no = MeetingWords.thoughts(listOf("kan jij zaterdag de garage opruimen", "nee liever niet"), monday).single()
+        assertEquals(emptyList(), no.conclusions)
+        // The same in English: the yes makes it a task.
+        val yes = MeetingWords.thoughts(listOf("could you call the dentist on Tuesday", "sure"), monday).single()
+        assertEquals(listOf(Place.EVENT to "call the dentist on Tuesday"), yes.conclusions.map { it.place to it.sentence })
     }
 }

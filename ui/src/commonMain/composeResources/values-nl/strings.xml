@@ -511,4 +511,9 @@
     <string name="wins_topic_empty">Hearth zag hier niets bijzonders. Zeg het in jullie eigen woorden.</string>
     <string name="wins_own_words">In jullie eigen woorden…</string>
     <string name="wins_done">Klaar</string>
+    <string name="stage_talk">Bijpraten</string>
+    <string name="stage_look_back">Terugblik, niets om in te zetten</string>
+    <string name="stage_planning">Over de planning</string>
+    <string name="stage_concern">Iets dat schuurt</string>
+    <string name="stage_brainstorm">Aan het brainstormen, nog geen besluit</string>
 </resources>

@@ -51,6 +51,7 @@ import app.hearth.core.tools.system.SyncNowTool
 import app.hearth.core.model.Topic
 import app.hearth.core.model.topic
 import app.hearth.ai.route.Place
+import app.hearth.ai.route.Stage
 import app.hearth.core.model.plusDays
 import app.hearth.core.tools.board.AddIdeaArgs
 import app.hearth.core.tools.board.AddIdeaTool
@@ -364,12 +365,12 @@ class Orchestrator(
     )
 
     /** A thought of the conversation and what Hearth concludes from it (nothing, when it was just talk). */
-    data class Talk(val heard: String, val lines: IntRange, val proposals: List<Proposal>)
+    data class Talk(val heard: String, val lines: IntRange, val proposals: List<Proposal>, val stage: Stage = Stage.TALK)
 
     /** The conversation as thoughts, each with its conclusions. [people] are the household's names. */
     fun listen(lines: List<String>, ctx: ToolContext, people: Collection<String> = emptyList(), times: List<Long>? = null): List<Talk> =
         MeetingWords.thoughts(lines, ctx.today, people, times).map { t ->
-            Talk(t.heard, t.lines, t.conclusions.map { c -> proposal(c.sentence, c.place, ctx).copy(heard = c.heard) })
+            Talk(t.heard, t.lines, t.conclusions.map { c -> proposal(c.sentence, c.place, ctx).copy(heard = c.heard) }, t.stage)
         }
 
     /** Every conclusion of [lines]; a thought that was just talk comes back once, as [Place.NONE]. */

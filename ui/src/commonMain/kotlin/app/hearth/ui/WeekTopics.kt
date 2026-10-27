@@ -56,6 +56,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.hearth.ai.Orchestrator
 import app.hearth.ai.route.Place
+import app.hearth.ai.route.Stage
+import app.hearth.ui.resources.stage_talk
+import app.hearth.ui.resources.stage_look_back
+import app.hearth.ui.resources.stage_planning
+import app.hearth.ui.resources.stage_concern
+import app.hearth.ui.resources.stage_brainstorm
 import app.hearth.core.model.dayLabel
 import kotlinx.datetime.LocalDate
 import app.hearth.core.model.Lang
@@ -270,13 +276,24 @@ private fun ThoughtRow(thought: HeardThought, newest: Boolean, waiting: Boolean,
         Spacer(Modifier.size(6.dp))
         when {
             waiting -> Text(stringResource(Res.string.listen_still), style = MaterialTheme.typography.labelMedium, color = AccentStyle.ink, fontStyle = FontStyle.Italic)
-            thought.proposals.isEmpty() -> Text(stringResource(Res.string.place_none), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+            // Nothing to put in: say what Hearth heard ("Bijpraten", "Aan het brainstormen, nog geen besluit").
+            thought.proposals.isEmpty() -> Text(stringResource(thought.stage.label()), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline, fontStyle = if (thought.stage == Stage.BRAINSTORM) FontStyle.Italic else FontStyle.Normal)
             else -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 // A tap opens the suggestion to change its name, place or day.
                 thought.proposals.forEachIndexed { n, p -> ConclusionPill(p, today, lang, added = n in thought.added, onClick = { onOpen(n) }) }
             }
         }
     }
+}
+
+/** What a thought was, when it concludes nothing. */
+private fun Stage.label() = when (this) {
+    Stage.TALK -> Res.string.stage_talk
+    Stage.LOOK_BACK -> Res.string.stage_look_back
+    Stage.PLANNING -> Res.string.stage_planning
+    Stage.CONCERN -> Res.string.stage_concern
+    Stage.BRAINSTORM -> Res.string.stage_brainstorm
+    Stage.DECISION -> Res.string.place_none
 }
 
 /** "Afspreken met Anthony · deze week", with the icon and colour of where it goes. */

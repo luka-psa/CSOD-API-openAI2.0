@@ -339,12 +339,12 @@ class OrchestratorTest {
         val proposals = offline.propose(heard, saturday)
         assertEquals(
             listOf(
-                app.hearth.ai.route.Place.WIN to "Fijn dat de ochtenden vlotter gingen",
+                app.hearth.ai.route.Place.WIN to "De ochtenden gingen vlotter",
                 app.hearth.ai.route.Place.EVENT to "De tandarts voor Mia",
                 app.hearth.ai.route.Place.FREE_TIME to "Niks plannen",
                 app.hearth.ai.route.Place.SHOPPING to "Melk, Eieren",
                 app.hearth.ai.route.Place.MEAL to "curry",
-                app.hearth.ai.route.Place.FRICTION to "Het stoort me dat de was altijd blijft liggen",
+                app.hearth.ai.route.Place.FRICTION to "De was blijft altijd liggen",
                 app.hearth.ai.route.Place.HOUSE_RULE to "De kinderen gaan om 8 uur slapen",
                 app.hearth.ai.route.Place.IDEA to "Misschien kunnen we de was op zondag doen dan is maandag rustiger",
                 // "ja dat is goed" goes on about the garage: heard with it, nothing of its own.

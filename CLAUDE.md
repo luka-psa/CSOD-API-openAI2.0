@@ -181,7 +181,10 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
   *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each *thought*
   (stretches joined by how they sound, never cut at a pause) with its *conclusions* in their topic's colour, once it has
-  settled, and lights up that tile (the *transcript* lasts until the next meeting); a tap on a conclusion opens it to
+  settled; only what is *decided* becomes something (`Move`, `Stage` in `ai/route/MeetingWords.kt`): a plan, an
+  agreement ("we spreken af dat …"), or an option the other says yes to ("kan jij Mia ophalen?" "ja"); catching up,
+  looking back at ourselves, questions, doubts and a brainstorm's options stay talk (the thought shows its stage:
+  *Bijpraten*, *Aan het brainstormen, nog geen besluit* …); one idea said on its own goes to the Werkbord, and lights up that tile (the *transcript* lasts until the next meeting); a tap on a conclusion opens it to
   change its name, *Place* (taak, afspraak, ritme, …) and day, filled in from what was said (*Zet erin* adds it right
   away); *Zet op zijn plek* opens the *Voorstel* (each conclusion → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.

@@ -490,7 +490,11 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
-   v0.23: *Wat ging goed* walks past every topic (a tile each, with what got done there and one-tap wins Hearth saw;
+   v0.23: Luister mee follows the conversation's moves (`Move`: agree, proposal, doubt, question, look back, decision,
+   statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
+   besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,
+   the rule it ends in does; looking back at ourselves is never written down.
+   *Wat ging goed* walks past every topic (a tile each, with what got done there and one-tap wins Hearth saw;
    `add_win` takes a `topic`, DB v20); the Terugblik rates on a scale from 0 to 5 (routines, house rules, the week; `score` on `rate_habit`,
    `check_house_rule`, `rate_week`; DB v19), and every rated routine and house rule carries a score badge (weather and
    five pips) wherever it shows; two groups instead of three: *Doen & eten* (Admin & afspraken, Grote taken, Huishouden,

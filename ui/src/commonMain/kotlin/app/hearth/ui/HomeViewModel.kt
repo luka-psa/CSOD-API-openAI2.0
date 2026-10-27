@@ -56,6 +56,7 @@ import app.hearth.mcp.LinkedApp
 import app.hearth.core.tools.system.BackupFile
 import app.hearth.ai.Orchestrator
 import app.hearth.ai.route.Place
+import app.hearth.ai.route.Stage
 import app.hearth.ai.route.KeywordRouter
 import app.hearth.core.tools.week.FinishArgs
 import app.hearth.core.model.Topic
@@ -721,7 +722,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits) { lines, people, changed ->
         val open = lines.filter { !it.sorted }
         app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt })
-            .takeLast(3).reversed().map { t -> thought(open.slice(t.lines), t.proposals, changed) }
+            .takeLast(3).reversed().map { t -> thought(open.slice(t.lines), t.proposals, changed).copy(stage = t.stage) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** A thought with what the family changed on its suggestions (by its first line and the suggestion's place in it). */
@@ -990,7 +991,14 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
  * A thought Luister mee heard (the lines it spans) and what Hearth concludes from it; nothing when it was just talk.
  * [key] names it while it is open; [added] are the suggestions already put in place from their sheet.
  */
-data class HeardThought(val lines: List<TranscriptLine>, val proposals: List<Orchestrator.Proposal>, val key: String = "", val added: Set<Int> = emptySet()) {
+data class HeardThought(
+    val lines: List<TranscriptLine>,
+    val proposals: List<Orchestrator.Proposal>,
+    val key: String = "",
+    val added: Set<Int> = emptySet(),
+    /** Where the conversation is: catching up, looking back, planning, something that rubs, a brainstorm, a decision. */
+    val stage: Stage = Stage.TALK,
+) {
     val text: String get() = lines.joinToString(" ") { it.text.trim() }
 }
 

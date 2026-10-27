@@ -82,7 +82,7 @@ object AreaWords {
 
     private val SUBJECTS = setOf("we", "wij", "ik", "je", "jij", "jullie", "iedereen", "niemand", "wie", "papa", "mama")
     private val ARTICLES = setOf("de", "het", "onze", "ons", "mijn")
-    private val MODALS = setOf("moeten", "moet", "mogen", "mag", "kunnen", "kan", "willen", "wil", "gaan", "gaat", "zullen", "zal", "blijven")
+    private val MODALS = setOf("moeten", "moet", "mogen", "mag", "kunnen", "kan", "willen", "wil", "gaan", "gaat", "zullen", "zal", "blijven", "blijft")
 
     private fun hint(place: String, item: String): AreaHint? {
         val name = place.lowercase().replace(Regex("\\s+"), " ")
