@@ -8,9 +8,10 @@ STOP = [tok.convert_tokens_to_ids("<end_of_turn>"), tok.convert_tokens_to_ids("<
 
 def words(s): return set(w for w in re.findall(r"[\w'’-]+", s.lower()) if len(w) > 2 and w not in {"de", "het", "een", "the", "van", "voor", "met", "and", "en"})
 def norm(s): return re.sub(r"^(on|at|om|op)\s+", "", s.lower().strip())
+def items(s): return {re.sub(r"^(de|het|een|wat|nog) ", "", x.strip()) for x in s.lower().split(",")}
 def arg_ok(k, exp, got):
     if k in ("day", "when", "time", "list"): return norm(exp) == norm(got)
-    if k == "items": return set(map(str.strip, exp.lower().split(","))) == set(map(str.strip, got.lower().split(",")))
+    if k == "items": return items(exp) == items(got)
     e, g = words(exp), words(got)
     return len(e & g) / max(1, len(e)) >= 0.5    # the core words are there (wording may differ)
 def call_ok(e, g): return e[0] == g[0] and all(arg_ok(k, v, g[1].get(k, "")) for k, v in e[1].items() if k != "time" or v)

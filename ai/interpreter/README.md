@@ -15,6 +15,12 @@ FunctionGemma is a Gemma model: it is provided under and subject to the Gemma Te
   `python gen.py 3600 train.jsonl` writes conversations; `python gen.py 1600 windows.jsonl windows [seed]` writes
   longer stretches (1–4 scenes, up to 16 lines) like the ones `MeetingReader` hands over. Extend the phrase banks at
   the top to teach it new ways of saying things.
+- `gen2.py`: round 2 on top of `gen.py`: far bigger word lists (groceries, dishes, tasks, appointments) so the model
+  copies what was said instead of a word it already knows, and the ways of talking round 1 missed (a meal moved because
+  someone isn't home, taking an item off the list again, "dan doe ik het wel", wins said as "ik vond het tof dat …",
+  rules said straight out, routines in the passive, things to arrange around an event, a brainstorm that stays open).
+  It checks that no long test line ends up in the training data. `python gen2.py 4000 train2.jsonl threads 23`,
+  `python gen2.py 2000 windows2.jsonl windows 31`.
 - `test.jsonl`: 60 conversations written by hand, never trained on. The score that counts.
 - `train.py OUT EPOCHS`: full fine-tune on the CPU (embeddings frozen, loss on the answer only). `DATA=…` picks the
   data, `START=…` continues from an earlier model, `BASE=…` the base model. Resumes from `OUT/progress.json`.
