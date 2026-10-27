@@ -19,6 +19,10 @@ import app.hearth.core.model.isHabit
 import app.hearth.core.model.title
 import app.hearth.core.model.WeekRating
 import app.hearth.core.model.weekWord
+import app.hearth.core.model.SCORE_MAX
+import app.hearth.core.model.score
+import app.hearth.core.model.scoreNow
+import app.hearth.core.model.scoreWord
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.dayOf
 import app.hearth.core.model.isRoutine
@@ -107,10 +111,12 @@ class RemoveWinTool(private val meeting: MeetingRepository) : Tool<RemoveWinArgs
 
 @Serializable
 data class RateWeekArgs(
-    @Describe("How the week went, agreed together: EASY (zon, liep vanzelf), EFFORT (wolk, vroeg moeite) or HARD (bliksem, was zwaar). Leave empty when there is no agreement.")
+    @Describe("How the week went, agreed together, from 0 (was heel zwaar) to 5 (liep vanzelf). Leave empty when there is no agreement.")
+    val score: Int? = null,
+    @Describe("What Hearth suggested (0–5), if it was shown.")
+    val suggested: Int? = null,
+    @Describe("Older form: EASY, EFFORT or HARD. Use score instead.")
     val ease: Ease? = null,
-    @Describe("What Hearth suggested, if it was shown.")
-    val suggested: Ease? = null,
 )
 
 @Serializable
@@ -120,15 +126,15 @@ data class RateWeekResult(val week: WeekRating, override val summary: String) : 
 class RateWeekTool(private val meeting: MeetingRepository) : Tool<RateWeekArgs, RateWeekResult> {
     override val name = NAME
     override val description =
-        "Say how the week went for the household, agreed together, on the weather scale: zon (EASY), wolk (EFFORT), " +
-            "bliksem (HARD). Never about one person. No agreement: leave ease empty."
+        "Say how the week went for the household, agreed together, on a scale from 0 (was heel zwaar) to 5 (liep " +
+            "vanzelf); its weather follows (bliksem 0–1, wolk 2–3, zon 4–5). Never about one person. No agreement: leave score empty."
     override val argsSerializer = RateWeekArgs.serializer()
     override val resultSerializer = RateWeekResult.serializer()
 
     override suspend fun run(args: RateWeekArgs, ctx: ToolContext): RateWeekResult {
-        val week = meeting.setWeek(args.ease, args.suggested)
-        val ease = week.ease
-        val summary = if (ease != null) ctx.t("De week ${ease.weekWord(ctx.lang)}. Samen afgesproken.", "The week ${ease.weekWord(ctx.lang)}. Agreed together.")
+        val week = meeting.setWeek((args.score ?: args.ease?.score)?.coerceIn(0, SCORE_MAX), args.suggested?.coerceIn(0, SCORE_MAX))
+        val score = week.score
+        val summary = if (score != null) ctx.t("De week ${weekWord(score, ctx.lang)}. Samen afgesproken.", "The week ${weekWord(score, ctx.lang)}. Agreed together.")
         else ctx.t("De week: geen akkoord. Ook dat is een antwoord.", "The week: no agreement. That's an answer too.")
         return RateWeekResult(week, summary)
     }
@@ -177,9 +183,11 @@ data class CheckHouseRuleArgs(
     val ruleId: String? = null,
     @Describe("Its words, when the id isn't known.")
     val rule: String? = null,
-    @Describe("How it went this week, like the routines: EASY (loopt vanzelf), EFFORT (vraagt moeite) or HARD (te zwaar).")
+    @Describe("How it went this week, like the routines, from 0 (komt er niet van) to 5 (loopt vanzelf).")
+    val score: Int? = null,
+    @Describe("Older form: EASY, EFFORT or HARD. Use score instead.")
     val ease: Ease? = null,
-    @Describe("Older form: true = it worked (EASY), false = it didn't work yet (HARD). Use ease instead.")
+    @Describe("Older form: true = it worked, false = it didn't work yet. Use score instead.")
     val worked: Boolean? = null,
 )
 
@@ -190,9 +198,9 @@ data class CheckHouseRuleResult(val check: RuleCheck, override val summary: Stri
 class CheckHouseRuleTool(private val meeting: MeetingRepository, private val board: BoardRepository) : Tool<CheckHouseRuleArgs, CheckHouseRuleResult> {
     override val name = NAME
     override val description =
-        "In the weekoverleg's look back: say how a house rule went this week, like the routines: loopt vanzelf, vraagt " +
-            "moeite or te zwaar (for the household, never who). A rule that is too much two meetings in a row comes back " +
-            "as a working point: maybe the agreement needs changing."
+        "In the weekoverleg's look back: say how a house rule went this week, like the routines, from 0 (komt er niet " +
+            "van) to 5 (loopt vanzelf) (for the household, never who). A rule that is too much (0–1) two meetings in a row " +
+            "comes back as a working point: maybe the agreement needs changing."
     override val argsSerializer = CheckHouseRuleArgs.serializer()
     override val resultSerializer = CheckHouseRuleResult.serializer()
 
@@ -202,13 +210,14 @@ class CheckHouseRuleTool(private val meeting: MeetingRepository, private val boa
         val rule = rules.firstOrNull { it.id == args.ruleId }
             ?: key?.let { k -> rules.firstOrNull { normalizeName(it.text) == k } ?: rules.firstOrNull { normalizeName(it.text).contains(k) } }
             ?: throw ToolException(ctx.t("Welke huisregel?", "Which house rule?"))
-        val ease = args.ease ?: args.worked?.let { if (it) Ease.EASY else Ease.HARD }
-            ?: throw ToolException(ctx.t("Hoe liep “${rule.text}”: vanzelf, met moeite, of te zwaar?", "How did “${rule.text}” go: easily, with effort, or too much?"))
-        val check = meeting.setRuleCheck(rule.id, ease)
-        val summary = when (ease) {
-            Ease.EASY -> ctx.t("Fijn: “${rule.text}” loopt vanzelf.", "Nice: “${rule.text}” runs by itself.")
-            Ease.EFFORT -> ctx.t("“${rule.text}” vraagt moeite. Wat zou het makkelijker maken?", "“${rule.text}” takes effort. What would make it easier?")
-            Ease.HARD -> ctx.t("“${rule.text}” is te zwaar. Misschien mag de huisregel eenvoudiger.", "“${rule.text}” is too much. Maybe the agreement can be simpler.")
+        val score = (args.score ?: args.ease?.score ?: args.worked?.let { if (it) Ease.EASY.score else Ease.HARD.score })?.coerceIn(0, SCORE_MAX)
+            ?: throw ToolException(ctx.t("Hoe liep “${rule.text}”, van 0 tot 5?", "How did “${rule.text}” go, from 0 to 5?"))
+        val check = meeting.setRuleCheck(rule.id, score)
+        val said = scoreText(score, ctx)
+        val summary = when (check.ease) {
+            Ease.EASY -> ctx.t("Fijn: “${rule.text}” $said.", "Nice: “${rule.text}” $said.")
+            Ease.EFFORT -> ctx.t("“${rule.text}”: $said. Wat zou het makkelijker maken?", "“${rule.text}”: $said. What would make it easier?")
+            Ease.HARD -> ctx.t("“${rule.text}”: $said. Misschien mag de huisregel eenvoudiger.", "“${rule.text}”: $said. Maybe the agreement can be simpler.")
         }
         return CheckHouseRuleResult(check, summary)
     }
@@ -234,6 +243,9 @@ internal fun attentionText(item: BacklogItem, ease: Ease, ctx: ToolContext): Str
     ease == Ease.HARD -> ctx.t("${item.text} (te zwaar)", "${item.text} (too much)")
     else -> ctx.t("${item.text} (vraagt moeite)", "${item.text} (takes effort)")
 }
+
+/** "loopt goed (4/5)". */
+internal fun scoreText(score: Int, ctx: ToolContext) = "${scoreWord(score, ctx.lang)} ($score/$SCORE_MAX)"
 
 internal fun easeWord(ease: Ease, ctx: ToolContext) = when (ease) {
     Ease.EASY -> ctx.t("loopt vanzelf", "runs easily")
@@ -464,7 +476,7 @@ class FinishWeekoverlegTool(
         val checks = meeting.currentRuleChecks()
         val checkedBefore = last?.let { meeting.ruleChecksOf(it.id) }.orEmpty()
         val attention = needingAttention(backlog, ctx.today)
-        val habits = backlog.openItems().filter { it.isHabit && it.ease != null }
+        val habits = backlog.openItems().filter { it.isHabit && it.scoreNow != null }
         val done = backlog.doneItemsSince(since)
         val boardItems = board.allItems()
         val rules = boardItems.filter { it.kind == BoardKind.RULE && it.isOpen && it.createdAt >= since }
@@ -483,27 +495,27 @@ class FinishWeekoverlegTool(
                 )).joinToString("; "))
             }
             weather?.let { w ->
-                val ease = w.ease
+                val score = w.score
                 val guess = w.suggested
                 add(
                     ctx.t("De week: ", "The week: ") + when {
-                        ease == null -> ctx.t("geen akkoord", "no agreement")
-                        guess != null && guess != ease -> ease.weekWord(ctx.lang) + ctx.t(" (Hearth dacht: ${guess.weekWord(ctx.lang)})", " (Hearth thought: ${guess.weekWord(ctx.lang)})")
-                        else -> ease.weekWord(ctx.lang)
+                        score == null -> ctx.t("geen akkoord", "no agreement")
+                        guess != null && guess != score -> weekWord(score, ctx.lang) + ctx.t(" (Hearth dacht: ${weekWord(guess, ctx.lang)})", " (Hearth thought: ${weekWord(guess, ctx.lang)})")
+                        else -> weekWord(score, ctx.lang)
                     },
                 )
             }
             // How the agreements went, like the routines below; the hardest first.
-            val rated = checks.sortedByDescending { it.ease }.mapNotNull { c -> boardItems.firstOrNull { it.id == c.ruleId }?.let { it to c.ease } }
-            if (rated.isNotEmpty()) add(ctx.t("Huisregels: ", "House rules: ") + rated.joinToString("; ") { (r, e) -> "${r.text}: ${easeWord(e, ctx)}" })
+            val rated = checks.sortedBy { it.score }.mapNotNull { c -> boardItems.firstOrNull { it.id == c.ruleId }?.let { it to c.score } }
+            if (rated.isNotEmpty()) add(ctx.t("Huisregels: ", "House rules: ") + rated.joinToString("; ") { (r, n) -> "${r.text}: ${scoreText(n, ctx)}" })
             val notYet = checks.filter { !it.worked }.mapNotNull { c -> boardItems.firstOrNull { it.id == c.ruleId } }
             // Two meetings in a row: the agreement itself becomes a working point (maybe it asks too much).
             if (!args.preview) notYet.filter { r -> checkedBefore.any { it.ruleId == r.id && !it.worked } }.forEach { r ->
                 board.add(BoardKind.FRICTION, ctx.t("Huisregel loopt nog niet: ${r.text}", "House rule not working yet: ${r.text}"))
             }
             if (habits.isNotEmpty()) {
-                add(Topic.RHYTHM.title(ctx.lang) + ": " + habits.sortedBy { it.ease }.joinToString("; ") { h ->
-                    "${h.text}: ${easeWord(h.ease!!, ctx)}" + (h.smallStep?.let { ctx.t(" (begin klein: $it)", " (start small: $it)") } ?: "")
+                add(Topic.RHYTHM.title(ctx.lang) + ": " + habits.sortedBy { it.scoreNow }.joinToString("; ") { h ->
+                    "${h.text}: ${scoreText(h.scoreNow!!, ctx)}" + (h.smallStep?.let { ctx.t(" (begin klein: $it)", " (start small: $it)") } ?: "")
                 })
             }
             if (attention.isNotEmpty()) add(ctx.t("Vraagt aandacht: ", "Asks for attention: ") + attention.joinToString("; ") { (item, ease) -> attentionText(item, ease, ctx) })

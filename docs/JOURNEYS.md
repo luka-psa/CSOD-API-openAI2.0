@@ -12,25 +12,32 @@ one icon and one colour, the same on every screen (`Topic.title`, `Topic.icon()`
 
 | Group | Topic | Icon | Colour | Its home (where you manage it) | On Vandaag | Weekoverleg tile |
 |---|---|---|---|---|---|---|
-| Taken | Admin & afspraken | sheet of paper | purple | Taken panel | Niet vergeten, Vandaag, Binnenkort; the rest (wacht op antwoord, open) on its card | yes |
-| Taken | Grote taken | wrench | orange | Taken panel | Grote taken card | yes |
-| Taken | Huishouden | house | teal | Taken panel | Huishouden card (aan de beurt) | yes |
-| Taken | Ritmes & routines | repeat arrows | amber | Taken panel (per moment of the day) | Ritmes & routines card (per moment, with steps) | yes |
-| Taken | Vrije tijd | sofa | pink | Taken panel | Vrije tijd card (today, this week, a free weekend day); "vrij" days in Binnenkort | yes |
-| Eten | Weekmenu | fork and knife | blue | Weekmenu screen (week + Recepten) | Weekmenu card (vanavond, the next days) | yes |
-| Eten | Boodschappen | cart | green | Boodschappen screen (list + Weekmenu tab + Voorraad) | Boodschappen card | yes |
-| Werkbord | Huisregels | clipboard | slate | Werkbord column | Huisregels card | yes |
-| Werkbord | Frictie & ideeën | bolt | brick | Werkbord column | "n te bespreken" on the Huisregels card | yes |
-| Werkbord | Doelen | star | olive | Werkbord column | — | yes (next small step) |
+| Doen & eten | Admin & afspraken | sheet of paper | purple | Taken panel | Niet vergeten, Vandaag, Binnenkort; the rest (wacht op antwoord, open) on its card | yes |
+| Doen & eten | Grote taken | wrench | orange | Taken panel | Grote taken card | yes |
+| Doen & eten | Huishouden | house | teal | Taken panel | Huishouden card (aan de beurt) | yes |
+| Doen & eten | Vrije tijd | sofa | pink | Taken panel | Vrije tijd card (today, this week, a free weekend day); "vrij" days in Binnenkort | yes |
+| Doen & eten | Weekmenu | fork and knife | blue | Weekmenu screen (week + Recepten) | Weekmenu card (vanavond, the next days) | yes |
+| Doen & eten | Boodschappen | cart | green | Boodschappen screen (list + Weekmenu tab + Voorraad) | Boodschappen card | yes |
+| Ritme & afspraken | Ritmes & routines | repeat arrows | amber | Taken panel (per moment of the day) | Ritmes & routines card (what is due, with steps; each habit with its score) | yes (average score) |
+| Ritme & afspraken | Huisregels | clipboard | slate | Werkbord column | Huisregels card (each rule with its score) | yes (average score) |
+| Ritme & afspraken | Frictie & ideeën | bolt | brick | Werkbord column | Frictie & ideeën card (what is still to talk through) | yes |
+| Ritme & afspraken | Doelen | star | olive | Werkbord column | Doelen card (next small step; a goal with a ritme shows its score) | yes (next small step) |
 
-**The rule:** every topic has exactly one home, shows as a tile in the weekoverleg, and shows on Vandaag
-only when it matters today. Something that fits no topic yet waits in **Te sorteren** on top of Taken.
+**The rule:** every topic has exactly one home, shows as a tile in the weekoverleg, and has a card on Vandaag (with
+nothing for today, only its few words). Something that fits no topic yet waits in **Te sorteren** on top of Taken.
 
-**One order, three groups (v0.22):** the topics always come in the order of the table, in three groups (`TopicGroup`):
-*Taken* (what there is to do), *Eten* (menu before shopping) and *Werkbord* (what we agree on). Wherever they show
-side by side, the tasks come first and food and the Werkbord sit on a *shelf* (`Shelf`, a shade deeper than the
-canvas), so they read as secondary: the weekoverleg tiles, the topic cards on Vandaag. The rail follows it too:
-Vandaag, Taken, Weekmenu, Boodschappen, Werkbord, Weekoverleg.
+**One order, two groups (v0.23):** the topics always come in the order of the table, in two groups (`TopicGroup`):
+*Doen & eten* (what there is to do and to eat this week, six) and *Ritme & afspraken* (the routines and house rules that
+are rated in the Terugblik, with the frictions and goals that shape them, four). Wherever they show side by side, the six
+come first and the four sit on a *shelf* (`Shelf`, a shade deeper than the canvas) beside them: the weekoverleg tiles
+(three by two next to two by two, all the same size), the topic cards on Vandaag. The rail stays: Vandaag, Taken,
+Weekmenu, Boodschappen, Werkbord, Weekoverleg.
+
+**How it goes, 0 to 5 (v0.23):** what the family rates (each routine, each house rule, the week) gets a score from 0
+(komt er niet van) to 5 (loopt vanzelf), with kind words for each point (te zwaar, moeizaam, vraagt moeite, loopt
+goed). The score keeps its weather (bliksem 0–1, wolk 2–3, zon 4–5) and colour (orange, amber, green; never red).
+Wherever a rated routine or house rule shows (Vandaag, Taken, the Werkbord, a goal's ritme, the weekoverleg), it carries
+a *score badge*: its weather and five pips filled to the score. The meetings before show as small bars.
 
 Cards that are about *time*, not a topic (Vandaag, Niet vergeten, Binnenkort, Deze week, Vooruitblik,
 Terugblik, Wat ging goed) and Hearth's own voice (Luister mee, calm notes, the chat) use the **ember**
@@ -40,7 +47,7 @@ accent. Ember is never a topic colour.
 
 | Icon | Means |
 |---|---|
-| sun | Vandaag (and the "hoe liep het" scale) |
+| sun | Vandaag (and zon, a score of 4–5) |
 | flag | needs attention by a time: Niet vergeten, "klaar tegen", Dringend |
 | calendar | days: Binnenkort, Deze week, plan a day, Google Agenda |
 | clock | later: Vooruitblik, Later, wacht op antwoord, minder vaak |
@@ -83,9 +90,10 @@ places it. Done: it's visible where the family will look, nothing was lost.
 
 **J2. "Wat moet er vandaag?"** A glance at the tablet in the morning. Vandaag: first the day (Niet vergeten, Vandaag
 with what's planned and Volgende, Binnenkort), then, a scroll down, the topic cards in the order of every screen:
-Admin & afspraken, Grote taken, Huishouden, Ritmes & routines (per moment, with steps), Vrije tijd, and on the shelf
-Weekmenu (vanavond), Boodschappen and Huisregels. Tick what's done; the counter only goes up. Done: everyone knows
-today without asking.
+Admin & afspraken, Grote taken, Huishouden, Vrije tijd, Weekmenu (vanavond) and Boodschappen two by two, and on the
+shelf beside them Ritmes & routines (what is due, each habit with its score badge), Huisregels (each with its score),
+Frictie & ideeën and Doelen. Every topic has its card, also when there is nothing for today. Tick what's done; the
+counter only goes up. Done: everyone knows today without asking.
 
 **J3. "Een routine leven."** Morning or evening. Vandaag shows each routine at its moment, small: a bar with one
 segment per step, the next step to tick and "daarna: …" (Alle stappen unfolds them numbered); tick them as the
@@ -95,10 +103,13 @@ change: Taken → Ritmes & routines, or say "avondroutine: a, b en c". What happ
 same sheet (the weekday chips, a time only when it is fixed) or by saying it: "vuilbak buiten elke donderdag",
 "zwemles elke woensdag om 14 uur", "de eerste zaterdag van de maand containerpark". The sheet stays open while you
 change its moment, rhythm and days. With Google Agenda on, those repeat in the calendar "Hearth · Ritmes". Habits
-are rated together in the weekoverleg, never ticked. A habit's sheet starts with *Zo blijft het hangen*: its weather per
-meeting, what was said about it, and the four laws (zichtbaar, aantrekkelijk, makkelijk, voldoening) two by two; tap one
-to fill it in (iets leuks erbij, a smaller first step). Hearth suggests one thing: smaller when it's too much, one law
-when it takes effort, a step bigger once it ran easily three meetings in a row.
+are rated together in the weekoverleg, never ticked. A habit's sheet starts with *Hoe loopt het?*: its score badge,
+better or less than last time, its scores per meeting as small bars, the 0–5 scale to say how it goes now, and what was
+said about it. Only when it needs one, *Wat kan beter?* shows the one thing to try (chosen along the four laws of
+Atomic Habits): smaller when it's too much, one law when it takes effort, a step bigger once it ran by itself (5) three
+meetings in a row. Under it two chips: the smaller first step and iets leuks erbij. Setting the rhythm up (moment, how
+often, fixed days, a day) is folded under *Ritme instellen*, with one line saying where it hangs now; a tip that
+points at it opens it.
 
 **J4. "Er is iets op."** Tap it in Voorraad (or say "melk"): it's on the list, per shop. In the shop: tick.
 Bought = back in stock. The weekmenu adds ingredients by itself; the *Weekmenu* tab (first, next to the storage
@@ -121,11 +132,11 @@ opvang … dus die moet gebracht worden … voor de rest ben ik vrij"), waits un
 concludes ("Naar de opvang · donderdag") and lights up that tile. Not quite right? Tap the conclusion: its name,
 place (taak, afspraak, ritme, …) and day open, filled in from what was said; *Bewaar* or *Zet erin*. *Zet op zijn
 plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can also read the conversation and
-put it in place. The ten tiles are the same topics as everywhere, in the same order: the tasks on the left, Eten and
-the Werkbord on the shelf on the right; tap one for its list. Terugblik: wat ging goed,
-then *Hoe liep het?*: the week, every routine and every house rule on one weather scale (bliksem, wolk, zon); a habit
-shows last time's weather as a ring and the earlier ones small, and the coach's one tip right there (one tap, or its
-sheet opens). Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
+put it in place. The ten tiles are the same topics as everywhere, in the same order: Doen & eten three by two on the
+left, Ritme & afspraken two by two on the shelf on the right, all the same size; tap one for its list. Terugblik: wat
+ging goed, then *Hoe liep het?*: the week, every routine and every house rule on one scale from 0 to 5; each line shows
+its badge, last time's score as a ring on the scale and the earlier ones as small bars, and below 4 (or when it was
+talked about) the coach's one tip right there (one tap, or its sheet opens). Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
 
 **J9. "Iets schuurt."** Note it on the Werkbord or say "frictie: …". In the weekoverleg (Frictie & ideeën)
 choose together what it needs, in one tap: a huisregel, a nieuwe routine, a routine aanpassen, a taak met focus,
@@ -133,7 +144,8 @@ or loslaten. It then shows "Huisregel te maken" in the colour of where it goes. 
 four laws: another moment, iets leuks erbij, kleiner beginnen or a step erbij, and the friction's words already pick
 one ("we vergeten het": another moment). Someone writes it in their own
 words, right away or later ("De vaatwasser is nooit leeg" becomes "Wie het laatst eet, zet hem aan"). Every
-outcome is good. Huisregels show on Vandaag and get a calm check each week in the Terugblik (never who).
+outcome is good. Huisregels show on Vandaag with their score and get a calm check each week in the Terugblik, 0 to 5
+(never who).
 
 **J10. "Een doel."** Add it on the Werkbord (gezin, samen or persoonlijk). Give it a place in the week (on the
 Werkbord or in the weekoverleg's Doelen): a *ritme* ("10 minuten yoga", ochtend, elke dag) that lands in Ritmes &

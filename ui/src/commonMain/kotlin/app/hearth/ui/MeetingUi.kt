@@ -70,6 +70,9 @@ import app.hearth.core.model.Ease
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.WeekRating
 import app.hearth.core.model.weekWord
+import app.hearth.core.model.easeOf
+import app.hearth.core.model.scoreNow
+import app.hearth.core.model.scoreWord
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.title
 import androidx.compose.foundation.border
@@ -479,13 +482,14 @@ fun WinsSection(wins: List<Win>, members: List<Member>, onAdd: (String) -> Unit,
     removing?.let { w -> ConfirmDialog(stringResource(Res.string.win_remove), w.text, onYes = { onRemove(w) }) { removing = null } }
 }
 
-/** How the week went, as weather: Hearth's guess has a ring; "Geen akkoord" is an answer too. Can be switched off. */
-class WeekWeather(val on: Boolean, val rating: WeekRating?, val suggested: Ease, val onRate: (Ease?, Ease) -> Unit, val onSwitch: (Boolean) -> Unit)
+/** How the week went, 0 to 5: Hearth's guess has a ring; "Geen akkoord" is an answer too. Can be switched off. */
+class WeekWeather(val on: Boolean, val rating: WeekRating?, val suggested: Int, val onRate: (Int?, Int) -> Unit, val onSwitch: (Boolean) -> Unit)
 
 /**
- * Terugblik: "Hoe liep het?" The week, every routine (in the order of the day) and every house rule on one weather
- * scale, decided together: zon (loopt vanzelf), wolk (vraagt moeite), bliksem (te zwaar). Never who. Not running
- * easily? A smaller first step, right there. A house rule that is too much two meetings in a row comes back as a friction.
+ * Terugblik: "Hoe liep het?" The week, every routine (in the order of the day) and every house rule on one scale from
+ * 0 (komt er niet van) to 5 (loopt vanzelf), decided together, never who. Each line shows how it went before, as small
+ * bars, so the family sees it move. Below 4, or when it was talked about: one thing to try, right there. A house rule
+ * that is too much (0–1) two meetings in a row comes back as a friction.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -494,34 +498,42 @@ fun ReviewSection(
     rules: List<BoardItem>,
     checks: List<RuleCheck>,
     lang: Lang,
-    onRateRoutine: (BacklogItem, Ease) -> Unit,
-    onRateRule: (BoardItem, Ease) -> Unit,
+    onRateRoutine: (BacklogItem, Int) -> Unit,
+    onRateRule: (BoardItem, Int) -> Unit,
     onSmallStep: (BacklogItem, String) -> Unit,
     week: WeekWeather? = null,
     coach: HabitCoaching? = null,
+    /** Each house rule's score per meeting, oldest first, by rule id. */
+    ruleHistory: Map<String, List<Int>> = emptyMap(),
 ) {
     var asking by remember { mutableStateOf<BacklogItem?>(null) }
     var pairing by remember { mutableStateOf<BacklogItem?>(null) }
     GroupTitle(stringResource(Res.string.review_title))
     Text(stringResource(Res.string.review_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
 
+    // The word for a score, in its weather's colour, next to the scale.
+    @Composable
+    fun Said(score: Int?, modifier: Modifier) = score?.let {
+        Text(scoreWord(it, lang), style = MaterialTheme.typography.labelMedium, color = easeColors(easeOf(it)).first, modifier = modifier)
+    }
+
     if (week != null) {
         if (week.on) {
             val rating = week.rating
-            val ease = rating?.ease
+            val score = rating?.score
             Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 10.dp)) {
                 Text(stringResource(Res.string.week_title), style = MaterialTheme.typography.titleSmall)
                 Text(stringResource(Res.string.week_hint), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                    WeatherScale(ease, { week.onRate(it, week.suggested) }, guess = week.suggested)
+                    ScoreScale(score, { week.onRate(it, week.suggested) }, guess = week.suggested)
                     val status = when {
-                        rating == null -> stringResource(Res.string.week_guess, week.suggested.weekWord(lang))
-                        ease == null -> stringResource(Res.string.week_neutral)
-                        else -> stringResource(Res.string.week_agreed, ease.weekWord(lang))
+                        rating == null -> stringResource(Res.string.week_guess, weekWord(week.suggested, lang))
+                        score == null -> stringResource(Res.string.week_neutral)
+                        else -> stringResource(Res.string.week_agreed, weekWord(score, lang))
                     }
                     Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterVertically).padding(horizontal = 6.dp))
                     if (rating == null) TextButton(onClick = { week.onRate(week.suggested, week.suggested) }) { Text(stringResource(Res.string.week_ok)) }
-                    if (rating == null || ease != null) TextButton(onClick = { week.onRate(null, week.suggested) }) { Text(stringResource(Res.string.week_no_agreement)) }
+                    if (rating == null || score != null) TextButton(onClick = { week.onRate(null, week.suggested) }) { Text(stringResource(Res.string.week_no_agreement)) }
                 }
             }
         } else {
@@ -543,61 +555,67 @@ fun ReviewSection(
         Text(topic.title(lang), style = MaterialTheme.typography.labelLarge, color = topic.style().ink)
     }
 
+    // One line to rate: its name with its badge (this meeting's score, or last time's), the scale with last time as a
+    // ring, and the earlier meetings as small bars beside it.
     @Composable
-    fun Scale(current: Ease?, onRate: (Ease) -> Unit, extra: @Composable () -> Unit = {}) =
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 2.dp)) {
-            WeatherScale(current, onRate)
-            current?.let { Text(stringResource(it.label()), style = MaterialTheme.typography.labelMedium, color = easeColors(it).first, modifier = Modifier.align(Alignment.CenterVertically)) }
-            extra()
+    fun Rated(name: String, detail: String?, highlighted: Boolean, last: Int?, now: Int?, before: List<Int>, onRate: (Int) -> Unit, below: @Composable () -> Unit = {}) =
+        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f, fill = false))
+                (now ?: last)?.let { Spacer(Modifier.width(8.dp)); ScoreBadge(it) }
+            }
+            detail?.let {
+                Text(it, style = MaterialTheme.typography.labelMedium, color = if (highlighted) Topic.RHYTHM.style().ink else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 4.dp)) {
+                ScoreScale(now, onRate, guess = last)
+                Said(now, Modifier.align(Alignment.CenterVertically))
+                if (before.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.align(Alignment.CenterVertically).padding(start = 4.dp)) {
+                        Text(stringResource(Res.string.coach_before), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        ScoreTrail(before.takeLast(6), height = 18.dp)
+                    }
+                }
+            }
+            below()
         }
 
     if (routines.isNotEmpty()) {
         Heading(Topic.RHYTHM)
         routines.forEach { r ->
             val review = coach?.reviews?.get(r.id)
-            Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
-                Text(r.text, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    listOfNotNull(
-                        r.anchor?.title(lang),
-                        r.pairing?.let { stringResource(Res.string.pairing_line, it) },
-                        r.smallStep?.let { stringResource(Res.string.small_step_line, it) },
-                    ).joinToString("  ·  ").ifEmpty { stringResource(Res.string.anchor_none) },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (r.smallStep != null || r.pairing != null) Topic.RHYTHM.style().ink else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            val now = coach?.checks?.get(r.id)
+            val history = review?.ratings.orEmpty()
+            Rated(
+                r.text,
+                listOfNotNull(
+                    r.anchor?.title(lang),
+                    r.pairing?.let { stringResource(Res.string.pairing_line, it) },
+                    r.smallStep?.let { stringResource(Res.string.small_step_line, it) },
+                ).joinToString("  ·  ").ifEmpty { stringResource(Res.string.anchor_none) },
+                highlighted = r.smallStep != null || r.pairing != null,
+                last = (if (now != null) history.dropLast(1) else history).lastOrNull() ?: r.scoreNow.takeIf { now == null },
+                now = if (coach == null) r.scoreNow else now,
+                before = if (now != null) history.dropLast(1) else history,
+                onRate = { onRateRoutine(r, it) },
+            ) {
                 if (coach == null) {
-                    Scale(r.ease, { onRateRoutine(r, it) }) {
-                        if (r.ease != null && r.ease != Ease.EASY) TextButton(onClick = { asking = r }) { Text(stringResource(Res.string.small_step_add)) }
-                    }
-                } else {
-                    // This meeting's weather, with last time's as Hearth's ring; the earlier ones small beside it.
-                    val now = coach.checks[r.id]
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 2.dp)) {
-                        WeatherScale(now, { onRateRoutine(r, it) }, guess = r.ease)
-                        now?.let { Text(stringResource(it.label()), style = MaterialTheme.typography.labelMedium, color = easeColors(it).first, modifier = Modifier.align(Alignment.CenterVertically)) }
-                        val before = review?.ratings.orEmpty().let { if (now != null) it.dropLast(1) else it }.takeLast(5)
-                        if (before.isNotEmpty()) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.align(Alignment.CenterVertically).padding(start = 4.dp)) {
-                                Text(stringResource(Res.string.coach_before), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                before.forEach { WeatherMark(it, 14.dp) }
-                            }
+                    if (r.scoreNow?.let { it < 4 } == true) TextButton(onClick = { asking = r }) { Text(stringResource(Res.string.small_step_add)) }
+                    return@Rated
+                }
+                review?.frictions?.lastOrNull()?.let {
+                    Text(stringResource(Res.string.coach_said, "“$it”"), style = MaterialTheme.typography.bodySmall, color = Topic.FRICTION.style().ink, modifier = Modifier.padding(top = 2.dp))
+                }
+                // One thing to try, when it's too much, takes effort, was talked about, or is ready to grow.
+                review?.tips?.firstOrNull()?.takeIf { review.needsChange }?.let { tip ->
+                    CoachTip(tip, lang, onClick = {
+                        when {
+                            tip.action.oneTap -> coach.onTip(r, tip)
+                            tip.action == TipAction.SMALL_STEP -> asking = r
+                            tip.action == TipAction.PAIR -> pairing = r
+                            else -> coach.onOpen(r)
                         }
-                    }
-                    review?.frictions?.lastOrNull()?.let {
-                        Text(stringResource(Res.string.coach_said, "“$it”"), style = MaterialTheme.typography.bodySmall, color = Topic.FRICTION.style().ink, modifier = Modifier.padding(top = 2.dp))
-                    }
-                    // One thing to try, when it's too much, takes effort, was talked about, or is ready to grow.
-                    review?.tips?.firstOrNull()?.takeIf { review.stage != HabitStage.NEW && review.stage != HabitStage.STEADY }?.let { tip ->
-                        CoachTip(tip, lang, onClick = {
-                            when {
-                                tip.action.oneTap -> coach.onTip(r, tip)
-                                tip.action == TipAction.SMALL_STEP -> asking = r
-                                tip.action == TipAction.PAIR -> pairing = r
-                                else -> coach.onOpen(r)
-                            }
-                        }, modifier = Modifier.padding(top = 6.dp, end = 4.dp))
-                    }
+                    }, modifier = Modifier.padding(top = 6.dp, end = 4.dp))
                 }
             }
         }
@@ -605,10 +623,9 @@ fun ReviewSection(
     if (rules.isNotEmpty()) {
         Heading(Topic.RULES)
         rules.forEach { rule ->
-            Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
-                Text(rule.text, style = MaterialTheme.typography.bodyLarge)
-                Scale(checks.firstOrNull { it.ruleId == rule.id }?.ease, { onRateRule(rule, it) })
-            }
+            val now = checks.firstOrNull { it.ruleId == rule.id }?.score
+            val history = ruleHistory[rule.id].orEmpty().let { if (now != null) it.dropLast(1) else it }
+            Rated(rule.text, null, false, history.lastOrNull(), now, history, onRate = { onRateRule(rule, it) })
         }
     }
     if (week?.on == true) {
@@ -620,9 +637,9 @@ fun ReviewSection(
     pairing?.let { h -> PairingDialog(h.pairing, { coach?.onPairing?.invoke(h, it) }) { pairing = null } }
 }
 
-/** The habit coach in the Terugblik: this meeting's weather per habit, the coach per habit, and what its tips do. */
+/** The habit coach in the Terugblik: this meeting's score per habit, the coach per habit, and what its tips do. */
 class HabitCoaching(
-    val checks: Map<String, Ease>,
+    val checks: Map<String, Int>,
     val reviews: Map<String, HabitReview>,
     val onTip: (BacklogItem, HabitTip) -> Unit,
     val onPairing: (BacklogItem, String) -> Unit,

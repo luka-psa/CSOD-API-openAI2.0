@@ -44,6 +44,10 @@ import androidx.compose.ui.unit.dp
 import app.hearth.core.model.Anchor
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Ease
+import app.hearth.core.model.SCORE_MAX
+import app.hearth.core.model.easeOf
+import app.hearth.core.model.scoreNow
+import app.hearth.core.model.scoreWord
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Plan
 import app.hearth.core.model.RoutineState
@@ -111,12 +115,15 @@ class TaskCallbacks(
     val addStep: (BacklogItem, String) -> Unit,
     /** Asks first (the screen shows a confirm), then deletes. */
     val delete: (BacklogItem) -> Unit,
-    val rateHabit: (BacklogItem, Ease) -> Unit = { _, _ -> },
+    val rateHabit: (BacklogItem, Int) -> Unit = { _, _ -> },
     val smallStep: (BacklogItem, String) -> Unit = { _, _ -> },
 )
 
-/** The topics that hold work to do; the others live on their own screens (Boodschappen, Weekmenu, Werkbord). */
-private val TASK_TOPICS = listOf(Topic.ADMIN, Topic.PROJECTS, Topic.HOME, Topic.RHYTHM, Topic.FREE_TIME)
+/**
+ * The topics that hold work to do, in the order of every screen (the rhythm last, where the topics that are rated
+ * begin); the others live on their own screens (Boodschappen, Weekmenu, Werkbord).
+ */
+private val TASK_TOPICS = listOf(Topic.ADMIN, Topic.PROJECTS, Topic.HOME, Topic.FREE_TIME, Topic.RHYTHM)
 
 /**
  * Taken: everything there is to do, as a dashboard of the household's topics, the same panels (name, icon,
@@ -385,8 +392,14 @@ private fun PlanRow(item: BacklogItem, today: LocalDate, lang: Lang, cb: TaskCal
     // A routine with steps is ticked step by step; how it goes is rated in the weekoverleg.
     val rated = item.isHabit && mySteps.isEmpty()
     // Atomic Habits: green runs easily, amber takes effort, orange is too much (make it smaller). Never red.
-    val pill = (@Composable { EasePill(ease!!, if (item.postponed >= 2 && !item.isRoutine()) stringResource(Res.string.ease_postponed, item.postponed) else null) })
-        .takeIf { !rated && ease != null && ease != Ease.EASY }
+    // A habit with steps shows its score (rated in the weekoverleg); chores and tasks their colour when it asks something.
+    val score = item.scoreNow.takeIf { item.isHabit }
+    val pill = when {
+        rated -> null
+        score != null -> (@Composable { ScoreBadge(score) })
+        ease != null && ease != Ease.EASY -> (@Composable { EasePill(ease, if (item.postponed >= 2 && !item.isRoutine()) stringResource(Res.string.ease_postponed, item.postponed) else null) })
+        else -> null
+    }
     BacklogRow(
         item, today, lang, onDone = { cb.complete(item) }, onOpen = { cb.open(item) }, modifier = modifier, showSection = showSection, onDelete = { cb.delete(item) },
         // In a narrow panel the chips go under the name, so the name keeps its room.
@@ -421,17 +434,22 @@ private val LocalEase = staticCompositionLocalOf<Map<String, Ease>> { emptyMap()
 /** Each routine's steps, by routine id. */
 private val LocalRoutineSteps = staticCompositionLocalOf<Map<String, List<BacklogItem>>> { emptyMap() }
 
-/** A habit's colour, set together: tap to change it or to give it a smaller first step. */
+/** A habit's score (0–5), set together: tap to change it or to give it a smaller first step. */
 @Composable
 private fun EaseMenu(item: BacklogItem, cb: TaskCallbacks) {
     var open by remember { mutableStateOf(false) }
     var asking by remember { mutableStateOf(false) }
+    val lang = LocalLang.current
     Box {
-        val ease = item.ease
-        if (ease == null) ChoiceChip(stringResource(Res.string.ease_rate), false, { open = true }) else EasePill(ease, onClick = { open = true })
+        val score = item.scoreNow
+        if (score == null) ChoiceChip(stringResource(Res.string.ease_rate), false, { open = true }) else ScoreBadge(score, onClick = { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            Ease.entries.forEach { e ->
-                DropdownMenuItem(text = { Text(stringResource(e.label())) }, onClick = { open = false; cb.rateHabit(item, e) })
+            (SCORE_MAX downTo 0).forEach { n ->
+                DropdownMenuItem(
+                    text = { Text("$n  ·  " + scoreWord(n, lang)) },
+                    leadingIcon = { WeatherMark(easeOf(n), 18.dp) },
+                    onClick = { open = false; cb.rateHabit(item, n) },
+                )
             }
             DropdownMenuItem(text = { Text(stringResource(Res.string.small_step_add)) }, onClick = { open = false; asking = true })
         }

@@ -107,13 +107,14 @@ NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `ad
 `clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
 with the same name. · Weekoverleg: `plan_meal` (one meal per day; ingredients onto the shopping list; a known
 dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_agenda` (look back since the last
-meeting and wins, then every *topic* in a few words with its details, Hearth's weather for the week and the Luister mee
+meeting and wins, then every *topic* in a few words with its details, Hearth's suggested score for the week and the Luister mee
 transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
-`remove_win` ⚠ (tablet), `rate_week` (the week's weather, EASY zon / EFFORT wolk / HARD bliksem, agreed together for the
-household; empty = no agreement), `set_week_meters` (asking it on/off, tablet), `check_house_rule` (EASY / EFFORT / HARD like the routines, never who), `rate_habit` (EASY / EFFORT / HARD; one rating per
-meeting is kept for the habit coach), `review_habit` (read-only: the four laws of Atomic Habits for a habit, or for every
-habit that asks for something: its weather per meeting, the frictions about it, how each law is in place and what to try,
+`remove_win` ⚠ (tablet), `rate_week` (how the week went, `score` 0–5, agreed together for the household; empty = no
+agreement), `set_week_meters` (asking it on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
+`rate_habit` (`score` 0–5; one score per meeting is kept for the habit coach; all three still take the older `ease`
+EASY / EFFORT / HARD, read as 5 / 3 / 1), `review_habit` (read-only: the four laws of Atomic Habits for a habit, or for
+every habit that asks for something: its score per meeting, the frictions about it, how each law is in place and what to try,
 so a family's AI can think it through and change one thing with the other tools), `set_habit_pairing` (make it attractive:
 something nice with a habit, "met muziek", "samen"),
 `import_recipe` (a link: the page's schema.org JSON-LD becomes a Recipe with ingredients, numbered steps and
@@ -223,6 +224,8 @@ rows are no longer used). v12 adds `backlog_item.postponed` (moved to a later da
 base). v17 adds `backlog_item.schedule` (a routine's fixed days as JSON); the week's weather is a WEEK row in
 `reflection` (FLOW / STRAIN rows of older meetings stay but are not read). v18 adds `backlog_item.pairing` (something
 nice with a habit); a habit's weather per meeting is a HABIT_CHECK row in `reflection` (text = the habit's id).
+v19 adds `backlog_item.score` (a habit's last score, 0–5; `ease` keeps its weather); WEEK, RULE_CHECK and HABIT_CHECK
+rows now hold 10 + the score, and older rows (1 / 2 / 0) read as 5 / 3 / 1, so nothing needs rewriting.
 Auto-migrations keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
@@ -255,12 +258,13 @@ Rail on the tablet (≥ 840dp), bottom bar on phones, the capture bar under ever
   gedaan…"), one or two things means a light day; in *Binnenkort* empty days read "vrij" and the first free
   weekend day is called out.
 - **Binnenkort**: the next six days with what's on them. **Grote taken**: progress and the next step.
-- **Topics under the day** (v0.22): below Niet vergeten, Vandaag and Binnenkort come the topic cards in the one order
-  of every screen (`Topic`, `TopicGroup`): Admin & afspraken (what isn't above yet), Grote taken, Huishouden (aan de
-  beurt), Ritmes & routines (per moment, with steps), Vrije tijd (today's note, free time this week, a free weekend
-  day), each with the same glance as its weekoverleg tile; then on a shelf Weekmenu (vanavond and the next days),
-  Boodschappen and Huisregels. The weekoverleg tiles use the same groups: the tasks left, Eten and Werkbord on the
-  shelf on the right.
+- **Topics under the day** (v0.23): below Niet vergeten, Vandaag and Binnenkort (three columns) come all ten topic
+  cards in the one order of every screen (`Topic`, `TopicGroup`), each with the same glance as its weekoverleg tile:
+  *Doen & eten* two by two (Admin & afspraken: what isn't above yet; Grote taken; Huishouden: aan de beurt; Vrije
+  tijd: today's note, free time this week, a free weekend day; Weekmenu: vanavond and the next days; Boodschappen) and
+  beside them on a shelf *Ritme & afspraken* (Ritmes & routines: what is due, each habit with its score badge, then how
+  the others go; Huisregels with their score; Frictie & ideeën still to talk through; Doelen with their next step). A
+  topic with nothing for today shows only its few words. The weekoverleg tiles use the same groups.
 - **One topic, one look** (v0.15): every topic (`Topic`) has one name, icon and colour on every screen: a card
   on Vandaag (Boodschappen, Huisregels, Grote taken), a panel in Taken, a column on the Werkbord, a tile in the
   weekoverleg. Time cards (Vandaag, Niet vergeten, Binnenkort, Deze week, Terugblik) and Hearth's own voice keep
@@ -321,10 +325,12 @@ Then *Terugblik* (last meeting's summary, what got done, *Wat ging goed*, *Hoe l
 has that day with its section colour, the meal small underneath) and *Vooruitblik* (dates after this week). There
 are no Oudjes: what has no topic waits in Taken → Te sorteren. *Klaar* first opens *Samen akkoord?*: the summary
 (by topic) to read together, with a nudge when sentences still wait in the Voorstel; *Akkoord, klaar* records it.
-Terugblik also has *Wat ging goed* (wins, X asks first) and *Hoe liep het?* (v0.20): the week, every routine and every
-house rule on one weather scale, bliksem (te zwaar) → wolk (vraagt moeite) → zon (loopt vanzelf). For the week Hearth
-suggests (a ring): the sun, because small things and good habits get forgotten; a cloud when frictions and rules that
-ask too much pile up, or habits ask for attention with little done; never a bolt (`weekSuggestion`). The family agrees
+Terugblik also has *Wat ging goed* (wins, X asks first) and *Hoe liep het?* (v0.20, a 0–5 scale since v0.23): the
+week, every routine and every house rule on one scale from 0 (komt er niet van) to 5 (loopt vanzelf), six round steps;
+the score keeps its weather (bliksem 0–1, wolk 2–3, zon 4–5) and colour. Each line shows its *score badge* (weather and
+five pips), last time's score as a ring on the scale and the meetings before as small bars (`ScoreTrail`). For the week
+Hearth suggests (a ring): 4 (loopt goed), because small things and good habits get forgotten; 3 when frictions and
+rules that ask too much pile up, or habits ask for attention with little done; never lower (`weekSuggestion`). The family agrees
 with a tap, picks another together, or taps *Geen akkoord*; asking it can be switched off. The summary shows Hearth's guess when the family saw it differently. Terugblik (v0.16) has *Hoe lopen de ritmes en
 huisregels?*: every routine (in the order of the day) and every house rule on one scale, loopt vanzelf / vraagt
 moeite / te zwaar, never who, with a smaller first step right there; a rule that is too much two meetings in a row
@@ -342,9 +348,11 @@ how often it ran easily, never a streak). From its weather per meeting and the f
 or naming it while open; the friction's words pick the law, `lawOf`: "we vergeten het" is zichtbaar, "geen zin"
 aantrekkelijk, "te veel" makkelijk, "niemand ziet het" voldoening) it has a stage: *nieuw* (a moment and the two-minute
 version), *te zwaar* (smaller, not harder), *vraagt moeite* or an open friction (change one law), *loopt*, and *loopt
-vanzelf* three meetings in a row (one step bigger: the whole version, a bit more often or a step more). It lives in the
-habit's sheet (*Zo blijft het hangen*: the weather per meeting, the tip, the four laws two by two, tap one to fill it) and
-shows its one tip under the habit in the Terugblik. A friction marked *routine aanpassen* is written along the laws too:
+vanzelf* three meetings in a row (one step bigger: the whole version, a bit more often or a step more). Growing needs the last
+score to be a 5. It lives in the habit's sheet (v0.23, *Hoe loopt het?*: the score badge, better or less than last
+time, the scores per meeting as bars, the 0–5 scale to rate it there, and only when it needs a change *Wat kan
+beter?* with the one tip; the smaller first step and iets leuks erbij as two chips; moment, how often and days folded
+under *Ritme instellen*) and shows its one tip under the habit in the Terugblik when it needs one. A friction marked *routine aanpassen* is written along the laws too:
 another moment, iets leuks erbij, kleiner beginnen or a step (`resolve_friction` takes `smallStep` and `pairing`). **Luister mee** (it keeps listening while the family opens the list, the
 stock or the tasks, with a small "Terug naar het overleg" bar there): continuous transcription during the meeting (Web Speech;
 Android restarts its recognizer after each pause and prefers on-device recognition; both ask for three guesses and keep
@@ -481,6 +489,12 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.23: the Terugblik rates on a scale from 0 to 5 (routines, house rules, the week; `score` on `rate_habit`,
+   `check_house_rule`, `rate_week`; DB v19), and every rated routine and house rule carries a score badge (weather and
+   five pips) wherever it shows; two groups instead of three: *Doen & eten* (Admin & afspraken, Grote taken, Huishouden,
+   Vrije tijd, Weekmenu, Boodschappen) and *Ritme & afspraken* (Ritmes & routines, Huisregels, Frictie & ideeën,
+   Doelen), six tiles next to four in the weekoverleg; Vandaag shows every topic in that order; the habit's sheet opens
+   on how it goes and one thing to try, its set-up folded under *Ritme instellen*.
    v0.22: one order for the topics everywhere, in three groups (Taken; Eten: Weekmenu, Boodschappen; Werkbord:
    Huisregels, Frictie & ideeën, Doelen): the weekoverleg tiles (tasks left, the rest on a shelf), Vandaag (the day on
    top, the topic cards below, Ritmes & routines and Vrije tijd now their own cards), the rail (Weekmenu right above

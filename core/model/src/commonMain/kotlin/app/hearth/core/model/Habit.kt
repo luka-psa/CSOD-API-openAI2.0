@@ -3,8 +3,9 @@ package app.hearth.core.model
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
-// The habit coach: the four laws of Atomic Habits (make it obvious, attractive, easy, satisfying) applied to one
-// habit, from its weather in the last meetings and the frictions talked about it. A habit starts small and only
+// The habit coach: how a habit is going (its 0–5 score per meeting) and, only when it needs one, one thing to change,
+// chosen along the four laws of Atomic Habits (make it obvious, attractive, easy, satisfying) from its scores and the
+// frictions talked about it. A habit starts small and only
 // grows once it runs by itself; the coach never counts streaks and never says "failed".
 
 /** What makes a habit stick (James Clear, Atomic Habits). */
@@ -90,8 +91,8 @@ data class LawState(val law: HabitLaw, val now: String?)
 data class HabitReview(
     val itemId: String,
     val stage: HabitStage,
-    /** Its weather per meeting, oldest first (the meeting still to come last). */
-    val ratings: List<Ease>,
+    /** Its score (0–5) per meeting, oldest first (the meeting still to come last). */
+    val ratings: List<Int>,
     /** What was said about it: frictions and ideas, oldest first. */
     val frictions: List<String>,
     /** The law the latest friction points to; null when nothing was said, or nothing clear. */
@@ -99,7 +100,16 @@ data class HabitReview(
     val laws: List<LawState>,
     /** At most two, the first is the one to try. Empty when it simply runs. */
     val tips: List<HabitTip>,
-)
+) {
+    /** The last score, if it was rated. */
+    val score: Int? get() = ratings.lastOrNull()
+
+    /** Up (1), down (-1) or the same (0) since the meeting before; null with fewer than two scores. */
+    val trend: Int? get() = if (ratings.size < 2) null else ratings.last().compareTo(ratings[ratings.size - 2]).coerceIn(-1, 1)
+
+    /** Whether it needs a change now: too much, takes effort, talked about, or ready to grow. */
+    val needsChange: Boolean get() = tips.isNotEmpty() && stage != HabitStage.STEADY && stage != HabitStage.NEW
+}
 
 /** Which law a friction points to, from its words: "we vergeten het" is about seeing it, "te veel" about ease. */
 fun lawOf(text: String): HabitLaw? {
@@ -156,21 +166,22 @@ private fun sameWord(a: String, b: String): Boolean {
 }
 
 /**
- * The coach for one habit: its stage, how each law is in place and at most two tips. [ratings] is its weather per
+ * The coach for one habit: its stage, how each law is in place and at most two tips. [ratings] is its score (0–5) per
  * meeting, oldest first (empty: the coach uses its last rating); [frictions] are the ones [isAbout] it; [steps] is how
  * many steps it has; [goal] is the goal it serves, if any.
  */
-fun habitReview(habit: BacklogItem, ratings: List<Ease>, frictions: List<BoardItem>, steps: Int, goal: String?, lang: Lang): HabitReview {
+fun habitReview(habit: BacklogItem, ratings: List<Int>, frictions: List<BoardItem>, steps: Int, goal: String?, lang: Lang): HabitReview {
     val nl = lang == Lang.NL
     fun t(dutch: String, english: String) = if (nl) dutch else english
-    val weather = ratings.ifEmpty { listOfNotNull(habit.ease) }
+    val scores = ratings.ifEmpty { listOfNotNull(habit.scoreNow) }
+    val weather = scores.map(::easeOf)
     val said = frictions.sortedBy { it.closedAt ?: it.createdAt }
     val focus = said.reversed().firstNotNullOfOrNull { lawOf(it.text) }
     val last = weather.lastOrNull()
     val stage = when {
         last == Ease.HARD -> HabitStage.SHRINK
         last == Ease.EFFORT || said.any { it.isOpen } -> HabitStage.ADJUST
-        weather.size >= 3 && weather.takeLast(3).all { it == Ease.EASY } -> HabitStage.GROW
+        weather.size >= 3 && weather.takeLast(3).all { it == Ease.EASY } && scores.last() == SCORE_MAX -> HabitStage.GROW
         last == null -> HabitStage.NEW
         else -> HabitStage.STEADY
     }
@@ -229,7 +240,7 @@ fun habitReview(habit: BacklogItem, ratings: List<Ease>, frictions: List<BoardIt
         HabitStage.STEADY -> emptyList()
     }.distinctBy { it.action }.take(2)
 
-    return HabitReview(habit.id, stage, weather, said.map { it.text }, focus, laws, tips)
+    return HabitReview(habit.id, stage, scores, said.map { it.text }, focus, laws, tips)
 }
 
 /** What Wat ging goed says when a habit is celebrated. */

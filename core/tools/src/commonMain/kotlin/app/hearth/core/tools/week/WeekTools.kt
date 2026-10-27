@@ -15,6 +15,8 @@ import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.weekSuggestion
 import app.hearth.core.model.weather
 import app.hearth.core.model.weekWord
+import app.hearth.core.model.easeOf
+import app.hearth.core.model.scoreNow
 import app.hearth.core.model.Win
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
@@ -188,7 +190,8 @@ data class WeekAgenda(
     val wins: List<Win> = emptyList(),
     /** How the week went (its weather): asked unless switched off, with Hearth's suggestion and what was agreed so far. */
     val weekOn: Boolean = true,
-    val suggestedWeek: Ease = Ease.EASY,
+    /** Hearth's suggestion for the week, 0–5. */
+    val suggestedWeek: Int = 4,
     val week: WeekRating? = null,
     /** House rules checked this meeting (worked / not yet), never who. */
     val ruleChecks: List<RuleCheck> = emptyList(),
@@ -247,7 +250,7 @@ class WeekoverlegAgendaTool(
         val suggestedWeek = weekSuggestion(done.size, wins.size, attention.size + habits.count { it.ease == Ease.HARD }, newFrictions, ruleChecks.count { !it.worked })
         val transcript = meeting.currentTranscript().map { it.text }
 
-        val look = WeekLook(open, board.allItems(), meals.size, openShopping, ctx.today)
+        val look = WeekLook(open, board.allItems(), meals.size, openShopping, ctx.today, meeting.ruleScores())
         val topics = Topic.entries.map { TopicLine(it, it.title(ctx.lang), it.glance(look, ctx.lang)) }
         val summary = buildList {
             add(ctx.t("Terugblik: ${done.size} ${if (done.size == 1) "ding" else "dingen"} gedaan", "Look back: ${done.size} ${if (done.size == 1) "thing" else "things"} done") +
@@ -260,7 +263,7 @@ class WeekoverlegAgendaTool(
                     Topic.RHYTHM -> listOfNotNull(
                         open.filter { it.topic == Topic.RHYTHM && !it.isStep }.takeIf { it.isNotEmpty() }?.let { list ->
                             list.groupBy { it.anchor }.entries.sortedBy { it.key?.ordinal ?: Int.MAX_VALUE }.joinToString("; ") { (a, items) ->
-                                (a?.title(ctx.lang) ?: ctx.t("Wanneer het past", "Whenever it fits")) + ": " + items.joinToString(", ") { h -> h.text + (h.ease?.let { e -> " – " + easeWord(e, ctx) } ?: "") }
+                                (a?.title(ctx.lang) ?: ctx.t("Wanneer het past", "Whenever it fits")) + ": " + items.joinToString(", ") { h -> h.text + (h.scoreNow?.let { n -> " – " + scoreText(n, ctx) } ?: "") }
                             }
                         },
                         attention.filter { it.item.isRoutine() }.takeIf { it.isNotEmpty() }?.let { ctx.t("vraagt aandacht: ", "asks for attention: ") + it.joinToString(", ") { a -> attentionText(a.item, a.ease, ctx) } },
@@ -270,14 +273,14 @@ class WeekoverlegAgendaTool(
                     Topic.FRICTION -> frictions.takeIf { it.isNotEmpty() }?.let {
                         " (" + it.joinToString(", ") { f -> f.text + (f.direction?.let { d -> " → " + app.hearth.core.tools.board.directionWords(d, ctx) } ?: "") } + ")"
                     }
-                    Topic.RULES -> ruleChecks.mapNotNull { c -> board.allItems().firstOrNull { it.id == c.ruleId }?.let { it.text + ": " + easeWord(c.ease, ctx) } }
+                    Topic.RULES -> ruleChecks.mapNotNull { c -> board.allItems().firstOrNull { it.id == c.ruleId }?.let { it.text + ": " + scoreText(c.score, ctx) } }
                         .takeIf { it.isNotEmpty() }?.joinToString(", ", " (", ")")
                     else -> null
                 }
                 add("${t.title}: ${t.glance}${extra.orEmpty()}.")
             }
-            if (weekOn) add(ctx.t("De week (samen afspreken, zon / wolk / bliksem): voorstel ", "The week (agree together, sun / cloud / lightning): suggested ") +
-                suggestedWeek.weather(ctx.lang) + " (" + suggestedWeek.weekWord(ctx.lang) + ").")
+            if (weekOn) add(ctx.t("De week (samen afspreken, van 0 tot 5): voorstel ", "The week (agree together, from 0 to 5): suggested ") +
+                easeOf(suggestedWeek).weather(ctx.lang) + ", " + weekWord(suggestedWeek, ctx.lang) + ".")
             // The habit coach: what to try for habits that are too much, take effort or are ready to grow.
             val coach = app.hearth.core.tools.backlog.reviewHabits(habits, backlog, meeting, board, ctx).filter { it.stage != HabitStage.NEW && it.tips.isNotEmpty() }
             if (coach.isNotEmpty()) add(ctx.t("Gewoontes (vier wetten, review_habit): ", "Habits (four laws, review_habit): ") + coach.joinToString("; ") { r ->

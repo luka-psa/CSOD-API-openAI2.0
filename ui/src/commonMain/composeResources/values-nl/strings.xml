@@ -337,15 +337,15 @@
     <string name="listen_running">Luister mee luistert</string>
     <string name="listen_back">Terug naar het overleg</string>
     <string name="week_title">De week</string>
-    <string name="week_hint">Hearth stelt voor (de ring), jullie beslissen samen. Geen akkoord is ook een antwoord.</string>
+    <string name="week_hint">Hearth stelt voor (de ring), jullie beslissen samen, van 0 tot 5. Geen akkoord is ook een antwoord.</string>
     <string name="week_guess">Hearth denkt: %1$s</string>
     <string name="week_agreed">Afgesproken: de week %1$s</string>
     <string name="week_neutral">Geen akkoord</string>
     <string name="week_ok">Klopt</string>
     <string name="week_no_agreement">Geen akkoord</string>
-    <string name="week_off">Het weer van de week staat uit.</string>
+    <string name="week_off">De week een score geven staat uit.</string>
     <string name="week_switch_on">Aanzetten</string>
-    <string name="week_switch_off">Het weer van de week uitzetten</string>
+    <string name="week_switch_off">De week geen score meer geven</string>
     <string name="habit_less_often">Minder vaak</string>
     <string name="habit_easier">Makkelijker maken</string>
     <string name="ease_easy">loopt vanzelf</string>
@@ -356,10 +356,7 @@
     <string name="small_step_add">Kleinere eerste stap…</string>
     <string name="small_step_title">Wat is een kleinere eerste stap?</string>
     <string name="small_step_hint">bv. alleen je eigen bord naar de keuken</string>
-    <string name="coach_title">Zo blijft het hangen</string>
-    <string name="coach_hint">De vier wetten van Atomic Habits. Eén ding tegelijk: kleiner als het te zwaar is, een stap groter als het vanzelf loopt.</string>
-    <string name="coach_not_yet">Nog niets</string>
-    <string name="coach_weather">Per overleg</string>
+    <string name="coach_title">Hoe loopt het?</string>
     <string name="coach_said">Besproken: %1$s</string>
     <string name="coach_before">Eerder</string>
     <string name="tip_moment">Kies een moment</string>
@@ -432,7 +429,7 @@
     <string name="discard_keep">Verder typen</string>
     <string name="discard_yes">Weggooien</string>
     <string name="review_title">Hoe liep het?</string>
-    <string name="review_hint">Samen, van bliksem tot zon, nooit wie. Hearth stelt telkens één ding voor dat het makkelijker maakt.</string>
+    <string name="review_hint">Samen, van 0 (komt er niet van) tot 5 (loopt vanzelf), nooit wie. Wat minder loopt, krijgt één ding om te proberen.</string>
     <string name="review_empty">Nog geen ritmes of huisregels om na te kijken.</string>
     <string name="rules_review_note">Hoe ze lopen, bekijken jullie samen in de Terugblik.</string>
     <string name="friction_need">Wat is er nodig?</string>
@@ -499,4 +496,10 @@
     <string name="sync_join_keep">Voeg samen</string>
     <string name="sync_join_keep_body">Wat hier staat, komt bij het huishouden.</string>
     <string name="sync_join_go">Doe mee</string>
+    <string name="coach_better">Beter dan vorige keer</string>
+    <string name="coach_worse">Minder dan vorige keer</string>
+    <string name="coach_same">Zoals vorige keer</string>
+    <string name="coach_try">Wat kan beter?</string>
+    <string name="coach_start">Om te beginnen</string>
+    <string name="routine_setup">Ritme instellen</string>
 </resources>

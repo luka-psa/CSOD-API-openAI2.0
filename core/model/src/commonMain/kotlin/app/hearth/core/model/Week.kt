@@ -15,23 +15,24 @@ data class Huddle(val id: String, val heldOn: String, val createdAt: Long, val s
  * The household's topics, one name, icon and colour each, the same on every screen: a tile in the
  * weekoverleg (Luister mee lights up the one a sentence lands in), a panel in Taken, a column on the
  * Werkbord, a card on Vandaag. So the whole household fits on one screen and nobody has to hold it in their head.
- * Always in this order, in three groups ([group]): the tasks, then food, then the Werkbord.
+ * Always in this order, in two groups ([group]): what we do and eat (six), then how we live together (four).
  */
-enum class Topic { ADMIN, PROJECTS, HOME, RHYTHM, FREE_TIME, MENU, SHOPPING, RULES, FRICTION, GOALS }
+enum class Topic { ADMIN, PROJECTS, HOME, FREE_TIME, MENU, SHOPPING, RHYTHM, RULES, FRICTION, GOALS }
 
-/** The three kinds of topics, side by side on every screen: what there is to do, what we eat, what we agree on. */
-enum class TopicGroup { TASKS, FOOD, BOARD }
+/**
+ * The two kinds of topics, side by side on every screen: what there is to do and to eat this week, and the rhythm and
+ * agreements that are rated in the Terugblik (routines, house rules) with the frictions and goals that shape them.
+ */
+enum class TopicGroup { TASKS, BOARD }
 
 val Topic.group: TopicGroup get() = when (this) {
-    Topic.ADMIN, Topic.PROJECTS, Topic.HOME, Topic.RHYTHM, Topic.FREE_TIME -> TopicGroup.TASKS
-    Topic.MENU, Topic.SHOPPING -> TopicGroup.FOOD
-    Topic.RULES, Topic.FRICTION, Topic.GOALS -> TopicGroup.BOARD
+    Topic.ADMIN, Topic.PROJECTS, Topic.HOME, Topic.FREE_TIME, Topic.MENU, Topic.SHOPPING -> TopicGroup.TASKS
+    Topic.RHYTHM, Topic.RULES, Topic.FRICTION, Topic.GOALS -> TopicGroup.BOARD
 }
 
 fun TopicGroup.title(lang: Lang): String = when (this) {
-    TopicGroup.TASKS -> if (lang == Lang.NL) "Taken" else "Tasks"
-    TopicGroup.FOOD -> if (lang == Lang.NL) "Eten" else "Food"
-    TopicGroup.BOARD -> if (lang == Lang.NL) "Werkbord" else "Board"
+    TopicGroup.TASKS -> if (lang == Lang.NL) "Doen & eten" else "To do & food"
+    TopicGroup.BOARD -> if (lang == Lang.NL) "Ritme & afspraken" else "Rhythm & agreements"
 }
 
 val TopicGroup.topics: List<Topic> get() = Topic.entries.filter { it.group == this }
@@ -78,6 +79,8 @@ class WeekLook(
     val mealsPlanned: Int,
     val shoppingOpen: Int,
     val today: LocalDate,
+    /** How each house rule goes (0–5), by rule id. */
+    val ruleScores: Map<String, Int> = emptyMap(),
 )
 
 /** A topic in a few calm words ("3 open · 1 wacht op antwoord"); never a red counter. */
@@ -131,12 +134,14 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
         Topic.RHYTHM -> {
             val routines = open.filter { it.topic == Topic.RHYTHM && !it.isStep }
             val hard = routines.count { it.ease == Ease.HARD }
+            val scores = routines.mapNotNull { it.scoreNow }
             val moments = routines.mapNotNull { it.anchor }.distinct().size
             if (routines.isEmpty()) listOf(if (nl) "Nog geen ritme" else "No rhythm yet")
             else listOfNotNull(
                 count(routines.size, "routine", "routines"),
                 moments.takeIf { it > 1 }?.let { if (nl) "over $it momenten" else "across $it moments" },
-                hard.takeIf { it > 0 }?.let { if (nl) "$it te zwaar" else "$it too hard" },
+                hard.takeIf { it > 0 }?.let { if (nl) "$it te zwaar" else "$it too hard" }
+                    ?: scores.takeIf { it.isNotEmpty() }?.let { if (nl) "gemiddeld ${average(it)}/5" else "average ${average(it)}/5" },
             )
         }
         Topic.SHOPPING -> listOf(
@@ -159,8 +164,13 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
             )
         }
         Topic.RULES -> {
-            val rules = look.board.count { it.kind == BoardKind.RULE && it.isOpen }
-            listOf(if (rules == 0) (if (nl) "Nog geen huisregels" else "No house rules yet") else if (nl) count(rules, "huisregel", "huisregels") else count(rules, "house rule", "house rules"))
+            val rules = look.board.filter { it.kind == BoardKind.RULE && it.isOpen }
+            val scores = rules.mapNotNull { look.ruleScores[it.id] }
+            if (rules.isEmpty()) listOf(if (nl) "Nog geen huisregels" else "No house rules yet")
+            else listOfNotNull(
+                if (nl) count(rules.size, "huisregel", "huisregels") else count(rules.size, "house rule", "house rules"),
+                scores.takeIf { it.isNotEmpty() }?.let { if (nl) "gemiddeld ${average(it)}/5" else "average ${average(it)}/5" },
+            )
         }
     }
     return parts.joinToString(" · ")
@@ -189,28 +199,38 @@ data class Win(val id: String, val text: String, val memberId: String?, val hudd
 data class TranscriptLine(val id: String, val text: String, val huddleId: String?, val createdAt: Long, val sorted: Boolean = false)
 
 /**
- * How the week went, agreed together for the household (never per person, never about someone), on the same weather
- * scale as the routines and house rules: zon (liep vanzelf), wolk (vroeg moeite), bliksem (was zwaar). Hearth
- * suggests, the family decides; no agreement ([agreed] false) is an answer too and gives no weather.
+ * How the week went, agreed together for the household (never per person, never about someone), on the same 0–5 scale
+ * as the routines and house rules (its weather: bliksem 0–1, wolk 2–3, zon 4–5). Hearth suggests, the family decides;
+ * no agreement ([agreed] false) is an answer too and gives no score.
  */
 @Serializable
-data class WeekRating(val ease: Ease?, val suggested: Ease?, val agreed: Boolean, val huddleId: String?)
+data class WeekRating(val score: Int?, val suggested: Int?, val agreed: Boolean, val huddleId: String?) {
+    val ease: Ease? get() = score?.let(::easeOf)
+}
 
 /**
- * How a house rule went this week, on the same scale as the routines: loopt vanzelf, vraagt moeite, te zwaar.
- * Household-level: it never says who. Two meetings in a row "te zwaar" and it comes back as a friction.
+ * How a house rule went this week, on the same 0–5 scale as the routines. Household-level: it never says who. Too
+ * much (0–1) two meetings in a row and it comes back as a friction.
  */
 @Serializable
-data class RuleCheck(val ruleId: String, val ease: Ease, val huddleId: String?) {
+data class RuleCheck(val ruleId: String, val score: Int, val huddleId: String?) {
+    val ease: Ease get() = easeOf(score)
     val worked: Boolean get() = ease != Ease.HARD
 }
 
 /**
- * Starts at the sun: the small things and good habits are always forgotten. A cloud when frictions pile up or habits
- * ask for attention with little done. Never a bolt: that is for the family to say.
+ * Starts at "loopt goed" (4): the small things and good habits are always forgotten. A 3 when frictions pile up or
+ * habits ask for attention with little done. Never lower: that is for the family to say.
  */
-fun weekSuggestion(done: Int, wins: Int, needingAttention: Int, newFrictions: Int, rulesTooHard: Int): Ease =
-    if (newFrictions + rulesTooHard >= 2 || (done + wins == 0 && needingAttention > 1)) Ease.EFFORT else Ease.EASY
+fun weekSuggestion(done: Int, wins: Int, needingAttention: Int, newFrictions: Int, rulesTooHard: Int): Int =
+    if (newFrictions + rulesTooHard >= 2 || (done + wins == 0 && needingAttention > 1)) 3 else 4
+
+/** "3,7": the average of some scores, one decimal, the way it's said. */
+fun average(scores: List<Int>): String {
+    if (scores.isEmpty()) return "–"
+    val tenths = (scores.sum() * 10 + scores.size / 2) / scores.size
+    return if (tenths % 10 == 0) "${tenths / 10}" else "${tenths / 10},${tenths % 10}"
+}
 
 /** The weather of a step on the scale, for words and screen readers: "zon", "wolk", "bliksem". */
 fun Ease.weather(lang: Lang): String = when (this) {
@@ -219,9 +239,16 @@ fun Ease.weather(lang: Lang): String = when (this) {
     Ease.HARD -> if (lang == Lang.NL) "bliksem" else "lightning"
 }
 
-/** How the week went in words; kind on purpose: "liep vanzelf", "vroeg moeite", "was zwaar". */
-fun Ease.weekWord(lang: Lang): String = when (this) {
-    Ease.EASY -> if (lang == Lang.NL) "liep vanzelf" else "went smoothly"
-    Ease.EFFORT -> if (lang == Lang.NL) "vroeg moeite" else "took effort"
-    Ease.HARD -> if (lang == Lang.NL) "was zwaar" else "was heavy"
+/** How the week went in words, with its score; kind on purpose: "liep vanzelf (5/5)", "vroeg moeite (3/5)". */
+fun weekWord(score: Int, lang: Lang): String {
+    val nl = lang == Lang.NL
+    val words = when (score.coerceIn(0, SCORE_MAX)) {
+        0 -> if (nl) "was heel zwaar" else "was very heavy"
+        1 -> if (nl) "was zwaar" else "was heavy"
+        2 -> if (nl) "was moeizaam" else "was a struggle"
+        3 -> if (nl) "vroeg moeite" else "took effort"
+        4 -> if (nl) "liep goed" else "went well"
+        else -> if (nl) "liep vanzelf" else "went smoothly"
+    }
+    return "$words ($score/$SCORE_MAX)"
 }

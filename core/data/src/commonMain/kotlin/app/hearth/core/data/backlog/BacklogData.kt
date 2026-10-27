@@ -13,6 +13,7 @@ import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Ease
+import app.hearth.core.model.easeOf
 import app.hearth.core.model.Anchor
 import app.hearth.core.model.Plan
 import app.hearth.core.model.Schedule
@@ -53,10 +54,12 @@ data class BacklogEntity(
     @ColumnInfo(defaultValue = "NULL") val schedule: String? = null,
     /** A habit's nice thing that goes with it ("met muziek"). */
     @ColumnInfo(defaultValue = "NULL") val pairing: String? = null,
+    /** A habit's last score, 0–5 ([ease] is its weather). */
+    @ColumnInfo(defaultValue = "NULL") val score: Int? = null,
 ) {
     fun toModel() = BacklogItem(
         id, text, section, plan, plannedDate, finishBy, done, createdAt, addedById,
-        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep, anchor, Schedule.decode(schedule), pairing,
+        urgent, waiting, intervalDays, lastDone, parentId, postponed, ease, smallStep, anchor, Schedule.decode(schedule), pairing, score,
     )
 }
 
@@ -107,8 +110,8 @@ interface BacklogDao {
     @Query("UPDATE backlog_item SET postponed = postponed + 1, updatedAt = :now WHERE id IN (:ids)")
     suspend fun addPostponed(ids: List<String>, now: Long)
 
-    @Query("UPDATE backlog_item SET ease = :ease, updatedAt = :now WHERE id IN (:ids)")
-    suspend fun setEase(ids: List<String>, ease: Ease?, now: Long)
+    @Query("UPDATE backlog_item SET ease = :ease, score = :score, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setScore(ids: List<String>, score: Int?, ease: Ease?, now: Long)
 
     @Query("UPDATE backlog_item SET anchor = :anchor, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setAnchor(ids: List<String>, anchor: Anchor?, now: Long)
@@ -253,8 +256,9 @@ class BacklogRepository(
         if (ids.isNotEmpty()) dao.setAnchor(ids, anchor, clock())
     }
 
-    suspend fun setEase(ids: List<String>, ease: Ease?) {
-        if (ids.isNotEmpty()) dao.setEase(ids, ease, clock())
+    /** A habit's score (0–5); its weather follows from it. */
+    suspend fun setScore(ids: List<String>, score: Int?) {
+        if (ids.isNotEmpty()) dao.setScore(ids, score, score?.let(::easeOf), clock())
     }
 
     suspend fun setSmallStep(ids: List<String>, step: String?) {

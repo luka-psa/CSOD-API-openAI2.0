@@ -622,10 +622,13 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val wins: StateFlow<List<Win>> = app.meeting.wins.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val week: StateFlow<WeekRating?> = app.meeting.week.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val ruleChecks: StateFlow<List<RuleCheck>> = app.meeting.ruleChecks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val ruleEase: StateFlow<Map<String, Ease>> = app.meeting.ruleEase.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    /** How each house rule goes (0–5), by rule id: this week's score or the last one. */
+    val ruleScores: StateFlow<Map<String, Int>> = app.meeting.ruleScores.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    /** Each house rule's score per meeting, oldest first, by rule id. */
+    val ruleHistory: StateFlow<Map<String, List<Int>>> = app.meeting.ruleHistory.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    /** Each habit's weather in the meeting that's still to come, by habit id. */
-    val habitChecks: StateFlow<Map<String, Ease>> = app.meeting.habitChecks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    /** Each habit's score in the meeting that's still to come, by habit id. */
+    val habitChecks: StateFlow<Map<String, Int>> = app.meeting.habitChecks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** The habit coach for every habit (the four laws), by habit id: the same as review_habit gives an AI. */
     val habitReviews: StateFlow<Map<String, HabitReview>> = combine(backlog, steps, board, app.meeting.habitHistory, combine(lang, today) { l, d -> l to d }) { items, allSteps, boardItems, history, (l, day) ->
@@ -673,16 +676,16 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Only after the person confirmed on screen. */
     fun removeWin(win: Win) = tool { app.tools.registry.run(app.tools.removeWin, RemoveWinArgs(win.id), it, confirmed = true) }
 
-    /** The week's weather, agreed together; null = no agreement. */
-    fun rateWeek(ease: Ease?, suggested: Ease) = tool {
-        app.tools.registry.run(app.tools.rateWeek, RateWeekArgs(ease, suggested), it)
+    /** How the week went (0–5), agreed together; null = no agreement. */
+    fun rateWeek(score: Int?, suggested: Int) = tool {
+        app.tools.registry.run(app.tools.rateWeek, RateWeekArgs(score, suggested), it)
     }
 
     fun setWeekOn(on: Boolean) = tool { app.tools.registry.run(app.tools.setWeekMeters, WeekMetersArgs(on), it) }
 
     /** How a house rule went this week; rules that ask a lot cloud Hearth's suggestion for the week. */
-    fun checkRule(rule: BoardItem, ease: Ease) = tool {
-        app.tools.registry.run(app.tools.checkHouseRule, CheckHouseRuleArgs(ruleId = rule.id, ease = ease), it)
+    fun checkRule(rule: BoardItem, score: Int) = tool {
+        app.tools.registry.run(app.tools.checkHouseRule, CheckHouseRuleArgs(ruleId = rule.id, score = score), it)
         _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it)
     }
 
@@ -693,8 +696,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         _agenda.value = app.tools.registry.run(app.tools.weekoverlegAgenda, AgendaArgs(), it)
     }
 
-    fun rateHabit(item: BacklogItem, ease: Ease) = tool {
-        say(app.tools.registry.run(app.tools.rateHabit, RateHabitArgs(itemIds = listOf(item.id), ease = ease), it).summary)
+    fun rateHabit(item: BacklogItem, score: Int) = tool {
+        say(app.tools.registry.run(app.tools.rateHabit, RateHabitArgs(itemIds = listOf(item.id), score = score), it).summary)
     }
 
     fun setSmallStep(item: BacklogItem, step: String) = tool {

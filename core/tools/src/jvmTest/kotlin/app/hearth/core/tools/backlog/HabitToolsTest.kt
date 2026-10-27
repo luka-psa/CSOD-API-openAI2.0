@@ -47,25 +47,26 @@ class HabitToolsTest {
     @Test
     fun `each meeting keeps one rating per habit`() = runTest {
         val habit = table()
-        tools.registry.run(tools.rateHabit, RateHabitArgs(itemIds = listOf(habit.id), ease = Ease.EFFORT), ctx)
+        tools.registry.run(tools.rateHabit, RateHabitArgs(itemIds = listOf(habit.id), score = 3), ctx)
         // Said again in the same meeting: it replaces.
-        tools.registry.run(tools.rateHabit, RateHabitArgs(texts = listOf("tafel afruimen"), ease = Ease.HARD), ctx)
-        assertEquals(listOf(Ease.HARD), meeting.habitHistory(habit.id))
+        tools.registry.run(tools.rateHabit, RateHabitArgs(texts = listOf("tafel afruimen"), score = 1), ctx)
+        assertEquals(listOf(1), meeting.habitHistory(habit.id))
         meeting.close("2026-10-18", "Weekoverleg")
-        tools.registry.run(tools.rateHabit, RateHabitArgs(itemIds = listOf(habit.id), ease = Ease.EASY), ctx)
-        assertEquals(listOf(Ease.HARD, Ease.EASY), meeting.habitHistory(habit.id))
-        assertEquals(Ease.EASY, backlog.openItems().first { it.id == habit.id }.ease)
+        tools.registry.run(tools.rateHabit, RateHabitArgs(itemIds = listOf(habit.id), score = 4), ctx)
+        assertEquals(listOf(1, 4), meeting.habitHistory(habit.id))
+        val rated = backlog.openItems().first { it.id == habit.id }
+        assertEquals(4 to Ease.EASY, rated.score to rated.ease)
     }
 
     @Test
     fun `review_habit reads the four laws and suggests one thing`() = runTest {
         val habit = table()
-        tools.registry.run(tools.rateHabit, RateHabitArgs(itemIds = listOf(habit.id), ease = Ease.HARD), ctx)
+        tools.registry.run(tools.rateHabit, RateHabitArgs(itemIds = listOf(habit.id), score = 1), ctx)
         val review = tools.registry.run(tools.reviewHabit, ReviewHabitArgs(text = "tafel"), ctx)
         assertEquals(HabitStage.SHRINK, review.reviews.single().stage)
         assertEquals(
             "“De tafel afruimen” · Te zwaar: maak het kleiner, niet harder.\n" +
-                "Weer per overleg: bliksem\n" +
+                "Score per overleg (0–5): 1 (bliksem)\n" +
                 "Zichtbaar: Rond het eten · Aantrekkelijk: nog niets · Makkelijk: nog niets · Voldoening: nog niets\n" +
                 "Probeer (Makkelijk): Begin met de versie van twee minuten.",
             review.summary,

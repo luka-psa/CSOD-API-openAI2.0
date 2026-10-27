@@ -344,15 +344,15 @@
     <string name="listen_running">Luister mee is listening</string>
     <string name="listen_back">Back to the meeting</string>
     <string name="week_title">The week</string>
-    <string name="week_hint">Hearth suggests (the ring), you decide together. No agreement is an answer too.</string>
+    <string name="week_hint">Hearth suggests (the ring), you decide together, from 0 to 5. No agreement is an answer too.</string>
     <string name="week_guess">Hearth thinks: %1$s</string>
     <string name="week_agreed">Agreed: the week %1$s</string>
     <string name="week_neutral">No agreement</string>
     <string name="week_ok">That’s right</string>
     <string name="week_no_agreement">No agreement</string>
-    <string name="week_off">The week’s weather is off.</string>
+    <string name="week_off">Scoring the week is off.</string>
     <string name="week_switch_on">Switch on</string>
-    <string name="week_switch_off">Switch the week’s weather off</string>
+    <string name="week_switch_off">Stop scoring the week</string>
     <string name="habit_less_often">Less often</string>
     <string name="habit_easier">Make it easier</string>
     <string name="ease_easy">runs easily</string>
@@ -363,10 +363,7 @@
     <string name="small_step_add">Smaller first step…</string>
     <string name="small_step_title">What’s a smaller first step?</string>
     <string name="small_step_hint">e.g. just your own plate to the kitchen</string>
-    <string name="coach_title">How it sticks</string>
-    <string name="coach_hint">The four laws of Atomic Habits. One thing at a time: smaller when it’s too much, a step bigger when it runs by itself.</string>
-    <string name="coach_not_yet">Nothing yet</string>
-    <string name="coach_weather">Per meeting</string>
+    <string name="coach_title">How is it going?</string>
     <string name="coach_said">Talked about: %1$s</string>
     <string name="coach_before">Before</string>
     <string name="tip_moment">Choose a moment</string>
@@ -439,7 +436,7 @@
     <string name="discard_keep">Keep typing</string>
     <string name="discard_yes">Throw away</string>
     <string name="review_title">How did it go?</string>
-    <string name="review_hint">Together, from lightning to sun, never who. Hearth suggests one thing that makes it easier.</string>
+    <string name="review_hint">Together, from 0 (doesn’t happen yet) to 5 (runs by itself), never who. What goes less well gets one thing to try.</string>
     <string name="review_empty">No routines or house rules to look at yet.</string>
     <string name="rules_review_note">How they go, you look at together in the look back.</string>
     <string name="friction_need">What does it need?</string>
@@ -506,4 +503,10 @@
     <string name="sync_join_keep">Merge</string>
     <string name="sync_join_keep_body">What is here is added to the household.</string>
     <string name="sync_join_go">Join</string>
+    <string name="coach_better">Better than last time</string>
+    <string name="coach_worse">Less than last time</string>
+    <string name="coach_same">Same as last time</string>
+    <string name="coach_try">What could be better?</string>
+    <string name="coach_start">To start</string>
+    <string name="routine_setup">Set up the rhythm</string>
 </resources>

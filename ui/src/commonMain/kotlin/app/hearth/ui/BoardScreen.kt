@@ -112,14 +112,14 @@ class BoardCallbacks(
     val markFriction: (BoardItem, FrictionDirection?) -> Unit,
     val addGoal: (String, GoalScope, Member?) -> Unit,
     val setGoalStep: (BoardItem, GoalPlan) -> Unit,
-    val rateRule: (BoardItem, Ease) -> Unit,
+    val rateRule: (BoardItem, Int) -> Unit,
     val achieveGoal: (BoardItem) -> Unit,
     val delete: (BoardItem) -> Unit,
 )
 
 /** Who lives here, then three columns: Huisregels · Frictie & ideeën · Doelen. [routines] are the ones a friction can change. */
 @Composable
-fun BoardScreen(items: List<BoardItem>, members: List<Member>, backlog: List<BacklogItem>, ruleEase: Map<String, Ease>, today: LocalDate, wide: Boolean, cb: BoardCallbacks) {
+fun BoardScreen(items: List<BoardItem>, members: List<Member>, backlog: List<BacklogItem>, ruleScores: Map<String, Int>, today: LocalDate, wide: Boolean, cb: BoardCallbacks) {
     val routines = backlog.filter { it.isRoutine() && !it.done }
     val byId = backlog.associateBy { it.id }
     var deleting by remember { mutableStateOf<BoardItem?>(null) }
@@ -137,7 +137,7 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, backlog: List<Bac
         MembersRow(members, onAdd = { asking = Ask.Member }, onRemove = { removing = it })
         Spacer(Modifier.size(18.dp))
 
-        val rulesCard = @Composable { m: Modifier -> RulesCard(rules, ruleEase, m, cb, onOpen = { deleting = it }) }
+        val rulesCard = @Composable { m: Modifier -> RulesCard(rules, ruleScores, m, cb, onOpen = { deleting = it }) }
         val frictionsCard = @Composable { m: Modifier -> FrictionsCard(frictions, members, routines, m, cb, onOpen = { deleting = it }) }
         val goalsCard = @Composable { m: Modifier -> GoalsCard(goals, members, byId, today, m, cb, onAsk = { asking = it }, onOpen = { deleting = it }) }
         if (wide) {
@@ -208,7 +208,7 @@ fun MemberDot(member: Member, size: Int = 24) {
 // ---------- house rules ----------
 
 @Composable
-private fun RulesCard(rules: List<BoardItem>, ease: Map<String, Ease>, modifier: Modifier, cb: BoardCallbacks, onOpen: (BoardItem) -> Unit) {
+private fun RulesCard(rules: List<BoardItem>, scores: Map<String, Int>, modifier: Modifier, cb: BoardCallbacks, onOpen: (BoardItem) -> Unit) {
     val s = Topic.RULES.style()
     TopicCard(Topic.RULES, LocalLang.current, modifier) {
         AddRow(stringResource(Res.string.rules_add_hint), cb.addRule, muted = true, compact = true)
@@ -226,7 +226,7 @@ private fun RulesCard(rules: List<BoardItem>, ease: Map<String, Ease>, modifier:
                 // How it goes, like the routines: rated together in the Terugblik, or right here.
                 Column(Modifier.weight(1f).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(rule.text, style = MaterialTheme.typography.bodyLarge)
-                    EaseChooser(ease[rule.id]) { cb.rateRule(rule, it) }
+                    ScoreChooser(scores[rule.id]) { cb.rateRule(rule, it) }
                 }
                 DeleteButton({ onOpen(rule) })
             }

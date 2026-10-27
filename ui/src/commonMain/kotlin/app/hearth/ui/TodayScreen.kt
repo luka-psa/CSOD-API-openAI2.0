@@ -56,9 +56,6 @@ import app.hearth.core.model.plusDays
 import app.hearth.core.model.weekdayName
 import app.hearth.core.tools.backlog.When
 import app.hearth.ui.resources.Res
-import app.hearth.ui.resources.dash_board_empty
-import app.hearth.ui.resources.dash_board_frictions
-import org.jetbrains.compose.resources.pluralStringResource
 import app.hearth.ui.resources.dash_coming_up
 import app.hearth.ui.resources.dash_huddle
 import app.hearth.ui.resources.dash_huddle_body
@@ -102,7 +99,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import app.hearth.ui.resources.menu_tonight_empty
 import app.hearth.ui.resources.nav_menu
 import app.hearth.ui.resources.today_nothing
-import app.hearth.core.model.Ease
+import app.hearth.core.model.isHabit
+import app.hearth.core.model.scoreNow
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -133,8 +131,8 @@ fun TodayScreen(
     onGoMenu: () -> Unit,
     onGoWeek: () -> Unit,
     onGoConnect: () -> Unit,
-    /** How each house rule goes, by rule id: its dot takes that colour. */
-    ruleEase: Map<String, Ease> = emptyMap(),
+    /** How each house rule goes (0–5), by rule id: it shows as its badge. */
+    ruleScores: Map<String, Int> = emptyMap(),
 ) {
     val names = backlog.associate { it.id to it.text }
     val routineSteps = steps.filter { it.isRoutineStep }.groupBy { it.parentId!! }
@@ -189,29 +187,36 @@ fun TodayScreen(
         }
     }
 
-    // The household's topics under the day, in the same order and groups as everywhere: the tasks, then food and
-    // the Werkbord on a shelf. A topic shows when it has something for today; dinner and free time always do.
-    val look = WeekLook(backlog, board, meals.size, shopping.sumOf { sec -> sec.items.count { !it.bought } }, today)
+    // The household's topics under the day, every one of them, in the same order and two groups as the weekoverleg:
+    // what we do and eat (six cards, two by two), and the rhythm and agreements on the shelf beside them (four), each
+    // routine and house rule with how it goes. A topic with nothing for today only shows its few words.
+    val look = WeekLook(backlog, board, meals.size, shopping.sumOf { sec -> sec.items.count { !it.bought } }, today, ruleScores)
     @Composable
     fun Card(topic: Topic, m: Modifier, action: @Composable () -> Unit, content: @Composable ColumnScope.() -> Unit) =
         // The same few words as its weekoverleg tile; free time lists its days itself.
         TopicCard(topic, lang, m, glance = topic.glance(look, lang).takeIf { topic != Topic.FREE_TIME }, action = action, content = content)
     // Topic cards open their home with just the arrow, so a name never has to break (the shelf is narrow on a phone).
     val toTasks = @Composable { CardAction(stringResource(Res.string.open_tasks), onGoTasks, compact = true) }
-    val cards: Map<Topic, @Composable (Modifier) -> Unit> = buildMap {
-        if (admin.isNotEmpty()) put(Topic.ADMIN) { m -> Card(Topic.ADMIN, m, toTasks) { admin.take(4).forEach { ItemRow(it) } } }
-        if (projects.isNotEmpty()) put(Topic.PROJECTS) { m ->
-            Card(Topic.PROJECTS, m, toTasks) { projects.take(4).forEach { project -> ProjectLine(project, steps.filter { it.parentId == project.id }, today, lang) { onOpenItem(project) } } }
-        }
-        if (chores.isNotEmpty()) put(Topic.HOME) { m -> Card(Topic.HOME, m, toTasks) { chores.take(5).forEach { ItemRow(it) } } }
-        if (hasRhythm) put(Topic.RHYTHM) { m ->
-            // In the order the day goes: the morning routine first, whatever fits last.
-            Card(Topic.RHYTHM, m, toTasks) {
-                if (rhythm.isEmpty()) EmptyHint(stringResource(Res.string.dash_rhythm_empty))
-                rhythm.take(8).forEach { ItemRow(it) }
-            }
-        }
-        put(Topic.FREE_TIME) { m ->
+    val toBoard = @Composable { CardAction(stringResource(Res.string.nav_board), onGoBoard, compact = true) }
+
+    // A line on the shelf: its icon or how it goes, then its words; a tap opens the Werkbord.
+    @Composable
+    fun ShelfLine(text: String, lead: @Composable () -> Unit) = Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(onClick = onGoBoard).padding(vertical = 5.dp),
+    ) {
+        lead()
+        Spacer(Modifier.width(10.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+    }
+
+    val cards: Map<Topic, @Composable (Modifier) -> Unit> = mapOf(
+        Topic.ADMIN to { m -> Card(Topic.ADMIN, m, toTasks) { admin.take(4).forEach { ItemRow(it) } } },
+        Topic.PROJECTS to { m ->
+            Card(Topic.PROJECTS, m, toTasks) { projects.take(3).forEach { project -> ProjectLine(project, steps.filter { it.parentId == project.id }, today, lang) { onOpenItem(project) } } }
+        },
+        Topic.HOME to { m -> Card(Topic.HOME, m, toTasks) { chores.take(5).forEach { ItemRow(it) } } },
+        Topic.FREE_TIME to { m ->
             Card(Topic.FREE_TIME, m, toTasks) {
                 FreeTime(dueToday, doneToday)
                 freeSoon.forEach { ItemRow(it) }
@@ -220,21 +225,20 @@ fun TodayScreen(
                     Hint(stringResource(Res.string.free_weekend, weekdayName(day.dayOfWeek, lang).replaceFirstChar { it.uppercase() }))
                 }
             }
-        }
-        put(Topic.MENU) { m ->
+        },
+        Topic.MENU to { m ->
             Card(Topic.MENU, m, { CardAction(stringResource(Res.string.nav_menu), onGoMenu, compact = true) }) {
                 meals.firstOrNull { it.date == today.toString() }?.let { Tonight(it.dish) } ?: EmptyHint(stringResource(Res.string.menu_tonight_empty))
                 meals.filter { it.date > today.toString() }.sortedBy { it.date }.take(2).forEach { meal ->
                     runCatching { LocalDate.parse(meal.date) }.getOrNull()?.let { day -> MealLine(dayLabel(day, today, lang), meal.dish) }
                 }
             }
-        }
-        put(Topic.SHOPPING) { m ->
+        },
+        Topic.SHOPPING to { m ->
             Card(Topic.SHOPPING, m, { CardAction(stringResource(Res.string.open_list), onGoShopping, compact = true) }) {
                 val open = shopping.flatMap { sec -> sec.items.filterNot { it.bought } }
-                if (open.isEmpty()) EmptyHint(stringResource(Res.string.shopping_summary_empty))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    open.forEach { item ->
+                    open.take(12).forEach { item ->
                         Text(
                             item.name,
                             style = MaterialTheme.typography.labelLarge,
@@ -245,45 +249,61 @@ fun TodayScreen(
                     }
                 }
             }
-        }
-        put(Topic.RULES) { m ->
-            val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
-            val frictions = board.count { it.kind == BoardKind.FRICTION && it.isOpen }
-            Card(Topic.RULES, m, { CardAction(stringResource(Res.string.nav_board), onGoBoard, compact = true) }) {
-                if (rules.isEmpty() && frictions == 0) EmptyHint(stringResource(Res.string.dash_board_empty))
-                rules.take(3).forEach { rule ->
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-                        // How it goes, as weather; not rated yet: a quiet dot.
-                        ruleEase[rule.id]?.let { WeatherMark(it) } ?: Box(Modifier.padding(4.dp).size(8.dp).background(Topic.RULES.style().ink, CircleShape))
-                        Spacer(Modifier.width(10.dp))
-                        Text(rule.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
+        },
+        Topic.RHYTHM to { m ->
+            // What is due today, in the order the day goes, each habit with its score; then how the others go.
+            Card(Topic.RHYTHM, m, toTasks) {
+                if (hasRhythm && rhythm.isEmpty()) EmptyHint(stringResource(Res.string.dash_rhythm_empty))
+                rhythm.take(6).forEach { item ->
+                    BacklogRow(
+                        item, today, lang, onDone = { onComplete(item) }, onOpen = { onOpenItem(item) },
+                        below = routineSteps[item.id]?.let { mine -> { RoutineSteps(mine, today, onComplete) } },
+                    ) { item.scoreNow?.takeIf { item.isHabit }?.let { ScoreBadge(it) } }
                 }
-                if (frictions > 0) {
-                    Spacer(Modifier.size(6.dp))
+                val shown = rhythm.map { it.id }.toSet()
+                backlog.filter { it.isHabit && !it.done && it.id !in shown && it.scoreNow != null }.sortedBy { it.scoreNow }.take(3).forEach { h ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onGoBoard).padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable { onOpenItem(h) }.padding(vertical = 5.dp, horizontal = 4.dp),
                     ) {
-                        Icon(Topic.FRICTION.icon(), null, tint = Topic.FRICTION.style().ink, modifier = Modifier.size(16.dp))
+                        Text(h.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
-                        Text(pluralStringResource(Res.plurals.dash_board_frictions, frictions, frictions), style = MaterialTheme.typography.labelLarge, color = Topic.FRICTION.style().ink)
+                        ScoreBadge(h.scoreNow!!)
                     }
                 }
             }
-        }
-    }
+        },
+        Topic.RULES to { m ->
+            val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
+            Card(Topic.RULES, m, toBoard) {
+                // How it goes: its badge; not rated yet: a quiet dot.
+                rules.take(4).forEach { rule -> ShelfLine(rule.text) { ruleScores[rule.id]?.let { ScoreBadge(it) } ?: NoScoreMark(Topic.RULES.style().ink) } }
+            }
+        },
+        Topic.FRICTION to { m ->
+            val points = board.filter { it.isWorkingPoint && it.isOpen }.sortedBy { it.direction != null }
+            Card(Topic.FRICTION, m, toBoard) {
+                points.take(3).forEach { f -> ShelfLine(f.text) { Icon(Topic.FRICTION.icon(), null, tint = Topic.FRICTION.style().ink, modifier = Modifier.size(16.dp)) } }
+            }
+        },
+        Topic.GOALS to { m ->
+            val goals = board.filter { it.kind == BoardKind.GOAL && it.isOpen }
+            Card(Topic.GOALS, m, toBoard) {
+                goals.take(3).forEach { g ->
+                    val linked = g.linkedId?.let { id -> backlog.firstOrNull { it.id == id } }
+                    ShelfLine(g.text + (g.nextStep?.let { "  ·  $it" } ?: "")) {
+                        linked?.scoreNow?.let { ScoreBadge(it) } ?: Icon(Topic.GOALS.icon(), null, tint = Topic.GOALS.style().ink, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        },
+    )
     fun group(g: TopicGroup) = g.topics.mapNotNull { cards[it] }
 
     @Composable
-    fun ShelfCards() = Shelf(Modifier.fillMaxWidth()) {
-        listOf(TopicGroup.FOOD, TopicGroup.BOARD).forEach { g ->
-            val mine = group(g)
-            if (mine.isNotEmpty()) {
-                GroupLabel(g, lang)
-                mine.forEach { it(Modifier.fillMaxWidth()) }
-            }
-        }
+    fun ShelfCards(m: Modifier) = Shelf(m) {
+        GroupLabel(TopicGroup.BOARD, lang)
+        group(TopicGroup.BOARD).forEach { it(Modifier.fillMaxWidth()) }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
@@ -292,35 +312,31 @@ fun TodayScreen(
         val gap = if (wide) 20.dp else 16.dp
         val tasks = group(TopicGroup.TASKS)
         if (wide) {
-            // The day first (what must not slip, today, the days ahead), then the topics right under it: the tasks two
-            // by two in their order, food and the Werkbord on the shelf under Binnenkort.
-            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                Column(Modifier.weight(2.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
-                    if (suggestHuddle) HuddleCard(onGoWeek)
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
-                            dontForgetCard(Modifier.fillMaxWidth())
-                            if (wins.isNotEmpty()) WinsCard(wins, onGoWeek, Modifier.fillMaxWidth())
-                        }
-                        Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
-                            todayCard(Modifier.fillMaxWidth())
-                        }
+            // The day first (what must not slip, today, the days ahead), then every topic right under it, as in the
+            // weekoverleg: the six of what we do and eat two by two, the rhythm and agreements on the shelf beside them.
+            Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                if (suggestHuddle) HuddleCard(onGoWeek)
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                        dontForgetCard(Modifier.fillMaxWidth())
+                        if (wins.isNotEmpty()) WinsCard(wins, onGoWeek, Modifier.fillMaxWidth())
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1.15f)) { todayCard(Modifier.fillMaxWidth()) }
+                    Column(Modifier.weight(1f)) { comingUpCard(Modifier.fillMaxWidth()) }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    Column(Modifier.weight(2.15f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         GroupLabel(TopicGroup.TASKS, lang, Modifier.padding(top = 4.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
                                 tasks.filterIndexed { i, _ -> i % 2 == 0 }.forEach { it(Modifier.fillMaxWidth()) }
                             }
-                            Column(Modifier.weight(1.15f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
                                 tasks.filterIndexed { i, _ -> i % 2 == 1 }.forEach { it(Modifier.fillMaxWidth()) }
                             }
                         }
                     }
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
-                    comingUpCard(Modifier.fillMaxWidth())
-                    ShelfCards()
+                    ShelfCards(Modifier.weight(1f))
                 }
             }
         } else {
@@ -331,7 +347,7 @@ fun TodayScreen(
                 comingUpCard(Modifier.fillMaxWidth())
                 GroupLabel(TopicGroup.TASKS, lang, Modifier.padding(top = 6.dp))
                 tasks.forEach { it(Modifier.fillMaxWidth()) }
-                ShelfCards()
+                ShelfCards(Modifier.fillMaxWidth())
                 if (wins.isNotEmpty()) WinsCard(wins, onGoWeek, Modifier.fillMaxWidth())
             }
         }

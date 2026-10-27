@@ -11,6 +11,8 @@ import androidx.room3.Query
 import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
 import app.hearth.core.model.Ease
+import app.hearth.core.model.SCORE_MAX
+import app.hearth.core.model.score
 import app.hearth.core.model.Huddle
 import app.hearth.core.model.WeekRating
 import app.hearth.core.model.RuleCheck
@@ -45,9 +47,9 @@ data class ReflectionEntity(
     fun toWin() = Win(id, text, memberId, huddleId, createdAt)
 
     /** WEEK rows: [text] is "agreed" or "neutral" (no agreement, no weather). */
-    fun toWeek() = WeekRating(if (text == AGREED) easeOf(value) else null, suggested?.let(::easeOf), text == AGREED, huddleId)
-    /** RULE_CHECK rows: [text] is the rule's id; [value] 1 = loopt vanzelf, 2 = vraagt moeite, 0 = te zwaar (older rows: 1 worked, 0 not). */
-    fun toRuleCheck() = RuleCheck(text, easeOf(value), huddleId)
+    fun toWeek() = WeekRating(if (text == AGREED) scoreOf(value) else null, suggested?.let(::scoreOf), text == AGREED, huddleId)
+    /** RULE_CHECK rows: [text] is the rule's id; [value] a score (see [scoreOf]). */
+    fun toRuleCheck() = RuleCheck(text, scoreOf(value), huddleId)
 
     companion object {
         const val WIN = "WIN"
@@ -58,8 +60,18 @@ data class ReflectionEntity(
         const val WEEK = "WEEK"
         const val AGREED = "agreed"
 
-        fun easeOf(value: Int?) = when (value) { 1 -> Ease.EASY; 2 -> Ease.EFFORT; else -> Ease.HARD }
-        fun codeOf(ease: Ease) = when (ease) { Ease.EASY -> 1; Ease.EFFORT -> 2; Ease.HARD -> 0 }
+        /**
+         * A score (0–5) is stored as 10 + score. Rows from before the scale hold the weather: 1 = loopt vanzelf,
+         * 2 = vraagt moeite, 0 = te zwaar (older rule checks: 1 worked, 0 not); they read as that weather's score.
+         */
+        fun scoreOf(value: Int?): Int = when (value) {
+            in SCORE_BASE..SCORE_BASE + SCORE_MAX -> value!! - SCORE_BASE
+            1 -> Ease.EASY.score
+            2 -> Ease.EFFORT.score
+            else -> Ease.HARD.score
+        }
+        fun codeOf(score: Int) = SCORE_BASE + score.coerceIn(0, SCORE_MAX)
+        private const val SCORE_BASE = 10
     }
 }
 
@@ -93,7 +105,10 @@ interface MeetingDao {
     @Query("SELECT * FROM reflection WHERE kind = 'RULE_CHECK' ORDER BY updatedAt")
     fun observeAllRuleChecks(): Flow<List<ReflectionEntity>>
 
-    /** Every habit's weather, meeting by meeting, oldest first. */
+    @Query("SELECT * FROM reflection WHERE kind = 'RULE_CHECK' ORDER BY updatedAt")
+    suspend fun allRuleChecks(): List<ReflectionEntity>
+
+    /** Every habit's score, meeting by meeting, oldest first. */
     @Query("SELECT * FROM reflection WHERE kind = 'HABIT_CHECK' ORDER BY createdAt")
     fun observeAllHabitChecks(): Flow<List<ReflectionEntity>>
 
@@ -180,50 +195,57 @@ class MeetingRepository(
     val week: Flow<WeekRating?> = dao.observeCurrentReflections().map { list -> list.firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek() }
     val ruleChecks: Flow<List<RuleCheck>> = dao.observeCurrentReflections().map { list -> list.filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() } }
 
-    /** How each house rule goes, by rule id: this week's rating, or the last one from an earlier meeting. */
-    val ruleEase: Flow<Map<String, Ease>> = dao.observeAllRuleChecks().map { list -> list.associate { it.text to it.toRuleCheck().ease } }
-    /** This meeting's weather per habit, by habit id (not rated yet: missing). */
-    val habitChecks: Flow<Map<String, Ease>> = dao.observeCurrentReflections().map { list ->
-        list.filter { it.kind == ReflectionEntity.HABIT_CHECK }.associate { it.text to ReflectionEntity.easeOf(it.value) }
+    /** How each house rule goes, by rule id: this week's score, or the last one from an earlier meeting. */
+    val ruleScores: Flow<Map<String, Int>> = dao.observeAllRuleChecks().map { list -> list.associate { it.text to it.toRuleCheck().score } }
+    /** Each house rule's score per meeting, oldest first, by rule id. */
+    val ruleHistory: Flow<Map<String, List<Int>>> = dao.observeAllRuleChecks().map { list ->
+        list.groupBy { it.text }.mapValues { (_, rows) -> rows.map { ReflectionEntity.scoreOf(it.value) } }
+    }
+    /** This meeting's score per habit, by habit id (not rated yet: missing). */
+    val habitChecks: Flow<Map<String, Int>> = dao.observeCurrentReflections().map { list ->
+        list.filter { it.kind == ReflectionEntity.HABIT_CHECK }.associate { it.text to ReflectionEntity.scoreOf(it.value) }
     }
 
-    /** Each habit's weather per meeting, oldest first, by habit id: what the habit coach reads. */
-    val habitHistory: Flow<Map<String, List<Ease>>> = dao.observeAllHabitChecks().map { list ->
-        list.groupBy { it.text }.mapValues { (_, rows) -> rows.map { ReflectionEntity.easeOf(it.value) } }
+    /** Each habit's score per meeting, oldest first, by habit id: what the habit coach reads. */
+    val habitHistory: Flow<Map<String, List<Int>>> = dao.observeAllHabitChecks().map { list ->
+        list.groupBy { it.text }.mapValues { (_, rows) -> rows.map { ReflectionEntity.scoreOf(it.value) } }
     }
 
-    suspend fun habitHistory(itemId: String): List<Ease> = dao.habitChecksOf(itemId).map { ReflectionEntity.easeOf(it.value) }
+    /** How each house rule goes now, by rule id: its last score. */
+    suspend fun ruleScores(): Map<String, Int> = dao.allRuleChecks().associate { it.text to it.toRuleCheck().score }
+
+    suspend fun habitHistory(itemId: String): List<Int> = dao.habitChecksOf(itemId).map { ReflectionEntity.scoreOf(it.value) }
     suspend fun currentWeek(): WeekRating? = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek()
     suspend fun currentRuleChecks(): List<RuleCheck> = dao.currentReflections().filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }
     suspend fun ruleChecksOf(huddleId: String): List<RuleCheck> = dao.reflectionsOf(huddleId).filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }
     suspend fun weekOf(huddleId: String): WeekRating? = dao.reflectionsOf(huddleId).firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek()
 
-    /** How the week went, agreed together; null [ease] = no agreement (no weather). Saying it again replaces it. */
-    suspend fun setWeek(ease: Ease?, suggested: Ease?): WeekRating = db.withWriteTransaction {
+    /** How the week went, agreed together (0–5); null [score] = no agreement. Saying it again replaces it. */
+    suspend fun setWeek(score: Int?, suggested: Int?): WeekRating = db.withWriteTransaction {
         val now = clock()
         val old = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.WEEK }
         val entity = ReflectionEntity(
-            old?.id ?: newId(), ReflectionEntity.WEEK, if (ease == null) "neutral" else ReflectionEntity.AGREED,
-            ease?.let(ReflectionEntity::codeOf), null, null, old?.createdAt ?: now, now, suggested?.let(ReflectionEntity::codeOf),
+            old?.id ?: newId(), ReflectionEntity.WEEK, if (score == null) "neutral" else ReflectionEntity.AGREED,
+            score?.let(ReflectionEntity::codeOf), null, null, old?.createdAt ?: now, now, suggested?.let(ReflectionEntity::codeOf),
         )
         dao.putReflection(entity)
         entity.toWeek()
     }
 
     /** How a house rule went this week; saying it again replaces it. */
-    suspend fun setRuleCheck(ruleId: String, ease: Ease): RuleCheck = db.withWriteTransaction {
+    suspend fun setRuleCheck(ruleId: String, score: Int): RuleCheck = db.withWriteTransaction {
         val now = clock()
         val old = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.RULE_CHECK && it.text == ruleId }
-        val entity = ReflectionEntity(old?.id ?: newId(), ReflectionEntity.RULE_CHECK, ruleId, ReflectionEntity.codeOf(ease), null, null, old?.createdAt ?: now, now)
+        val entity = ReflectionEntity(old?.id ?: newId(), ReflectionEntity.RULE_CHECK, ruleId, ReflectionEntity.codeOf(score), null, null, old?.createdAt ?: now, now)
         dao.putReflection(entity)
         entity.toRuleCheck()
     }
 
     /** How a habit went since the last meeting; saying it again replaces it, so each meeting keeps one. */
-    suspend fun setHabitCheck(itemId: String, ease: Ease): Unit = db.withWriteTransaction {
+    suspend fun setHabitCheck(itemId: String, score: Int): Unit = db.withWriteTransaction {
         val now = clock()
         val old = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.HABIT_CHECK && it.text == itemId }
-        dao.putReflection(ReflectionEntity(old?.id ?: newId(), ReflectionEntity.HABIT_CHECK, itemId, ReflectionEntity.codeOf(ease), null, null, old?.createdAt ?: now, now))
+        dao.putReflection(ReflectionEntity(old?.id ?: newId(), ReflectionEntity.HABIT_CHECK, itemId, ReflectionEntity.codeOf(score), null, null, old?.createdAt ?: now, now))
     }
 
     suspend fun addLine(text: String): TranscriptLine {

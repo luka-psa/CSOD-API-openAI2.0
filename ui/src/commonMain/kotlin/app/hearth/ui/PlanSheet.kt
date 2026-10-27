@@ -1,11 +1,18 @@
 package app.hearth.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import app.hearth.ui.resources.small_step_line
+import app.hearth.ui.resources.pairing_line
+import app.hearth.ui.resources.tip_pair
+import app.hearth.ui.resources.small_step_add
+import app.hearth.ui.resources.routine_setup
+import app.hearth.ui.resources.fold
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.rememberCoroutineScope
-import app.hearth.core.model.HabitLaw
 import app.hearth.core.model.HabitReview
 import app.hearth.core.model.HabitTip
 import app.hearth.core.model.TipAction
@@ -138,6 +145,8 @@ class PlanActions(
     val smallStep: (String) -> Unit = {},
     /** Habits: a coach tip that needs no words (less or more often, the whole version, Wat ging goed). */
     val tip: (HabitTip) -> Unit = {},
+    /** Habits: how it goes, 0–5. */
+    val rate: (Int) -> Unit = {},
 )
 
 private val INTERVALS = listOf(1, 7, 14, 30, 90, null)
@@ -166,6 +175,10 @@ fun PlanSheet(
     val momentAt = remember { BringIntoViewRequester() }
     val daysAt = remember { BringIntoViewRequester() }
     fun show(at: BringIntoViewRequester) { scope.launch { at.bringIntoView() } }
+    // A routine's set-up (moment, how often, days) folds away once it has a place in the day, so the sheet opens on
+    // how it goes; a tip that points at it opens it again.
+    var setUp by remember(item.id) { mutableStateOf(item.anchor == null && item.schedule == null) }
+    fun showSetUp(at: BringIntoViewRequester) { setUp = true; scope.launch { kotlinx.coroutines.delay(50); at.bringIntoView() } }
     var removingStep by remember { mutableStateOf<BacklogItem?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var pickingTime by remember { mutableStateOf(false) }
@@ -219,29 +232,28 @@ fun PlanSheet(
 
             when (kind) {
                 TaskKind.ROUTINE -> {
-                    // A habit's coach first: how it goes, and the one thing that would make it stick.
+                    // A habit first says how it goes, and only when it needs one, the one thing that would make it stick.
                     review?.let { r ->
                         HabitCoach(
                             r, lang,
+                            onRate = actions.rate,
                             onTip = { tip ->
                                 when (tip.action) {
                                     TipAction.PAIR -> pairing = true
                                     TipAction.SMALL_STEP -> smallStep = true
-                                    TipAction.MOMENT -> show(momentAt)
-                                    TipAction.DAYS -> show(daysAt)
+                                    TipAction.MOMENT -> showSetUp(momentAt)
+                                    TipAction.DAYS -> showSetUp(daysAt)
                                     TipAction.FEWER_STEPS, TipAction.ADD_STEP -> show(stepsAt)
                                     else -> actions.tip(tip)
                                 }
                             },
-                            onLaw = { law ->
-                                when (law) {
-                                    HabitLaw.OBVIOUS -> show(momentAt)
-                                    HabitLaw.ATTRACTIVE -> pairing = true
-                                    HabitLaw.EASY -> smallStep = true
-                                    HabitLaw.SATISFYING -> {}
-                                }
-                            },
                         )
+                        // What is in place to make it easier, small, each a tap to change.
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ChoiceChip(item.smallStep?.let { stringResource(Res.string.small_step_line, it) } ?: stringResource(Res.string.small_step_add), item.smallStep != null, { smallStep = true }, icon = HearthIcons.Stairs)
+                            ChoiceChip(item.pairing?.let { stringResource(Res.string.pairing_line, it) } ?: stringResource(Res.string.tip_pair), item.pairing != null, { pairing = true }, icon = HearthIcons.Smile)
+                        }
                     }
                     // Its steps, in order: a sequence for the evening or a checklist for the bag.
                     Text(stringResource(Res.string.routine_steps), style = MaterialTheme.typography.titleMedium, modifier = Modifier.bringIntoViewRequester(stepsAt))
@@ -260,6 +272,22 @@ fun PlanSheet(
                         }
                     }
                     AddRow(stringResource(Res.string.routine_step_add), actions.addStep, compact = true)
+                    // Setting it up, folded: one line says where it hangs now ("Rond het eten · elke dag").
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable { setUp = !setUp }.padding(vertical = 6.dp),
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(Res.string.routine_setup), style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                listOfNotNull(item.anchor?.title(lang), item.schedule?.label(lang) ?: intervalLabel(item.intervalDays, lang)).joinToString("  ·  ").replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Icon(HearthIcons.ChevronRight, stringResource(Res.string.fold), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.rotate(if (setUp) -90f else 90f))
+                    }
+                    if (setUp) {
                     // The moment of the day it belongs to: the morning routine, around dinner, bedtime.
                     Text(stringResource(Res.string.moment_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.bringIntoViewRequester(momentAt))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -296,6 +324,7 @@ fun PlanSheet(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         DayChips(::onPlannedDay, ::planDay)
                         if (item.plan == Plan.DAY) ChoiceChip(stringResource(Res.string.plan_unplanned), false, { choose(When.UNPLANNED) }, icon = HearthIcons.Inbox)
+                    }
                     }
                 }
                 else -> {

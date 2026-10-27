@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
+import app.hearth.core.model.scoreNow
 import app.hearth.core.model.Anchor
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.BoardItem
@@ -106,7 +107,7 @@ internal fun GoalRow(goal: BoardItem, linked: BacklogItem?, today: LocalDate, la
                         Icon(topic.icon(), null, tint = s.ink, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("${linked.text}  ·  $detail", style = MaterialTheme.typography.labelMedium, color = s.ink)
-                        linked.ease?.let { Spacer(Modifier.width(8.dp)); EasePill(it) }
+                        linked.scoreNow?.let { Spacer(Modifier.width(8.dp)); ScoreBadge(it) }
                     }
                 }
                 step != null -> Text(

@@ -136,6 +136,42 @@ enum class Ease {
     HARD,
 }
 
+// What the family rates in the Terugblik (routines, house rules, the week) goes on a scale from 0 to 5: 0 "komt er niet
+// van", 5 "loopt vanzelf". The score keeps its weather (bliksem 0–1, wolk 2–3, zon 4–5), so everything that reads ease
+// (the coach, the attention list, the colours) keeps working, and the number shows how it moves week by week.
+
+const val SCORE_MAX = 5
+
+/** The weather of a score: zon 4–5, wolk 2–3, bliksem 0–1. */
+fun easeOf(score: Int): Ease = when {
+    score >= 4 -> Ease.EASY
+    score >= 2 -> Ease.EFFORT
+    else -> Ease.HARD
+}
+
+/** A rating from before the scale (or from a caller that only knows the weather): its middle-of-the-band score. */
+val Ease.score: Int get() = when (this) {
+    Ease.EASY -> 5
+    Ease.EFFORT -> 3
+    Ease.HARD -> 1
+}
+
+/** Kind words for each point of the scale; never "failed". */
+fun scoreWord(score: Int, lang: Lang): String {
+    val nl = lang == Lang.NL
+    return when (score.coerceIn(0, SCORE_MAX)) {
+        0 -> if (nl) "komt er niet van" else "doesn't happen yet"
+        1 -> if (nl) "te zwaar" else "too much"
+        2 -> if (nl) "moeizaam" else "a struggle"
+        3 -> if (nl) "vraagt moeite" else "takes effort"
+        4 -> if (nl) "loopt goed" else "goes well"
+        else -> if (nl) "loopt vanzelf" else "runs by itself"
+    }
+}
+
+/** Habits: the family's last score, or the one its old weather stood for. */
+val BacklogItem.scoreNow: Int? get() = score ?: ease?.score
+
 /** Habits and rhythms are lived, not ticked off: how hard they are is what the family says ([BacklogItem.ease]). */
 val BacklogItem.isHabit: Boolean get() = !isStep && (section == Section.HABIT || section == Section.RHYTHM)
 

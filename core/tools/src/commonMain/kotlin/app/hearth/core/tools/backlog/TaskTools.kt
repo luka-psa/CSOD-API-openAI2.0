@@ -17,6 +17,10 @@ import app.hearth.core.tools.ToolResult
 import app.hearth.core.model.boardKind
 import app.hearth.core.model.stripBoardPrefix
 import app.hearth.core.model.Ease
+import app.hearth.core.model.SCORE_MAX
+import app.hearth.core.model.easeOf
+import app.hearth.core.model.score
+import app.hearth.core.model.scoreWord
 import app.hearth.core.model.title
 import app.hearth.core.model.Anchor
 import app.hearth.core.model.Plan
@@ -317,8 +321,10 @@ data class RateHabitArgs(
     val itemIds: List<String> = emptyList(),
     @Describe("Texts of habits, when ids are not known.")
     val texts: List<String> = emptyList(),
-    @Describe("EASY (loopt vanzelf), EFFORT (vraagt moeite) or HARD (te zwaar: make it smaller).")
-    val ease: Ease,
+    @Describe("How it goes, from 0 (komt er niet van) to 5 (loopt vanzelf).")
+    val score: Int? = null,
+    @Describe("Older form: EASY (loopt vanzelf), EFFORT (vraagt moeite) or HARD (te zwaar). Use score instead.")
+    val ease: Ease? = null,
 )
 
 /**
@@ -332,26 +338,31 @@ class RateHabitTool(
 ) : Tool<RateHabitArgs, BacklogItemsResult> {
     override val name = NAME
     override val description =
-        "Say how hard a habit is for the household: EASY, EFFORT or HARD. Shown as its weather (zon, wolk, bliksem; " +
-            "never red); one rating per meeting is kept for review_habit, and the answer says the one thing to try next."
+        "Say how a habit goes for the household, from 0 (komt er niet van) to 5 (loopt vanzelf). Shown as its score " +
+            "with its weather (bliksem 0–1, wolk 2–3, zon 4–5; never red); one score per meeting is kept for review_habit, " +
+            "and the answer says the one thing to try next."
     override val argsSerializer = RateHabitArgs.serializer()
     override val resultSerializer = BacklogItemsResult.serializer()
 
     override suspend fun run(args: RateHabitArgs, ctx: ToolContext): BacklogItemsResult {
+        val score = (args.score ?: args.ease?.score)?.coerceIn(0, SCORE_MAX)
+            ?: throw ToolException(ctx.t("Hoe loopt het, van 0 tot 5?", "How does it go, from 0 to 5?"))
         val found = repo.find(args.itemIds, args.texts).ifEmpty { notFound(ctx) }
-        repo.setEase(found.map { it.id }, args.ease)
-        // One rating per meeting is kept, so the habit coach sees how it goes over the weeks.
-        found.forEach { meeting.setHabitCheck(it.id, args.ease) }
+        repo.setScore(found.map { it.id }, score)
+        // One score per meeting is kept, so the habit coach sees how it goes over the weeks.
+        found.forEach { meeting.setHabitCheck(it.id, score) }
         val names = found.joinToString(", ") { "“${it.text}”" }
         // One habit: the coach's one thing to try, the same as on the screen.
         val tip = found.singleOrNull()?.takeIf { it.isHabit }?.let { reviewHabits(listOf(it), repo, meeting, board, ctx).single() }
             ?.takeIf { it.stage != HabitStage.NEW && it.stage != HabitStage.STEADY }?.tips?.firstOrNull()?.text
-        val summary = when (args.ease) {
-            Ease.EASY -> ctx.t("$names loopt vanzelf. Mooi.", "$names runs easily. Nice.") + (tip?.let { " $it" } ?: "")
-            Ease.EFFORT -> ctx.t("$names vraagt moeite. ", "$names takes effort. ") + (tip ?: ctx.t("Een kleinere eerste stap kan helpen.", "A smaller first step can help."))
-            Ease.HARD -> ctx.t("$names is te zwaar. ", "$names is too much. ") + (tip ?: ctx.t("Wat is een kleinere eerste stap?", "What's a smaller first step?"))
+        val ease = easeOf(score)
+        val said = "$names: ${scoreWord(score, ctx.lang)} ($score/$SCORE_MAX)."
+        val summary = when (ease) {
+            Ease.EASY -> "$said " + ctx.t("Mooi.", "Nice.") + (tip?.let { " $it" } ?: "")
+            Ease.EFFORT -> "$said " + (tip ?: ctx.t("Een kleinere eerste stap kan helpen.", "A smaller first step can help."))
+            Ease.HARD -> "$said " + (tip ?: ctx.t("Wat is een kleinere eerste stap?", "What's a smaller first step?"))
         }
-        return BacklogItemsResult(found.map { it.copy(ease = args.ease) }, summary)
+        return BacklogItemsResult(found.map { it.copy(ease = ease, score = score) }, summary)
     }
 
     companion object {
@@ -594,7 +605,7 @@ internal suspend fun reviewHabits(habits: List<BacklogItem>, backlog: BacklogRep
 }
 
 /**
- * Atomic Habits' four laws for one habit: its weather over the meetings, the frictions about it, how each law is in
+ * Atomic Habits' four laws for one habit: its score over the meetings, the frictions about it, how each law is in
  * place, and what to try next. Read-only, so a family's own AI can think it through with them and then change one
  * thing with the other tools.
  */
@@ -605,12 +616,12 @@ class ReviewHabitTool(
 ) : Tool<ReviewHabitArgs, ReviewHabitResult> {
     override val name = NAME
     override val description =
-        "Review a habit with the four laws of Atomic Habits (make it obvious, attractive, easy, satisfying): its weather " +
-            "per weekoverleg, the frictions talked about it, how each law is in place, and Hearth's suggestion. Without a " +
+        "Review a habit with the four laws of Atomic Habits (make it obvious, attractive, easy, satisfying): its score " +
+            "(0–5) per weekoverleg, the frictions talked about it, how each law is in place, and Hearth's suggestion. Without a " +
             "habit: every habit that asks for something. Suggest one change at a time and apply it with set_anchor or " +
             "set_routine_schedule (obvious), set_habit_pairing (attractive), set_small_step, set_routine_interval or " +
             "move_step (easy) and add_win (satisfying). Smaller when it is too much; one step bigger only after it ran " +
-            "easily three meetings in a row. Never streaks, never blame."
+            "easily three meetings in a row (the last one a 5). Never streaks, never blame."
     override val argsSerializer = ReviewHabitArgs.serializer()
     override val resultSerializer = ReviewHabitResult.serializer()
 
@@ -639,7 +650,7 @@ class ReviewHabitTool(
 /** A few lines a person (or their AI) can read: the stage, the weather, what was said, the four laws, what to try. */
 private fun describeReview(habit: BacklogItem, r: HabitReview, ctx: ToolContext): String = buildList {
     add("“${habit.text}” · ${r.stage.line(ctx.lang)}")
-    if (r.ratings.isNotEmpty()) add(ctx.t("Weer per overleg: ", "Weather per meeting: ") + r.ratings.takeLast(6).joinToString(", ") { it.weather(ctx.lang) })
+    if (r.ratings.isNotEmpty()) add(ctx.t("Score per overleg (0–5): ", "Score per meeting (0–5): ") + r.ratings.takeLast(6).joinToString(", ") { "$it (${easeOf(it).weather(ctx.lang)})" })
     if (r.frictions.isNotEmpty()) add(ctx.t("Besproken: ", "Talked about: ") + r.frictions.takeLast(3).joinToString("; ") { "“$it”" })
     add(r.laws.joinToString(" · ") { l -> "${l.law.title(ctx.lang)}: ${l.now ?: ctx.t("nog niets", "nothing yet")}" })
     r.tips.forEach { add(ctx.t("Probeer", "Try") + " (${it.tag(ctx.lang)}): ${it.text}") }

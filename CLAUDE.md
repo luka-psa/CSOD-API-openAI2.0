@@ -102,11 +102,13 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   (CHORE/RHYTHM: interval + lastDone; done = "logged today", it comes
   back; states NEW/FRESH/SOON/DUE, shown as "aan de beurt", never "late".
   HABIT/RHYTHM are *habits*: never ticked off, rated together instead ("Hoe loopt
-  het?"): *Ease* EASY "loopt vanzelf" (green) / EFFORT "vraagt moeite" (amber) /
-  HARD "te zwaar" (orange, never red) with an optional *small step* ("Begin klein").
+  het?") with a *score* from 0 ("komt er niet van") to 5 ("loopt vanzelf") (`BacklogItem.score`, `scoreWord`); its
+  *Ease* (the weather) follows from it: EASY "loopt vanzelf" (green, 4–5) / EFFORT "vraagt moeite" (amber, 2–3) /
+  HARD "te zwaar" (orange, 0–1, never red), with an optional *small step* ("Begin klein").
+  Wherever a rated routine or house rule shows, it carries a *score badge* (`ScoreBadge`: weather and five pips).
   A chore's ease comes from the `routine_log`; a task's from how often it was
-  *postponed* (2× amber, 4× orange). One *weather* scale shows ease everywhere: zon (loopt vanzelf), wolk (vraagt
-  moeite), bliksem (te zwaar). A routine can hang on an *Anchor*, a moment of the
+  *postponed* (2× amber, 4× orange). One *weather* shows ease everywhere: zon (loopt vanzelf), wolk (vraagt
+  moeite), bliksem (te zwaar); what the family rates is the 0–5 score. A routine can hang on an *Anchor*, a moment of the
   day (ochtend, na school, rond het eten, avond, slapengaan): the
   morning and evening routines are laid out per moment; a chore with a moment belongs
   to the rhythm, one without to the household. What really happens on a day gets *fixed days* (`Schedule`,
@@ -115,10 +117,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   "late"), and it repeats in its own Google calendar *Hearth · Ritmes*. Most routines need only a moment. The *habit
   coach* (`habitReview` in `core/model/Habit.kt`, `review_habit`) applies Atomic Habits' four laws to a habit:
   *Zichtbaar* (moment, days), *Aantrekkelijk* (*iets leuks erbij*, `pairing`, `set_habit_pairing`; or its goal),
-  *Makkelijk* (small step, fewer steps, less often), *Voldoening* (Wat ging goed; never streaks). It reads the weather per
+  *Makkelijk* (small step, fewer steps, less often), *Voldoening* (Wat ging goed; never streaks). It reads the score per
   meeting (HABIT_CHECK rows, one per meeting) and the frictions about it (`lawOf` picks the law from their words) and
   suggests one thing: smaller when too much, one law when it takes effort or a friction is open, a step bigger after
-  three sunny meetings. It lives in the habit's sheet (*Zo blijft het hangen*) and shows its tip in the Terugblik. A routine can have *steps* (`parentId`,
+  three sunny meetings (the last a 5). It lives in the habit's sheet (*Hoe loopt het?*: its score, trend and bars, the
+  0–5 scale, and only when it needs one *Wat kan beter?*; moment, how often and days fold under *Ritme instellen*) and
+  shows its tip in the Terugblik. A routine can have *steps* (`parentId`,
   `add_routine`): a sequence ("avondroutine: boodschappen, Mia ophalen, koken, pyjama")
   or a checklist ("paklijst opvang: luiers, flesjes"); steps are ticked per day and come
   back tomorrow; all ticked = the routine is done today. Steps show small and in order (a bar, the next step,
@@ -140,8 +144,8 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   (`resolve_friction`; the friction is a reminder, never the wording); every outcome is good),
   *Doel* (GOAL, scope gezin / samen / persoonlijk; gets *a place in the week* (`set_goal_step` how): a *ritme*
   (a habit at a moment, e.g. elke dag yoga, in Ritmes & routines), *vrije tijd* on a day (a hobby, in Vrije tijd),
-  or one small *next step*; the goal shows that link in its colour). Huisregels are rated like routines
-  ("Hoe loopt het?" on the Werkbord or in the Terugblik); the last rating shows as a pill. *Idee* (IDEA: a way to
+  or one small *next step*; the goal shows that link in its colour). Huisregels are rated like routines,
+  0 to 5 ("Hoe loopt het?" on the Werkbord or in the Terugblik); the last score shows as its badge. *Idee* (IDEA: a way to
   make it easier; decided like a friction).
   *Member*: a person with a colour.
 - **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
@@ -156,21 +160,22 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   remembered from the plan. Planning one puts its ingredients on the list.
   Stock spots are rooms *or categories* (Koelkast, Droge voeding, Snacks…).
 - **Topics** (`Topic`): one name, icon and colour per topic on every screen (`Topic.title`, `Topic.icon()`,
-  `Topic.style()`), always in one order and three groups (`TopicGroup`): *Taken* (Admin & afspraken, Grote taken,
-  Huishouden, Ritmes & routines, Vrije tijd), *Eten* (Weekmenu, Boodschappen), *Werkbord* (Huisregels, Frictie &
-  ideeën, Doelen); side by side, Eten and Werkbord sit on a *shelf* (`Shelf`) next to the tasks. The rail follows it:
-  Vandaag, Taken, Weekmenu, Boodschappen, Werkbord, Weekoverleg. A card on Vandaag (below the day), a panel in **Taken** (a dashboard of panels: Admin & afspraken,
-  Grote taken, Huishouden, Ritmes & routines, Vrije tijd; *Te sorteren* on top; panels fold), a column on the
+  `Topic.style()`), always in one order and two groups (`TopicGroup`): *Doen & eten* (Admin & afspraken, Grote taken,
+  Huishouden, Vrije tijd, Weekmenu, Boodschappen) and *Ritme & afspraken* (Ritmes & routines, Huisregels, Frictie &
+  ideeën, Doelen: what is rated and what shapes it); side by side, the four sit on a *shelf* (`Shelf`) next to the six. The rail follows it:
+  Vandaag, Taken, Weekmenu, Boodschappen, Werkbord, Weekoverleg. A card on Vandaag (below the day, every topic, also with nothing for today), a panel in **Taken** (a
+  dashboard of panels: Admin & afspraken, Grote taken, Huishouden, Vrije tijd, Ritmes & routines; *Te sorteren* on top;
+  panels fold), a column on the
   Werkbord (Huisregels, Frictie & ideeën, Doelen), a tile in the weekoverleg. Ember is for time cards and
   Hearth's own voice, never a topic. A form with typed text never closes without asking (`FormSheet`,
   `DiscardDialog`: *Verder typen* / *Weggooien*).
 - **Weekoverleg:** one page by *Topic* (*Admin & afspraken* (admin and appointments), *Grote taken*, *Huishouden*
-  (chores without a moment), *Ritmes & routines* (laid out per moment of the day), *Vrije tijd*; on the shelf *Weekmenu*,
-  *Boodschappen*, *Huisregels*, *Frictie & ideeën*, *Doelen* (next small step)): each a calm tile with a *glance*,
-  tap to open its list. Terugblik (*Wat ging goed* = wins; *Hoe liep het?*: *de week* (`rate_week`, suggested by Hearth,
+  (chores without a moment), *Vrije tijd*, *Weekmenu*, *Boodschappen*, three by two; on the shelf beside them, two by
+  two, *Ritmes & routines* (laid out per moment of the day), *Huisregels*, *Frictie & ideeën*, *Doelen* (next small
+  step)): each a calm tile with a *glance*, all the same size, tap to open its list. Terugblik (*Wat ging goed* = wins; *Hoe liep het?*: *de week* (`rate_week`, suggested by Hearth,
   agreed together, *Geen akkoord* is an answer too; can be switched off), every routine (in the order of the day) and
-  every house rule on one weather scale from bliksem to zon, never who; a smaller first step right there; a rule
-  that is too much two meetings in a row comes back as a friction),
+  every house rule on one scale from 0 to 5 (`ScoreScale`; last time a ring, the meetings before as bars), never who; a smaller first step right there; a rule
+  that is too much (0–1) two meetings in a row comes back as a friction),
   Deze week (7 days, plans with their colour, the meal small underneath),
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
   *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each *thought*

@@ -1,11 +1,10 @@
 package app.hearth.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,9 +33,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.HabitLaw
 import app.hearth.core.model.HabitReview
+import app.hearth.core.model.HabitStage
 import app.hearth.core.model.HabitTip
 import app.hearth.core.model.Lang
-import app.hearth.core.model.LawState
 import app.hearth.core.model.TipAction
 import app.hearth.core.model.Topic
 import app.hearth.core.model.line
@@ -44,11 +43,13 @@ import app.hearth.core.model.tag
 import app.hearth.core.model.title
 import app.hearth.ui.resources.Res
 import app.hearth.ui.resources.cancel
-import app.hearth.ui.resources.coach_hint
-import app.hearth.ui.resources.coach_not_yet
 import app.hearth.ui.resources.coach_said
+import app.hearth.ui.resources.coach_better
+import app.hearth.ui.resources.coach_same
+import app.hearth.ui.resources.coach_start
+import app.hearth.ui.resources.coach_try
+import app.hearth.ui.resources.coach_worse
 import app.hearth.ui.resources.coach_title
-import app.hearth.ui.resources.coach_weather
 import app.hearth.ui.resources.habit_less_often
 import app.hearth.ui.resources.pairing_hint
 import app.hearth.ui.resources.pairing_music
@@ -68,7 +69,8 @@ import app.hearth.ui.resources.tip_whole
 import app.hearth.ui.theme.style
 import org.jetbrains.compose.resources.stringResource
 
-// The habit coach on screen: the four laws of Atomic Habits for one habit, in its sheet and in the Terugblik.
+// The habit coach on screen: how a habit goes and, when it needs one, the one thing to try (chosen along the four
+// laws of Atomic Habits), in its sheet and in the Terugblik.
 
 fun HabitLaw.icon(): ImageVector = when (this) {
     HabitLaw.OBVIOUS -> HearthIcons.Eye
@@ -116,54 +118,45 @@ fun CoachTip(tip: HabitTip, lang: Lang, onClick: () -> Unit, modifier: Modifier 
 }
 
 /**
- * In a habit's sheet: where it stands, its weather per meeting, what was said about it, the tips, and the four laws
- * two by two (tap one to fill it in; the last one only shows how often it ran easily).
+ * In a habit's sheet, first: how it goes. Its score (tap a number to say how it went), how it went per meeting as
+ * small bars and whether it goes up or down, what was said about it, and only when it needs one, the one thing to try
+ * ("Wat kan beter?"). Setting it up (moment, how often, days) lives further down the sheet.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HabitCoach(review: HabitReview, lang: Lang, onTip: (HabitTip) -> Unit, onLaw: (HabitLaw) -> Unit) {
+fun HabitCoach(review: HabitReview, lang: Lang, onRate: (Int) -> Unit, onTip: (HabitTip) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(Res.string.coach_title), style = MaterialTheme.typography.titleMedium)
-        Text(review.stage.line(lang), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (review.ratings.isNotEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(Res.string.coach_weather), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                review.ratings.takeLast(8).forEach { WeatherMark(it, 18.dp) }
+        val score = review.score
+        if (score != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ScoreBadge(score, word = true)
+                review.trend?.let { t ->
+                    Text(
+                        stringResource(if (t > 0) Res.string.coach_better else if (t < 0) Res.string.coach_worse else Res.string.coach_same),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                if (review.ratings.size > 1) ScoreTrail(review.ratings.takeLast(8))
             }
         }
+        ScoreScale(score, onRate)
+        Text(review.stage.line(lang), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         review.frictions.lastOrNull()?.let {
             Text(stringResource(Res.string.coach_said, "“$it”"), style = MaterialTheme.typography.bodySmall, color = Topic.FRICTION.style().ink)
         }
-        review.tips.forEach { tip -> CoachTip(tip, lang, { onTip(tip) }) }
-        FlowRow(maxItemsInEachRow = 2, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            review.laws.forEach { state ->
-                LawTile(state, lang, Modifier.weight(1f), onClick = { onLaw(state.law) }.takeIf { state.law != HabitLaw.SATISFYING })
-            }
+        // One thing at a time: what needs changing now, or for a new habit how to start.
+        val tip = review.tips.firstOrNull()?.takeIf { review.needsChange || review.stage == HabitStage.NEW }
+        if (tip != null) {
+            Text(
+                stringResource(if (review.stage == HabitStage.NEW) Res.string.coach_start else Res.string.coach_try),
+                style = MaterialTheme.typography.labelLarge,
+                color = Topic.RHYTHM.style().ink,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            CoachTip(tip, lang, { onTip(tip) })
         }
-        Text(stringResource(Res.string.coach_hint), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-/** One law: its icon and name, then what's in place ("Rond het eten") or "Nog niets". */
-@Composable
-private fun LawTile(state: LawState, lang: Lang, modifier: Modifier, onClick: (() -> Unit)?) {
-    val ink = Topic.RHYTHM.style().ink
-    Column(
-        modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(state.law.icon(), null, tint = ink, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(state.law.title(lang), style = MaterialTheme.typography.labelMedium, color = ink)
-        }
-        Text(
-            state.now ?: stringResource(Res.string.coach_not_yet),
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (state.now == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-        )
     }
 }
 

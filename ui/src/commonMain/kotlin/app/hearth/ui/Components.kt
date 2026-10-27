@@ -52,6 +52,9 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Ease
+import app.hearth.core.model.SCORE_MAX
+import app.hearth.core.model.easeOf
+import app.hearth.core.model.scoreWord
 import app.hearth.core.model.isHabit
 import app.hearth.ui.resources.ease_easy
 import app.hearth.ui.resources.ease_rate
@@ -427,38 +430,6 @@ fun Ease.weatherIcon(): ImageVector = when (this) {
 fun WeatherMark(ease: Ease, size: androidx.compose.ui.unit.Dp = 16.dp) =
     Icon(ease.weatherIcon(), stringResource(ease.label()), tint = easeColors(ease).first, modifier = Modifier.size(size))
 
-/**
- * From bliksem to zon: three steps, the chosen one filled in its colour. Hearth's [guess] has a ring until the family
- * decides. Tapping the chosen step again leaves it as it is.
- */
-@Composable
-fun WeatherScale(current: Ease?, onRate: (Ease) -> Unit, guess: Ease? = null) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        listOf(Ease.HARD, Ease.EFFORT, Ease.EASY).forEach { e ->
-            val (ink, tint) = easeColors(e)
-            val chosen = current == e
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(44.dp).clip(CircleShape)
-                    .background(if (chosen) tint else Color.Transparent)
-                    .then(if (current == null && guess == e) Modifier.border(2.dp, ink.copy(alpha = 0.5f), CircleShape) else Modifier)
-                    .clickable { onRate(e) },
-            ) {
-                Icon(
-                    e.weatherIcon(), stringResource(e.label()),
-                    tint = when {
-                        chosen -> ink
-                        current == null && guess == e -> ink.copy(alpha = 0.55f)
-                        // Quiet, but clearly something to tap.
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    },
-                    modifier = Modifier.size(if (chosen) 26.dp else 22.dp),
-                )
-            }
-        }
-    }
-}
-
 fun Ease.label() = when (this) {
     Ease.EASY -> Res.string.ease_easy
     Ease.EFFORT -> Res.string.ease_effort
@@ -473,18 +444,97 @@ fun easeColors(ease: Ease): Pair<Color, Color> = when (ease) {
     Ease.HARD -> Section.PROJECT.style().ink to Section.PROJECT.style().tint
 }
 
-/** How a house rule goes: its pill (tap to change) or "Hoe loopt het?", with the same three steps as the routines. */
+/**
+ * How a routine or house rule goes, at a glance: its weather and five pips filled up to its score (0–5), in the
+ * weather's colour. With [word], the kind words too ("loopt goed"). Never red.
+ */
 @Composable
-fun EaseChooser(current: Ease?, onRate: (Ease) -> Unit) {
+fun ScoreBadge(score: Int, word: Boolean = false, onClick: (() -> Unit)? = null) {
+    val ease = easeOf(score)
+    val (ink, tint) = easeColors(ease)
+    val said = scoreWord(score, LocalLang.current)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(tint)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(start = 8.dp, end = if (word) 12.dp else 10.dp, top = 5.dp, bottom = 5.dp),
+    ) {
+        Icon(ease.weatherIcon(), "$said, $score/$SCORE_MAX", tint = ink, modifier = Modifier.size(15.dp))
+        Spacer(Modifier.width(6.dp))
+        Pips(score, ink)
+        if (word) {
+            Spacer(Modifier.width(8.dp))
+            Text(said, style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 1)
+        }
+    }
+}
+
+/** Five small dots, filled up to [score]. */
+@Composable
+private fun Pips(score: Int, ink: Color, dot: androidx.compose.ui.unit.Dp = 6.dp) =
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+        repeat(SCORE_MAX) { i -> Box(Modifier.size(dot).background(if (i < score) ink else ink.copy(alpha = 0.22f), CircleShape)) }
+    }
+
+/** Not rated yet: a quiet dot where the badge will come. */
+@Composable
+fun NoScoreMark(color: Color) = Box(Modifier.padding(4.dp).size(8.dp).background(color, CircleShape))
+
+/**
+ * The Terugblik's scale: six round steps from 0 (komt er niet van) to 5 (loopt vanzelf), the chosen one filled in its
+ * weather's colour. Hearth's [guess] (or last time's score) has a ring until the family decides.
+ */
+@Composable
+fun ScoreScale(current: Int?, onRate: (Int) -> Unit, guess: Int? = null) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        (0..SCORE_MAX).forEach { n ->
+            val (ink, tint) = easeColors(easeOf(n))
+            val chosen = current == n
+            val ringed = current == null && guess == n
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(40.dp).clip(CircleShape)
+                    .background(if (chosen) tint else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                    .then(if (ringed) Modifier.border(2.dp, ink.copy(alpha = 0.6f), CircleShape) else Modifier)
+                    .clickable { onRate(n) },
+            ) {
+                Text(
+                    "$n",
+                    style = if (chosen) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge,
+                    color = when {
+                        chosen -> ink
+                        ringed -> ink.copy(alpha = 0.75f)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** A score per meeting, oldest first, as small bars in their weather's colour: how it moves, without numbers. */
+@Composable
+fun ScoreTrail(scores: List<Int>, height: androidx.compose.ui.unit.Dp = 22.dp) =
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom, modifier = Modifier.height(height)) {
+        scores.forEach { n ->
+            val ink = easeColors(easeOf(n)).first
+            Box(Modifier.width(7.dp).height(height * ((n + 1f) / (SCORE_MAX + 1))).background(ink, RoundedCornerShape(3.dp)))
+        }
+    }
+
+/** How a house rule or habit goes: its badge (tap to change) or "Hoe loopt het?", then 0 to 5 to pick from. */
+@Composable
+fun ScoreChooser(current: Int?, onRate: (Int) -> Unit) {
     var open by androidx.compose.runtime.remember { mutableStateOf(false) }
+    val lang = LocalLang.current
     Box {
-        if (current == null) ChoiceChip(stringResource(Res.string.ease_rate), false, { open = true }) else EasePill(current, onClick = { open = true })
+        if (current == null) ChoiceChip(stringResource(Res.string.ease_rate), false, { open = true }) else ScoreBadge(current, onClick = { open = true })
         androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            Ease.entries.forEach { e ->
+            (SCORE_MAX downTo 0).forEach { n ->
                 androidx.compose.material3.DropdownMenuItem(
-                    text = { Text(stringResource(e.label())) },
-                    leadingIcon = { WeatherMark(e, 18.dp) },
-                    onClick = { open = false; onRate(e) },
+                    text = { Text("$n  ·  " + scoreWord(n, lang)) },
+                    leadingIcon = { WeatherMark(easeOf(n), 18.dp) },
+                    onClick = { open = false; onRate(n) },
                 )
             }
         }

@@ -46,12 +46,12 @@ fun TopicCard(
     content: @Composable ColumnScope.() -> Unit,
 ) = HearthCard(topic.title(lang), topic.icon(), modifier, action, topic.style(), glance, onTitleClick, content)
 
-/** "Taken", "Eten", "Werkbord" above their tiles, so the three groups read the same on every screen. */
+/** "Doen & eten" and "Ritme & afspraken" above their tiles, so the two groups read the same on every screen. */
 @Composable
 fun GroupLabel(group: TopicGroup, lang: Lang, modifier: Modifier = Modifier) =
     Text(group.title(lang), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier.padding(start = 6.dp))
 
-/** The secondary side: food and the Werkbord on a shelf a shade deeper than the canvas, next to the tasks. */
+/** The secondary side: the rhythm and agreements on a shelf a shade deeper than the canvas, next to what we do and eat. */
 @Composable
 fun Shelf(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) = Column(
     modifier.background(HearthColors.Shelf, RoundedCornerShape(32.dp)).padding(14.dp),

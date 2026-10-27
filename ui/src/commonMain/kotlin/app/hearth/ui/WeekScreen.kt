@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
 import app.hearth.core.model.isRoutine
+import app.hearth.core.model.scoreNow
 import app.hearth.core.model.topic
 import app.hearth.core.model.title
 import app.hearth.core.model.glance
@@ -184,13 +185,13 @@ class WeekCallbacks(
     val goMenu: () -> Unit,
     val addWin: (String) -> Unit,
     val removeWin: (Win) -> Unit,
-    /** How the week went, agreed together: (weather or null for no agreement, Hearth's suggestion). */
-    val rateWeek: (Ease?, Ease) -> Unit,
+    /** How the week went, agreed together: (score 0–5 or null for no agreement, Hearth's suggestion). */
+    val rateWeek: (Int?, Int) -> Unit,
     val setWeekOn: (Boolean) -> Unit,
-    val checkRule: (BoardItem, Ease) -> Unit,
+    val checkRule: (BoardItem, Int) -> Unit,
     val lessOften: (BacklogItem) -> Unit,
     val makeEasier: (BacklogItem) -> Unit,
-    val rateHabit: (BacklogItem, Ease) -> Unit,
+    val rateHabit: (BacklogItem, Int) -> Unit,
     val smallStep: (BacklogItem, String) -> Unit,
     val heard: (String) -> Unit,
     val addTo: (String, Section) -> Unit,
@@ -230,12 +231,14 @@ class MeetingState(
     val heard: List<HeardThought> = emptyList(),
     /** The summary to agree on before Klaar, while it's open. */
     val agree: List<String>? = null,
-    /** How each house rule goes, by rule id (this week's rating or the last one). */
-    val ruleEase: Map<String, Ease> = emptyMap(),
-    /** Each habit's weather in this meeting, by habit id (not rated yet: missing). */
-    val habitChecks: Map<String, Ease> = emptyMap(),
+    /** How each house rule goes, by rule id (this week's score or the last one). */
+    val ruleScores: Map<String, Int> = emptyMap(),
+    /** Each habit's score in this meeting, by habit id (not rated yet: missing). */
+    val habitChecks: Map<String, Int> = emptyMap(),
     /** The habit coach per habit (the four laws), by habit id. */
     val habitReviews: Map<String, HabitReview> = emptyMap(),
+    /** Each house rule's score per meeting, oldest first, by rule id. */
+    val ruleHistory: Map<String, List<Int>> = emptyMap(),
 )
 
 /** How long Hearth waits after the last words before it concludes a thought. */
@@ -326,7 +329,7 @@ fun WeekScreen(
             Spacer(Modifier.size(gap))
 
             // At a glance: every topic, a few words each. The one just heard about glows.
-            val look = WeekLook(backlog, board, meals.count { m -> runCatching { LocalDate.parse(m.date) }.getOrNull()?.let { it >= today && it < today.plusDays(7) } ?: false }, shopping.sumOf { s -> s.items.count { !it.bought } }, today)
+            val look = WeekLook(backlog, board, meals.count { m -> runCatching { LocalDate.parse(m.date) }.getOrNull()?.let { it >= today && it < today.plusDays(7) } ?: false }, shopping.sumOf { s -> s.items.count { !it.bought } }, today, meeting.ruleScores)
             TopicGrid(Topic.entries.map { it to it.glance(look, lang) }, open, lit, lang) { open = if (open == it) null else it }
             open?.let { topic ->
                 Spacer(Modifier.size(gap))
@@ -355,7 +358,8 @@ fun WeekScreen(
                         onRateRule = cb.checkRule,
                         onSmallStep = cb.smallStep,
                         coach = HabitCoaching(meeting.habitChecks, meeting.habitReviews, cb.habitTip, cb.pairing, cb.openItem),
-                        week = WeekWeather(meeting.weekOn, meeting.week, agenda?.suggestedWeek ?: Ease.EASY, cb.rateWeek, cb.setWeekOn),
+                        week = WeekWeather(meeting.weekOn, meeting.week, agenda?.suggestedWeek ?: 4, cb.rateWeek, cb.setWeekOn),
+                        ruleHistory = meeting.ruleHistory,
                     )
                 }
             }
@@ -461,7 +465,7 @@ private fun TopicDetail(
             val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }
             if (rules.isEmpty()) Hint(stringResource(Res.string.rules_empty))
             else Text(stringResource(Res.string.rules_review_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            rules.forEachIndexed { i, rule -> NumberedLine(i + 1, rule.text, Topic.RULES, meeting.ruleEase[rule.id]) }
+            rules.forEachIndexed { i, rule -> NumberedLine(i + 1, rule.text, Topic.RULES, meeting.ruleScores[rule.id]) }
             Spacer(Modifier.size(10.dp))
             AddRow(stringResource(Res.string.rules_add_hint), cb.addRule, muted = true)
         }
@@ -501,8 +505,8 @@ private fun RhythmBoard(routines: List<BacklogItem>, steps: Map<String, List<Bac
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                     if (item.isHabit) {
                         // Rated together in the Terugblik; here it only shows how it goes.
-                        item.ease?.let { EasePill(it) }
-                        if (item.ease != null && item.ease != Ease.EASY) TextButton(onClick = { asking = item }) { Text(stringResource(Res.string.small_step_add)) }
+                        item.scoreNow?.let { ScoreBadge(it, word = true) }
+                        if (item.scoreNow?.let { it < 4 } == true) TextButton(onClick = { asking = item }) { Text(stringResource(Res.string.small_step_add)) }
                     } else {
                         ChoiceChip(stringResource(Res.string.mark_done), false, { cb.complete(item) }, icon = HearthIcons.Check)
                     }
@@ -791,7 +795,7 @@ private fun BoardStep(board: List<BoardItem>, routines: List<BacklogItem>, membe
 
 /** "1. Schoenen uit in de gang": a numbered line in its topic's colour, with how it goes when that's known. */
 @Composable
-internal fun NumberedLine(n: Int, text: String, topic: Topic, ease: Ease? = null) {
+internal fun NumberedLine(n: Int, text: String, topic: Topic, score: Int? = null) {
     val s = topic.style()
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 4.dp)) {
         Box(Modifier.size(28.dp).background(s.tint, CircleShape), contentAlignment = Alignment.Center) {
@@ -799,7 +803,7 @@ internal fun NumberedLine(n: Int, text: String, topic: Topic, ease: Ease? = null
         }
         Spacer(Modifier.width(12.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        ease?.let { EasePill(it) }
+        score?.let { ScoreBadge(it, word = true) }
     }
 }
 

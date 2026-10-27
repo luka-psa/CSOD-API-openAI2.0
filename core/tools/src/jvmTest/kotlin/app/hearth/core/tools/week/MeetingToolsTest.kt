@@ -11,6 +11,7 @@ import app.hearth.core.data.week.WeekRepository
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.BoardStatus
 import app.hearth.core.model.Ease
+import app.hearth.core.model.glance
 import app.hearth.core.model.easeNow
 import app.hearth.core.tools.backlog.PlanBacklogArgs
 import app.hearth.core.tools.backlog.RateHabitArgs
@@ -67,13 +68,16 @@ class MeetingToolsTest {
         )
         val agenda = tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl)
         assertTrue(agenda.weekOn)
-        assertEquals(Ease.EASY, agenda.suggestedWeek)
-        assertTrue("De week (samen afspreken, zon / wolk / bliksem): voorstel zon (liep vanzelf)." in agenda.summary, agenda.summary)
-        assertEquals("De week vroeg moeite. Samen afgesproken.", tools.registry.run(tools.rateWeek, RateWeekArgs(Ease.EFFORT, suggested = Ease.EASY), nl).summary)
-        assertEquals(WeekRating(Ease.EFFORT, Ease.EASY, true, null), meeting.currentWeek())
+        assertEquals(4, agenda.suggestedWeek)
+        assertTrue("De week (samen afspreken, van 0 tot 5): voorstel zon, liep goed (4/5)." in agenda.summary, agenda.summary)
+        assertEquals("De week vroeg moeite (3/5). Samen afgesproken.", tools.registry.run(tools.rateWeek, RateWeekArgs(3, suggested = 4), nl).summary)
+        assertEquals(WeekRating(3, 4, true, null), meeting.currentWeek())
+        // The older form still works: the weather becomes its score.
+        tools.registry.run(tools.rateWeek, RateWeekArgs(ease = Ease.EFFORT, suggested = 4), nl)
+        assertEquals(WeekRating(3, 4, true, null), meeting.currentWeek())
         // Saying it again replaces it; no agreement is an answer too.
-        assertEquals("De week: geen akkoord. Ook dat is een antwoord.", tools.registry.run(tools.rateWeek, RateWeekArgs(null, suggested = Ease.EASY), nl).summary)
-        assertEquals(WeekRating(null, Ease.EASY, false, null), meeting.currentWeek())
+        assertEquals("De week: geen akkoord. Ook dat is een antwoord.", tools.registry.run(tools.rateWeek, RateWeekArgs(null, suggested = 4), nl).summary)
+        assertEquals(WeekRating(null, 4, false, null), meeting.currentWeek())
 
         tools.registry.run(tools.setWeekMeters, WeekMetersArgs(false), nl)
         assertEquals(false, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).weekOn)
@@ -84,17 +88,21 @@ class MeetingToolsTest {
     fun `an agreement that doesn't work twice becomes a working point, never naming anyone`() = runTest {
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Schoenen in de kast"), nl)
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Wie kookt, wast niet af"), nl)
-        // The same three steps as the routines; the older yes/no form still works.
-        assertEquals("“Schoenen in de kast” is te zwaar. Misschien mag de huisregel eenvoudiger.",
-            tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "schoenen", ease = Ease.HARD), nl).summary)
+        // The same 0–5 scale as the routines; the older yes/no form still works.
+        assertEquals("“Schoenen in de kast”: te zwaar (1/5). Misschien mag de huisregel eenvoudiger.",
+            tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "schoenen", score = 1), nl).summary)
         tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", worked = true), nl)
         // Two house rules that ask a lot: Hearth suggests a cloud, never a bolt.
-        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", ease = Ease.HARD), nl)
-        assertEquals(Ease.EFFORT, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).suggestedWeek)
-        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", ease = Ease.EFFORT), nl)
+        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", score = 0), nl)
+        assertEquals(3, tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl).suggestedWeek)
+        tools.registry.run(tools.checkHouseRule, CheckHouseRuleArgs(rule = "wie kookt", score = 3), nl)
+        assertEquals(listOf(1, 3), meeting.currentRuleChecks().map { it.score })
         assertEquals(listOf(Ease.HARD, Ease.EFFORT), meeting.currentRuleChecks().map { it.ease })
+        // The Huisregels tile says how they go on average.
+        val rules = board.allItems().filter { it.kind == BoardKind.RULE }
+        assertEquals("2 huisregels · gemiddeld 2/5", app.hearth.core.model.Topic.RULES.glance(app.hearth.core.model.WeekLook(emptyList(), rules, 0, 0, nl.today, meeting.ruleScores()), Lang.NL))
         val first = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary
-        assertTrue("Huisregels: Schoenen in de kast: te zwaar; Wie kookt, wast niet af: vraagt moeite" in first, first)
+        assertTrue("Huisregels: Schoenen in de kast: te zwaar (1/5); Wie kookt, wast niet af: vraagt moeite (3/5)" in first, first)
         assertEquals(0, board.allItems().count { it.kind == BoardKind.FRICTION })
 
         val nextWeek = nl.copy(today = LocalDate(2026, 10, 31))
@@ -119,15 +127,15 @@ class MeetingToolsTest {
         backlog.logRoutine(listOf(plants.id), today.plusDays(-20).toString())
         val agenda = tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), ctx)
         assertEquals(listOf("Planten water geven" to Ease.EFFORT), agenda.needsAttention.map { it.item.text to it.ease })
-        assertEquals(Ease.EASY, agenda.suggestedWeek)
+        assertEquals(4, agenda.suggestedWeek)
     }
 
     @Test
     fun `habits are rated together and get a small first step, tasks count their postponements`() = runTest {
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Na het eten de tafel afruimen", Section.HABIT), nl)
         assertEquals(
-            "“Na het eten de tafel afruimen” is te zwaar. Begin met de versie van twee minuten.",
-            tools.registry.run(tools.rateHabit, RateHabitArgs(texts = listOf("tafel afruimen"), ease = Ease.HARD), nl).summary,
+            "“Na het eten de tafel afruimen”: te zwaar (1/5). Begin met de versie van twee minuten.",
+            tools.registry.run(tools.rateHabit, RateHabitArgs(texts = listOf("tafel afruimen"), score = 1), nl).summary,
         )
         assertEquals("Begin klein: “Eigen bord naar de keuken”.", tools.registry.run(tools.setSmallStep, SmallStepArgs(texts = listOf("tafel afruimen"), step = "eigen bord naar de keuken"), nl).summary)
         val habit = backlog.openItems().single()
@@ -142,7 +150,7 @@ class MeetingToolsTest {
         assertEquals(listOf("Fiets herstellen" to Ease.EFFORT), agenda.needsAttention.map { it.item.text to it.ease })
         assertEquals(listOf("Na het eten de tafel afruimen"), agenda.habits.map { it.text })
         val summary = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary
-        assertTrue("Ritmes & routines: Na het eten de tafel afruimen: te zwaar (begin klein: Eigen bord naar de keuken)" in summary, summary)
+        assertTrue("Ritmes & routines: Na het eten de tafel afruimen: te zwaar (1/5) (begin klein: Eigen bord naar de keuken)" in summary, summary)
         assertTrue("Vraagt aandacht: Fiets herstellen (2× verschoven)" in summary, summary)
     }
 
@@ -159,9 +167,9 @@ class MeetingToolsTest {
         assertEquals(Ease.HARD, habit.copy(ease = Ease.HARD).easeNow(emptyList(), today, today))
         val task = app.hearth.core.model.BacklogItem("3", "Belastingbrief", Section.ADMIN, createdAt = 0)
         assertEquals(listOf(null, Ease.EFFORT, Ease.HARD), listOf(1, 3, 4).map { task.copy(postponed = it).easeNow(emptyList(), today, today) })
-        assertEquals(Ease.EASY, weekSuggestion(done = 10, wins = 2, needingAttention = 0, newFrictions = 0, rulesTooHard = 0))
-        assertEquals(Ease.EFFORT, weekSuggestion(done = 0, wins = 0, needingAttention = 2, newFrictions = 0, rulesTooHard = 0))
-        assertEquals(Ease.EFFORT, weekSuggestion(done = 10, wins = 2, needingAttention = 0, newFrictions = 4, rulesTooHard = 3))
+        assertEquals(4, weekSuggestion(done = 10, wins = 2, needingAttention = 0, newFrictions = 0, rulesTooHard = 0))
+        assertEquals(3, weekSuggestion(done = 0, wins = 0, needingAttention = 2, newFrictions = 0, rulesTooHard = 0))
+        assertEquals(3, weekSuggestion(done = 10, wins = 2, needingAttention = 0, newFrictions = 4, rulesTooHard = 3))
     }
 
     @Test
@@ -172,7 +180,7 @@ class MeetingToolsTest {
         assertTrue("Gesprek (Luister mee)" in agenda.summary)
 
         tools.registry.run(tools.addWin, AddWinArgs("De ochtenden gingen vlotter"), nl)
-        tools.registry.run(tools.rateWeek, RateWeekArgs(Ease.EFFORT, suggested = Ease.EASY), nl)
+        tools.registry.run(tools.rateWeek, RateWeekArgs(3, suggested = 4), nl)
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Schoenen uit in de gang"), nl)
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Tandarts Mia", Section.APPOINTMENT, When.DAY, "2026-10-27"), nl)
         tools.registry.run(tools.addToBacklog, AddToBacklogArgs("Niks plannen, uitrusten", Section.PROTECTED_TIME, When.DAY, "2026-10-25"), nl)
@@ -180,7 +188,7 @@ class MeetingToolsTest {
         val text = first.summary
         assertTrue(text.startsWith("Weekoverleg van vandaag (24/10)"), text)
         assertTrue("Wat ging goed: De ochtenden gingen vlotter" in text, text)
-        assertTrue("De week: vroeg moeite (Hearth dacht: liep vanzelf)" in text, text)
+        assertTrue("De week: vroeg moeite (3/5) (Hearth dacht: liep goed (4/5))" in text, text)
         assertTrue("Nieuwe huisregels: Schoenen uit in de gang" in text, text)
         assertTrue("Admin & afspraken: Tandarts Mia (dinsdag)" in text, text)
         assertTrue("Vrije tijd: Niks plannen, uitrusten (morgen)" in text, text)
@@ -248,5 +256,13 @@ class MeetingToolsTest {
         assertTrue(preview.lines.any { it.startsWith("Wat ging goed: Samen gegeten") }, preview.summary)
         assertEquals(1, meeting.currentWins().size)
         assertEquals(null, week.last())
+    }
+
+    @Test
+    fun `ratings from before the scale read as their weather's score`() {
+        val score = app.hearth.core.data.week.ReflectionEntity::scoreOf
+        // Old rows: 1 loopt vanzelf, 2 vraagt moeite, 0 te zwaar (and empty); new rows hold 10 + the score.
+        assertEquals(listOf(5, 3, 1, 1), listOf(1, 2, 0, null).map(score))
+        assertEquals((0..5).toList(), (0..5).map { score(app.hearth.core.data.week.ReflectionEntity.codeOf(it)) })
     }
 }

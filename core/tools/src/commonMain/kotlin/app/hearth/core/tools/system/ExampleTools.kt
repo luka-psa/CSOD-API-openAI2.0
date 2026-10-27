@@ -1,7 +1,6 @@
 package app.hearth.core.tools.system
 
 import app.hearth.core.data.settings.SettingsRepository
-import app.hearth.core.model.Ease
 import app.hearth.core.model.Anchor
 import app.hearth.core.model.GoalScope
 import app.hearth.core.model.Section
@@ -72,8 +71,8 @@ class LoadExamplesTool(
         // Routines with steps: the bag for the opvang (a checklist) and the evening (a sequence).
         step { tools.addRoutine.run(AddRoutineArgs(e.bag.first, e.bag.second), ctx) }
         step { tools.addRoutine.run(AddRoutineArgs(e.evening.first, e.evening.second, Anchor.EVENING), ctx) }
-        step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[0]), ease = Ease.EASY), ctx) }
-        step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[1]), ease = Ease.HARD), ctx) }
+        step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[0]), score = 5), ctx) }
+        step { tools.rateHabit.run(RateHabitArgs(texts = listOf(e.habits[1]), score = 1), ctx) }
         step { tools.setSmallStep.run(SmallStepArgs(texts = listOf(e.habits[1]), step = e.smallStep), ctx) }
         step { tools.setHabitPairing.run(app.hearth.core.tools.backlog.SetPairingArgs(texts = listOf(e.habits[0]), pairing = e.pairing), ctx) }
 
@@ -107,7 +106,7 @@ class LoadExamplesTool(
                 ctx,
             )
         }
-        step { tools.checkHouseRule.run(app.hearth.core.tools.week.CheckHouseRuleArgs(rule = e.rules[0], ease = app.hearth.core.model.Ease.EASY), ctx) }
+        step { tools.checkHouseRule.run(app.hearth.core.tools.week.CheckHouseRuleArgs(rule = e.rules[0], score = 4), ctx) }
         step { tools.addIdea.run(AddIdeaArgs(e.idea, e.members[0]), ctx) }
 
         // Boodschappen and Voorraad.
