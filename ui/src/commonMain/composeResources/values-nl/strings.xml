@@ -516,4 +516,12 @@
     <string name="stage_planning">Over de planning</string>
     <string name="stage_concern">Iets dat schuurt</string>
     <string name="stage_brainstorm">Aan het brainstormen, nog geen besluit</string>
+    <string name="smart_title">Slimmer luisteren</string>
+    <string name="smart_card">Een taalmodel op dit toestel</string>
+    <string name="smart_body">Luister mee leest het weekoverleg dan met een klein taalmodel, naast de vaste regels. Zo herkent het ook zinnen zoals jullie ze zelf zeggen. Het model draait op dit toestel zelf: wat jullie zeggen gaat nergens heen. Aanzetten laadt het één keer binnen (ongeveer 130 MB); uitzetten haalt het weer weg.</string>
+    <string name="smart_downloading">Binnenhalen… %1$d%%</string>
+    <string name="smart_loading">Het model leert de voorbeelden, even geduld…</string>
+    <string name="smart_ready">Klaar: Luister mee leest mee met het model.</string>
+    <string name="smart_failed">Dat lukte niet: %1$s</string>
+    <string name="smart_retry">Opnieuw proberen</string>
 </resources>

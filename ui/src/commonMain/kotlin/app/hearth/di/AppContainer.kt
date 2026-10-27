@@ -1,5 +1,9 @@
 package app.hearth.di
 
+import app.hearth.ai.sense.NoSenseRuntime
+import app.hearth.ai.sense.SenseRuntime
+import app.hearth.ai.sense.SmartListening
+
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,6 +67,8 @@ class AppContainer(
     examplesOnFirstRun: Boolean = false,
     /** False in the browser: other sites are read through the relay (CORS). */
     directPages: Boolean = true,
+    /** Where this device keeps and runs the sentence model for smarter listening (none: the rules alone). */
+    senseRuntime: SenseRuntime = NoSenseRuntime,
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -90,6 +96,8 @@ class AppContainer(
     private val syncCloud = RelaySync({ settings.connection.first().relayUrl })
     val tools = HearthTools(shopping, backlog, board, stock, week, settings, meeting, backups, drive, calendar, pages, sync, syncCloud)
     val orchestrator = Orchestrator(tools.registry)
+    /** Smarter listening: the sentence model next to the rules, once switched on in Instellingen. */
+    val listening = SmartListening(senseRuntime)
 
     /** The family's ChatGPT or Claude reaches the same tools here, through the relay. */
     val mcp = McpServer(tools.registry) { context(ToolSource.MCP) }
@@ -129,6 +137,15 @@ class AppContainer(
 
     init {
         appScope.launch { settings.value(AppSettings.LANGUAGE).collect { it?.let { tag -> _language.value = Lang.fromTag(tag) } } }
+        // On: download once and load (in the background, the app goes on); off again: the space back.
+        appScope.launch {
+            settings.value(AppSettings.SMART_LISTENING).collectLatest { on ->
+                when {
+                    on == "true" -> listening.start()
+                    listening.state.value != SmartListening.State.Off -> listening.stop()
+                }
+            }
+        }
         // Connected only while it's switched on; the client reconnects by itself.
         appScope.launch { settings.connection.collect { c -> relay.connect(if (c.enabled) c.tabletUrl else null) } }
         if (googleAuth.available) keepGoogleUpToDate()

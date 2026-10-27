@@ -1,5 +1,15 @@
 package app.hearth.ui
 
+import app.hearth.ai.sense.SmartListening
+import app.hearth.ui.resources.smart_title
+import app.hearth.ui.resources.smart_card
+import app.hearth.ui.resources.smart_body
+import app.hearth.ui.resources.smart_downloading
+import app.hearth.ui.resources.smart_loading
+import app.hearth.ui.resources.smart_ready
+import app.hearth.ui.resources.smart_failed
+import app.hearth.ui.resources.smart_retry
+
 import androidx.compose.ui.platform.LocalUriHandler
 import app.hearth.ui.resources.connect_step_done
 import app.hearth.ui.resources.connect_step_code
@@ -98,6 +108,9 @@ class ConnectCallbacks(
     /** Null when examples aren't offered here (the web preview starts with them). */
     val loadExamples: (() -> Unit)? = null,
     val setLanguage: (Lang) -> Unit = {},
+    /** Smarter listening on or off on this device. */
+    val setSmartListening: (Boolean) -> Unit = {},
+    val retrySmartListening: () -> Unit = {},
 )
 
 /**
@@ -120,6 +133,8 @@ fun ConnectScreen(
     sync: SyncState = SyncState(),
     joinCode: app.hearth.core.tools.system.JoinCodeResult? = null,
     syncCb: SyncCallbacks? = null,
+    listening: SmartListening.State = SmartListening.State.Off,
+    listeningAvailable: Boolean = false,
 ) {
     var unlinking by remember { mutableStateOf<LinkedApp?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
@@ -136,6 +151,10 @@ fun ConnectScreen(
                     ChoiceChip("Nederlands (Vlaams)", current == Lang.NL, { cb.setLanguage(Lang.NL) })
                     ChoiceChip("English", current == Lang.EN, { cb.setLanguage(Lang.EN) })
                 }
+            }
+            if (listeningAvailable) {
+                SectionTitle(stringResource(Res.string.smart_title))
+                SmartListeningCard(listening, cb)
             }
             // The household on more devices: right after the language, it's what a new device needs first.
             if (syncCb != null) {
@@ -329,4 +348,44 @@ private fun CodeBox(code: PairingCode, onHide: () -> Unit) {
 private fun shortDate(millis: Long): String {
     val d = dateOf(millis)
     return "${d.day}/${d.month.ordinal + 1}"
+}
+
+/**
+ * Slimmer luisteren: a small sentence model on this device reads Luister mee next to the rules. Off by default; on, it
+ * downloads once (with its progress), learns its examples, and says when it's ready. Off removes it again.
+ */
+@Composable
+private fun SmartListeningCard(state: SmartListening.State, cb: ConnectCallbacks) {
+    val on = state != SmartListening.State.Off
+    HearthCard(stringResource(Res.string.smart_card), HearthIcons.Mic, Modifier.fillMaxWidth(), action = {
+        Switch(checked = on, onCheckedChange = { cb.setSmartListening(it) })
+    }) {
+        Text(stringResource(Res.string.smart_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        when (state) {
+            SmartListening.State.Off -> {}
+            is SmartListening.State.Downloading -> {
+                Spacer(Modifier.size(12.dp))
+                Text(stringResource(Res.string.smart_downloading, (state.progress * 100).toInt()), style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.size(6.dp))
+                androidx.compose.material3.LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth(), drawStopIndicator = {})
+            }
+            SmartListening.State.Loading -> {
+                Spacer(Modifier.size(12.dp))
+                Text(stringResource(Res.string.smart_loading), style = MaterialTheme.typography.labelLarge)
+            }
+            SmartListening.State.Ready -> {
+                Spacer(Modifier.size(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(HearthIcons.Check, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(Res.string.smart_ready), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                }
+            }
+            is SmartListening.State.Failed -> {
+                Spacer(Modifier.size(12.dp))
+                Text(stringResource(Res.string.smart_failed, state.reason), style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = cb.retrySmartListening) { Text(stringResource(Res.string.smart_retry)) }
+            }
+        }
+    }
 }

@@ -14,6 +14,9 @@ coreKtx = "1.17.0"
 ktor = "3.5.2"
 
 [libraries]
+# The sentence model for smarter listening: ONNX Runtime on the tablet (and on the JVM, for tests).
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version = "1.20.0" }
+onnxruntime-jvm = { module = "com.microsoft.onnxruntime:onnxruntime", version = "1.20.0" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version = "1.3.7" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version = "21.4.0" }

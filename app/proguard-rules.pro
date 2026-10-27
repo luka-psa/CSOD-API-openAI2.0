@@ -4,3 +4,6 @@
     *** Companion;
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# ONNX Runtime (smarter listening) is reached through JNI: keep its classes whole.
+-keep class ai.onnxruntime.** { *; }

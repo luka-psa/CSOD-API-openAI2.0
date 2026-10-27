@@ -1,5 +1,7 @@
 package app.hearth.ai.route
 
+import app.hearth.ai.sense.Reading
+import app.hearth.ai.sense.Sense
 import app.hearth.core.model.Section
 import app.hearth.core.tools.backlog.When
 import kotlinx.datetime.LocalDate
@@ -81,8 +83,16 @@ data class Thought(val heard: String, val lines: IntRange, val conclusions: List
  */
 object MeetingWords {
     /** The conversation as thoughts. [people] are the household's names; [times] (epoch millis per line) split long silences. */
-    fun thoughts(lines: List<String>, today: LocalDate, people: Collection<String> = emptyList(), times: List<Long>? = null): List<Thought> {
+    fun thoughts(
+        lines: List<String>,
+        today: LocalDate,
+        people: Collection<String> = emptyList(),
+        times: List<Long>? = null,
+        /** The sentence model's reading of a clause, when smarter listening is on (null: the rules alone). */
+        sense: ((String) -> Reading?)? = null,
+    ): List<Thought> {
         val groups = mutableListOf<Group>()
+        fun moveOf(said: String) = read(said, said, today, sense).first
         lines.forEachIndexed { i, line ->
             line.split(SENTENCE_END).map { it.trim() }.filter { it.isNotEmpty() }.forEachIndexed { n, sentence ->
                 val parts = clauses(sentence)
@@ -94,9 +104,9 @@ object MeetingWords {
                     // "ja", "oké": heard, but nothing to add.
                     isAck(said) -> prev.extra(i, sentence)
                     // "dat kan ik doen", "mij ook": a yes to what was just said, part of it.
-                    move(said) == Move.AGREE -> prev.extra(i, sentence)
+                    moveOf(said) == Move.AGREE -> prev.extra(i, sentence)
                     // While options are on the table, the next option or doubt is part of the same brainstorm.
-                    prev.brainstorm && move(said).let { it == Move.PROPOSAL || it == Move.DOUBT } -> {
+                    prev.parts.any { moveOf(Spoken.clean(it.raw)) == Move.PROPOSAL } && moveOf(said).let { it == Move.PROPOSAL || it == Move.DOUBT } -> {
                         prev.parts += parts
                         prev.end = i
                     }
@@ -117,7 +127,7 @@ object MeetingWords {
         // "kan jij Mia dan ophalen": "dan" is the last day said before.
         var lastDay: String? = null
         return groups.map { g ->
-            val (conclusions, stage) = conclude(g.parts, today, people, lastDay)
+            val (conclusions, stage) = conclude(g.parts, today, people, lastDay, sense)
             g.parts.forEach { p -> DAY_WORD.findAll(p.raw).lastOrNull()?.let { lastDay = it.value } }
             Thought(lines.subList(g.start, g.end + 1).joinToString(" ") { it.trim() }.trim(), g.start..g.end, conclusions, stage)
         }
@@ -176,8 +186,6 @@ object MeetingWords {
 
     private class Group(val start: Int, val parts: MutableList<Part>) {
         var end = start
-        /** Options are on the table. */
-        val brainstorm: Boolean get() = parts.any { move(Spoken.clean(it.raw)) == Move.PROPOSAL }
         /** Heard and kept with the thought, but nothing to conclude from. */
         fun extra(i: Int, raw: String) {
             parts += Part(raw, main = false)
@@ -198,7 +206,7 @@ object MeetingWords {
      * replaces it); a single "misschien kunnen we …" on its own is an idea for the Werkbord. Looking back keeps what
      * went well and what rubs, never who did what.
      */
-    private fun conclude(parts: List<Part>, today: LocalDate, people: Collection<String>, lastDay: String?): Pair<List<Conclusion>, Stage> {
+    private fun conclude(parts: List<Part>, today: LocalDate, people: Collection<String>, lastDay: String?, sense: ((String) -> Reading?)?): Pair<List<Conclusion>, Stage> {
         // "die gaat donderdag naar de opvang" is about the one person this thought names.
         val who = people.filter { name -> name.isNotBlank() && parts.any { word(name).containsMatchIn(it.raw) } }.singleOrNull()
         val out = mutableListOf<Building>()
@@ -219,7 +227,8 @@ object MeetingWords {
         for (part in parts) {
             val said = Spoken.clean(part.raw)
             val sentence = who?.let { name -> PRONOUN_SUBJECT.replace(said) { m -> name + m.groupValues[1] } } ?: said
-            var move = if (said.isBlank()) Move.AGREE else move(said)
+            val (read, forced) = if (said.isBlank()) Move.AGREE to null else read(said, sentence, today, sense)
+            var move = read
             // "oké dus dan elke avond tien minuten": while options are on the table, a plain sentence is another option.
             if (move == Move.STATEMENT && options > 0 && out.none { it.place == Place.HOUSE_RULE } && REFINE.containsMatchIn(LEAD_ACKS.replace(said.lowercase(), ""))) move = Move.PROPOSAL
             if (move == Move.LOOK_BACK) lookingBack = true
@@ -253,7 +262,7 @@ object MeetingWords {
                 Move.QUESTION -> hear()
                 Move.LOOK_BACK -> {
                     // What went well, or what rubs; "ik heb de was niet opgevolgd" is said, not written down.
-                    val place = when {
+                    val place = forced ?: when {
                         WIN.containsMatchIn(said) && !NOT_GOOD.containsMatchIn(said) -> Place.WIN
                         FRICTION.containsMatchIn(said) && !SELF.containsMatchIn(said) -> Place.FRICTION
                         else -> Place.NONE
@@ -265,10 +274,11 @@ object MeetingWords {
                     }
                 }
                 Move.STATEMENT -> {
-                    var place = if (isAck(said)) Place.NONE else place(sentence, today)
-                    // Something to do needs a day, a "moeten", or to read as an item ("de verzekering bellen").
-                    if (place in TASK_PLACES && !forward(said, today)) place = Place.NONE
-                    if (lookingBack && place in TASK_PLACES && !MODAL.containsMatchIn(said)) place = Place.NONE
+                    var place = forced ?: if (isAck(said)) Place.NONE else place(sentence, today)
+                    // Something to do needs a day, a "moeten", or to read as an item ("de verzekering bellen"); the
+                    // model, when sure, has read that already.
+                    if (forced == null && place in TASK_PLACES && !forward(said, today)) place = Place.NONE
+                    if (forced == null && lookingBack && place in TASK_PLACES && !MODAL.containsMatchIn(said)) place = Place.NONE
                     val day = TimeWords.extractAnywhere(sentence, today)?.let { it.whenValue to it.date }
                     val last = out.lastOrNull()
                     val own = when {
@@ -302,6 +312,41 @@ object MeetingWords {
         }
         return out.map { Conclusion(it.sentence, it.place, it.heard.toString().trim()) } to stage
     }
+
+    /**
+     * A clause's move and, when the sentence model decided it, its place (null: the rules choose). The rules keep what
+     * they are precise at (a yes, an option, a doubt, a question; free time, a meal, shopping; what went well); the model
+     * takes the rest when it is sure, like "ik ben het zat dat de badkamer nooit gepoetst wordt" (no rule knows "zat").
+     */
+    private fun read(said: String, sentence: String, today: LocalDate, sense: ((String) -> Reading?)?): Pair<Move, Place?> {
+        val rules = move(said)
+        if (sense == null || rules in TRUSTED_MOVES) return rules to null
+        if (rules == Move.STATEMENT && place(sentence, today) in TRUSTED_PLACES) return rules to null
+        if (rules == Move.LOOK_BACK && WIN.containsMatchIn(said) && !NOT_GOOD.containsMatchIn(said)) return rules to null
+        val r = sense(said)?.takeIf { it.confidence >= SURE } ?: return rules to null
+        return when (r.sense) {
+            Sense.AGREE -> Move.AGREE to null
+            Sense.PROPOSAL -> Move.PROPOSAL to null
+            Sense.DOUBT -> Move.DOUBT to null
+            Sense.QUESTION -> Move.QUESTION to null
+            Sense.RULE -> Move.DECISION to null
+            Sense.TALK -> Move.STATEMENT to Place.NONE
+            Sense.WIN -> Move.LOOK_BACK to Place.WIN
+            Sense.FRICTION -> Move.STATEMENT to Place.FRICTION
+            Sense.TASK -> Move.STATEMENT to Place.PLANNING
+            Sense.EVENT -> Move.STATEMENT to Place.EVENT
+            Sense.FREE_TIME -> Move.STATEMENT to Place.FREE_TIME
+            Sense.ROUTINE -> Move.STATEMENT to Place.RHYTHM
+            Sense.SHOPPING -> Move.STATEMENT to Place.SHOPPING
+            Sense.MEAL -> Move.STATEMENT to Place.MEAL
+            Sense.GOAL -> Move.STATEMENT to Place.GOAL
+        }
+    }
+
+    private val TRUSTED_MOVES = setOf(Move.AGREE, Move.PROPOSAL, Move.DOUBT, Move.QUESTION)
+    private val TRUSTED_PLACES = setOf(Place.FREE_TIME, Place.MEAL, Place.SHOPPING)
+    /** How sure the model must be to overrule the rules (measured: 0.4 reads best). */
+    private const val SURE = 0.4f
 
     /** What a clause does: says yes, offers an option, doubts, asks, looks back, decides, or states. */
     fun move(said: String): Move {

@@ -111,7 +111,7 @@ meeting and wins, then every *topic* in a few words with its details, Hearth's s
 transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary, wins grouped by topic; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `rate_week` (how the week went, `score` 0–5, agreed together for the household; empty = no
-agreement), `set_week_meters` (asking it on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
+agreement), `set_week_meters` (asking it on/off, tablet), `set_smart_listening` (the sentence model for Luister mee on this device, on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
 `rate_habit` (`score` 0–5; one score per meeting is kept for the habit coach; all three still take the older `ease`
 EASY / EFFORT / HARD, read as 5 / 3 / 1), `review_habit` (read-only: the four laws of Atomic Habits for a habit, or for
 every habit that asks for something: its score per meeting, the frictions about it, how each law is in place and what to try,
@@ -490,6 +490,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
+   v0.23: *Slimmer luisteren* (Instellingen, `set_smart_listening`, off by default, device-only): a small sentence
+   model (multilingual-e5-small, ONNX, downloaded once, run on the device) reads Luister mee next to the rules; the
+   rules keep what they are precise at, the model decides the rest when it is sure. 55 % → ≈ 83 % on held-out talk.
    v0.23: Luister mee follows the conversation's moves (`Move`: agree, proposal, doubt, question, look back, decision,
    statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
    besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,

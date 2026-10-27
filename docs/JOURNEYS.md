@@ -134,7 +134,9 @@ catching up ("hoe was jouw week"), looking back at yourself ("ik heb de was niet
 brainstorm's options stay talk, and the thought says so (*Bijpraten*, *Aan het brainstormen, nog geen besluit*).
 What is decided becomes something: a plan ("donderdag moet de auto naar de garage"), a suggestion the other says yes
 to ("kan jij Mia dan ophalen?" "ja dat kan ik doen" → Mia donderdag ophalen), what rubs (once, in its own words)
-and the rule the brainstorm ends in ("dan spreken we af dat …"), which replaces the options on the way to it. Not quite right? Tap the conclusion: its name,
+and the rule the brainstorm ends in ("dan spreken we af dat …"), which replaces the options on the way to it.
+With *Slimmer luisteren* on (Instellingen, downloads a small model once, runs on the device), it also understands
+sentences no rule knows ("ik ben het zat dat de badkamer nooit gepoetst wordt" is a friction). Not quite right? Tap the conclusion: its name,
 place (taak, afspraak, ritme, …) and day open, filled in from what was said; *Bewaar* or *Zet erin*. *Zet op zijn
 plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can also read the conversation and
 put it in place. The ten tiles are the same topics as everywhere, in the same order: Doen & eten three by two on the

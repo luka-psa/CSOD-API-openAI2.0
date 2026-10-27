@@ -36,4 +36,15 @@ class LanguageToolsTest {
         assertEquals("nl", settings.currentValue(AppSettings.LANGUAGE))
         assertFalse(tools.setLanguage.exposeOverMcp)
     }
+
+    @Test
+    fun `smarter listening is a setting of this device, never shared`() = runTest {
+        assertEquals("Slimmer luisteren staat aan. Het model komt één keer binnen.", tools.registry.run(tools.setSmartListening, SmartListeningArgs(true), ctx).summary)
+        assertEquals("true", settings.currentValue(AppSettings.SMART_LISTENING))
+        // It stays on this device: each one downloads its own model.
+        kotlin.test.assertTrue(AppSettings.SMART_LISTENING in SettingsRepository.DEVICE_ONLY)
+        assertFalse(tools.registry.specs.first { it.name == SetSmartListeningTool.NAME }.exposeOverMcp)
+        tools.registry.run(tools.setSmartListening, SmartListeningArgs(false), ctx)
+        assertEquals("false", settings.currentValue(AppSettings.SMART_LISTENING))
+    }
 }

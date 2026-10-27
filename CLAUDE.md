@@ -65,7 +65,14 @@ sync when any of those change.
   router + section-helper model pair if a provider is ever configured.)
 - **Low-spec tablets.** Target 2–3 GB RAM devices. Avoid heavy libraries,
   keep Compose recompositions cheap, no always-running background work beyond
-  what kiosk mode needs. Local model is optional and downloaded on demand.
+  what kiosk mode needs. Local model is optional and downloaded on demand: *Slimmer luisteren* (Instellingen,
+  `set_smart_listening`, a device-only setting) downloads multilingual-e5-small (ONNX, ≈ 112 MB + its 16 MB
+  tokenizer) once and runs it on the device (ONNX Runtime on Android, ONNX Runtime Web in the browser, loaded only
+  then). Code in `ai/sense`: our own `UnigramTokenizer` (same ids as the model's), `SenseModel` (mean-pooled meaning +
+  a small classifier trained on `SENSE_EXAMPLES` when it loads; add sentences there to teach it), `SmartListening`
+  (state, cache; the platforms give a `SenseRuntime`). In `MeetingWords` the rules keep what they are precise at (a
+  yes, an option, a doubt, a question; free time, meals, shopping; what went well) and the model decides the rest
+  when it is sure (≥ 0.4). Measured on 183 held-out sentences: rules 55 %, rules + model ≈ 83 %.
 - **Kiosk mode.** Full-screen immersive, screen stays on while charging, starts
   on boot, optional lock-task when provisioned as device owner.
 - **MCP server.** Tools are exposed over MCP (streamable HTTP), off by default,

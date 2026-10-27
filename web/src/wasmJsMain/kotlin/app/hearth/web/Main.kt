@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 /** Browser entry point: same database, tools, parser and screens as the tablet app. */
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
-    val container = AppContainer(openHearthDatabase(), WebGoogleAuth(GOOGLE_WEB_CLIENT_ID), examplesOnFirstRun = true, directPages = false)
+    val container = AppContainer(openHearthDatabase(), WebGoogleAuth(GOOGLE_WEB_CLIENT_ID), examplesOnFirstRun = true, directPages = false, senseRuntime = WebSenseRuntime())
     MainScope().launch {
         container.ready.await()
         document.getElementById("loading")?.remove()

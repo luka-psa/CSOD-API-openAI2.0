@@ -523,4 +523,12 @@
     <string name="stage_planning">About the planning</string>
     <string name="stage_concern">Something that rubs</string>
     <string name="stage_brainstorm">Brainstorming, nothing decided yet</string>
+    <string name="smart_title">Smarter listening</string>
+    <string name="smart_card">A language model on this device</string>
+    <string name="smart_body">Luister mee then reads the weekly meeting with a small language model, next to the fixed rules, so it also recognises sentences the way you say them. The model runs on this device itself: what you say goes nowhere. Switching it on downloads it once (about 130 MB); switching it off removes it again.</string>
+    <string name="smart_downloading">Downloading… %1$d%%</string>
+    <string name="smart_loading">The model is learning its examples, one moment…</string>
+    <string name="smart_ready">Ready: Luister mee reads along with the model.</string>
+    <string name="smart_failed">That didn’t work: %1$s</string>
+    <string name="smart_retry">Try again</string>
 </resources>

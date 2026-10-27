@@ -98,7 +98,10 @@ class SettingsRepository(
         private const val TABLET_KEY = "mcp.tabletKey"
 
         /** Settings that belong to this device and never travel in a backup. */
-        val DEVICE_ONLY = setOf(ENABLED, RELAY_URL, HOUSEHOLD, TABLET_KEY, "mcp.connectorSecret", SYNC_KEYS, SYNC_LAST)
+        val DEVICE_ONLY = setOf(ENABLED, RELAY_URL, HOUSEHOLD, TABLET_KEY, "mcp.connectorSecret", SYNC_KEYS, SYNC_LAST, SMART_LISTENING)
+
+        /** Smarter listening on this device (each device downloads its own sentence model). */
+        const val SMART_LISTENING = "listen.smart"
 
         /** This device's way into the household's sync (space, token, key), and when it last synced. */
         const val SYNC_KEYS = "sync.keys"

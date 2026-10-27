@@ -368,8 +368,15 @@ class Orchestrator(
     data class Talk(val heard: String, val lines: IntRange, val proposals: List<Proposal>, val stage: Stage = Stage.TALK)
 
     /** The conversation as thoughts, each with its conclusions. [people] are the household's names. */
-    fun listen(lines: List<String>, ctx: ToolContext, people: Collection<String> = emptyList(), times: List<Long>? = null): List<Talk> =
-        MeetingWords.thoughts(lines, ctx.today, people, times).map { t ->
+    fun listen(
+        lines: List<String>,
+        ctx: ToolContext,
+        people: Collection<String> = emptyList(),
+        times: List<Long>? = null,
+        /** The sentence model's readings, when smarter listening is on. */
+        sense: ((String) -> app.hearth.ai.sense.Reading?)? = null,
+    ): List<Talk> =
+        MeetingWords.thoughts(lines, ctx.today, people, times, sense).map { t ->
             Talk(t.heard, t.lines, t.conclusions.map { c -> proposal(c.sentence, c.place, ctx).copy(heard = c.heard) }, t.stage)
         }
 

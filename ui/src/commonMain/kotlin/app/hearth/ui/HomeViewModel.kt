@@ -140,6 +140,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collectLatest
+import app.hearth.ai.sense.Reading
+import app.hearth.ai.sense.SmartListening
+import app.hearth.core.tools.system.SmartListeningArgs
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -715,15 +721,46 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Suggestions the family changed (or added already), until the conversation is put in place. */
     private val edits = MutableStateFlow<Map<String, SuggestionEdit>>(emptyMap())
 
+    /** Counts up each time the sentence model has read new sentences. */
+    private val senseRead = MutableStateFlow(0)
+
     /**
      * What Luister mee heard and hasn't been put in place yet, as thoughts (pauses don't cut them), newest first,
      * each with what Hearth concludes from it.
      */
-    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits) { lines, people, changed ->
+    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead) { lines, people, changed, _ ->
         val open = lines.filter { !it.sorted }
-        app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt })
+        app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt }, sense())
             .takeLast(3).reversed().map { t -> thought(open.slice(t.lines), t.proposals, changed).copy(stage = t.stage) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Smarter listening: on, ready, and how far its download is. */
+    val listening: StateFlow<SmartListening.State> = app.listening.state
+    val listeningAvailable: Boolean get() = app.listening.available
+
+    fun setSmartListening(on: Boolean) = tool { say(app.tools.registry.run(app.tools.setSmartListening, SmartListeningArgs(on), it).summary) }
+
+    /** After a failed download or load: try again. */
+    fun retrySmartListening() {
+        viewModelScope.launch { app.listening.start() }
+    }
+
+    /** The model's readings, once smarter listening is ready (null: the rules alone). */
+    private fun sense(): ((String) -> Reading?)? = if (app.listening.state.value == SmartListening.State.Ready) app.listening::read else null
+
+    /**
+     * New sentences go to the model in the background; the stage answers right away with what it has (the rules) and
+     * reads again once the model is done. A first pass only asks which clauses there are.
+     */
+    private val reading = viewModelScope.launch {
+        combine(transcript, app.listening.state) { lines, state -> lines to state }.collectLatest { (lines, state) ->
+            if (state != SmartListening.State.Ready) return@collectLatest
+            val open = lines.filter { !it.sorted }
+            val asked = mutableSetOf<String>()
+            app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), members.value.map { it.name }, open.map { it.createdAt }) { asked += it; null }
+            if (withContext(Dispatchers.Default) { app.listening.prepare(asked) }) senseRead.update { it + 1 }
+        }
+    }
 
     /** A thought with what the family changed on its suggestions (by its first line and the suggestion's place in it). */
     private fun thought(lines: List<TranscriptLine>, proposals: List<Orchestrator.Proposal>, changed: Map<String, SuggestionEdit>): HeardThought {
@@ -784,7 +821,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         voorstelLines = lines.map { it.id }
         val c = ctx(ToolSource.UI)
         // The same thoughts as on the stage, with what the family changed; a thought that was just talk shows once.
-        _voorstel.value = app.orchestrator.listen(lines.map { it.text }, c, members.value.map { it.name }, lines.map { it.createdAt }).flatMap { t ->
+        _voorstel.value = app.orchestrator.listen(lines.map { it.text }, c, members.value.map { it.name }, lines.map { it.createdAt }, sense()).flatMap { t ->
             val heard = thought(lines.slice(t.lines), t.proposals, edits.value)
             heard.proposals.mapIndexed { i, p -> VoorstelRow(p, checked = i !in heard.added && p.place != Place.NONE && p.calls.isNotEmpty(), added = i in heard.added) }
                 .ifEmpty { listOf(VoorstelRow(app.orchestrator.proposal(Spoken.clean(t.heard), Place.NONE, c).copy(heard = t.heard), checked = false)) }
