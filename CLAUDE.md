@@ -5,8 +5,9 @@ tablet at home. The same code also runs as a web app (Kotlin/Wasm) for previews.
 today-focused dashboard. The tablet *is* the server: there is no backend.
 
 Read `docs/PROPOSAL.md` for the approved tool list, schema, layout and folder
-structure, and `docs/JOURNEYS.md` for the topics, where each one lives and the user journeys. Keep both in
-sync when any of those change.
+structure, `docs/JOURNEYS.md` for the topics, where each one lives and the user journeys, and
+`docs/ARCHITECTURE.md` for the diagrams IT staff review (layers, screens to tables, data flows leaving the
+device). Keep all three in sync when any of those change.
 
 ## Problems we solve (keep every feature tied to one)
 

@@ -4,6 +4,7 @@ A local-first household assistant for a shared, always-on family tablet.
 Chat (voice or text, Flemish or English) on the left, today's dashboard on the right.
 The same code runs on Android and in the browser.
 
+- Architecture and data flows for IT review (diagrams): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Product and architecture rules: [`CLAUDE.md`](CLAUDE.md)
 - Terminology, tools, schema, layout, slices: [`docs/PROPOSAL.md`](docs/PROPOSAL.md)
 
