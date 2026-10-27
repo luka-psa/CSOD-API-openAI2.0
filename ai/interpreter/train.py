@@ -2,7 +2,7 @@ import json, math, random, sys, time, os, torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from fmt import prompt, answer
 torch.set_num_threads(4); torch.manual_seed(0)
-BASE = os.environ.get("BASE", "../models/functiongemma"); OUT = sys.argv[1]; EPOCHS = float(sys.argv[2]); LIMIT = int(sys.argv[3]) if len(sys.argv) > 3 else None
+BASE = "../models/functiongemma"; OUT = sys.argv[1]; EPOCHS = float(sys.argv[2]); LIMIT = int(sys.argv[3]) if len(sys.argv) > 3 else None
 tok = AutoTokenizer.from_pretrained(BASE)
 start = OUT if os.path.exists(OUT + "/config.json") else os.environ.get("START", BASE)
 m = AutoModelForCausalLM.from_pretrained(start, dtype=torch.float32)
@@ -16,7 +16,7 @@ for r in rows:
 BATCH = 8
 steps_per_epoch = math.ceil(len(data) / BATCH); total = int(steps_per_epoch * EPOCHS)
 params = [p for p in m.parameters() if p.requires_grad]
-opt = torch.optim.AdamW(params, lr=1e-4, weight_decay=0.0)
+opt = torch.optim.AdamW(params, lr=float(os.environ.get("LR", "1e-4")), weight_decay=0.0)
 sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1, (s + 1) / 30) * 0.5 * (1 + math.cos(math.pi * min(s, total) / total)))
 state = OUT + "/progress.json"
 done = json.load(open(state))["step"] if os.path.exists(state) else 0
@@ -31,16 +31,24 @@ for e in range(math.ceil(EPOCHS) + 1):
 for _ in range(done): sched.step()
 m.train(); t0 = time.time(); W = emb.weight
 for step in range(done, total):
-    b = order[step]; seqs = [data[j][0] + data[j][1] for j in b]; L = max(map(len, seqs))
-    ids = torch.zeros(len(b), L, dtype=torch.long); att = torch.zeros(len(b), L, dtype=torch.long); tgt = []
-    for i, j in enumerate(b):
-        s = seqs[i]; ids[i, :len(s)] = torch.tensor(s); att[i, :len(s)] = 1
-        p = len(data[j][0]); tgt += [(i, k - 1, s[k]) for k in range(p, len(s))]   # predict only the answer
-    h = m.model(input_ids=ids, attention_mask=att).last_hidden_state
-    bi, pos, lab = zip(*tgt)
-    logits = h[list(bi), list(pos)] @ W.T
-    loss = torch.nn.functional.cross_entropy(logits, torch.tensor(lab))
-    loss.backward(); torch.nn.utils.clip_grad_norm_(params, 1.0); opt.step(); sched.step(); opt.zero_grad()
+    b = order[step]; seqs = {j: data[j][0] + data[j][1] for j in b}
+    count = sum(len(data[j][1]) for j in b); total_loss = 0.0
+    # Long windows in small pieces (same gradient, a fraction of the memory): at most ~1500 tokens at a time.
+    L = max(map(len, seqs.values())); per = max(1, 1500 // L)
+    for piece in [b[i:i + per] for i in range(0, len(b), per)]:
+        L = max(len(seqs[j]) for j in piece)
+        ids = torch.zeros(len(piece), L, dtype=torch.long); att = torch.zeros(len(piece), L, dtype=torch.long); tgt = []
+        for i, j in enumerate(piece):
+            s = seqs[j]; ids[i, :len(s)] = torch.tensor(s); att[i, :len(s)] = 1
+            p = len(data[j][0]); tgt += [(i, k - 1, s[k]) for k in range(p, len(s))]   # predict only the answer
+        h = m.model(input_ids=ids, attention_mask=att).last_hidden_state
+        bi, pos, lab = zip(*tgt)
+        logits = h[list(bi), list(pos)] @ W.T
+        part = torch.nn.functional.cross_entropy(logits, torch.tensor(lab), reduction="sum") / count
+        part.backward(); total_loss += part.item()
+        del h, logits, part
+    loss = torch.tensor(total_loss)
+    torch.nn.utils.clip_grad_norm_(params, 1.0); opt.step(); sched.step(); opt.zero_grad()
     if step % 10 == 0: print(f"step {step}/{total} loss {loss.item():.3f} {(time.time()-t0)/(step-done+1):.1f}s/step", flush=True)
     if (step + 1) % 100 == 0 or step + 1 == total:
         m.save_pretrained(OUT); tok.save_pretrained(OUT); json.dump({"step": step + 1}, open(state, "w"))
