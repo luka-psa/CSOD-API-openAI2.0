@@ -108,7 +108,7 @@ NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `ad
 with the same name. · Weekoverleg: `plan_meal` (one meal per day; ingredients onto the shopping list; a known
 dish brings its ingredients), `list_meal_plan`, `remove_meal` ⚠, `weekoverleg_agenda` (look back since the last
 meeting and wins, then every *topic* in a few words with its details, Hearth's suggested score for the week and the Luister mee
-transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary; `preview` only writes it,
+transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary, wins grouped by topic; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `rate_week` (how the week went, `score` 0–5, agreed together for the household; empty = no
 agreement), `set_week_meters` (asking it on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
@@ -226,6 +226,7 @@ base). v17 adds `backlog_item.schedule` (a routine's fixed days as JSON); the we
 nice with a habit); a habit's weather per meeting is a HABIT_CHECK row in `reflection` (text = the habit's id).
 v19 adds `backlog_item.score` (a habit's last score, 0–5; `ease` keeps its weather); WEEK, RULE_CHECK and HABIT_CHECK
 rows now hold 10 + the score, and older rows (1 / 2 / 0) read as 5 / 3 / 1, so nothing needs rewriting.
+v20 adds `reflection.topic` (the topic a win was named under, in the Terugblik's walk past every topic).
 Auto-migrations keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
@@ -489,7 +490,8 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    v0.14: a routine without a moment is a checklist (Lijstjes; no rhythm, used when needed); paste a list in the
    capture bar (heading → checklist / Boodschappen / Recept, otherwise line by line); a recipe from a link
    (capture bar or Recepten → "Plak een link naar een recept"; the family's AI can call import_recipe too).
-   v0.23: the Terugblik rates on a scale from 0 to 5 (routines, house rules, the week; `score` on `rate_habit`,
+   v0.23: *Wat ging goed* walks past every topic (a tile each, with what got done there and one-tap wins Hearth saw;
+   `add_win` takes a `topic`, DB v20); the Terugblik rates on a scale from 0 to 5 (routines, house rules, the week; `score` on `rate_habit`,
    `check_house_rule`, `rate_week`; DB v19), and every rated routine and house rule carries a score badge (weather and
    five pips) wherever it shows; two groups instead of three: *Doen & eten* (Admin & afspraken, Grote taken, Huishouden,
    Vrije tijd, Weekmenu, Boodschappen) and *Ritme & afspraken* (Ritmes & routines, Huisregels, Frictie & ideeën,

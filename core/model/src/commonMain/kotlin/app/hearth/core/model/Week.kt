@@ -187,9 +187,12 @@ fun huddleDue(last: Huddle?, today: LocalDate): Boolean {
     return today.toEpochDays() - held.toEpochDays() >= 6
 }
 
-/** Wat ging goed: a win someone named. Belongs to the next meeting until that one ends. */
+/**
+ * Wat ging goed: a win someone named, with the topic it belongs to when it was named there (the Terugblik walks past
+ * every topic). Belongs to the next meeting until that one ends.
+ */
 @Serializable
-data class Win(val id: String, val text: String, val memberId: String?, val huddleId: String?, val createdAt: Long)
+data class Win(val id: String, val text: String, val memberId: String?, val huddleId: String?, val createdAt: Long, val topic: Topic? = null)
 
 /**
  * One thing said during Luister mee (what the recognizer heard between two pauses). The lines of the

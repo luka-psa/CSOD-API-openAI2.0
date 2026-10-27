@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.scoreNow
+import app.hearth.core.model.scoreWord
 import app.hearth.core.model.topic
 import app.hearth.core.model.title
 import app.hearth.core.model.glance
@@ -183,7 +184,8 @@ class WeekCallbacks(
     val finish: () -> Unit,
     val goTasks: () -> Unit,
     val goMenu: () -> Unit,
-    val addWin: (String) -> Unit,
+    /** A win, under the topic it was named at (null: in general). */
+    val addWin: (String, Topic?) -> Unit,
     val removeWin: (Win) -> Unit,
     /** How the week went, agreed together: (score 0–5 or null for no agreement, Hearth's suggestion). */
     val rateWeek: (Int?, Int) -> Unit,
@@ -346,7 +348,7 @@ fun WeekScreen(
                     LastTime(lastHuddle, meeting.lastTranscript, onShow = { showing = false })
                     LookBack(agenda, lastHuddle, today, lang)
                     Spacer(Modifier.size(14.dp))
-                    WinsSection(meeting.wins, meeting.members, cb.addWin, cb.removeWin)
+                    WinsSection(meeting.wins, meeting.members, lookBackPerTopic(agenda, backlog, board, meals, lastHuddle, meeting, today, lang), lang, cb.addWin, cb.removeWin)
                     Spacer(Modifier.size(6.dp))
                     // How the routines and house rules went, together, on one scale.
                     ReviewSection(
@@ -651,6 +653,40 @@ private fun LastTime(last: Huddle?, transcript: List<TranscriptLine>, onShow: ()
 }
 
 // ---------- 1. look back ----------
+
+/**
+ * What each topic brings to Wat ging goed since the last meeting: what got done there, and wins Hearth saw (done work,
+ * meals that were eaten, routines and house rules that go well, frictions settled, goals reached) to name in one tap.
+ */
+private fun lookBackPerTopic(
+    agenda: WeekAgenda?,
+    backlog: List<BacklogItem>,
+    board: List<BoardItem>,
+    meals: List<Meal>,
+    last: Huddle?,
+    meeting: MeetingState,
+    today: LocalDate,
+    lang: Lang,
+): Map<Topic, TopicLookBack> {
+    val since = last?.date ?: today.plusDays(-7)
+    val done = agenda?.done.orEmpty().distinctBy { it.id }
+    val byTopic = done.groupBy { it.topic ?: it.parentId?.let { p -> backlog.firstOrNull { b -> b.id == p }?.topic } }
+    val eaten = meals.filter { m -> runCatching { LocalDate.parse(m.date) }.getOrNull()?.let { it >= since && it <= today } ?: false }
+    val runs = backlog.filter { it.isHabit && !it.done }.mapNotNull { h -> (meeting.habitChecks[h.id] ?: h.scoreNow)?.takeIf { it >= 4 }?.let { "${h.text}: ${scoreWord(it, lang)}" } }
+    val rules = board.filter { it.kind == BoardKind.RULE && it.isOpen }.mapNotNull { r -> meeting.ruleScores[r.id]?.takeIf { it >= 4 }?.let { "${r.text}: ${scoreWord(it, lang)}" } }
+    val settled = agenda?.boardWins.orEmpty()
+    return Topic.entries.associateWith { topic ->
+        val mine = byTopic[topic].orEmpty().map { it.text }
+        when (topic) {
+            Topic.MENU -> TopicLookBack(eaten.size, eaten.map { it.dish }.distinct())
+            Topic.RHYTHM -> TopicLookBack(mine.size, runs + mine)
+            Topic.RULES -> TopicLookBack(0, rules)
+            Topic.FRICTION -> settled.filter { it.isWorkingPoint }.let { TopicLookBack(it.size, it.map { f -> f.text }) }
+            Topic.GOALS -> settled.filter { it.kind == BoardKind.GOAL }.let { TopicLookBack(it.size, it.map { g -> g.text }) }
+            else -> TopicLookBack(mine.size, mine.distinct())
+        }
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

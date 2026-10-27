@@ -331,7 +331,7 @@
     <string name="place_win">Went well</string>
     <string name="place_none">Just talk</string>
     <string name="wins_title">What went well</string>
-    <string name="wins_hint">What went well this week?</string>
+    <string name="wins_hint">Anything else that went well?</string>
     <string name="win_remove">Remove from what went well?</string>
     <string name="feeling_heavy_hint">A heavy week. Which one shall we tackle first?</string>
     <string name="last_time">Last time</string>
@@ -509,4 +509,13 @@
     <string name="coach_try">What could be better?</string>
     <string name="coach_start">To start</string>
     <string name="routine_setup">Set up the rhythm</string>
+    <string name="wins_walk_hint">Walk past every part together. Tap one to say what went well.</string>
+    <string name="wins_done_count">%1$d done</string>
+    <string name="wins_named_count">%1$d noted</string>
+    <string name="wins_tap">Tap to note</string>
+    <string name="wins_topic_title">What went well in %1$s?</string>
+    <string name="wins_seen">Hearth saw this, tap to note it</string>
+    <string name="wins_topic_empty">Hearth saw nothing special here. Say it in your own words.</string>
+    <string name="wins_own_words">In your own words…</string>
+    <string name="wins_done">Done</string>
 </resources>

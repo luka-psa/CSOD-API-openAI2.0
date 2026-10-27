@@ -1,5 +1,21 @@
 package app.hearth.ui
 
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import app.hearth.core.model.TopicGroup
+import app.hearth.core.model.topics
+import app.hearth.ui.resources.add
+import app.hearth.ui.resources.wins_walk_hint
+import app.hearth.ui.resources.wins_done_count
+import app.hearth.ui.resources.wins_named_count
+import app.hearth.ui.resources.wins_tap
+import app.hearth.ui.resources.wins_topic_title
+import app.hearth.ui.resources.wins_seen
+import app.hearth.ui.resources.wins_topic_empty
+import app.hearth.ui.resources.wins_own_words
+import app.hearth.ui.resources.wins_done
 import app.hearth.ai.Orchestrator
 import app.hearth.core.model.plusDays
 import app.hearth.ui.resources.place_rhythm
@@ -463,23 +479,137 @@ fun Place.icon() = when (this) {
     Place.NONE -> HearthIcons.Chat
 }
 
-/** Wat ging goed: what people named, with an X that asks first. */
+/** What one topic brings to Wat ging goed: what got done there since the last meeting, and wins to name in one tap. */
+class TopicLookBack(val done: Int = 0, val suggestions: List<String> = emptyList())
+
+/**
+ * Wat ging goed, walked through together: every topic as a small tile in the order of every screen (Doen & eten, then
+ * Ritme & afspraken), with what got done there. Tap one to name what went well there: Hearth offers what it saw (done
+ * work, a routine that runs, a friction settled) as one-tap wins, or say it in your own words. The wins below carry
+ * their topic's icon and colour; a win in general still fits at the end. X asks first.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun WinsSection(wins: List<Win>, members: List<Member>, onAdd: (String) -> Unit, onRemove: (Win) -> Unit) {
+fun WinsSection(
+    wins: List<Win>,
+    members: List<Member>,
+    perTopic: Map<Topic, TopicLookBack>,
+    lang: Lang,
+    onAdd: (String, Topic?) -> Unit,
+    onRemove: (Win) -> Unit,
+) {
     var removing by remember { mutableStateOf<Win?>(null) }
+    var opened by remember { mutableStateOf<Topic?>(null) }
     val byId = members.associateBy { it.id }
     GroupTitle(stringResource(Res.string.wins_title))
-    wins.forEach { win ->
+    Text(stringResource(Res.string.wins_walk_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 6.dp))
+
+    TopicGroup.entries.forEach { group ->
+        Text(group.title(lang), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, top = 4.dp, bottom = 4.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 10.dp, bottom = 6.dp)) {
+            group.topics.forEach { topic ->
+                WinTile(topic, perTopic[topic] ?: TopicLookBack(), wins.count { it.topic == topic }, lang) { opened = topic }
+            }
+        }
+    }
+
+    // What was named, in the order of the topics; the general ones first.
+    wins.sortedBy { it.topic?.ordinal ?: -1 }.forEach { win ->
+        val s = win.topic?.style() ?: AccentStyle
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 10.dp)) {
-            Icon(HearthIcons.Heart, null, tint = AccentStyle.ink, modifier = Modifier.size(18.dp))
+            Icon(win.topic?.icon() ?: HearthIcons.Heart, win.topic?.title(lang), tint = s.ink, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
             Text(win.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             win.memberId?.let(byId::get)?.let { MemberDot(it) }
             DeleteButton({ removing = win })
         }
     }
-    AddRow(stringResource(Res.string.wins_hint), onAdd, compact = true)
+    AddRow(stringResource(Res.string.wins_hint), { onAdd(it, null) }, compact = true)
+
+    opened?.let { topic ->
+        WinSheet(topic, perTopic[topic] ?: TopicLookBack(), wins.filter { it.topic == topic }, lang, onAdd = { onAdd(it, topic) }, onRemove = { removing = it }) { opened = null }
+    }
     removing?.let { w -> ConfirmDialog(stringResource(Res.string.win_remove), w.text, onYes = { onRemove(w) }) { removing = null } }
+}
+
+/** A topic in Wat ging goed: its icon and name, then "3 gedaan · 1 genoteerd"; tinted once something is named. */
+@Composable
+private fun WinTile(topic: Topic, look: TopicLookBack, named: Int, lang: Lang, onClick: () -> Unit) {
+    val s = topic.style()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.widthIn(min = 150.dp).clip(RoundedCornerShape(18.dp))
+            .background(if (named > 0) s.tint else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Box(Modifier.size(30.dp).clip(CircleShape).background(if (named > 0) MaterialTheme.colorScheme.surface else s.tint), contentAlignment = Alignment.Center) {
+            Icon(if (named > 0) HearthIcons.Check else topic.icon(), null, tint = s.ink, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(topic.title(lang), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            Text(
+                listOfNotNull(
+                    look.done.takeIf { it > 0 }?.let { stringResource(Res.string.wins_done_count, it) },
+                    named.takeIf { it > 0 }?.let { stringResource(Res.string.wins_named_count, it) },
+                ).joinToString("  ·  ").ifEmpty { stringResource(Res.string.wins_tap) },
+                style = MaterialTheme.typography.labelSmall,
+                color = if (named > 0) s.ink else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/**
+ * "Wat ging goed bij Huishouden?": what is already named there (X asks first), Hearth's suggestions as one-tap wins,
+ * and a line to say it in your own words. Stays open to name several; typed text is never lost by a swipe.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WinSheet(topic: Topic, look: TopicLookBack, named: List<Win>, lang: Lang, onAdd: (String) -> Unit, onRemove: (Win) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf("") }
+    val s = topic.style()
+    FormSheet(dirty = text.isNotBlank(), onDismiss = onDismiss) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(36.dp).clip(CircleShape).background(s.tint), contentAlignment = Alignment.Center) {
+                    Icon(topic.icon(), null, tint = s.ink, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(stringResource(Res.string.wins_topic_title, topic.title(lang)), style = MaterialTheme.typography.titleLarge)
+            }
+            named.forEach { win ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(HearthIcons.Check, null, tint = s.ink, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(win.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    DeleteButton({ onRemove(win) })
+                }
+            }
+            val open = look.suggestions.filter { sug -> named.none { it.text.equals(sug, ignoreCase = true) } }
+            if (open.isNotEmpty()) {
+                Text(stringResource(Res.string.wins_seen), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    open.take(12).forEach { sug -> ChoiceChip(sug, false, { onAdd(sug) }, icon = HearthIcons.Add) }
+                }
+            } else if (named.isEmpty()) {
+                Text(stringResource(Res.string.wins_topic_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            OutlinedTextField(
+                text, { text = it },
+                placeholder = { Text(stringResource(Res.string.wins_own_words)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (text.isNotBlank()) { onAdd(text.trim()); text = "" } }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FilledTonalButton(onClick = { onAdd(text.trim()); text = "" }, enabled = text.isNotBlank()) { Text(stringResource(Res.string.add)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.wins_done)) }
+            }
+        }
+    }
 }
 
 /** How the week went, 0 to 5: Hearth's guess has a ring; "Geen akkoord" is an answer too. Can be switched off. */

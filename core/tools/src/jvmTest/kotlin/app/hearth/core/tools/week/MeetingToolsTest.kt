@@ -66,6 +66,11 @@ class MeetingToolsTest {
             "Mooi! Genoteerd bij wat goed ging: “Elke avond samen gegeten”",
             tools.registry.run(tools.addWin, AddWinArgs("elke avond samen gegeten"), nl).summary,
         )
+        // Named under a topic, it keeps it, and the summary says where.
+        tools.registry.run(tools.addWin, AddWinArgs("de ramen zijn gelapt", topic = app.hearth.core.model.Topic.HOME), nl)
+        assertEquals(listOf(null, app.hearth.core.model.Topic.HOME), meeting.currentWins().map { it.topic })
+        val preview = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(preview = true), nl).summary
+        assertTrue("Wat ging goed: Elke avond samen gegeten; Huishouden: De ramen zijn gelapt" in preview, preview)
         val agenda = tools.registry.run(tools.weekoverlegAgenda, AgendaArgs(), nl)
         assertTrue(agenda.weekOn)
         assertEquals(4, agenda.suggestedWeek)

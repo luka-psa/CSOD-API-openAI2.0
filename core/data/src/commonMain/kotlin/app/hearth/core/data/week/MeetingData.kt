@@ -18,6 +18,7 @@ import app.hearth.core.model.WeekRating
 import app.hearth.core.model.RuleCheck
 import app.hearth.core.model.TranscriptLine
 import app.hearth.core.model.Win
+import app.hearth.core.model.Topic
 import app.hearth.core.model.newId
 import app.hearth.core.model.nowMillis
 import kotlinx.coroutines.flow.Flow
@@ -43,8 +44,10 @@ data class ReflectionEntity(
     val updatedAt: Long,
     /** WEEK: what Hearth suggested (same codes as [value]). */
     @ColumnInfo(defaultValue = "NULL") val suggested: Int? = null,
+    /** WIN: the topic it was named under ([Topic] name); null for a win in general. */
+    @ColumnInfo(defaultValue = "NULL") val topic: String? = null,
 ) {
-    fun toWin() = Win(id, text, memberId, huddleId, createdAt)
+    fun toWin() = Win(id, text, memberId, huddleId, createdAt, topic?.let { t -> Topic.entries.firstOrNull { it.name == t } })
 
     /** WEEK rows: [text] is "agreed" or "neutral" (no agreement, no weather). */
     fun toWeek() = WeekRating(if (text == AGREED) scoreOf(value) else null, suggested?.let(::scoreOf), text == AGREED, huddleId)
@@ -182,9 +185,9 @@ class MeetingRepository(
     suspend fun currentTranscript(): List<TranscriptLine> = dao.currentTranscript().map { it.toModel() }
     suspend fun recentHuddles(limit: Int = 12): List<Huddle> = dao.huddles(limit).map { it.toModel() }
 
-    suspend fun addWin(text: String, memberId: String?): Win {
+    suspend fun addWin(text: String, memberId: String?, topic: Topic? = null): Win {
         val now = clock()
-        val entity = ReflectionEntity(newId(), ReflectionEntity.WIN, text.trim(), null, memberId, null, now, now)
+        val entity = ReflectionEntity(newId(), ReflectionEntity.WIN, text.trim(), null, memberId, null, now, now, topic = topic?.name)
         dao.putReflection(entity)
         return entity.toWin()
     }

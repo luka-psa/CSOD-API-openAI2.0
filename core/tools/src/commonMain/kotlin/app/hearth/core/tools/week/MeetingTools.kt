@@ -56,6 +56,8 @@ data class AddWinArgs(
     val text: String,
     @Describe("Who said it or who it's about (name), if known.")
     val member: String? = null,
+    @Describe("The topic it belongs to, when it was named there (e.g. HOME for 'de ramen zijn gelapt').")
+    val topic: Topic? = null,
 )
 
 @Serializable
@@ -63,7 +65,9 @@ data class WinResult(val win: Win, override val summary: String) : ToolResult
 
 class AddWinTool(private val meeting: MeetingRepository, private val board: BoardRepository) : Tool<AddWinArgs, WinResult> {
     override val name = NAME
-    override val description = "Note something that went well this week (wat ging goed). It shows in the next weekoverleg's look back."
+    override val description =
+        "Note something that went well this week (wat ging goed), optionally under its topic. It shows in the next " +
+            "weekoverleg's look back, where the family walks past every topic."
     override val argsSerializer = AddWinArgs.serializer()
     override val resultSerializer = WinResult.serializer()
 
@@ -71,7 +75,7 @@ class AddWinTool(private val meeting: MeetingRepository, private val board: Boar
         val text = args.text.trim().removePrefix("dat ging goed:").removePrefix("went well:").trim()
             .replaceFirstChar { it.uppercase() }.ifEmpty { throw ToolException(ctx.t("Wat ging er goed?", "What went well?")) }
         val who = board.member(args.member, ctx)?.id ?: ctx.actorMemberId
-        val win = meeting.addWin(text, who)
+        val win = meeting.addWin(text, who, args.topic)
         return WinResult(win, ctx.t("Mooi! Genoteerd bij wat goed ging: “${win.text}”", "Nice! Noted under what went well: “${win.text}”"))
     }
 
@@ -488,7 +492,10 @@ class FinishWeekoverlegTool(
         val lines = buildList {
             add(ctx.t("Weekoverleg van ${dayLabel(ctx.today, ctx.today, ctx.lang)} (${ctx.today.day}/${ctx.today.month.ordinal + 1})",
                 "Weekly meeting of ${dayLabel(ctx.today, ctx.today, ctx.lang)} (${ctx.today.day}/${ctx.today.month.ordinal + 1})"))
-            val good = wins.map { w -> w.text + (w.memberId?.let(names::get)?.let { " ($it)" } ?: "") }
+            // In the order of the topics, the general ones first: "Huishouden: de ramen zijn gelapt".
+            val good = wins.sortedBy { it.topic?.ordinal ?: -1 }.map { w ->
+                (w.topic?.let { it.title(ctx.lang) + ": " } ?: "") + w.text + (w.memberId?.let(names::get)?.let { " ($it)" } ?: "")
+            }
             if (good.isNotEmpty() || done.isNotEmpty()) {
                 add(ctx.t("Wat ging goed: ", "What went well: ") + (good + listOfNotNull(
                     done.size.takeIf { it > 0 }?.let { ctx.t("$it ${if (it == 1) "ding" else "dingen"} gedaan", "$it ${if (it == 1) "thing" else "things"} done") },

@@ -172,7 +172,8 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Weekoverleg:** one page by *Topic* (*Admin & afspraken* (admin and appointments), *Grote taken*, *Huishouden*
   (chores without a moment), *Vrije tijd*, *Weekmenu*, *Boodschappen*, three by two; on the shelf beside them, two by
   two, *Ritmes & routines* (laid out per moment of the day), *Huisregels*, *Frictie & ideeën*, *Doelen* (next small
-  step)): each a calm tile with a *glance*, all the same size, tap to open its list. Terugblik (*Wat ging goed* = wins; *Hoe liep het?*: *de week* (`rate_week`, suggested by Hearth,
+  step)): each a calm tile with a *glance*, all the same size, tap to open its list. Terugblik (*Wat ging goed* = wins, walked through per topic: each topic a tile with what got done there, a tap names
+  what went well there (Hearth's suggestions in one tap, or own words; `add_win` `topic`); *Hoe liep het?*: *de week* (`rate_week`, suggested by Hearth,
   agreed together, *Geen akkoord* is an answer too; can be switched off), every routine (in the order of the day) and
   every house rule on one scale from 0 to 5 (`ScoreScale`; last time a ring, the meetings before as bars), never who; a smaller first step right there; a rule
   that is too much (0–1) two meetings in a row comes back as a friction),

@@ -133,8 +133,10 @@ concludes ("Naar de opvang · donderdag") and lights up that tile. Not quite rig
 place (taak, afspraak, ritme, …) and day open, filled in from what was said; *Bewaar* or *Zet erin*. *Zet op zijn
 plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can also read the conversation and
 put it in place. The ten tiles are the same topics as everywhere, in the same order: Doen & eten three by two on the
-left, Ritme & afspraken two by two on the shelf on the right, all the same size; tap one for its list. Terugblik: wat
-ging goed, then *Hoe liep het?*: the week, every routine and every house rule on one scale from 0 to 5; each line shows
+left, Ritme & afspraken two by two on the shelf on the right, all the same size; tap one for its list. Terugblik: *wat
+ging goed*, walked through together: every topic a small tile (in the same order, with what got done there); a tap
+names what went well there, with what Hearth saw as one-tap wins (done work, the meals, routines and house rules
+that go well, frictions settled, goals reached) or in your own words; each win keeps its topic's icon. Then *Hoe liep het?*: the week, every routine and every house rule on one scale from 0 to 5; each line shows
 its badge, last time's score as a ring on the scale and the earlier ones as small bars, and below 4 (or when it was
 talked about) the coach's one tip right there (one tap, or its sheet opens). Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
 

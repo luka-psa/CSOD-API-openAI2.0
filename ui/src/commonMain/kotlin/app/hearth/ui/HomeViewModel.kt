@@ -668,9 +668,10 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         .flatMapLatest { h -> if (h == null) flow { emit(emptyList()) } else app.meeting.transcriptOf(h.id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun addWin(text: String) {
+    /** A win, under the topic it was named at (null: in general). */
+    fun addWin(text: String, topic: Topic? = null) {
         if (text.isBlank()) return
-        tool { app.tools.registry.run(app.tools.addWin, AddWinArgs(text), it) }
+        tool { app.tools.registry.run(app.tools.addWin, AddWinArgs(text, topic = topic), it) }
     }
 
     /** Only after the person confirmed on screen. */

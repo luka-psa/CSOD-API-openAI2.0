@@ -324,7 +324,7 @@
     <string name="place_win">Ging goed</string>
     <string name="place_none">Gewoon gepraat</string>
     <string name="wins_title">Wat ging goed</string>
-    <string name="wins_hint">Wat ging goed deze week?</string>
+    <string name="wins_hint">Nog iets anders dat goed ging?</string>
     <string name="win_remove">Weghalen bij wat goed ging?</string>
     <string name="feeling_heavy_hint">Een zware week. Wat pakken we als eerste aan?</string>
     <string name="last_time">Vorige keer</string>
@@ -502,4 +502,13 @@
     <string name="coach_try">Wat kan beter?</string>
     <string name="coach_start">Om te beginnen</string>
     <string name="routine_setup">Ritme instellen</string>
+    <string name="wins_walk_hint">Loop samen langs elk onderdeel. Tik erop om te zeggen wat goed ging.</string>
+    <string name="wins_done_count">%1$d gedaan</string>
+    <string name="wins_named_count">%1$d genoteerd</string>
+    <string name="wins_tap">Tik om te noteren</string>
+    <string name="wins_topic_title">Wat ging goed bij %1$s?</string>
+    <string name="wins_seen">Hearth zag dit, tik om het te noteren</string>
+    <string name="wins_topic_empty">Hearth zag hier niets bijzonders. Zeg het in jullie eigen woorden.</string>
+    <string name="wins_own_words">In jullie eigen woorden…</string>
+    <string name="wins_done">Klaar</string>
 </resources>
