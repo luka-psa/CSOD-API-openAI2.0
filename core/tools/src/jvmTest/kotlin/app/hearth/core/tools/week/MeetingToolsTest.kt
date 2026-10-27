@@ -105,7 +105,7 @@ class MeetingToolsTest {
         assertEquals(listOf(Ease.HARD, Ease.EFFORT), meeting.currentRuleChecks().map { it.ease })
         // The Huisregels tile says how they go on average.
         val rules = board.allItems().filter { it.kind == BoardKind.RULE }
-        assertEquals("2 huisregels · gemiddeld 2/5", app.hearth.core.model.Topic.RULES.glance(app.hearth.core.model.WeekLook(emptyList(), rules, 0, 0, nl.today, meeting.ruleScores()), Lang.NL))
+        assertEquals("2 huisregels · 2/5", app.hearth.core.model.Topic.RULES.glance(app.hearth.core.model.WeekLook(emptyList(), rules, 0, 0, nl.today, meeting.ruleScores()), Lang.NL))
         val first = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!.summary
         assertTrue("Huisregels: Schoenen in de kast: te zwaar (1/5); Wie kookt, wast niet af: vraagt moeite (3/5)" in first, first)
         assertEquals(0, board.allItems().count { it.kind == BoardKind.FRICTION })

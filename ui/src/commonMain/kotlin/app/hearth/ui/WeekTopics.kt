@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -327,10 +327,11 @@ fun TopicGrid(glances: List<Pair<Topic, String>>, selected: Topic?, lit: Set<Top
         // A hair narrower than the exact share, so rounding never pushes the last tile to the next row.
         fun tile(space: Dp, columns: Int) = (space - gap * (columns - 1)) / columns - 1.dp
         if (maxWidth >= 1000.dp) {
-            // Five tiles across (three, then two on the shelf), all the same size: 6 and 4 side by side.
-            val size = (maxWidth - gap * 4 - shelfPad) / 5 - 1.dp
+            // Five tiles across (three, then two on the shelf), all the same size: 6 and 4 side by side. The six get the
+            // same inset as the shelf, so both labels and both rows of tiles line up.
+            val size = (maxWidth - gap * 4 - shelfPad * 2) / 5 - 1.dp
             Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     GroupLabel(TopicGroup.TASKS, lang)
                     Tiles(TopicGroup.TASKS, size, 3)
                 }
@@ -345,9 +346,10 @@ fun TopicGrid(glances: List<Pair<Topic, String>>, selected: Topic?, lit: Set<Top
             val columns = if (full >= 600.dp) 3 else 2
             val shelfColumns = if (full >= 600.dp) 4 else 2
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                GroupLabel(TopicGroup.TASKS, lang)
-                Tiles(TopicGroup.TASKS, tile(full, columns), columns)
-                Spacer(Modifier.size(2.dp))
+                Column(Modifier.padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    GroupLabel(TopicGroup.TASKS, lang)
+                    Tiles(TopicGroup.TASKS, tile(full - shelfPad, columns), columns)
+                }
                 Shelf(Modifier.fillMaxWidth()) {
                     GroupLabel(TopicGroup.BOARD, lang)
                     Tiles(TopicGroup.BOARD, tile(full - shelfPad, shelfColumns), shelfColumns)
@@ -367,7 +369,8 @@ private fun TopicTile(topic: Topic, glance: String, selected: Boolean, lit: Bool
         Modifier.border(2.dp, s.ink, RoundedCornerShape(24.dp))
     } else Modifier
     Column(
-        modifier.heightIn(min = 118.dp).then(glow).clip(RoundedCornerShape(24.dp))
+        // One height for every tile, so the rows line up on both sides; a long glance ends in "…".
+        modifier.height(124.dp).then(glow).clip(RoundedCornerShape(24.dp))
             .background(if (selected || lit) s.tint else MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick).padding(14.dp),
     ) {
@@ -375,9 +378,9 @@ private fun TopicTile(topic: Topic, glance: String, selected: Boolean, lit: Bool
             Icon(topic.icon(), null, tint = s.ink, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.size(10.dp))
-        Text(topic.title(lang), style = MaterialTheme.typography.titleSmall, maxLines = 2)
+        Text(topic.title(lang), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.size(2.dp))
-        Text(glance, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Text(glance, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

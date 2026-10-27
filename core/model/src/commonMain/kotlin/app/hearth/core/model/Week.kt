@@ -141,7 +141,7 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
                 count(routines.size, "routine", "routines"),
                 moments.takeIf { it > 1 }?.let { if (nl) "over $it momenten" else "across $it moments" },
                 hard.takeIf { it > 0 }?.let { if (nl) "$it te zwaar" else "$it too hard" }
-                    ?: scores.takeIf { it.isNotEmpty() }?.let { if (nl) "gemiddeld ${average(it)}/5" else "average ${average(it)}/5" },
+                    ?: scores.takeIf { it.isNotEmpty() }?.let { "${average(it)}/5" },
             )
         }
         Topic.SHOPPING -> listOf(
@@ -169,7 +169,7 @@ fun Topic.glance(look: WeekLook, lang: Lang): String {
             if (rules.isEmpty()) listOf(if (nl) "Nog geen huisregels" else "No house rules yet")
             else listOfNotNull(
                 if (nl) count(rules.size, "huisregel", "huisregels") else count(rules.size, "house rule", "house rules"),
-                scores.takeIf { it.isNotEmpty() }?.let { if (nl) "gemiddeld ${average(it)}/5" else "average ${average(it)}/5" },
+                scores.takeIf { it.isNotEmpty() }?.let { "${average(it)}/5" },
             )
         }
     }
