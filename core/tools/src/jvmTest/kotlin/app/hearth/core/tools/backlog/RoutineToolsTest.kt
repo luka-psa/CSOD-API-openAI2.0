@@ -81,6 +81,27 @@ class RoutineToolsTest {
     }
 
     @Test
+    fun `a tick by mistake can be taken back, for a step and for the routine`() = runTest {
+        val routine = tools.registry.run(tools.addRoutine, AddRoutineArgs("Avondroutine", listOf("Koken", "Pyjama"), Anchor.EVENING), ctx).item
+        val steps = backlog.stepsOf(listOf(routine.id))
+        tools.registry.run(tools.completeBacklogItem, BacklogRefArgs(itemIds = steps.map { it.id }), ctx)
+        assertTrue(backlog.itemsByIds(listOf(routine.id)).single().doneOn(today))
+
+        // One step back: it is open again, and so is the routine for today.
+        tools.registry.run(tools.reopenBacklogItem, BacklogRefArgs(itemIds = listOf(steps[1].id)), ctx)
+        assertFalse(backlog.itemsByIds(listOf(steps[1].id)).single().doneOn(today))
+        assertTrue(backlog.itemsByIds(listOf(steps[0].id)).single().doneOn(today))
+        assertFalse(backlog.itemsByIds(listOf(routine.id)).single().doneOn(today))
+        assertTrue(backlog.routineLogsSince(today.toString())[steps[1].id].isNullOrEmpty())
+
+        // The routine itself back: its steps of today go with it.
+        tools.registry.run(tools.completeBacklogItem, BacklogRefArgs(itemIds = listOf(routine.id)), ctx)
+        tools.registry.run(tools.reopenBacklogItem, BacklogRefArgs(itemIds = listOf(routine.id)), ctx)
+        assertTrue(backlog.itemsByIds(listOf(routine.id) + steps.map { it.id }).none { it.doneOn(today) })
+        assertEquals(null, backlog.itemsByIds(listOf(routine.id)).single().lastDone)
+    }
+
+    @Test
     fun `a checklist without a moment is not daily, it waits until it's needed`() = runTest {
         val bag = tools.registry.run(tools.addRoutine, AddRoutineArgs("Paklijst babysit", listOf("Luiers", "Slaapzak")), ctx).item
         assertEquals(null, bag.intervalDays)

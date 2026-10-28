@@ -1,6 +1,7 @@
 package app.hearth.ui
 
 import app.hearth.core.model.doneOn
+import app.hearth.core.model.tickedOn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -197,13 +198,13 @@ fun RoutineSteps(steps: List<BacklogItem>, today: LocalDate, onTick: (BacklogIte
     }
 }
 
-/** "3  Koken": the step's number (a check once done today), tap to tick it. The next one stands out. */
+/** "3  Koken": the step's number (a check once done today), tap to tick it, tap again to take the tick back. The next one stands out. */
 @Composable
 private fun StepLine(n: Int, step: BacklogItem, done: Boolean, isNext: Boolean, onTick: () -> Unit) {
     val rhythm = Topic.RHYTHM.style()
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(enabled = !done, onClick = onTick).heightIn(min = 40.dp).padding(end = 8.dp),
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(onClick = onTick).heightIn(min = 40.dp).padding(end = 8.dp),
     ) {
         Box(
             Modifier.size(28.dp).background(
@@ -359,7 +360,7 @@ fun BacklogRow(
                 Icon(Topic.RHYTHM.icon(), null, tint = Topic.RHYTHM.style().ink, modifier = Modifier.size(20.dp))
             }
         } else {
-            RoundCheck(checked = item.done, onClick = onDone)
+            RoundCheck(checked = item.done || item.tickedOn(today), onClick = onDone)
         }
         Spacer(Modifier.width(6.dp))
         Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -368,8 +369,8 @@ fun BacklogRow(
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                textDecoration = if (item.done) TextDecoration.LineThrough else null,
-                color = if (item.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                textDecoration = if (item.done || item.tickedOn(today)) TextDecoration.LineThrough else null,
+                color = if (item.done || item.tickedOn(today)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             )
             // Wraps as a whole: in a narrow panel the status goes under the tag instead of squeezing beside it.
             androidx.compose.foundation.layout.FlowRow(

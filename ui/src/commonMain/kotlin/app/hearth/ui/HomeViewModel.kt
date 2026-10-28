@@ -16,6 +16,7 @@ import app.hearth.ai.ChatReply
 import app.hearth.ai.ChatTurn
 import app.hearth.ai.PendingAction
 import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.tickedOn
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Shop
 import app.hearth.core.model.ShoppingItem
@@ -490,8 +491,10 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         )
     }
 
+    /** A tick: done (a routine: done today), or, when it already is, taken back. */
     fun complete(item: BacklogItem) = tool {
-        app.tools.registry.run(app.tools.completeBacklogItem, BacklogRefArgs(itemIds = listOf(item.id)), it)
+        if (item.done || item.tickedOn(today())) app.tools.registry.run(app.tools.reopenBacklogItem, BacklogRefArgs(itemIds = listOf(item.id)), it)
+        else app.tools.registry.run(app.tools.completeBacklogItem, BacklogRefArgs(itemIds = listOf(item.id)), it)
     }
 
     /** Only after the person confirmed on screen. */
