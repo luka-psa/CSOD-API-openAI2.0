@@ -48,8 +48,10 @@ the same app"; anyone with this repository can sign with it, so keep the reposit
 
 The model (≈ 257 MB) lives on the `interpreter-model` branch in parts under 100 MB. Each build copies it to
 `<site>/interpreter`, next to `hearth.apk`, and the tablet downloads it there by itself in the background (on by
-default on a tablet; Instellingen can switch it off). Set the repository variable **`HEARTH_SITE_URL`** to the site's
-production address (Settings → Secrets and variables → Actions → Variables), or the app won't offer it. How the model
+default on a tablet; Instellingen can switch it off). The site is Vercel's address for the `hearth-web` branch
+(`https://csodopenapi-git-hearth-web-luka-psa1.vercel.app`, built into the workflow; the repository variable
+**`HEARTH_SITE_URL`** overrides it). The app downloads without logging in, so **Vercel Authentication must be off** for
+the project (Vercel → Settings → Deployment Protection). How the model
 is trained: `ai/interpreter/README.md`.
 
 ## The household on more devices
