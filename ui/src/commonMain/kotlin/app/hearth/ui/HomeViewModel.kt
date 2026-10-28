@@ -651,7 +651,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** The habit coach for every habit (the four laws), by habit id: the same as review_habit gives an AI. */
     val habitReviews: StateFlow<Map<String, HabitReview>> = combine(backlog, steps, board, app.meeting.habitHistory, combine(lang, today) { l, d -> l to d }) { items, allSteps, boardItems, history, (l, day) ->
         val counts = allSteps.groupingBy { it.parentId }.eachCount()
-        items.filter { it.isHabit && !it.done }.associate { h ->
+        // Habits and household chores alike: every routine can be made easier along the four laws.
+        items.filter { (it.isHabit || it.isRoutine()) && !it.done }.associate { h ->
             val goal = boardItems.firstOrNull { it.kind == BoardKind.GOAL && it.isOpen && it.linkedId == h.id }?.text
             h.id to habitReview(h, history[h.id].orEmpty(), frictionsAbout(h, boardItems, day), counts[h.id] ?: 0, goal, l)
         }
