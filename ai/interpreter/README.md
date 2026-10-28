@@ -21,6 +21,12 @@ FunctionGemma is a Gemma model: it is provided under and subject to the Gemma Te
   rules said straight out, routines in the passive, things to arrange around an event, a brainstorm that stays open).
   It checks that no long test line ends up in the training data. `python gen2.py 4000 train2.jsonl threads 23`,
   `python gen2.py 2000 windows2.jsonl windows 31`.
+- `gen3.py`: round 3: real Dutch compounds from the OpenTaal word list (https://github.com/OpenTaal/opentaal-wordlist;
+  only used to make training sentences, never shipped) as groceries, dishes, appointments and things to fix, so it
+  learns to copy unknown words letter by letter; plus a weekly evening as a routine, "the kids should …" as a house
+  rule, and past events that stay talk. Words that occur in `test.jsonl` are left out.
+  `python gen3.py wordlist.txt 3000 train3.jsonl threads 41`, `… 1500 windows3.jsonl windows 43`.
+- `ort_eval.py MODEL_DIR DATA [threads]`: the exported model, the way the tablet runs it: score and time per reading.
 - `test.jsonl`: 60 conversations written by hand, never trained on. The score that counts.
 - `train.py OUT EPOCHS`: full fine-tune on the CPU (embeddings frozen, loss on the answer only). `DATA=…` picks the
   data, `START=…` continues from an earlier model, `BASE=…` the base model. Resumes from `OUT/progress.json`.
@@ -50,3 +56,10 @@ FunctionGemma is a Gemma model: it is provided under and subject to the Gemma Te
 copied with a slip ("appelsen", "Keuringfeestje"); a few kinds mixed up (a weekly pizza evening as a meal, a rule as a
 routine); talk read as an action now and then ("a lot of meetings"). Putting each word back to the closest word said
 helps only one conversation, so the app doesn't do it.
+
+### The exported model (round 2, int4, `ort_eval.py`)
+
+Same score as the full model: 63 % fully right, 80 % right actions on the handwritten test (int4 doesn't cost
+anything here). Time per reading on a 4-core x86 server: median 0.2 s (1 core: 0.6 s); a 20-line window (273 prompt
+tokens, 120 answer tokens) 1.3 s on 4 cores, 2.8 s on 1. Model + one reading ≈ 0.7 GB. The Lenovo TB-X606F's
+Cortex-A53 cores are several times slower: roughly 2–6 s per reading there, fine for reading again after each line.

@@ -227,8 +227,8 @@ def rule_scene(kind):
     if kind == "undecided":
         lines.append(pick(["let's think about it", "we'll see next week"]) if en else pick(["laten we er nog eens over nadenken", "we bekijken het volgende week", "goh, ik weet het nog niet", "dat bespreken we nog"]))
         return lines, [call("log_friction", text=r["fr"][1])] if with_friction and R.random() < 0.5 and False else []
-    lead = pick(["okay, so let's agree that ", "right, from now on we "]) if en else pick(["goed, dan spreken we af dat ", "oké, afgesproken dat ", "dus vanaf nu: ", "dan zeggen we dat ", "allee, we spreken af dat ", "ok, de afspraak wordt: "])
-    lines.append(lead + (r["final"][0] if lead.endswith(("dat ", "that ", "we ")) else r["final"][1]))
+    lead = pick(["okay, so let's agree that ", "right, from now on "]) if en else pick(["goed, dan spreken we af dat ", "oké, afgesproken dat ", "dus vanaf nu: ", "dan zeggen we dat ", "allee, we spreken af dat ", "ok, de afspraak wordt: "])
+    lines.append(lead + (r["final"][0] if lead.endswith(("dat ", "that ", "on ")) else r["final"][1]))
     lines.append(pick(["deal", "agreed"]) if en else pick(["afgesproken", "ja, doen we", "top", "akkoord"]))
     text = r["final"][1]
     if kind in ("refine", "full") and R.random() < 0.6:
