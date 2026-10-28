@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  deployments: read
 
 concurrency:
   group: web-preview
@@ -48,12 +49,27 @@ jobs:
 
       # Hearth's interpreter (Gesprekken begrijpen) is served from this same site, next to hearth.apk: the model sits on
       # the interpreter-model branch (split in parts under GitHub's 100 MB limit) and the app fetches it from
-      # <site>/interpreter in the background. The site's address is the repository variable HEARTH_SITE_URL (the
-      # Vercel production address, e.g. https://hearth.vercel.app); without it the app doesn't offer the interpreter.
+      # <site>/interpreter in the background. The site's address is the repository variable HEARTH_SITE_URL when set;
+      # otherwise it is found the way the relay is: Vercel reports each deploy of hearth-web as a GitHub deployment
+      # whose links name the project, so https://<project>.vercel.app (or -<team>) is tried until download.html answers.
       - name: Fetch the interpreter model
         env:
           SITE_URL: ${{ vars.HEARTH_SITE_URL }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          if [ -z "$SITE_URL" ]; then
+            links=$(for id in $(gh api "repos/$GITHUB_REPOSITORY/deployments?per_page=30" --jq '.[].id' 2>/dev/null); do
+              gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=5" \
+                --jq '.[] | (.target_url // empty), (.environment_url // empty), (.log_url // empty)' 2>/dev/null
+            done | sort -u)
+            echo "Vercel links: $(echo $links)"
+            candidates=$(echo "$links" | sed -nE 's#^https://vercel\.com/([^/]+)/([^/]+)/.*#https://\2.vercel.app https://\2-\1.vercel.app#p' | tr ' ' '\n'
+                         echo "$links" | grep -E '^https://[^/]+\.vercel\.app' | sed -E 's#^(https://[^/]+).*#\1#')
+            for c in $(echo "$candidates" | awk '!seen[$0]++'); do
+              if curl -fsS -o /dev/null --max-time 15 "$c/download.html"; then SITE_URL="$c"; break; fi
+              echo "Not the site: $c"
+            done
+          fi
           if git fetch -q --depth=1 origin interpreter-model; then
             mkdir -p interpreter-model && git --work-tree=interpreter-model checkout FETCH_HEAD -- interpreter
             git reset -q
@@ -61,7 +77,7 @@ jobs:
               echo "HEARTH_INTERPRETER_URL=${SITE_URL%/}/interpreter" >> "$GITHUB_ENV"
               echo "::notice::Interpreter: ${SITE_URL%/}/interpreter"
             else
-              echo "::warning::No HEARTH_SITE_URL variable: the app won't offer Gesprekken begrijpen."
+              echo "::warning::Site address not found (set the repository variable HEARTH_SITE_URL): the app won't offer Gesprekken begrijpen."
             fi
           else
             echo "::warning::No interpreter-model branch: the app won't offer Gesprekken begrijpen."
