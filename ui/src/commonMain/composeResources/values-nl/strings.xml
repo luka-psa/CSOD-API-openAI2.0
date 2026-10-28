@@ -582,4 +582,5 @@
     <string name="listen_err_language">deze taal is niet beschikbaar op dit toestel</string>
     <string name="listen_err_silent">de microfoon hoort niets. Staat de microfoon aan in de snelle instellingen, of gebruikt een andere app hem?</string>
     <string name="listen_err_no_answer">de spraakdienst antwoordt niet; Hearth probeert het eenvoudiger</string>
+    <string name="listen_level">geluid %1$d</string>
 </resources>

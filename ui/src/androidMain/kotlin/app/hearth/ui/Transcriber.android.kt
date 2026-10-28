@@ -68,6 +68,8 @@ actual fun rememberTranscriber(
             var loudest = -100f
             var spoke = false
             var watchdog: Runnable? = null
+            // Empty rounds in a row (nothing heard or understood): three, and Hearth asks another way.
+            var empty = 0
             var silenceCheck: Runnable? = null
         }
     }
@@ -188,7 +190,6 @@ actual fun rememberTranscriber(
             // Ready, but the microphone stays silent (another app holds it, or the microphone switch in quick
             // settings is off): say so instead of waiting forever.
             if (state.silenceCheck == null && !state.spoke) {
-                state.loudest = -100f
                 state.silenceCheck = Runnable {
                     state.silenceCheck = null
                     if (state.on && !state.spoke && state.loudest < 1f) status(ListenStatus(ListenStatus.Event.ERROR, null, service(), "silent"))
@@ -204,11 +205,13 @@ actual fun rememberTranscriber(
             state.answered = true
             state.spoke = true
             state.failures = 0
+            state.empty = 0
             results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }?.let(partial)
         }
         override fun onResults(results: Bundle?) {
             state.answered = true
             state.failures = 0
+            if (results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty().any { it.isNotBlank() }) state.empty = 0
             results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.let { Spoken.pick(it, words, dutch = lang.startsWith("nl")) }?.let(line)
             partial("")
             again(100)
@@ -221,7 +224,29 @@ actual fun rememberTranscriber(
             if (!silence) {
                 state.failures++
                 status(ListenStatus(ListenStatus.Event.ERROR, error, service()))
-            } else status(ListenStatus(ListenStatus.Event.QUIET, error, service()))
+            } else {
+                state.empty++
+                status(ListenStatus(ListenStatus.Event.QUIET, error, service(), level = state.loudest.takeIf { it > -100f }))
+            }
+            // Round after round without a word: some services answer "nothing understood" instead of saying the
+            // language is missing. Ask another way: online, then nl-NL, then Android's on-device recognizer.
+            if (silence && state.empty >= 3 && state.on) {
+                state.empty = 0
+                val onDevice = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+                when {
+                    state.offline || state.level == 0 -> { state.offline = false; state.level = 1; again(100); return }
+                    state.fallback == null && lang.startsWith("nl") -> { state.fallback = "nl-NL"; again(100); return }
+                    state.level < 2 && onDevice -> {
+                        state.recognizer?.destroy()
+                        state.recognizer = null
+                        state.level = 2
+                        again(300)
+                        return
+                    }
+                    // Tried every way: keep listening, the status line says the microphone hears nothing.
+                    else -> if (state.loudest < 1f) status(ListenStatus(ListenStatus.Event.ERROR, null, service(), "silent"))
+                }
+            }
             val language = error == 12 || error == 13
             when {
                 error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> giveUp(error)
@@ -255,6 +280,8 @@ actual fun rememberTranscriber(
 
     fun begin() {
         state.failures = 0
+        state.empty = 0
+        state.loudest = -100f
         state.spoke = false
         state.silenceCheck = null
         if (!state.on) quiet(true)
