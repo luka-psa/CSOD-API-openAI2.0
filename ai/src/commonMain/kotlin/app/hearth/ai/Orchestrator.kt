@@ -411,7 +411,8 @@ class Orchestrator(
             "add_appointment" -> backlog(Place.EVENT, Section.APPOINTMENT, text(a["day"], a["time"]))
             "add_free_time" -> backlog(Place.FREE_TIME, Section.PROTECTED_TIME, text(a["day"]))
             "add_routine" -> backlog(Place.RHYTHM, Section.RHYTHM, text(a["when"]))
-            "add_shopping" -> {
+            // The model sometimes hears "de was doen" as shopping: a chore stays a task.
+            "add_shopping" -> if (app.hearth.ai.route.MeetingWords.choreTalk(heard)) backlog(Place.PLANNING, Section.CHORE, app.hearth.ai.route.Spoken.clean(heard)) else {
                 val calls = shoppingCalls(a["items"].orEmpty())
                 if (calls.isEmpty()) null
                 else Proposal(heard, Place.SHOPPING, calls.joinToString(", ") { ToolJson.decodeFromJsonElement(AddShoppingItemArgs.serializer(), it.arguments).name.replaceFirstChar { c -> c.uppercase() } }, null, calls, heard = heard, topic = Topic.SHOPPING)

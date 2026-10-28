@@ -50,6 +50,8 @@ private fun startTranscribing(lang: String, vocabulary: String, onGuesses: (Stri
         const state = { on: true, phrases: true };
         globalThis.__hearthTranscriber = state;
         const words = vocabulary ? vocabulary.split('\u001F') : [];
+        // Chrome on Android repeats the stretch so far in each result; there only its latest guess is shown live.
+        const android = /Android/i.test(navigator.userAgent);
         const run = () => {
             const r = new Recognition();
             r.lang = lang;
@@ -68,7 +70,8 @@ private fun startTranscribing(lang: String, vocabulary: String, onGuesses: (Stri
                         const guesses = [];
                         for (let j = 0; j < result.length; j++) { const t = result[j].transcript.trim(); if (t) guesses.push(t); }
                         if (guesses.length) onGuesses(guesses.join('\u001F'));
-                    } else interim += (interim ? ' ' : '') + result[0].transcript.trim();
+                    } else if (android) interim = result[0].transcript.trim();
+                    else interim += (interim ? ' ' : '') + result[0].transcript.trim();
                 }
                 onPartial(interim);
             };

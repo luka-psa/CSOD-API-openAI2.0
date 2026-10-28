@@ -225,4 +225,20 @@ class MeetingWordsTest {
         assertEquals("die is misschien zelf het eten vergeten", Spoken.pick(guesses, emptyList(), dutch = true))
         assertEquals(guesses.first(), Spoken.pick(guesses, emptyList()))
     }
+
+    @Test
+    fun aStretchHeardAgainOnlyAddsWhatIsNew() {
+        assertEquals(null, Spoken.newPart("we moeten de was doen", "We moeten de was doen."))
+        assertEquals("doen", Spoken.newPart("de was", "de was doen"))
+        assertEquals(null, Spoken.newPart("morgen moeten we de was doen", "de was doen"))
+        assertEquals("ook nog melk", Spoken.newPart("de was doen", "ook nog melk"))
+        assertEquals("melk", Spoken.newPart(null, " melk "))
+    }
+
+    @Test
+    fun choresAreNeverShopping() {
+        assertEquals(true, MeetingWords.choreTalk("we moeten de was doen"))
+        assertEquals(false, MeetingWords.choreTalk("wasmiddel kopen"))
+        assertEquals(false, MeetingWords.choreTalk("melk halen"))
+    }
 }

@@ -146,6 +146,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -763,14 +764,23 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Every thought of this meeting, newest first; the stage shows the last three, the summary beside it all of them. */
     val meetingThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead, interpreted) { lines, people, changed, _, found ->
         val open = lines.filter { !it.sorted }
-        app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt }, sense())
-            .reversed().map { t ->
-                val said = open.slice(t.lines)
+        val read = app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt }, sense())
+            .map { t ->
                 // The interpreter read the whole conversation: what it found on these lines replaces the rules' guess.
-                val proposals = if (found == null) t.proposals else said.flatMap { found[it.id].orEmpty() }
-                thought(said, proposals, changed).copy(stage = t.stage)
+                val proposals = if (found == null) t.proposals else open.slice(t.lines).flatMap { found[it.id].orEmpty() }
+                // The same conclusion twice (heard twice, or read again) shows once.
+                t.copy(proposals = proposals.distinctBy { it.place to it.text.lowercase().trim() })
             }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        // Catching up is one calm transcript: talk without a conclusion joins the talk before it.
+        val joined = read.fold(mutableListOf<Orchestrator.Talk>()) { out, t ->
+            val prev = out.lastOrNull()
+            if (prev != null && prev.proposals.isEmpty() && t.proposals.isEmpty()) {
+                out[out.lastIndex] = prev.copy(heard = prev.heard + " " + t.heard, lines = prev.lines.first..t.lines.last, stage = t.stage)
+            } else out += t
+            out
+        }
+        joined.reversed().map { t -> thought(open.slice(t.lines), t.proposals, changed).copy(stage = t.stage) }
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val heardThoughts: StateFlow<List<HeardThought>> = meetingThoughts.map { it.take(3) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -911,7 +921,10 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Luister mee heard a stretch of talk. */
     fun heard(line: String) {
         if (line.isBlank()) return
-        tool { app.tools.registry.run(app.tools.addTranscriptLine, TranscriptLineArgs(line), it) }
+        // Some recognizers give a stretch twice, or again with a few words more: only what is new is kept.
+        val last = transcript.value.lastOrNull()?.takeIf { nowMillis() - it.createdAt < 60_000 }
+        val new = Spoken.newPart(last?.text, line) ?: return
+        tool { app.tools.registry.run(app.tools.addTranscriptLine, TranscriptLineArgs(new), it) }
     }
 
     /** Only after the person confirmed on screen. */
