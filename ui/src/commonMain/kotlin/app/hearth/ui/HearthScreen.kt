@@ -168,6 +168,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     // Luister mee: hoisted here so it keeps listening while the meeting looks at a list.
     var listening by remember { mutableStateOf(false) }
     var partial by remember { mutableStateOf("") }
+    val saveFile = rememberSaveFile()
     val transcriber = rememberTranscriber(
         language = if (lang == Lang.NL) "nl-BE" else "en-GB",
         vocabulary = vocabulary,
@@ -263,6 +264,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 openItem = { planning = it },
                                 ruleHelp = viewModel::setRuleHelp,
                                 editHuddle = viewModel::editHuddle,
+                                exportConversation = { lines -> viewModel.exportConversation(lines, saveFile) },
                             ),
                         )
                         Destination.CONNECT -> ConnectScreen(

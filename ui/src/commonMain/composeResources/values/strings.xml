@@ -572,4 +572,5 @@
         <item quantity="one">One thought without a decision</item>
         <item quantity="other">%1$d thoughts without a decision</item>
     </plurals>
+    <string name="transcript_export">Export</string>
 </resources>

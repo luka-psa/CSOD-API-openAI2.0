@@ -565,4 +565,5 @@
         <item quantity="one">Eén gedachte zonder besluit</item>
         <item quantity="other">%1$d gedachten zonder besluit</item>
     </plurals>
+    <string name="transcript_export">Exporteren</string>
 </resources>

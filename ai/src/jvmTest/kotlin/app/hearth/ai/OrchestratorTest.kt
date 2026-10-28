@@ -1,5 +1,8 @@
 package app.hearth.ai
 
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import app.hearth.ai.llm.LlmException
 import app.hearth.ai.llm.LlmMessage
 import app.hearth.ai.llm.LlmProvider
@@ -439,5 +442,29 @@ class OrchestratorTest {
         assertEquals(null, read("show_agenda", "day" to "morgen"))
         for (p in listOf(task, meal)) p.calls.forEach { assertTrue(tools.registry.execute(it, nl) is app.hearth.core.tools.ToolOutcome.Done) }
         assertEquals("Pizza", app.hearth.core.data.week.WeekRepository(db).mealOn("2026-10-23")?.dish)
+    }
+
+    @Test
+    fun `a conversation exports with what the rules and the interpreter made of it`() {
+        val heard = listOf("donderdag moet de auto naar de garage", "Vandaag gaan we de weekplanning bekijken")
+        val lines = heard.mapIndexed { i, t -> ConversationExport.Line("l$i", t, 1_000L * i, sorted = false) }
+        val talks = offline.listen(heard, nl)
+        val json = ConversationExport.json(
+            lines, talks,
+            interpreterActions = listOf(0 to app.hearth.ai.interpret.Action("add_appointment", mapOf("title" to "auto naar de garage"))),
+            interpreterProposals = emptyMap(),
+            sense = null,
+            family = emptyMap(),
+            context = mapOf("lang" to "NL"),
+            exportedAt = "2026-10-28T17:00:00Z",
+        )
+        val doc = kotlinx.serialization.json.Json.parseToJsonElement(json).jsonObject
+        assertEquals(ConversationExport.FORMAT, doc["format"]!!.jsonPrimitive.content)
+        val first = doc["lines"]!!.jsonArray[0].jsonObject
+        assertEquals("add_appointment", first["interpreterActions"]!!.jsonArray[0].jsonObject["name"]!!.jsonPrimitive.content)
+        val thoughts = doc["thoughts"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(listOf("PLANNING", "TALK"), thoughts.map { it["stage"]!!.jsonPrimitive.content })
+        assertEquals("EVENT", thoughts[0]["rules"]!!.jsonArray[0].jsonObject["place"]!!.jsonPrimitive.content)
+        assertTrue(thoughts[1]["rules"]!!.jsonArray.isEmpty())
     }
 }

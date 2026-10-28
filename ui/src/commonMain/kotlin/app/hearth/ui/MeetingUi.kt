@@ -7,6 +7,7 @@ import androidx.compose.ui.text.input.ImeAction
 import app.hearth.core.model.TopicGroup
 import app.hearth.core.model.topics
 import app.hearth.ui.resources.add
+import app.hearth.ui.resources.transcript_export
 import app.hearth.ui.resources.wins_walk_hint
 import app.hearth.ui.resources.wins_done_count
 import app.hearth.ui.resources.wins_named_count
@@ -245,12 +246,14 @@ fun ListenPill(lines: Int, partial: String, onBack: () -> Unit, onStop: () -> Un
 /** What Luister mee heard, line by line, as it was said. What Hearth made of it is changed on the suggestions. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> Unit)?, onDismiss: () -> Unit) {
+fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> Unit)?, onDismiss: () -> Unit, onExport: (() -> Unit)? = null) {
     var clearing by remember { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.background) {
         Column(Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().fillMaxHeight(0.85f).navigationBarsPadding().padding(horizontal = 28.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                // The conversation and what Hearth made of it, as a file, to look at how well it understood.
+                if (onExport != null && lines.isNotEmpty()) TextButton(onClick = onExport) { Text(stringResource(Res.string.transcript_export)) }
                 if (onClear != null && lines.isNotEmpty()) TextButton(onClick = { clearing = true }) { Text(stringResource(Res.string.transcript_clear)) }
             }
             Text(stringResource(Res.string.transcript_kept), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

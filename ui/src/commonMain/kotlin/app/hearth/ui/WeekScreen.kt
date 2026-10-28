@@ -217,6 +217,8 @@ class WeekCallbacks(
     val ruleHelp: (BoardItem, RuleHelp) -> Unit = { _, _ -> },
     /** A past meeting's summary, put right afterwards. */
     val editHuddle: (Huddle, String) -> Unit = { _, _ -> },
+    /** The conversation and what Hearth made of it, as a file. */
+    val exportConversation: (List<TranscriptLine>) -> Unit = {},
 )
 
 /** The Weekoverleg's own notes: the look back, Luister mee and the summaries. */
@@ -409,8 +411,8 @@ fun WeekScreen(
         }
     }
     when (showing) {
-        true -> TranscriptSheet(stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript) { showing = null }
-        false -> TranscriptSheet(stringResource(Res.string.transcript_last), meeting.lastTranscript, onClear = null) { showing = null }
+        true -> TranscriptSheet(stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript, onDismiss = { showing = null }, onExport = { cb.exportConversation(meeting.transcript) })
+        false -> TranscriptSheet(stringResource(Res.string.transcript_last), meeting.lastTranscript, onClear = null, onDismiss = { showing = null }, onExport = { cb.exportConversation(meeting.lastTranscript) })
         null -> {}
     }
     meeting.voorstel?.let { rows ->
