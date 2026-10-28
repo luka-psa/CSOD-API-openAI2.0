@@ -70,6 +70,8 @@ actual fun rememberTranscriber(
             var watchdog: Runnable? = null
             // Empty rounds in a row (nothing heard or understood): three, and Hearth asks another way.
             var empty = 0
+            // The speech app that may not use the microphone (its own permission, apart from Hearth's).
+            var blocked: String? = null
             var silenceCheck: Runnable? = null
         }
     }
@@ -87,6 +89,20 @@ actual fun rememberTranscriber(
         listOf(AudioManager.STREAM_MUSIC, AudioManager.STREAM_NOTIFICATION, AudioManager.STREAM_SYSTEM)
             .forEach { stream -> runCatching { audio?.adjustStreamVolume(stream, how, 0) } }
     }
+
+    /** The app that does the recognizing: Google's when asked by name, else the tablet's default service. */
+    fun servicePackage(): String? =
+        if (state.google) GOOGLE_SERVICE.packageName
+        else Settings.Secure.getString(context.contentResolver, "voice_recognition_service")?.substringBefore('/')
+
+    /**
+     * Whether that app may use the microphone itself. Hearth's own permission isn't enough: Android hands the listening
+     * to the speech app, and without its microphone permission it hears silence (the browser has its own permission,
+     * so it works there).
+     */
+    fun mayListen(pkg: String?): Boolean =
+        pkg == null || pkg == context.packageName ||
+            context.packageManager.checkPermission(Manifest.permission.RECORD_AUDIO, pkg) == PackageManager.PERMISSION_GRANTED
 
     fun googleInstalled(): Boolean =
         runCatching { context.packageManager.getPackageInfo(GOOGLE_SERVICE.packageName, 0); true }.getOrDefault(false)
@@ -140,6 +156,14 @@ actual fun rememberTranscriber(
 
     /** Start over with Google's service (a fresh recognizer, online first). */
     fun toGoogle() {
+        if (!mayListen(GOOGLE_SERVICE.packageName)) {
+            state.blocked = GOOGLE_SERVICE.packageName
+            state.on = false
+            quiet(false)
+            active(false)
+            status(ListenStatus(ListenStatus.Event.GAVE_UP, null, GOOGLE_SERVICE.packageName, "service-mic"))
+            return
+        }
         state.recognizer?.destroy()
         state.recognizer = null
         state.google = true
@@ -279,6 +303,19 @@ actual fun rememberTranscriber(
     }
 
     fun begin() {
+        // The tablet's default speech app may not listen, Google's may: use that. Neither may: say so, with a button.
+        if (!mayListen(servicePackage()) && !state.google && googleInstalled() && mayListen(GOOGLE_SERVICE.packageName)) {
+            state.recognizer?.destroy()
+            state.recognizer = null
+            state.google = true
+        }
+        val pkg = servicePackage()
+        if (!mayListen(pkg)) {
+            state.blocked = pkg
+            status(ListenStatus(ListenStatus.Event.GAVE_UP, null, pkg, "service-mic"))
+            return
+        }
+        state.blocked = null
         state.failures = 0
         state.empty = 0
         state.loudest = -100f
@@ -308,6 +345,15 @@ actual fun rememberTranscriber(
                 state.recognizer?.stopListening()
                 status(ListenStatus(ListenStatus.Event.STOPPED, null, null))
                 active(false)
+            },
+            fix = {
+                // The speech app's own page: Machtigingen › Microfoon.
+                val pkg = state.blocked ?: servicePackage() ?: GOOGLE_SERVICE.packageName
+                runCatching {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", pkg, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
             },
         )
     }

@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -78,6 +79,8 @@ import app.hearth.ui.resources.listen_err_client
 import app.hearth.ui.resources.listen_err_code
 import app.hearth.ui.resources.listen_err_language
 import app.hearth.ui.resources.listen_err_mic
+import app.hearth.ui.resources.listen_err_service_mic
+import app.hearth.ui.resources.listen_fix
 import app.hearth.ui.resources.listen_level
 import app.hearth.ui.resources.listen_err_no_answer
 import app.hearth.ui.resources.listen_err_silent
@@ -136,6 +139,8 @@ fun ListenStage(
     partial: String,
     /** What the speech recognizer reports; shown small, so a tablet that hears nothing says why. */
     status: ListenStatus?,
+    /** Opens the settings the status line asks for. */
+    onFix: () -> Unit,
     heard: List<HeardThought>,
     /** Every thought of the meeting, for the summary by topic. */
     all: List<HeardThought>,
@@ -190,6 +195,7 @@ fun ListenStage(
                 style = MaterialTheme.typography.labelMedium,
                 color = if (trouble) Topic.PROJECTS.style().ink else MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (s.name == "service-mic") FilledTonalButton(onClick = onFix, modifier = Modifier.padding(top = 6.dp)) { Text(stringResource(Res.string.listen_fix)) }
         }
         if (listening || heard.isNotEmpty()) {
             Spacer(Modifier.size(14.dp))
@@ -292,6 +298,7 @@ private fun ListenStatus.text(): String? {
     val why = when {
         code in setOf(1, 2, 4, 11) || name == "network" -> stringResource(Res.string.listen_err_network)
         name == "silent" -> stringResource(Res.string.listen_err_silent)
+        name == "service-mic" -> stringResource(Res.string.listen_err_service_mic)
         name == "no-answer" -> stringResource(Res.string.listen_err_no_answer)
         code == 3 || name == "audio-capture" -> stringResource(Res.string.listen_err_mic)
         code == 5 -> stringResource(Res.string.listen_err_client)
