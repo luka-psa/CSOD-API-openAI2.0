@@ -61,13 +61,22 @@ actual fun rememberTranscriber(
             var failures = 0
             var google = false
             var recognizer: SpeechRecognizer? = null
+            // How plainly it asks: 0 = offline first, with the household's words and a longer pause; 1 = the plain
+            // request the capture bar uses; 2 = Android's on-device recognizer (Android 12+).
+            var level = 0
+            var answered = false
+            var loudest = -100f
+            var spoke = false
+            var watchdog: Runnable? = null
+            var silenceCheck: Runnable? = null
         }
     }
 
     /** The service in use, for the status line: Google's when asked by name, else the tablet's default. */
     fun service(): String =
-        if (state.google) GOOGLE_SERVICE.packageName
-        else Settings.Secure.getString(context.contentResolver, "voice_recognition_service")?.substringBefore('/') ?: "?"
+        (if (state.level == 2) "on-device" else if (state.google) GOOGLE_SERVICE.packageName
+        else Settings.Secure.getString(context.contentResolver, "voice_recognition_service")?.substringBefore('/') ?: "?") +
+            if (state.level > 0) " (${state.level})" else ""
 
     // The recognizer beeps each time it starts listening again, after every pause; while Luister mee runs that is a
     // steady stream of beeps, so its sounds are muted until it stops.
@@ -81,11 +90,17 @@ actual fun rememberTranscriber(
         runCatching { context.packageManager.getPackageInfo(GOOGLE_SERVICE.packageName, 0); true }.getOrDefault(false)
 
     lateinit var listener: RecognitionListener
+    // Set below: what to do when the service never answers (declared here, the watchdog in listen() needs it).
+    var onNoAnswer: () -> Unit = {}
 
     fun recognizer(): SpeechRecognizer? {
         state.recognizer?.let { return it }
         val made = runCatching {
-            if (state.google) SpeechRecognizer.createSpeechRecognizer(context, GOOGLE_SERVICE) else SpeechRecognizer.createSpeechRecognizer(context)
+            when {
+                state.level == 2 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+                state.google -> SpeechRecognizer.createSpeechRecognizer(context, GOOGLE_SERVICE)
+                else -> SpeechRecognizer.createSpeechRecognizer(context)
+            }
         }.getOrNull() ?: return null
         made.setRecognitionListener(listener)
         state.recognizer = made
@@ -94,23 +109,27 @@ actual fun rememberTranscriber(
 
     fun listen() {
         val r = recognizer() ?: run { status(ListenStatus(ListenStatus.Event.ERROR, SpeechRecognizer.ERROR_CLIENT, service())); return }
-        runCatching {
-            r.startListening(
-                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, state.fallback ?: lang)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, state.fallback ?: lang)
-                    .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, state.offline)
-                    .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-                    .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2_500L)
-                    .apply {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && words.isNotEmpty()) {
-                            putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(words.take(50)))
-                        }
-                    },
-            )
-        }.onFailure { status(ListenStatus(ListenStatus.Event.ERROR, SpeechRecognizer.ERROR_CLIENT, service())) }
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE, state.fallback ?: lang)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, state.fallback ?: lang)
+            .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            .apply {
+                if (state.level == 0) {
+                    putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, state.offline)
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2_500L)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && words.isNotEmpty()) {
+                        putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(words.take(50)))
+                    }
+                }
+            }
+        state.answered = false
+        runCatching { r.startListening(intent) }
+            .onFailure { status(ListenStatus(ListenStatus.Event.ERROR, SpeechRecognizer.ERROR_CLIENT, service())) }
+        // No answer at all within eight seconds (a cold start can take a while): the service ignores this request; ask more plainly.
+        state.watchdog?.let(handler::removeCallbacks)
+        state.watchdog = Runnable { if (state.on && !state.answered) onNoAnswer() }.also { handler.postDelayed(it, 8_000) }
     }
 
     fun again(delayMs: Long) {
@@ -127,6 +146,34 @@ actual fun rememberTranscriber(
         again(300)
     }
 
+    /** The service never answered: next a plainer request, then Android's on-device recognizer, then give up. */
+    fun noAnswer() {
+        status(ListenStatus(ListenStatus.Event.ERROR, null, service(), "no-answer"))
+        val next = state.level + 1
+        val max = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) 2 else 1
+        if (next > max) {
+            // The next start tries from the top again.
+            state.recognizer?.destroy()
+            state.recognizer = null
+            state.level = 0
+            state.google = false
+            state.offline = true
+            state.on = false
+            quiet(false)
+            status(ListenStatus(ListenStatus.Event.GAVE_UP, null, service(), "no-answer"))
+            active(false)
+            return
+        }
+        runCatching { state.recognizer?.cancel() }
+        state.recognizer?.destroy()
+        state.recognizer = null
+        state.level = next
+        state.offline = false
+        again(300)
+    }
+
+    onNoAnswer = ::noAnswer
+
     fun giveUp(code: Int) {
         state.on = false
         quiet(false)
@@ -135,19 +182,39 @@ actual fun rememberTranscriber(
     }
 
     listener = object : RecognitionListener {
-        override fun onReadyForSpeech(params: Bundle?) = status(ListenStatus(ListenStatus.Event.READY, null, service()))
-        override fun onBeginningOfSpeech() = status(ListenStatus(ListenStatus.Event.SPEECH, null, service()))
+        override fun onReadyForSpeech(params: Bundle?) {
+            state.answered = true
+            status(ListenStatus(ListenStatus.Event.READY, null, service()))
+            // Ready, but the microphone stays silent (another app holds it, or the microphone switch in quick
+            // settings is off): say so instead of waiting forever.
+            if (state.silenceCheck == null && !state.spoke) {
+                state.loudest = -100f
+                state.silenceCheck = Runnable {
+                    state.silenceCheck = null
+                    if (state.on && !state.spoke && state.loudest < 1f) status(ListenStatus(ListenStatus.Event.ERROR, null, service(), "silent"))
+                }.also { handler.postDelayed(it, 10_000) }
+            }
+        }
+        override fun onBeginningOfSpeech() {
+            state.answered = true
+            state.spoke = true
+            status(ListenStatus(ListenStatus.Event.SPEECH, null, service()))
+        }
         override fun onPartialResults(results: Bundle?) {
+            state.answered = true
+            state.spoke = true
             state.failures = 0
             results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }?.let(partial)
         }
         override fun onResults(results: Bundle?) {
+            state.answered = true
             state.failures = 0
             results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.let { Spoken.pick(it, words, dutch = lang.startsWith("nl")) }?.let(line)
             partial("")
             again(100)
         }
         override fun onError(error: Int) {
+            state.answered = true
             partial("")
             // A pause with nothing said is normal: listen again. Anything else counts.
             val silence = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
@@ -169,7 +236,9 @@ actual fun rememberTranscriber(
             }
         }
         override fun onEndOfSpeech() {}
-        override fun onRmsChanged(rmsdB: Float) {}
+        override fun onRmsChanged(rmsdB: Float) {
+            if (rmsdB > state.loudest) state.loudest = rmsdB
+        }
         override fun onBufferReceived(buffer: ByteArray?) {}
         override fun onEvent(eventType: Int, params: Bundle?) {}
     }
@@ -186,6 +255,8 @@ actual fun rememberTranscriber(
 
     fun begin() {
         state.failures = 0
+        state.spoke = false
+        state.silenceCheck = null
         if (!state.on) quiet(true)
         state.on = true
         active(true)
