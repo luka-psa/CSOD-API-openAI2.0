@@ -43,16 +43,26 @@ actual fun rememberTranscriber(
     val available = remember { SpeechRecognizer.isRecognitionAvailable(context) }
     val recognizer = remember { if (available) SpeechRecognizer.createSpeechRecognizer(context) else null }
     val handler = remember { Handler(Looper.getMainLooper()) }
-    val state = remember { object { var on = false } }
+    // Offline first; without the language pack (or without nl-BE) Android says so, and Hearth asks again online, in nl-NL.
+    val state = remember { object { var on = false; var offline = true; var fallback: String? = null; var failures = 0 } }
+    val audio = remember { context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager }
+
+    // The recognizer beeps each time it starts listening again, after every pause; while Luister mee runs that is a
+    // steady stream of beeps, so its sounds are muted until it stops.
+    fun quiet(on: Boolean) {
+        val how = if (on) android.media.AudioManager.ADJUST_MUTE else android.media.AudioManager.ADJUST_UNMUTE
+        listOf(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.STREAM_NOTIFICATION, android.media.AudioManager.STREAM_SYSTEM)
+            .forEach { stream -> runCatching { audio?.adjustStreamVolume(stream, how, 0) } }
+    }
 
     fun listen() {
         recognizer?.startListening(
             Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, state.fallback ?: lang)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, state.fallback ?: lang)
                 .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, state.offline)
                 .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
                 .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2_500L)
                 .apply {
@@ -70,21 +80,31 @@ actual fun rememberTranscriber(
     DisposableEffect(recognizer) {
         recognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onPartialResults(results: Bundle?) {
+                state.failures = 0
                 results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.let(partial)
             }
             override fun onResults(results: Bundle?) {
+                state.failures = 0
                 results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.let { Spoken.pick(it, words, dutch = lang.startsWith("nl")) }?.let(line)
                 partial("")
                 again(100)
             }
             override fun onError(error: Int) {
                 partial("")
-                when (error) {
-                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
+                // A pause with nothing said is normal: listen again. Anything else counts; six in a row and it stops,
+                // so the mic shows off instead of restarting forever without hearing anything.
+                val silence = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                if (!silence) state.failures++
+                when {
+                    error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS || state.failures >= 6 -> {
                         state.on = false
+                        quiet(false)
                         active(false)
                     }
-                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY, SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_SERVER -> again(1_500)
+                    // 12: language not supported, 13: language pack not there. Online next, then plain Dutch.
+                    (error == 12 || error == 13) && state.offline -> { state.offline = false; again(100) }
+                    (error == 12 || error == 13) && state.fallback == null && lang.startsWith("nl") -> { state.fallback = "nl-NL"; again(100) }
+                    error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_NETWORK || error == SpeechRecognizer.ERROR_SERVER -> again(1_500)
                     else -> again(200)
                 }
             }
@@ -96,6 +116,7 @@ actual fun rememberTranscriber(
             override fun onEvent(eventType: Int, params: Bundle?) {}
         })
         onDispose {
+            if (state.on) quiet(false)
             state.on = false
             handler.removeCallbacksAndMessages(null)
             recognizer?.destroy()
@@ -103,6 +124,8 @@ actual fun rememberTranscriber(
     }
 
     fun begin() {
+        state.failures = 0
+        if (!state.on) quiet(true)
         state.on = true
         active(true)
         listen()
@@ -117,6 +140,7 @@ actual fun rememberTranscriber(
                 else askMic.launch(Manifest.permission.RECORD_AUDIO)
             },
             stop = {
+                if (state.on) quiet(false)
                 state.on = false
                 handler.removeCallbacksAndMessages(null)
                 recognizer?.stopListening()

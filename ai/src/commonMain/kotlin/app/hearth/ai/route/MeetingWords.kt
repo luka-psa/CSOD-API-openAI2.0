@@ -337,7 +337,8 @@ object MeetingWords {
             Sense.EVENT -> Move.STATEMENT to Place.EVENT
             Sense.FREE_TIME -> Move.STATEMENT to Place.FREE_TIME
             Sense.ROUTINE -> Move.STATEMENT to Place.RHYTHM
-            Sense.SHOPPING -> Move.STATEMENT to Place.SHOPPING
+            // "de was doen" is a chore, not shopping: the model only gets shopping when something is bought.
+            Sense.SHOPPING -> if (choreTalk(said)) rules to null else Move.STATEMENT to Place.SHOPPING
             Sense.MEAL -> Move.STATEMENT to Place.MEAL
             Sense.GOAL -> Move.STATEMENT to Place.GOAL
         }
@@ -620,6 +621,15 @@ object MeetingWords {
             "spelletjesavond", "zijn we vrij", "we zijn vrij", "hebben we vrij", "we hebben vrij", "free time", "get some rest", "take a rest", "nothing planned",
             "sleep in", "day off",
             "movie night", "something fun", "we're free",
+        ),
+    )
+    /** "de was doen", "strijken", "stofzuigen": household work, not something to buy (unless it says buy). */
+    fun choreTalk(text: String): Boolean = CHORE_TALK.containsMatchIn(text) && !SHOPPING.containsMatchIn(text)
+
+    private val CHORE_TALK = anyOf(
+        listOf(
+            "de was", "was doen", "wassen", "strijken", "plooien", "opruimen", "opkuisen", "poetsen", "stofzuigen", "dweilen", "afwas",
+            "vaatwasser", "koken", "afruimen", "bed opmaken", "laundry", "ironing", "tidy", "clean", "vacuum", "dishes",
         ),
     )
     private val SHOPPING = anyOf(listOf("kopen", "halen", "op de lijst", "boodschappen", "we need to buy", "buy", "pick up", "groceries"))

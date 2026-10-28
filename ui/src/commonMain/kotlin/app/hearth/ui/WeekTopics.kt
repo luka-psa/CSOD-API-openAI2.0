@@ -230,6 +230,8 @@ fun ListenStage(
 private fun MeetingSummary(all: List<HeardThought>, today: LocalDate, lang: Lang, modifier: Modifier, onOpen: (HeardThought, Int) -> Unit) {
     // Oldest first, so the list reads the way the meeting went.
     val found = all.reversed().flatMap { t -> t.proposals.mapIndexed { n, p -> Triple(t, n, p) } }
+        // Said twice in the meeting: shown once.
+        .distinctBy { (_, _, p) -> p.place to p.text.lowercase().trim() }
     val byTopic = found.groupBy { it.third.topic }
     val talk = all.count { it.proposals.isEmpty() }
     Column(

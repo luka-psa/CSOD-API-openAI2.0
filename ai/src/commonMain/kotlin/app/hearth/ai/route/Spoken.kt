@@ -59,4 +59,25 @@ object Spoken {
         "would", "could", "should", "going", "got", "like", "know", "think", "because", "there", "where", "why", "how",
         "which", "something", "anything", "everything", "thing", "things", "people", "some", "any", "can't", "don't", "it's",
     )
+
+    /**
+     * What is new in a stretch the recognizer just gave, after [previous]: some recognizers (Chrome on Android) give
+     * the same words again, or the whole stretch so far with a bit more. Null: nothing new; else the new part only.
+     */
+    fun newPart(previous: String?, heard: String): String? {
+        val now = heard.trim()
+        if (now.isEmpty()) return null
+        val before = previous?.trim().orEmpty()
+        if (before.isEmpty()) return now
+        fun norm(t: String) = t.lowercase().replace(Regex("[^\\p{L}\\p{N} ]"), " ").replace(Regex("\\s+"), " ").trim()
+        val a = norm(before)
+        val b = norm(now)
+        if (b.isEmpty() || b == a || a.endsWith(b)) return null
+        // "de was" … "de was doen": only "doen" is new.
+        if (b.startsWith("$a ")) {
+            val words = now.split(Regex("\\s+"))
+            return words.drop(a.split(" ").size).joinToString(" ").ifBlank { null }
+        }
+        return now
+    }
 }
