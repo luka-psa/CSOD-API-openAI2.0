@@ -507,6 +507,10 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
    besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,
    the rule it ends in does; looking back at ourselves is never written down.
+   v0.26: *Waar het over ging* beside Luister mee (below it on a phone): every conclusion of the meeting so far, grouped
+   by topic; talk about the meeting itself ("we gaan naar de weekplanning kijken") and plans ending in "misschien"
+   stay talk; a Dutch meeting prefers the recognizer's Dutch guess over an English one; sheets no longer close when
+   scrolled back past the top.
    v0.25: a tick by mistake is one tap to take back (routines and their steps too); the Werkbord's items open a sheet
    (Nu · Hoe loopt het · Verbeteren for house rules, the four laws as cards, `set_house_rule_help`, DB v21), goals
    reached are celebrated and kept on a Bereikt shelf; routine sheets in the same three parts; the Terugblik is a short

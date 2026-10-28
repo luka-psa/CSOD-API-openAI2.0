@@ -629,3 +629,15 @@ fun AddRow(hint: String, onAdd: (String) -> Unit, modifier: Modifier = Modifier,
         }
     }
 }
+
+/**
+ * Inside a bottom sheet: scrolling back up past the top stops there instead of pulling the sheet down and closing it
+ * (it still closes with its handle, back, or a tap outside). Put it on the sheet's content, outside its scrolling list.
+ */
+val SheetScrollStop: androidx.compose.ui.input.nestedscroll.NestedScrollConnection = object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+    override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource) =
+        if (available.y > 0f) androidx.compose.ui.geometry.Offset(0f, available.y) else androidx.compose.ui.geometry.Offset.Zero
+
+    override suspend fun onPostFling(consumed: androidx.compose.ui.unit.Velocity, available: androidx.compose.ui.unit.Velocity) =
+        if (available.y > 0f) androidx.compose.ui.unit.Velocity(0f, available.y) else androidx.compose.ui.unit.Velocity.Zero
+}

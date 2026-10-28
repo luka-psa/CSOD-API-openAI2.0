@@ -244,6 +244,8 @@ class MeetingState(
     val ruleHistory: Map<String, List<Int>> = emptyMap(),
     /** The coach per house rule (the four laws), by rule id. */
     val ruleReviews: Map<String, HabitReview> = emptyMap(),
+    /** Every thought of this meeting, newest first: what the summary beside Luister mee groups by topic. */
+    val allHeard: List<HeardThought> = emptyList(),
 )
 
 /** How long Hearth waits after the last words before it concludes a thought. */
@@ -321,6 +323,8 @@ fun WeekScreen(
                 listening = listen.listening,
                 partial = listen.partial,
                 heard = meeting.heard,
+                all = meeting.allHeard,
+                wide = wide,
                 settled = settled,
                 hasLines = meeting.transcript.isNotEmpty(),
                 lit = lit,

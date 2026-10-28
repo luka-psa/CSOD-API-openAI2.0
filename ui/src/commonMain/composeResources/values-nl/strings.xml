@@ -558,4 +558,11 @@
     <string name="history_open">Alle overleggen</string>
     <string name="history_empty">Nog geen weekoverleg gehouden.</string>
     <string name="last_time_line">Vorige keer: %1$s</string>
+    <string name="summary_title">Waar het over ging</string>
+    <string name="summary_empty">Zodra er iets beslist wordt, staat het hier per onderwerp.</string>
+    <string name="summary_other">Wat ging goed en de rest</string>
+    <plurals name="summary_talk">
+        <item quantity="one">Eén gedachte zonder besluit</item>
+        <item quantity="other">%1$d gedachten zonder besluit</item>
+    </plurals>
 </resources>

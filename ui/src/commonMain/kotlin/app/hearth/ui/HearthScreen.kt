@@ -142,6 +142,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val huddles by viewModel.huddles.collectAsStateWithLifecycle()
     val voorstel by viewModel.voorstel.collectAsStateWithLifecycle()
     val heardThoughts by viewModel.heardThoughts.collectAsStateWithLifecycle()
+    val meetingThoughts by viewModel.meetingThoughts.collectAsStateWithLifecycle()
     val vocabulary by viewModel.vocabulary.collectAsStateWithLifecycle()
     val sync by viewModel.sync.collectAsStateWithLifecycle()
     val joinCode by viewModel.joinCode.collectAsStateWithLifecycle()
@@ -216,7 +217,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews),
+                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews, meetingThoughts),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,

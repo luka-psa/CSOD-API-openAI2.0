@@ -196,4 +196,33 @@ class MeetingWordsTest {
         val yes = MeetingWords.thoughts(listOf("could you call the dentist on Tuesday", "sure"), monday).single()
         assertEquals(listOf(Place.EVENT to "call the dentist on Tuesday"), yes.conclusions.map { it.place to it.sentence })
     }
+
+    @Test
+    fun talkAboutTheMeetingItselfOrEndingInADoubtIsNoPlan() {
+        listOf(
+            "Ja vandaag gaan we kijken naar de weekplanning misschien",
+            "Vandaag gaan we de weekplanning bekijken",
+            "eerst de agenda overlopen",
+            "donderdag gaan we naar de zee misschien",
+        ).forEach { said -> assertEquals(emptyList(), MeetingWords.thoughts(listOf(said), monday).flatMap { it.conclusions }, said) }
+    }
+
+    @Test
+    fun lookingBackNamesWhatWentWellAndWhatRubs() {
+        val t = MeetingWords.thoughts(
+            listOf("wat ik vond dat heel goed ging was het opkuisen van de lavabo iets anders wat moeilijk ging was de keuken die blijft altijd vol staan"),
+            monday,
+        ).single()
+        assertEquals(listOf(Place.WIN, Place.FRICTION), t.conclusions.map { it.place })
+        // "waar ik …" and "wat we …" in the middle of a sentence are clauses, not questions.
+        assertEquals(app.hearth.ai.route.Move.LOOK_BACK, MeetingWords.move("waar ik vond het heel goed ging was de lavabo"))
+        assertEquals(app.hearth.ai.route.Move.QUESTION, MeetingWords.move("waar gaan we naartoe"))
+    }
+
+    @Test
+    fun aDutchMeetingPrefersTheDutchGuess() {
+        val guesses = listOf("Did You Michael Self It hebben ook het eten vergeten", "die is misschien zelf het eten vergeten")
+        assertEquals("die is misschien zelf het eten vergeten", Spoken.pick(guesses, emptyList(), dutch = true))
+        assertEquals(guesses.first(), Spoken.pick(guesses, emptyList()))
+    }
 }

@@ -65,6 +65,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Lang
@@ -229,7 +230,7 @@ fun PlanSheet(
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = MaterialTheme.colorScheme.surface) {
         Column(
-            Modifier.fillMaxWidth().widthIn(max = 760.dp).verticalScroll(rememberScrollState())
+            Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().widthIn(max = 760.dp).verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp).padding(bottom = 28.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

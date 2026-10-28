@@ -138,7 +138,7 @@ and the rule the brainstorm ends in ("dan spreken we af dat …"), which replace
 With *Slimmer luisteren* on (Instellingen, downloads a small model once, runs on the device), it also understands
 sentences no rule knows ("ik ben het zat dat de badkamer nooit gepoetst wordt" is a friction). With *Gesprekken
 begrijpen* on (the tablet; a bigger model, downloaded once), Hearth reads the whole conversation: "zaterdag pizza"
-… "nee toch maar vrijdag" moves the meal, a topic that comes back ten minutes later is read with what was said first. Not quite right? Tap the conclusion: its name,
+… "nee toch maar vrijdag" moves the meal, a topic that comes back ten minutes later is read with what was said first. Beside it, *Waar het over ging* keeps the meeting so far by topic, each with what was concluded there. Not quite right? Tap the conclusion: its name,
 place (taak, afspraak, ritme, …) and day open, filled in from what was said; *Bewaar* or *Zet erin*. *Zet op zijn
 plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can also read the conversation and
 put it in place. The ten tiles are the same topics as everywhere, in the same order: Doen & eten three by two on the

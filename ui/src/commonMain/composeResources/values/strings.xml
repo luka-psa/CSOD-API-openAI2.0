@@ -565,4 +565,11 @@
     <string name="history_open">All meetings</string>
     <string name="history_empty">No weekly meeting held yet.</string>
     <string name="last_time_line">Last time: %1$s</string>
+    <string name="summary_title">What it was about</string>
+    <string name="summary_empty">Once something is decided, it shows here by topic.</string>
+    <string name="summary_other">What went well and the rest</string>
+    <plurals name="summary_talk">
+        <item quantity="one">One thought without a decision</item>
+        <item quantity="other">%1$d thoughts without a decision</item>
+    </plurals>
 </resources>

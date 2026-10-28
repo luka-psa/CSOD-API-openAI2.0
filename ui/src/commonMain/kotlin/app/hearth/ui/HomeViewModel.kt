@@ -756,16 +756,19 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
      * What Luister mee heard and hasn't been put in place yet, as thoughts (pauses don't cut them), newest first,
      * each with what Hearth concludes from it.
      */
-    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead, interpreted) { lines, people, changed, _, found ->
+    /** Every thought of this meeting, newest first; the stage shows the last three, the summary beside it all of them. */
+    val meetingThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead, interpreted) { lines, people, changed, _, found ->
         val open = lines.filter { !it.sorted }
         app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt }, sense())
-            .takeLast(3).reversed().map { t ->
+            .reversed().map { t ->
                 val said = open.slice(t.lines)
                 // The interpreter read the whole conversation: what it found on these lines replaces the rules' guess.
                 val proposals = if (found == null) t.proposals else said.flatMap { found[it.id].orEmpty() }
                 thought(said, proposals, changed).copy(stage = t.stage)
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val heardThoughts: StateFlow<List<HeardThought>> = meetingThoughts.map { it.take(3) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Understanding conversations: on, ready, and how far its download is. */
     val interpreting: StateFlow<Interpreting.State> = app.interpreting.state

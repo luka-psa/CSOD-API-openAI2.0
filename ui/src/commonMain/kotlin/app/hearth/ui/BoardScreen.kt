@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -466,7 +467,9 @@ fun FormSheet(dirty: Boolean, onDismiss: () -> Unit, content: @Composable androi
             } else true
         },
     )
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = MaterialTheme.colorScheme.surface, content = content)
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = MaterialTheme.colorScheme.surface) {
+        androidx.compose.foundation.layout.Column(Modifier.nestedScroll(SheetScrollStop), content = content)
+    }
     if (asking) DiscardDialog(onKeep = { asking = false }, onDiscard = { asking = false; onDismiss() })
 }
 
