@@ -587,4 +587,6 @@
     <string name="listen_err_busy">the speech service is busy elsewhere</string>
     <string name="listen_err_permission">no permission for the microphone</string>
     <string name="listen_err_language">this language is not available on this device</string>
+    <string name="listen_err_silent">the microphone hears nothing. Is the microphone switch in quick settings on, or is another app using it?</string>
+    <string name="listen_err_no_answer">the speech service does not answer; trying a plainer way</string>
 </resources>

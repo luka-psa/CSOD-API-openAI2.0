@@ -78,6 +78,8 @@ import app.hearth.ui.resources.listen_err_client
 import app.hearth.ui.resources.listen_err_code
 import app.hearth.ui.resources.listen_err_language
 import app.hearth.ui.resources.listen_err_mic
+import app.hearth.ui.resources.listen_err_no_answer
+import app.hearth.ui.resources.listen_err_silent
 import app.hearth.ui.resources.listen_err_network
 import app.hearth.ui.resources.listen_err_permission
 import app.hearth.ui.resources.listen_service
@@ -288,6 +290,8 @@ private fun MeetingSummary(all: List<HeardThought>, today: LocalDate, lang: Lang
 private fun ListenStatus.text(): String? {
     val why = when {
         code in setOf(1, 2, 4, 11) || name == "network" -> stringResource(Res.string.listen_err_network)
+        name == "silent" -> stringResource(Res.string.listen_err_silent)
+        name == "no-answer" -> stringResource(Res.string.listen_err_no_answer)
         code == 3 || name == "audio-capture" -> stringResource(Res.string.listen_err_mic)
         code == 5 -> stringResource(Res.string.listen_err_client)
         code == 8 -> stringResource(Res.string.listen_err_busy)
@@ -295,7 +299,7 @@ private fun ListenStatus.text(): String? {
         code == 12 || code == 13 || name == "language-not-supported" -> stringResource(Res.string.listen_err_language)
         else -> null
     }
-    val detail = listOfNotNull(why, (code?.toString() ?: name)?.let { stringResource(Res.string.listen_err_code, it) }).joinToString(" ")
+    val detail = listOfNotNull(why, (code?.toString() ?: name?.takeIf { why == null })?.let { stringResource(Res.string.listen_err_code, it) }).joinToString(" ")
     return when (event) {
         ListenStatus.Event.STARTING -> stringResource(Res.string.listen_status_starting)
         ListenStatus.Event.READY -> stringResource(Res.string.listen_status_ready)
