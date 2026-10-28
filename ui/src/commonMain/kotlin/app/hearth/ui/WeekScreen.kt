@@ -254,7 +254,7 @@ class MeetingState(
 private const val SETTLE_MS = 4_000L
 
 /** Luister mee lives above the screens, so it keeps listening while the family looks at a list. */
-class ListenControl(val available: Boolean, val listening: Boolean, val partial: String, val toggle: () -> Unit)
+class ListenControl(val available: Boolean, val listening: Boolean, val partial: String, val status: ListenStatus? = null, val toggle: () -> Unit)
 
 /**
  * The weekly meeting, about 15 minutes together. Luister mee sits on top and sorts what is said into the
@@ -322,6 +322,7 @@ fun WeekScreen(
             val lit = meeting.heard.drop(if (settled) 0 else 1).firstOrNull()?.proposals?.mapNotNull { it.topic }?.toSet() ?: emptySet()
             ListenStage(
                 available = listen.available,
+                status = listen.status,
                 listening = listen.listening,
                 partial = listen.partial,
                 heard = meeting.heard,

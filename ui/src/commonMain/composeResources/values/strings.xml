@@ -573,4 +573,18 @@
         <item quantity="other">%1$d thoughts without a decision</item>
     </plurals>
     <string name="transcript_export">Export</string>
+    <string name="listen_status_starting">Starting speech recognition…</string>
+    <string name="listen_status_ready">Ready, go ahead</string>
+    <string name="listen_status_speech">Hearing you</string>
+    <string name="listen_status_quiet">Quiet, still listening</string>
+    <string name="listen_status_error">Not working: %1$s</string>
+    <string name="listen_status_gave_up">Stopped: %1$s</string>
+    <string name="listen_service">speech service: %1$s</string>
+    <string name="listen_err_code">(error %1$s)</string>
+    <string name="listen_err_network">no connection to the speech service</string>
+    <string name="listen_err_mic">the microphone gives no sound</string>
+    <string name="listen_err_client">the speech service does not respond</string>
+    <string name="listen_err_busy">the speech service is busy elsewhere</string>
+    <string name="listen_err_permission">no permission for the microphone</string>
+    <string name="listen_err_language">this language is not available on this device</string>
 </resources>

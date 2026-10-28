@@ -566,4 +566,18 @@
         <item quantity="other">%1$d gedachten zonder besluit</item>
     </plurals>
     <string name="transcript_export">Exporteren</string>
+    <string name="listen_status_starting">Spraakherkenning start…</string>
+    <string name="listen_status_ready">Klaar, praat maar</string>
+    <string name="listen_status_speech">Hoort je</string>
+    <string name="listen_status_quiet">Stil, luistert verder</string>
+    <string name="listen_status_error">Lukt niet: %1$s</string>
+    <string name="listen_status_gave_up">Gestopt: %1$s</string>
+    <string name="listen_service">spraakdienst: %1$s</string>
+    <string name="listen_err_code">(fout %1$s)</string>
+    <string name="listen_err_network">geen verbinding met de spraakdienst</string>
+    <string name="listen_err_mic">de microfoon geeft geen geluid</string>
+    <string name="listen_err_client">de spraakdienst reageert niet</string>
+    <string name="listen_err_busy">de spraakdienst is elders bezig</string>
+    <string name="listen_err_permission">geen toestemming voor de microfoon</string>
+    <string name="listen_err_language">deze taal is niet beschikbaar op dit toestel</string>
 </resources>
