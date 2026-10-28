@@ -20,7 +20,9 @@ actual fun rememberTranscriber(
     onLine: (String) -> Unit,
     onPartial: (String) -> Unit,
     onActive: (Boolean) -> Unit,
+    onStatus: (ListenStatus) -> Unit,
 ): Transcriber {
+    val status by rememberUpdatedState(onStatus)
     val line by rememberUpdatedState(onLine)
     val partial by rememberUpdatedState(onPartial)
     val active by rememberUpdatedState(onActive)
@@ -31,7 +33,13 @@ actual fun rememberTranscriber(
             available = transcriptionSupported(),
             start = {
                 active(true)
-                startTranscribing(lang, words.joinToString(SEPARATOR), { guesses -> Spoken.pick(guesses.split(SEPARATOR), words, dutch = lang.startsWith("nl"))?.let(line) }, { partial(it) }) { active(false) }
+                status(ListenStatus(ListenStatus.Event.STARTING))
+                startTranscribing(
+                    lang, words.joinToString(SEPARATOR),
+                    { guesses -> Spoken.pick(guesses.split(SEPARATOR), words, dutch = lang.startsWith("nl"))?.let(line) },
+                    { partial(it) },
+                    { event -> status(browserStatus(event)) },
+                ) { active(false); status(ListenStatus(ListenStatus.Event.STOPPED)) }
             },
             stop = { stopTranscribing() },
         )
@@ -44,7 +52,16 @@ private fun transcriptionSupported(): Boolean =
 /** Between guesses and vocabulary words on their way through JavaScript. */
 private const val SEPARATOR = "\u001F"
 
-private fun startTranscribing(lang: String, vocabulary: String, onGuesses: (String) -> Unit, onPartial: (String) -> Unit, onEnd: () -> Unit): Unit = js(
+/** "ready", "speech", or the browser's error name ("not-allowed", "audio-capture", "network", "no-speech", …). */
+private fun browserStatus(event: String): ListenStatus = when (event) {
+    "ready" -> ListenStatus(ListenStatus.Event.READY)
+    "speech" -> ListenStatus(ListenStatus.Event.SPEECH)
+    "no-speech", "aborted" -> ListenStatus(ListenStatus.Event.QUIET, name = event)
+    "not-allowed", "service-not-allowed" -> ListenStatus(ListenStatus.Event.GAVE_UP, name = event)
+    else -> ListenStatus(ListenStatus.Event.ERROR, name = event)
+}
+
+private fun startTranscribing(lang: String, vocabulary: String, onGuesses: (String) -> Unit, onPartial: (String) -> Unit, onEvent: (String) -> Unit, onEnd: () -> Unit): Unit = js(
     """{
         const Recognition = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
         const state = { on: true, phrases: true };
@@ -75,7 +92,10 @@ private fun startTranscribing(lang: String, vocabulary: String, onGuesses: (Stri
                 }
                 onPartial(interim);
             };
+            r.onstart = () => onEvent('ready');
+            r.onspeechstart = () => onEvent('speech');
             r.onerror = (e) => {
+                if (e && e.error) onEvent(e.error);
                 if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) state.on = false;
                 // Without phrase support the next round starts without them.
                 if (e && e.error === 'phrases-not-supported') state.phrases = false;

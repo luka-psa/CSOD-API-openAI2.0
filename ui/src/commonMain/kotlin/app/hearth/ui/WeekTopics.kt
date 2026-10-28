@@ -73,6 +73,20 @@ import app.hearth.core.model.topics
 import app.hearth.core.model.TopicGroup
 import app.hearth.core.model.title
 import app.hearth.ui.resources.Res
+import app.hearth.ui.resources.listen_err_busy
+import app.hearth.ui.resources.listen_err_client
+import app.hearth.ui.resources.listen_err_code
+import app.hearth.ui.resources.listen_err_language
+import app.hearth.ui.resources.listen_err_mic
+import app.hearth.ui.resources.listen_err_network
+import app.hearth.ui.resources.listen_err_permission
+import app.hearth.ui.resources.listen_service
+import app.hearth.ui.resources.listen_status_error
+import app.hearth.ui.resources.listen_status_gave_up
+import app.hearth.ui.resources.listen_status_quiet
+import app.hearth.ui.resources.listen_status_ready
+import app.hearth.ui.resources.listen_status_speech
+import app.hearth.ui.resources.listen_status_starting
 import app.hearth.ui.resources.summary_empty
 import app.hearth.ui.resources.summary_other
 import app.hearth.ui.resources.summary_talk
@@ -117,6 +131,8 @@ fun ListenStage(
     available: Boolean,
     listening: Boolean,
     partial: String,
+    /** What the speech recognizer reports; shown small, so a tablet that hears nothing says why. */
+    status: ListenStatus?,
     heard: List<HeardThought>,
     /** Every thought of the meeting, for the summary by topic. */
     all: List<HeardThought>,
@@ -162,6 +178,15 @@ fun ListenStage(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        status?.takeIf { listening || it.event == ListenStatus.Event.GAVE_UP || it.event == ListenStatus.Event.ERROR }?.let { s ->
+            Spacer(Modifier.size(8.dp))
+            val trouble = s.event == ListenStatus.Event.GAVE_UP || s.event == ListenStatus.Event.ERROR
+            Text(
+                listOfNotNull(s.text(), s.service?.let { stringResource(Res.string.listen_service, it) }).joinToString("  ·  "),
+                style = MaterialTheme.typography.labelMedium,
+                color = if (trouble) Topic.PROJECTS.style().ink else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         if (listening || heard.isNotEmpty()) {
             Spacer(Modifier.size(14.dp))
@@ -255,6 +280,30 @@ private fun MeetingSummary(all: List<HeardThought>, today: LocalDate, lang: Lang
             }
         }
         if (talk > 0) Text(pluralStringResource(Res.plurals.summary_talk, talk, talk), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+    }
+}
+
+/** What the recognizer reports, in words: "Klaar, praat maar", "Gestopt: Nederlands is niet beschikbaar (fout 13)". */
+@Composable
+private fun ListenStatus.text(): String? {
+    val why = when {
+        code in setOf(1, 2, 4, 11) || name == "network" -> stringResource(Res.string.listen_err_network)
+        code == 3 || name == "audio-capture" -> stringResource(Res.string.listen_err_mic)
+        code == 5 -> stringResource(Res.string.listen_err_client)
+        code == 8 -> stringResource(Res.string.listen_err_busy)
+        code == 9 || name == "not-allowed" || name == "service-not-allowed" -> stringResource(Res.string.listen_err_permission)
+        code == 12 || code == 13 || name == "language-not-supported" -> stringResource(Res.string.listen_err_language)
+        else -> null
+    }
+    val detail = listOfNotNull(why, (code?.toString() ?: name)?.let { stringResource(Res.string.listen_err_code, it) }).joinToString(" ")
+    return when (event) {
+        ListenStatus.Event.STARTING -> stringResource(Res.string.listen_status_starting)
+        ListenStatus.Event.READY -> stringResource(Res.string.listen_status_ready)
+        ListenStatus.Event.SPEECH -> stringResource(Res.string.listen_status_speech)
+        ListenStatus.Event.QUIET -> stringResource(Res.string.listen_status_quiet)
+        ListenStatus.Event.ERROR -> stringResource(Res.string.listen_status_error, detail)
+        ListenStatus.Event.GAVE_UP -> stringResource(Res.string.listen_status_gave_up, detail)
+        ListenStatus.Event.STOPPED -> null
     }
 }
 

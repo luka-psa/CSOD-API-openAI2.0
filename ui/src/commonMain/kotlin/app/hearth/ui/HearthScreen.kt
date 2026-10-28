@@ -169,14 +169,16 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     var listening by remember { mutableStateOf(false) }
     var partial by remember { mutableStateOf("") }
     val saveFile = rememberSaveFile()
+    var listenStatus by remember { mutableStateOf<ListenStatus?>(null) }
     val transcriber = rememberTranscriber(
         language = if (lang == Lang.NL) "nl-BE" else "en-GB",
         vocabulary = vocabulary,
         onLine = viewModel::heard,
         onPartial = { partial = it },
         onActive = { listening = it; if (!it) partial = "" },
+        onStatus = { listenStatus = it },
     )
-    val listen = ListenControl(transcriber.available, listening, partial) { if (listening) transcriber.stop() else transcriber.start() }
+    val listen = ListenControl(transcriber.available, listening, partial, listenStatus) { if (listening) transcriber.stop() else transcriber.start() }
 
     val counts = mapOf(
         Destination.TASKS to dontForget(backlog, today).size,
