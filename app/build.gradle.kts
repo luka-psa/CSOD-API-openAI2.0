@@ -12,8 +12,11 @@ android {
         applicationId = "app.hearth"
         minSdk = 26
         targetSdk = 36
-        versionCode = 24
-        versionName = "0.23.0"
+        versionCode = 25
+        versionName = "0.24.0"
+        // Tablets and phones are ARM: ONNX Runtime's x86 libraries would only double the download (and push the APK
+        // past GitHub's 100 MB limit for the download site).
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     // One fixed key for every build, so a new APK installs over the old one and the family's data stays.
