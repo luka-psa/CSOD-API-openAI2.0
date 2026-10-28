@@ -3,7 +3,13 @@ package app.hearth.ui
 import androidx.compose.runtime.Composable
 
 /** Luister mee: keeps listening through pauses until [stop]. [available] is false where speech isn't. */
-class Transcriber(val available: Boolean, val start: () -> Unit, val stop: () -> Unit)
+class Transcriber(
+    val available: Boolean,
+    val start: () -> Unit,
+    val stop: () -> Unit,
+    /** Opens the settings that fix what the status line names (the speech app's microphone permission). */
+    val fix: () -> Unit = {},
+)
 
 /**
  * What the speech recognizer is doing, shown small on the stage so a tablet that hears nothing says why: ready, hearing

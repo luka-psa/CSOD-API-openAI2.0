@@ -583,4 +583,6 @@
     <string name="listen_err_silent">de microfoon hoort niets. Staat de microfoon aan in de snelle instellingen, of gebruikt een andere app hem?</string>
     <string name="listen_err_no_answer">de spraakdienst antwoordt niet; Hearth probeert het eenvoudiger</string>
     <string name="listen_level">geluid %1$d</string>
+    <string name="listen_err_service_mic">de app die de spraak herkent mag de microfoon niet gebruiken. Open haar instellingen en zet Machtigingen › Microfoon op Toestaan.</string>
+    <string name="listen_fix">Instellingen openen</string>
 </resources>

@@ -590,4 +590,6 @@
     <string name="listen_err_silent">the microphone hears nothing. Is the microphone switch in quick settings on, or is another app using it?</string>
     <string name="listen_err_no_answer">the speech service does not answer; trying a plainer way</string>
     <string name="listen_level">sound %1$d</string>
+    <string name="listen_err_service_mic">the app that recognizes speech may not use the microphone. Open its settings and allow Permissions › Microphone.</string>
+    <string name="listen_fix">Open its settings</string>
 </resources>

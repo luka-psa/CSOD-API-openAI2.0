@@ -178,7 +178,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
         onActive = { listening = it; if (!it) partial = "" },
         onStatus = { listenStatus = it },
     )
-    val listen = ListenControl(transcriber.available, listening, partial, listenStatus) { if (listening) transcriber.stop() else transcriber.start() }
+    val listen = ListenControl(transcriber.available, listening, partial, listenStatus, transcriber.fix) { if (listening) transcriber.stop() else transcriber.start() }
 
     val counts = mapOf(
         Destination.TASKS to dontForget(backlog, today).size,
