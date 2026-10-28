@@ -329,7 +329,7 @@ private fun LinkStep(n: Int, title: String, last: Boolean = false, content: @Com
 
 /** Where each app adds a custom connector: Claude's connector page, ChatGPT's Developer mode switch. */
 private const val CLAUDE_CONNECTORS = "https://claude.ai/customize/connectors"
-private const val CHATGPT_CONNECTORS = "https://chatgpt.com/#settings/Connectors/Advanced"
+private const val CHATGPT_CONNECTORS = "https://chatgpt.com/settings/security#developer-mode"
 
 /** The pairing code, big enough to read from the sofa, with how long it still works. */
 @Composable

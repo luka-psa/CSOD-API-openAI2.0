@@ -216,7 +216,7 @@
     <string name="connect_open_claude">Open Claude</string>
     <string name="connect_open_chatgpt">Open ChatGPT</string>
     <string name="connect_claude_how">Claude: + Toevoegen → Aangepaste connector → naam Hearth, plak het adres → Toevoegen → Verbinden.</string>
-    <string name="connect_chatgpt_how">ChatGPT: zet eerst Developer mode aan, dan Create → naam Hearth, plak het adres, kies OAuth.</string>
+    <string name="connect_chatgpt_how">ChatGPT: zet bij Beveiliging eerst Developer mode aan, dan bij Apps: Create → naam Hearth, plak het adres, kies OAuth.</string>
     <string name="connect_step_code">Er opent een Hearth-pagina. Tik hier op Toon koppelcode en typ de 6 cijfers daar.</string>
     <string name="connect_step_done">Klaar. Zet Hearth aan in een gesprek en zeg bv. “zet melk op de lijst”.</string>
     <string name="connect_share_text">Hearth koppelen aan je AI-app. Voeg dit adres toe als connector: %1$s · Claude: %2$s · ChatGPT (Developer mode): %3$s</string>
