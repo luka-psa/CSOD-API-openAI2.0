@@ -74,8 +74,9 @@ device). Keep all three in sync when any of those change.
   (state, cache; the platforms give a `SenseRuntime`). In `MeetingWords` the rules keep what they are precise at (a
   yes, an option, a doubt, a question; free time, meals, shopping; what went well) and the model decides the rest
   when it is sure (≥ 0.4). Measured on 183 held-out sentences: rules 55 %, rules + model ≈ 83 %.
-  *Gesprekken begrijpen* (`set_interpreter`, device-only, tablet only, hidden while the build has no
-  `hearth.interpreterUrl`) goes further: FunctionGemma 270M fine-tuned on weekoverleg talk (int4 ONNX, ≈ 270 MB,
+  *Gesprekken begrijpen* (`set_interpreter`, device-only, on by itself on a tablet, hidden while the build has no
+  `hearth.interpreterUrl`; fetched in the background from the household's own download site, where CI copies it from
+  the `interpreter-model` branch; repository variable `HEARTH_SITE_URL`) goes further: FunctionGemma 270M fine-tuned on weekoverleg talk (int4 ONNX, ≈ 270 MB,
   downloaded once) reads the conversation as a whole (`ai/interpret`: `GemmaTokenizer`, `Interpreter`, `MeetingReader`
   = last 12 lines + earlier lines that share words, re-read on each line so a change of plan replaces what came before;
   `Interpreting` = state). Its actions become suggestions through `Orchestrator.proposalOf`.

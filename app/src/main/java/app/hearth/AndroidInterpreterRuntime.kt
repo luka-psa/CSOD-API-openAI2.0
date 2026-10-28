@@ -8,60 +8,95 @@ import app.hearth.ai.interpret.Decoder
 import app.hearth.ai.interpret.DecoderSession
 import app.hearth.ai.interpret.INTERPRETER_URL
 import app.hearth.ai.interpret.InterpreterRuntime
+import app.hearth.ai.interpret.ModelManifest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.OutputStream
+import java.security.MessageDigest
+import kotlinx.serialization.json.Json
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
 
 /**
- * Hearth's interpreter on the tablet: downloaded once into the app's own storage, run by ONNX Runtime on the tablet
- * itself. Each reading gets fresh cache buffers (512 positions per layer, written in place, as the model was exported).
+ * Hearth's interpreter on the tablet: fetched once in the background from the household's own download site (its
+ * manifest, then each file in parts, joined and checked), run by ONNX Runtime on the tablet itself. Each reading gets
+ * fresh cache buffers (512 positions per layer, written in place, as the model was exported).
  */
-class AndroidInterpreterRuntime(context: Context) : InterpreterRuntime {
+class AndroidInterpreterRuntime(private val context: Context) : InterpreterRuntime {
     private val dir = File(context.filesDir, "interpreter")
+    private val local = File(dir, "manifest.json")
 
     override val available = INTERPRETER_URL.isNotBlank()
 
-    override suspend fun downloaded() = withContext(Dispatchers.IO) { InterpreterRuntime.FILES.all { (name, _) -> File(dir, name).exists() } }
+    /** On by itself on a tablet (the shared screen it is made for); a phone waits for the switch. */
+    override val onByDefault: Boolean get() = context.resources.configuration.smallestScreenWidthDp >= 600
+
+    override suspend fun downloaded() = withContext(Dispatchers.IO) {
+        local.exists() && runCatching { ModelManifest.parse(local.readText()).files.all { File(dir, it.name).length() == it.size } }.getOrDefault(false)
+    }
+
+    override suspend fun outdated(): Boolean = withContext(Dispatchers.IO) {
+        val mine = runCatching { ModelManifest.parse(local.readText()).version }.getOrNull() ?: return@withContext true
+        val theirs = runCatching { ModelManifest.parse(text("$INTERPRETER_URL/manifest.json")).version }.getOrNull() ?: return@withContext false
+        mine != theirs
+    }
 
     override suspend fun download(progress: (Float) -> Unit) = withContext(Dispatchers.IO) {
+        val manifest = ModelManifest.parse(text("$INTERPRETER_URL/manifest.json"))
         dir.mkdirs()
-        var done = 0f
-        for ((name, share) in InterpreterRuntime.FILES) {
-            val into = File(dir, name)
-            if (!into.exists()) fetch("$INTERPRETER_URL/$name", into) { progress(done + it * share) }
-            done += share
+        local.delete()
+        var done = 0L
+        for (file in manifest.files) {
+            val into = File(dir, file.name)
+            val part = File(dir, file.name + ".part")
+            val digest = MessageDigest.getInstance("SHA-256")
+            part.outputStream().use { output ->
+                for (name in file.parts) fetch("$INTERPRETER_URL/$name", output, digest) { done += it; progress(done.toFloat() / manifest.size) }
+            }
+            val sha = digest.digest().joinToString("") { "%02x".format(it) }
+            check(sha == file.sha256) { "${file.name} came in damaged" }
+            into.delete()
+            check(part.renameTo(into)) { "Could not keep ${file.name}" }
         }
+        // Written last: only a complete, checked model counts as downloaded.
+        local.writeText(Json.encodeToString(ModelManifest.serializer(), manifest))
         progress(1f)
     }
 
-    /** Into a ".part" file first, so a broken download never looks finished. */
-    private fun fetch(url: String, into: File, progress: (Float) -> Unit) {
-        val part = File(into.path + ".part")
+    private fun text(url: String): String {
         val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 20_000
         try {
             check(connection.responseCode == 200) { "HTTP ${connection.responseCode}" }
-            val total = connection.contentLengthLong
-            connection.inputStream.use { input ->
-                part.outputStream().use { output ->
-                    val buffer = ByteArray(256 * 1024)
-                    var got = 0L
-                    while (true) {
-                        val n = input.read(buffer)
-                        if (n < 0) break
-                        output.write(buffer, 0, n)
-                        got += n
-                        if (total > 0) progress((got.toFloat() / total).coerceAtMost(1f))
-                    }
-                }
-            }
-            check(part.renameTo(into)) { "Could not keep ${into.name}" }
+            return connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
             connection.disconnect()
-            part.delete()
+        }
+    }
+
+    /** One part, appended to [output]; [got] hears each block's size. */
+    private fun fetch(url: String, output: OutputStream, digest: MessageDigest, got: (Int) -> Unit) {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = 15_000
+        connection.readTimeout = 60_000
+        try {
+            check(connection.responseCode == 200) { "HTTP ${connection.responseCode}" }
+            connection.inputStream.use { input ->
+                val buffer = ByteArray(256 * 1024)
+                while (true) {
+                    val n = input.read(buffer)
+                    if (n < 0) break
+                    output.write(buffer, 0, n)
+                    digest.update(buffer, 0, n)
+                    got(n)
+                }
+            }
+        } finally {
+            connection.disconnect()
         }
     }
 

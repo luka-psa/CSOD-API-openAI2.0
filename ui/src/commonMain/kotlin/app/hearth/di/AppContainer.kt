@@ -73,7 +73,7 @@ class AppContainer(
     /** Where this device keeps and runs the sentence model for smarter listening (none: the rules alone). */
     senseRuntime: SenseRuntime = NoSenseRuntime,
     /** Where this device keeps and runs the interpreter that reads a whole weekoverleg (none: not on this device). */
-    interpreterRuntime: InterpreterRuntime = NoInterpreterRuntime,
+    private val interpreterRuntime: InterpreterRuntime = NoInterpreterRuntime,
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -154,9 +154,10 @@ class AppContainer(
             }
         }
         appScope.launch {
+            // Nobody has to switch it on on the tablet: unset means its default (the tablet: on).
             settings.value(AppSettings.INTERPRETER).collectLatest { on ->
                 when {
-                    on == "true" -> interpreting.start()
+                    on == "true" || (on == null && interpreterRuntime.onByDefault && interpreterRuntime.available) -> interpreting.start()
                     interpreting.state.value != Interpreting.State.Off -> interpreting.stop()
                 }
             }

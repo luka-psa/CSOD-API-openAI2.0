@@ -46,6 +46,27 @@ jobs:
             echo "::warning::No relay: this build can't sync or link ChatGPT/Claude. Add the Cloudflare secrets (relay/README.md)."
           fi
 
+      # Hearth's interpreter (Gesprekken begrijpen) is served from this same site, next to hearth.apk: the model sits on
+      # the interpreter-model branch (split in parts under GitHub's 100 MB limit) and the app fetches it from
+      # <site>/interpreter in the background. The site's address is the repository variable HEARTH_SITE_URL (the
+      # Vercel production address, e.g. https://hearth.vercel.app); without it the app doesn't offer the interpreter.
+      - name: Fetch the interpreter model
+        env:
+          SITE_URL: ${{ vars.HEARTH_SITE_URL }}
+        run: |
+          if git fetch -q --depth=1 origin interpreter-model; then
+            mkdir -p interpreter-model && git --work-tree=interpreter-model checkout FETCH_HEAD -- interpreter
+            git reset -q
+            if [ -n "$SITE_URL" ]; then
+              echo "HEARTH_INTERPRETER_URL=${SITE_URL%/}/interpreter" >> "$GITHUB_ENV"
+              echo "::notice::Interpreter: ${SITE_URL%/}/interpreter"
+            else
+              echo "::warning::No HEARTH_SITE_URL variable: the app won't offer Gesprekken begrijpen."
+            fi
+          else
+            echo "::warning::No interpreter-model branch: the app won't offer Gesprekken begrijpen."
+          fi
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -73,11 +94,14 @@ jobs:
           cp -r web/build/dist/wasmJs/productionExecutable/. site/
           find site -name '*.map' -delete
           cp app/build/outputs/apk/release/app-release.apk site/hearth.apk
+          if [ -d interpreter-model/interpreter ]; then cp -r interpreter-model/interpreter site/interpreter; fi
 
       - uses: actions/upload-artifact@v4
         with:
           name: hearth-web
-          path: site
+          path: |
+            site
+            !site/interpreter
 
       - uses: actions/upload-artifact@v4
         with:
@@ -95,6 +119,8 @@ jobs:
           AUTHOR_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
         run: |
           git init -q -b hearth-web
+          # The previous build's files are fetched first, so a push only sends what changed (not the model again).
+          git fetch -q --depth=1 "$REPO_URL" hearth-web || true
           git add -A
           git -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" \
             commit -q -m "Hearth web build from ${GITHUB_SHA::7}"

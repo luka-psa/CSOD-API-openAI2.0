@@ -27,7 +27,7 @@ flowchart LR
     R["Hearth relay<br/>Cloudflare Worker<br/>(one shared instance)"]
     AI["Family's own ChatGPT / Claude<br/>(their subscription)"]
     G["Google Drive appDataFolder<br/>+ 'Hearth' calendar"]
-    HF["Model files<br/>(Hugging Face, download once)"]
+    HF["Model files, downloaded once<br/>sentence model: Hugging Face<br/>interpreter: the family's own download site"]
     V["Vercel<br/>static web preview"]
 
     T -- "outbound WebSocket<br/>(MCP calls come back over it)" --> R
@@ -295,8 +295,12 @@ flowchart LR
 - Speech recognition is the platform's own: Android's recognizer is asked to prefer offline (with no offline language
   pack, Android may use Google's online service); Chrome's Web Speech API sends audio to Google. This is the one place
   where spoken content can leave the device without a Hearth setting, and is worth noting in a privacy review.
-- The two models (≈ 130 MB and ≈ 270 MB) are downloaded once when switched on and run with ONNX Runtime on the device.
-  No text is sent anywhere to run them. Switching off deletes the files.
+- The two models (≈ 130 MB and ≈ 270 MB) are downloaded once and run with ONNX Runtime on the device. No text is sent
+  anywhere to run them. Switching off deletes the files. The sentence model comes from Hugging Face when someone
+  switches it on. The interpreter comes from the household's own download site (next to `hearth.apk`; the build copies
+  it there from the `interpreter-model` branch), in the background and on by default on a tablet: it reads
+  `manifest.json`, joins the parts (each under 100 MB) and checks every file's SHA-256 before using it; a newer version
+  on the site replaces it by itself.
 
 ## 8. Review checklist
 
@@ -319,4 +323,5 @@ flowchart LR
 - Web preview: pushing to `hearth-household-assistant` runs the *Web preview* workflow, which deploys static files to
   Vercel. The relay deploys from the same branch when `relay/` changes (*Deploy relay*).
 - Build-time addresses (no secrets): `hearth.relayUrl` (the relay), `hearth.interpreterUrl` (where the interpreter
-  model is hosted; empty hides that option).
+  model is hosted; empty hides that option). CI sets the latter to `<HEARTH_SITE_URL>/interpreter` from the repository
+  variable `HEARTH_SITE_URL` (the site's production address).

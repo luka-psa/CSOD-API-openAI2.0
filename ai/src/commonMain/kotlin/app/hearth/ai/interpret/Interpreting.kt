@@ -7,24 +7,37 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Where the interpreter's model lives on this device: downloaded once (model.onnx, its weights and its tokenizer) from
- * [INTERPRETER_URL], run on the device itself.
+ * Where the interpreter's model lives on this device: fetched once in the background from [INTERPRETER_URL] (the
+ * household's own download site, next to the app) by its [ModelManifest], run on the device itself.
  */
 interface InterpreterRuntime {
     /** False where it can't run here, or this build doesn't offer it. */
     val available: Boolean
+    /** On without anyone switching it on (the tablet); elsewhere it waits for the switch. */
+    val onByDefault: Boolean get() = false
     suspend fun downloaded(): Boolean
+    /** True when the site has a newer model than this device (false when offline). */
+    suspend fun outdated(): Boolean = false
     /** [progress] goes from 0 to 1. */
     suspend fun download(progress: (Float) -> Unit)
     suspend fun tokenizerJson(): String
     suspend fun open(): Decoder
     suspend fun remove()
+}
+
+/** `manifest.json` next to the model: each file, the parts it is split in (each under 100 MB), its size and SHA-256. */
+@kotlinx.serialization.Serializable
+data class ModelManifest(val version: String, val files: List<ModelFile>) {
+    val size: Long get() = files.sumOf { it.size }
 
     companion object {
-        /** The files, in download order, and how much of the download each one is. */
-        val FILES = listOf("tokenizer.json" to 0.12f, "model.onnx" to 0.01f, "model.onnx.data" to 0.87f)
+        private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        fun parse(text: String): ModelManifest = json.decodeFromString(serializer(), text)
     }
 }
+
+@kotlinx.serialization.Serializable
+data class ModelFile(val name: String, val parts: List<String>, val size: Long, val sha256: String)
 
 object NoInterpreterRuntime : InterpreterRuntime {
     override val available = false
@@ -60,7 +73,8 @@ class Interpreting(private val runtime: InterpreterRuntime) {
     suspend fun start() = lock.withLock {
         if (!runtime.available || interpreter != null) return@withLock
         try {
-            if (!runtime.downloaded()) {
+            // A newer model on the site replaces this one (offline: the one we have).
+            if (!runtime.downloaded() || runtime.outdated()) {
                 _state.value = State.Downloading(0f)
                 runtime.download { _state.value = State.Downloading(it) }
             }

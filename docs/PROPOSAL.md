@@ -497,8 +497,9 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
    besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,
    the rule it ends in does; looking back at ourselves is never written down.
-   v0.24: *Gesprekken begrijpen* (Instellingen, `set_interpreter`, off by default, device-only, tablet only; hidden
-   while the build has no `hearth.interpreterUrl`): FunctionGemma 270M, fine-tuned on Hearth's weekoverleg
+   v0.24: *Gesprekken begrijpen* (Instellingen, `set_interpreter`, device-only; on by itself on a tablet, a phone waits
+   for the switch; hidden while the build has no `hearth.interpreterUrl`; the model comes from the household's own
+   download site, copied there by CI from the `interpreter-model` branch, joined from parts and checked by SHA-256): FunctionGemma 270M, fine-tuned on Hearth's weekoverleg
    (`ai/interpret`), int4 ONNX (≈ 270 MB, downloaded once, ONNX Runtime on the tablet). It reads the conversation as a
    whole: `MeetingReader` gives it the last 12 lines plus up to 6 earlier ones that share words with what is said now
    (a topic coming back), and it answers with Hearth actions (`add_task`, `add_appointment`, `plan_meal`,
