@@ -209,6 +209,8 @@ erDiagram
         enum kind "RULE FRICTION GOAL IDEA"
         enum status
         string linkedId
+        enum anchor "house rule: its moment"
+        string smallStep "house rule: small version"
     }
     member { string id PK  string name  int color }
     shopping_item { string id PK  string shopId FK  string stockItemId FK  bool bought }

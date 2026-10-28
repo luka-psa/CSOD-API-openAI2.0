@@ -142,12 +142,13 @@ begrijpen* on (the tablet; a bigger model, downloaded once), Hearth reads the wh
 place (taak, afspraak, ritme, …) and day open, filled in from what was said; *Bewaar* or *Zet erin*. *Zet op zijn
 plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can also read the conversation and
 put it in place. The ten tiles are the same topics as everywhere, in the same order: Doen & eten three by two on the
-left, Ritme & afspraken two by two on the shelf on the right, all the same size; tap one for its list. Terugblik: *wat
-ging goed*, walked through together: every topic a small tile (in the same order, with what got done there); a tap
-names what went well there, with what Hearth saw as one-tap wins (done work, the meals, routines and house rules
-that go well, frictions settled, goals reached) or in your own words; each win keeps its topic's icon. Then *Hoe liep het?*: the week, every routine and every house rule on one scale from 0 to 5; each line shows
-its badge, last time's score as a ring on the scale and the earlier ones as small bars, and below 4 (or when it was
-talked about) the coach's one tip right there (one tap, or its sheet opens). Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
+left, Ritme & afspraken two by two on the shelf on the right, all the same size; tap one for its list. Terugblik: how much got done
+(one line) and last time (one line; *Alle overleggen* shows every summary, and a pencil puts a mistake right
+afterwards), the week on 0 to 5, then *Wat bespreken we?*: a short list built together. Say what went well in a
+sentence, or tap a topic chip and pick from what is there: a routine or house rule lands in the list to rate 0 to 5
+(its badge, last time as a ring, earlier ones as bars, and when it asks for one, the coach's one tip right there); a
+done thing or Hearth's one-tap wins become a win with that topic's icon. Hearth suggests only the few that ask for
+attention. Then Deze week and Vooruitblik. Klaar first shows "Samen akkoord?"; agreeing keeps the summary. Done: everyone knows the week.
 
 **J9. "Iets schuurt."** Note it on the Werkbord or say "frictie: …". In the weekoverleg (Frictie & ideeën)
 choose together what it needs, in one tap: a huisregel, a nieuwe routine, a routine aanpassen, a taak met focus,
@@ -161,7 +162,9 @@ outcome is good. Huisregels show on Vandaag with their score and get a calm chec
 **J10. "Een doel."** Add it on the Werkbord (gezin, samen or persoonlijk). Give it a place in the week (on the
 Werkbord or in the weekoverleg's Doelen): a *ritme* ("10 minuten yoga", ochtend, elke dag) that lands in Ritmes &
 routines, *vrije tijd* on a day ("gitaar spelen", zaterdag) that lands in Vrije tijd, or one small step (optionally
-Volgende on Taken). The goal shows that link in its colour. Reached: tick it, it moves to "Samen bereikt".
+Volgende on Taken). The goal shows that link in its colour. Reached: tick it (or *Bereikt!* in its sheet): a star
+says so, one tap puts it in Wat ging goed, and it stays on the *Bereikt* shelf with its day. Ticked by mistake: tap it
+there, *Toch nog niet bereikt*.
 
 **J11. "Instellen."** Instellingen: Taal first (Nederlands (Vlaams) by default, English on request), then Samen op meer
 toestellen, ChatGPT/Claude (koppelcode), Google back-up and agenda, and Voorbeelden to see how it works.

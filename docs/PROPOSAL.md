@@ -93,7 +93,7 @@ gets its own tables): `add_shopping_item`, `list_shopping_items`, `mark_bought`,
 `remove_shopping_item` ⚠ · `add_to_backlog` (section, when, urgent, intervalDays), `list_backlog` (views:
 ALL, TODAY, NEXT, UNPLANNED, WEEK, DONT_FORGET, ROUTINES_DUE, ROUTINES, ADMIN, PROJECTS, WAITING),
 `plan_backlog_item`, `complete_backlog_item` (a routine logs "done today" and stays; a project takes its
-steps along), `reopen_backlog_item`, `remove_backlog_item` ⚠ (a project's steps go too),
+steps along), `reopen_backlog_item` (also takes back a routine or step ticked today: its log goes; a step's routine and a routine's steps of today follow), `remove_backlog_item` ⚠ (a project's steps go too),
 `set_routine_interval`, `set_routine_schedule` (fixed days: weekdays, a date or the nth weekday of the month, a
 time only when fixed; `add_to_backlog` and `add_routine` take the same fields), `mark_urgent`, `wait_for_reply` (follow-up day), `move_backlog_item`,
 `add_project_step` (creates the project if needed) · Werkbord: `add_member`, `remove_member` ⚠,
@@ -101,7 +101,7 @@ time only when fixed; `add_to_backlog` and `add_routine` take the same fields), 
 needs: RULE, NEW_ROUTINE, CHANGE_ROUTINE, TASK; it stays open, labelled), `resolve_friction` (in the family's own
 words: RULE → a house rule, CHANGE → a task as next up, ROUTINE → a new routine with its moment, ROUTINE_CHANGE →
 a step and/or another moment for an existing routine, LET_GO), `set_goal_step` (a goal's place in the week: STEP, optionally onto the backlog as next up; HABIT, a
-routine at a moment; FREE_TIME, free time on a day), `achieve_goal`, `remove_board_item` ⚠. `add_to_backlog` / `move_backlog_item` with
+routine at a moment; FREE_TIME, free time on a day), `achieve_goal` (to the Bereikt shelf; `reached = false` opens a goal ticked by mistake), `edit_board_item` (other words for a rule, friction, idea or goal), `set_house_rule_help` (a house rule along the four laws: a moment, something nice, a small version), `review_house_rule` (read-only: the coach for house rules, like `review_habit`), `remove_board_item` ⚠. `add_to_backlog` / `move_backlog_item` with
 NOTE, FRICTION or GOAL put the item on the Werkbord. · Stock: `list_stock`, `add_stock_item`, `add_storage_spot`,
 `set_stock_state` (LOW/OUT → a linked shopping item, once; IN_STOCK takes it off), `remove_stock_item` ⚠,
 `clear_bought_items` ⚠. `mark_bought` puts linked stock back IN_STOCK; `add_shopping_item` links to a stock item
@@ -124,7 +124,7 @@ sequence or a checklist like the bag for the opvang; saying it again adds the mi
 day with `complete_backlog_item`, and all ticked logs the routine for today), `set_anchor` (a routine's moment of the day: MORNING, AFTERNOON,
 DINNER, EVENING, BEDTIME; `add_to_backlog` takes it too),
 `list_huddles`
-(summaries), `add_transcript_line` (tablet), `read_conversation` (the meeting's lines with ids and times, for the
+(summaries), `edit_huddle_summary` (a past meeting's summary put right afterwards), `add_transcript_line` (tablet), `read_conversation` (the meeting's lines with ids and times, for the
 family's AI: it reads for meaning, adds with the regular tools, then calls `mark_transcript_sorted`),
 `fix_transcript_line` (misheard words, for the family's AI; on the tablet a conclusion is changed in its sheet), `clear_transcript` ⚠ (tablet),
 `add_idea` (Werkbord; decided with `resolve_friction` like a friction). · Recipes:
@@ -227,6 +227,7 @@ nice with a habit); a habit's weather per meeting is a HABIT_CHECK row in `refle
 v19 adds `backlog_item.score` (a habit's last score, 0–5; `ease` keeps its weather); WEEK, RULE_CHECK and HABIT_CHECK
 rows now hold 10 + the score, and older rows (1 / 2 / 0) read as 5 / 3 / 1, so nothing needs rewriting.
 v20 adds `reflection.topic` (the topic a win was named under, in the Terugblik's walk past every topic).
+v21 adds `board_item.anchor`, `pairing` and `smallStep`: a house rule helped along the four laws, like a habit.
 Auto-migrations keep every household's data.
 
 Changes from v1: *GroceryItem* is now **ShoppingItem** (with shop + optional stock link). *Staple* is now **StockItem** (with state and storage spot). New: **StorageSpot**, **Shop**, **Chore**, **Appointment**, **DoneLog**. Task gains `kind`.
@@ -287,8 +288,11 @@ to move between kinds.
 *Frictie & ideeën* (each one first gets what it needs, "Wat is er nodig?": Huisregel · Nieuwe routine · Routine
 aanpassen · Taak met focus · Loslaten; a chosen one shows "Huisregel te maken" in the colour of where it goes, with
 "Schrijf de huisregel" to word it now or later; sorted-out ones stay visible as wins) and
-*Doelen* (Gezin · Samen · per person, each with one small next step that can go onto "volgende"; reached
-goals stay as wins). The dashboard shows *Huisregels*: three house rules and how many frictions wait
+*Doelen* (Gezin · Samen · per person, each with one small next step that can go onto "volgende"; a goal reached is
+celebrated (a star, one tap to Wat ging goed) and lands on the *Bereikt* shelf, each with its day; tap it to see it
+again or take it back). Every item opens its sheet with a tap: other words (pencil), delete (asks). A house rule's
+sheet reads in three parts like a routine's: *Nu* (its words and what helps it), *Hoe loopt het* (0–5, trend, what
+was said) and *Verbeteren* (the four laws as four cards, one suggestion each, the coach's pick marked *Begin hier*). The dashboard shows *Huisregels*: three house rules and how many frictions wait
 for the weekoverleg.
 
 **Boodschappen**: stock per room or category (hold an item to move it, hold a category to remove it); the list (grouped by shop, X to remove with a confirm, "Gekochte wissen" once things are
@@ -322,11 +326,15 @@ with *Bewaar* (for the Voorstel) and *Zet erin* (added right away). Below it eve
 antwoord", "3 van 7 avonden"); the tile Luister mee just heard about glows too. Tapping a tile opens its list under
 the grid (free time and admin with an add field, projects with their next step and "dit weekend", chores aan de
 beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and frictions, the goals with their next small step). In Dutch *afspraken* always means appointments; house rules are *huisregels*.
-Then *Terugblik* (last meeting's summary, what got done, *Wat ging goed*, *Hoe liep het?*) and *Deze week* (7 days, what
+Then *Terugblik* (v0.25: what got done and last time in one line each, *Alle overleggen* with every summary,
+editable afterwards; the week; *Wat bespreken we?*) and *Deze week* (7 days, what
 has that day with its section colour, the meal small underneath) and *Vooruitblik* (dates after this week). There
 are no Oudjes: what has no topic waits in Taken → Te sorteren. *Klaar* first opens *Samen akkoord?*: the summary
 (by topic) to read together, with a nudge when sentences still wait in the Voorstel; *Akkoord, klaar* records it.
-Terugblik also has *Wat ging goed* (wins, X asks first) and *Hoe liep het?* (v0.20, a 0–5 scale since v0.23): the
+*Wat bespreken we?* (v0.25) is a short list the family builds together instead of everything at once: say what went
+well in a sentence, or tap a topic chip and pick from what is there (a routine or house rule to rate right in the
+list, or a done thing as a win; X asks first). Hearth suggests only the few that ask for attention. Before v0.25 the
+Terugblik showed *Wat ging goed* (wins) and *Hoe liep het?* (v0.20, a 0–5 scale since v0.23): the
 week, every routine and every house rule on one scale from 0 (komt er niet van) to 5 (loopt vanzelf), six round steps;
 the score keeps its weather (bliksem 0–1, wolk 2–3, zon 4–5) and colour. Each line shows its *score badge* (weather and
 five pips), last time's score as a ring on the scale and the meetings before as small bars (`ScoreTrail`). For the week
@@ -353,7 +361,9 @@ vanzelf* three meetings in a row (one step bigger: the whole version, a bit more
 score to be a 5. It lives in the habit's sheet (v0.23, *Hoe loopt het?*: the score badge, better or less than last
 time, the scores per meeting as bars, the 0–5 scale to rate it there, and only when it needs a change *Wat kan
 beter?* with the one tip; the smaller first step and iets leuks erbij as two chips; moment, how often and days folded
-under *Ritme instellen*) and shows its one tip under the habit in the Terugblik when it needs one. A friction marked *routine aanpassen* is written along the laws too:
+under *Ritme instellen*) and shows its one tip under the habit in the Terugblik when it needs one. Since v0.25 the
+sheet reads in parts (*Nu*: steps and set-up; *Hoe loopt het*: the coach; *Verbeteren*: the four laws as four cards,
+`lawTips`, for household chores too), and house rules have the same coach (`ruleReview`, `review_house_rule`). A friction marked *routine aanpassen* is written along the laws too:
 another moment, iets leuks erbij, kleiner beginnen or a step (`resolve_friction` takes `smallStep` and `pairing`). **Luister mee** (it keeps listening while the family opens the list, the
 stock or the tasks, with a small "Terug naar het overleg" bar there): continuous transcription during the meeting (Web Speech;
 Android restarts its recognizer after each pause and prefers on-device recognition; both ask for three guesses and keep
@@ -497,6 +507,11 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
    besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,
    the rule it ends in does; looking back at ourselves is never written down.
+   v0.25: a tick by mistake is one tap to take back (routines and their steps too); the Werkbord's items open a sheet
+   (Nu · Hoe loopt het · Verbeteren for house rules, the four laws as cards, `set_house_rule_help`, DB v21), goals
+   reached are celebrated and kept on a Bereikt shelf; routine sheets in the same three parts; the Terugblik is a short
+   list built together (type it, or pick a topic and an existing routine or rule to rate) with every meeting's summary
+   a tap away and editable (`edit_huddle_summary`).
    v0.24: *Gesprekken begrijpen* (Instellingen, `set_interpreter`, device-only; on by itself on a tablet, a phone waits
    for the switch; hidden while the build has no `hearth.interpreterUrl`; the model comes from the household's own
    download site, copied there by CI from the `interpreter-model` branch, joined from parts and checked by SHA-256): FunctionGemma 270M, fine-tuned on Hearth's weekoverleg
