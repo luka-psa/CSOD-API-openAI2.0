@@ -1,6 +1,7 @@
 package app.hearth.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
@@ -178,11 +180,16 @@ fun FrictionRow(
     actions: FrictionActions,
     caption: String? = null,
     onDelete: (() -> Unit)? = null,
+    /** Opens its sheet: other words, or delete. */
+    onOpen: (() -> Unit)? = null,
 ) {
     var writing by remember { mutableStateOf(false) }
     val friction = Topic.FRICTION.style()
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 4.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier).padding(start = 4.dp),
+        ) {
             member?.let { MemberDot(it); Spacer(Modifier.width(10.dp)) }
             Icon(if (item.kind == BoardKind.IDEA) HearthIcons.Idea else Topic.FRICTION.icon(), null, tint = friction.ink, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))

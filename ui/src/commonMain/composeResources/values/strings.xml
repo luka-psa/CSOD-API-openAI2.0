@@ -535,4 +535,25 @@
     <string name="interpreter_body">A bigger language model reads the whole weekly meeting: what comes back, what you decide differently after all, and what you finally agree. It runs on this device itself, so what you say goes nowhere. Switching it on downloads it once (about 270 MB); switching it off removes it again. It reads again after each sentence, so a suggestion may still shift a little.</string>
     <string name="interpreter_loading">Loading the model, one moment…</string>
     <string name="interpreter_ready">Ready: Luister mee reads the whole conversation.</string>
+    <string name="tab_now">Now</string>
+    <string name="tab_how">How it goes</string>
+    <string name="tab_better">Improve</string>
+    <string name="better_hint">Four ways to make it stick. Pick one, not all four.</string>
+    <string name="law_now">Now: %1$s</string>
+    <string name="law_not_yet">Nothing yet</string>
+    <string name="law_suggested">Start here</string>
+    <string name="rule_moment_title">When does it count?</string>
+    <string name="rule_small_title">The small version to start with</string>
+    <string name="rule_small_hint">e.g. only your own plate</string>
+    <string name="rule_helped">What helps it now</string>
+    <string name="goal_reached">Reached!</string>
+    <string name="goal_celebrate_title">Goal reached!</string>
+    <string name="goal_celebrate_body">“%1$s” is on the Reached shelf of the Werkbord. Something to be proud of.</string>
+    <string name="goal_celebrate_win">To What went well</string>
+    <string name="goal_celebrate_ok">Lovely</string>
+    <string name="goal_reopen">Not reached yet after all</string>
+    <string name="goal_reached_on">Reached %1$s</string>
+    <string name="goal_place">A place in the week</string>
+    <string name="item_rename_hint">In other words</string>
+    <string name="board_tap_hint">Tap one to change it, rate it or make it easier.</string>
 </resources>

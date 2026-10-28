@@ -74,6 +74,11 @@ import app.hearth.core.model.HabitTip
 import app.hearth.core.model.TipAction
 import app.hearth.core.model.celebrateWords
 import app.hearth.core.model.frictionsAbout
+import app.hearth.core.model.isAbout
+import app.hearth.core.model.ruleReview
+import app.hearth.core.tools.board.SetRuleHelpArgs
+import app.hearth.core.tools.board.EditBoardItemArgs
+import app.hearth.core.tools.board.AchieveGoalArgs
 import app.hearth.core.model.habitReview
 import app.hearth.core.model.easeNow
 import app.hearth.core.tools.backlog.RateHabitArgs
@@ -652,6 +657,13 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+    /** The coach for every open house rule (the four laws), by rule id: the same as review_house_rule gives an AI. */
+    val ruleReviews: StateFlow<Map<String, HabitReview>> = combine(board, app.meeting.ruleHistory, lang) { boardItems, history, l ->
+        boardItems.filter { it.kind == BoardKind.RULE && it.isOpen }.associate { r ->
+            r.id to ruleReview(r, history[r.id].orEmpty(), boardItems.filter { it.isAbout(r.id, r.text) }, l)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     /** Something nice with a habit (make it attractive); empty removes it. */
     fun setPairing(item: BacklogItem, pairing: String) = tool {
         say(app.tools.registry.run(app.tools.setHabitPairing, SetPairingArgs(itemIds = listOf(item.id), pairing = pairing), it).summary)
@@ -985,7 +997,27 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     fun achieveGoal(goal: BoardItem) = tool {
-        app.tools.registry.run(app.tools.achieveGoal, BoardRefArgs(itemIds = listOf(goal.id)), it)
+        app.tools.registry.run(app.tools.achieveGoal, AchieveGoalArgs(itemIds = listOf(goal.id)), it)
+    }
+
+    /** A goal ticked by mistake: open again. */
+    fun reopenGoal(goal: BoardItem) = tool {
+        app.tools.registry.run(app.tools.achieveGoal, AchieveGoalArgs(itemIds = listOf(goal.id), reached = false), it)
+    }
+
+    /** Other words for a house rule, friction, idea or goal. */
+    fun renameBoardItem(item: BoardItem, text: String) {
+        if (text.isBlank() || text == item.text) return
+        tool { app.tools.registry.run(app.tools.editBoardItem, EditBoardItemArgs(itemId = item.id, newText = text), it) }
+    }
+
+    /** A house rule helped along the four laws: its moment, something nice, a small version. */
+    fun setRuleHelp(rule: BoardItem, help: RuleHelp) = tool {
+        app.tools.registry.run(
+            app.tools.setRuleHelp,
+            SetRuleHelpArgs(itemId = rule.id, anchor = help.anchor, noMoment = help.noMoment, pairing = help.pairing, smallStep = help.smallStep),
+            it,
+        )
     }
 
     /** Only after the person confirmed on screen. */

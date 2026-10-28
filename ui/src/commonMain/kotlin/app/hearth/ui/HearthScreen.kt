@@ -132,6 +132,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val weekOn by viewModel.weekOn.collectAsStateWithLifecycle()
     val ruleChecks by viewModel.ruleChecks.collectAsStateWithLifecycle()
     val ruleScores by viewModel.ruleScores.collectAsStateWithLifecycle()
+    val ruleReviews by viewModel.ruleReviews.collectAsStateWithLifecycle()
     val ruleHistory by viewModel.ruleHistory.collectAsStateWithLifecycle()
     val habitChecks by viewModel.habitChecks.collectAsStateWithLifecycle()
     val habitReviews by viewModel.habitReviews.collectAsStateWithLifecycle()
@@ -314,7 +315,12 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 setGoalStep = viewModel::setGoalStep,
                                 achieveGoal = viewModel::achieveGoal,
                                 delete = viewModel::deleteBoardItem,
+                                rename = viewModel::renameBoardItem,
+                                ruleHelp = viewModel::setRuleHelp,
+                                reopenGoal = viewModel::reopenGoal,
+                                addWin = { text, topic -> viewModel.addWin(text, topic) },
                             ),
+                            ruleReviews = ruleReviews,
                         )
                         Destination.TASKS -> TasksScreen(
                             backlog, steps, today, lang, ease,
