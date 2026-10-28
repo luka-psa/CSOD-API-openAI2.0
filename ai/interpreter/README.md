@@ -51,6 +51,8 @@ FunctionGemma is a Gemma model: it is provided under and subject to the Gemma Te
 |---|---|---|---|
 | Round 1 (`gen.py`, 400 steps) | 38 % fully right, 57 % right actions | 28 % / 44 % | – |
 | Round 2 (+ `gen2.py`, 750 steps from round 1, lr 5e-5) | 60 % / 75 % | 78 % / 86 % | 80 % / 92 % |
+| Round 3 (+ `gen3.py`, 750 steps from round 2, lr 3e-5, a quarter round-2 replay) | 70 % / 83 % | 84 % / 88 % | 83 % / 88 % |
+| Round 3, exported (int4, what the tablet runs) | **73 % / 87 %** | – | – |
 
 "Fully right": every action with its words and day. What still goes wrong on the handwritten test: words it never saw are
 copied with a slip ("appelsen", "Keuringfeestje"); a few kinds mixed up (a weekly pizza evening as a meal, a rule as a
@@ -63,3 +65,8 @@ Same score as the full model: 63 % fully right, 80 % right actions on the handwr
 anything here). Time per reading on a 4-core x86 server: median 0.2 s (1 core: 0.6 s); a 20-line window (273 prompt
 tokens, 120 answer tokens) 1.3 s on 4 cores, 2.8 s on 1. Model + one reading ≈ 0.7 GB. The Lenovo TB-X606F's
 Cortex-A53 cores are several times slower: roughly 2–6 s per reading there, fine for reading again after each line.
+
+Round 3 fixed most copying slips ("appelsienen", "kinderfeestje"), the weekly pizza evening (a routine), "the kids
+should …" (a house rule) and small talk about meetings. Still wrong: a few long rules worded in its own way, "voel me
+schuldig" read as a friction, a choice that changes in the last line ("zaterdag … of toch vrijdagavond"). The Kotlin
+loop gives the same answer as the reference on the round-3 export (`InterpreterTest`).
