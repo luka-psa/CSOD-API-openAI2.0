@@ -21,6 +21,7 @@ import app.hearth.core.model.Lang
 import app.hearth.core.model.Shop
 import app.hearth.core.model.ShoppingItem
 import app.hearth.core.model.nowMillis
+import app.hearth.ai.ConversationExport
 import app.hearth.core.model.today
 import app.hearth.core.model.weekdayName
 import app.hearth.core.tools.ToolContext
@@ -749,6 +750,9 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** What the interpreter found, by the line it comes from (null: it isn't on, or hasn't read this meeting yet). */
     private val interpreted = MutableStateFlow<Map<String, List<Orchestrator.Proposal>>?>(null)
 
+    /** The interpreter's raw actions on its last reading, with the line ids it read (for the conversation export). */
+    private var interpreterRaw: Pair<List<String>, List<app.hearth.ai.interpret.MeetingReader.Found>>? = null
+
     /** Counts up each time the sentence model has read new sentences. */
     private val senseRead = MutableStateFlow(0)
 
@@ -791,6 +795,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
             if (open.isEmpty()) { interpreted.value = null; return@collectLatest }
             val c = ctx(ToolSource.UI)
             val found = withContext(Dispatchers.Default) { app.interpreting.read(open.map { it.text }, spokenDate(today())) } ?: return@collectLatest
+            interpreterRaw = open.map { it.id } to found
             interpreted.value = found.mapNotNull { f -> open.getOrNull(f.line)?.let { line -> app.orchestrator.proposalOf(f.action, line.text, c)?.let { line.id to it } } }
                 .groupBy({ it.first }, { it.second })
         }
@@ -829,6 +834,45 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         val key = lines.firstOrNull()?.id.orEmpty()
         val edited = proposals.mapIndexed { i, p -> changed["$key#$i"] ?: SuggestionEdit(p) }
         return HeardThought(lines, edited.map { it.proposal }, key, edited.indices.filter { edited[it].added }.toSet())
+    }
+
+    /**
+     * The conversation of [lines] with everything Hearth made of it, as JSON, to check how Luister mee understood a
+     * real meeting: the lines, the thoughts with their stage and the rules' conclusions, the sentence model's reading,
+     * the interpreter's raw actions and suggestions, and what the family changed. [save] gets a file name and the JSON.
+     */
+    fun exportConversation(lines: List<TranscriptLine>, save: (String, String) -> Unit) {
+        if (lines.isEmpty()) return
+        viewModelScope.launch {
+            val c = ctx(ToolSource.UI)
+            val people = members.value.map { it.name }
+            val json = withContext(Dispatchers.Default) {
+                val talks = app.orchestrator.listen(lines.map { it.text }, c, people, lines.map { it.createdAt }, sense())
+                // The interpreter only read this meeting's open lines: map its line numbers onto these lines.
+                val raw = interpreterRaw?.let { (ids, found) ->
+                    found.mapNotNull { f -> ids.getOrNull(f.line)?.let { id -> lines.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.let { it to f.action } } }
+                }
+                val family = edits.value.entries.groupBy({ it.key.substringBefore('#') }, { ConversationExport.Shown(it.value.proposal, it.value.added) })
+                ConversationExport.json(
+                    lines.map { ConversationExport.Line(it.id, it.text, it.createdAt, it.sorted) },
+                    talks,
+                    raw,
+                    interpreted.value,
+                    sense(),
+                    family,
+                    mapOf(
+                        "lang" to c.lang.name,
+                        "today" to c.today.toString(),
+                        "people" to people.joinToString(", "),
+                        "smartListening" to app.listening.state.value.toString(),
+                        "interpreter" to app.interpreting.state.value.toString(),
+                    ),
+                    kotlin.time.Instant.fromEpochMilliseconds(nowMillis()).toString(),
+                )
+            }
+            val day = lines.first().createdAt.let { kotlin.time.Instant.fromEpochMilliseconds(it).toString().take(10) }
+            save("hearth-gesprek-$day.json", json)
+        }
     }
 
     /** The family changed a suggestion in its sheet; with [now] it is added right away. */
