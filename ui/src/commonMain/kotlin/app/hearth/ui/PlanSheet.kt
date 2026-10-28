@@ -14,6 +14,8 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.rememberCoroutineScope
 import app.hearth.core.model.HabitReview
+import app.hearth.core.model.isHabit
+import app.hearth.core.model.lawTips
 import app.hearth.core.model.HabitTip
 import app.hearth.core.model.TipAction
 import app.hearth.ui.resources.small_step_hint
@@ -63,6 +65,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BacklogItem
 import app.hearth.core.model.Lang
@@ -178,7 +181,18 @@ fun PlanSheet(
     // A routine's set-up (moment, how often, days) folds away once it has a place in the day, so the sheet opens on
     // how it goes; a tip that points at it opens it again.
     var setUp by remember(item.id) { mutableStateOf(item.anchor == null && item.schedule == null) }
-    fun showSetUp(at: BringIntoViewRequester) { setUp = true; scope.launch { kotlinx.coroutines.delay(50); at.bringIntoView() } }
+    // A routine reads in parts: Nu (steps, set-up), Hoe loopt het (habits: the score) and Verbeteren (the four laws).
+    var tab by remember(item.id) { mutableStateOf(SheetTab.NOW) }
+    fun showSetUp(at: BringIntoViewRequester) { tab = SheetTab.NOW; setUp = true; scope.launch { kotlinx.coroutines.delay(80); at.bringIntoView() } }
+    fun showSteps() { tab = SheetTab.NOW; scope.launch { kotlinx.coroutines.delay(80); stepsAt.bringIntoView() } }
+    fun onTip(tip: HabitTip) = when (tip.action) {
+        TipAction.PAIR -> pairing = true
+        TipAction.SMALL_STEP -> smallStep = true
+        TipAction.MOMENT -> showSetUp(momentAt)
+        TipAction.DAYS -> showSetUp(daysAt)
+        TipAction.FEWER_STEPS, TipAction.ADD_STEP -> showSteps()
+        else -> actions.tip(tip)
+    }
     var removingStep by remember { mutableStateOf<BacklogItem?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var pickingTime by remember { mutableStateOf(false) }
@@ -216,7 +230,7 @@ fun PlanSheet(
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = MaterialTheme.colorScheme.surface) {
         Column(
-            Modifier.fillMaxWidth().widthIn(max = 760.dp).verticalScroll(rememberScrollState())
+            Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().widthIn(max = 760.dp).verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp).padding(bottom = 28.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -232,29 +246,18 @@ fun PlanSheet(
 
             when (kind) {
                 TaskKind.ROUTINE -> {
-                    // A habit first says how it goes, and only when it needs one, the one thing that would make it stick.
-                    review?.let { r ->
-                        HabitCoach(
-                            r, lang,
-                            onRate = actions.rate,
-                            onTip = { tip ->
-                                when (tip.action) {
-                                    TipAction.PAIR -> pairing = true
-                                    TipAction.SMALL_STEP -> smallStep = true
-                                    TipAction.MOMENT -> showSetUp(momentAt)
-                                    TipAction.DAYS -> showSetUp(daysAt)
-                                    TipAction.FEWER_STEPS, TipAction.ADD_STEP -> show(stepsAt)
-                                    else -> actions.tip(tip)
-                                }
-                            },
-                        )
-                        // What is in place to make it easier, small, each a tap to change.
-                        @OptIn(ExperimentalLayoutApi::class)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ChoiceChip(item.smallStep?.let { stringResource(Res.string.small_step_line, it) } ?: stringResource(Res.string.small_step_add), item.smallStep != null, { smallStep = true }, icon = HearthIcons.Stairs)
-                            ChoiceChip(item.pairing?.let { stringResource(Res.string.pairing_line, it) } ?: stringResource(Res.string.tip_pair), item.pairing != null, { pairing = true }, icon = HearthIcons.Smile)
+                    val tabs = listOfNotNull(SheetTab.NOW, SheetTab.HOW.takeIf { item.isHabit && review != null }, SheetTab.BETTER.takeIf { review != null })
+                    SheetTabs(tabs, tab) { tab = it }
+                    when (tab) {
+                        // How it goes: its score, how it moved, what was said, and only when it needs one, the one thing to try.
+                        SheetTab.HOW -> review?.let { HabitCoach(it, lang, onRate = actions.rate, onTip = ::onTip) }
+                        // The four laws, one card each: what is in place and one suggestion.
+                        SheetTab.BETTER -> review?.let { r ->
+                            LawCards(r.laws, lawTips(item, steps.size, lang), r.focus ?: r.tips.firstOrNull()?.law, Topic.RHYTHM.style(), lang, ::onTip)
                         }
+                        SheetTab.NOW -> {}
                     }
+                    if (tab == SheetTab.NOW) {
                     // Its steps, in order: a sequence for the evening or a checklist for the bag.
                     Text(stringResource(Res.string.routine_steps), style = MaterialTheme.typography.titleMedium, modifier = Modifier.bringIntoViewRequester(stepsAt))
                     // Numbered, with arrows to put them in the order the evening really goes.
@@ -324,6 +327,7 @@ fun PlanSheet(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         DayChips(::onPlannedDay, ::planDay)
                         if (item.plan == Plan.DAY) ChoiceChip(stringResource(Res.string.plan_unplanned), false, { choose(When.UNPLANNED) }, icon = HearthIcons.Inbox)
+                    }
                     }
                     }
                 }

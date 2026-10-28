@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -72,6 +73,11 @@ import app.hearth.core.model.topics
 import app.hearth.core.model.TopicGroup
 import app.hearth.core.model.title
 import app.hearth.ui.resources.Res
+import app.hearth.ui.resources.summary_empty
+import app.hearth.ui.resources.summary_other
+import app.hearth.ui.resources.summary_talk
+import app.hearth.ui.resources.summary_title
+import org.jetbrains.compose.resources.pluralStringResource
 import app.hearth.ui.resources.agree_empty
 import app.hearth.ui.resources.agree_hint
 import app.hearth.ui.resources.agree_later
@@ -112,6 +118,9 @@ fun ListenStage(
     listening: Boolean,
     partial: String,
     heard: List<HeardThought>,
+    /** Every thought of the meeting, for the summary by topic. */
+    all: List<HeardThought>,
+    wide: Boolean,
     settled: Boolean,
     hasLines: Boolean,
     lit: Set<Topic>,
@@ -158,22 +167,37 @@ fun ListenStage(
             Spacer(Modifier.size(14.dp))
             TopicRail(lit)
         }
-        if (listening && partial.isNotBlank()) {
-            Spacer(Modifier.size(14.dp))
-            Text(
-                "“$partial”",
-                style = MaterialTheme.typography.headlineSmall,
-                fontStyle = FontStyle.Italic,
-                color = ink.ink,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (heard.isNotEmpty()) {
-            Spacer(Modifier.size(12.dp))
-            heard.forEachIndexed { i, thought ->
-                ThoughtRow(thought, newest = i == 0, waiting = i == 0 && !settled, today = today, lang = lang, onOpen = { n -> opened = thought to n })
+        // What is said now, and beside it (below it on a phone) what the meeting is about so far, by topic.
+        val talk = @Composable { m: Modifier ->
+            Column(m) {
+                if (listening && partial.isNotBlank()) {
+                    Spacer(Modifier.size(14.dp))
+                    Text(
+                        "“$partial”",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontStyle = FontStyle.Italic,
+                        color = ink.ink,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (heard.isNotEmpty()) {
+                    Spacer(Modifier.size(12.dp))
+                    heard.forEachIndexed { i, thought ->
+                        ThoughtRow(thought, newest = i == 0, waiting = i == 0 && !settled, today = today, lang = lang, onOpen = { n -> opened = thought to n })
+                    }
+                }
             }
+        }
+        val summary = @Composable { m: Modifier -> MeetingSummary(all, today, lang, m, onOpen = { t, n -> opened = t to n }) }
+        if (all.isNotEmpty() && wide) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 4.dp)) {
+                talk(Modifier.weight(1.5f))
+                summary(Modifier.weight(1f).padding(top = 12.dp))
+            }
+        } else {
+            talk(Modifier.fillMaxWidth())
+            if (all.isNotEmpty()) summary(Modifier.fillMaxWidth().padding(top = 12.dp))
         }
         if (heard.isNotEmpty() || hasLines || listening) {
             Spacer(Modifier.size(8.dp))
@@ -193,6 +217,42 @@ fun ListenStage(
                 onAddNow = if (n in t.added) null else { c -> onSuggestion(t, n, c, true) },
             ) { opened = null }
         }
+    }
+}
+
+/**
+ * "Waar het over ging": the meeting so far by topic, in the order of every screen. Each topic that came up shows what
+ * was concluded there (tap to change it, as on the stage); what went well has its own group. Talk without a conclusion
+ * is counted, never listed.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MeetingSummary(all: List<HeardThought>, today: LocalDate, lang: Lang, modifier: Modifier, onOpen: (HeardThought, Int) -> Unit) {
+    // Oldest first, so the list reads the way the meeting went.
+    val found = all.reversed().flatMap { t -> t.proposals.mapIndexed { n, p -> Triple(t, n, p) } }
+    val byTopic = found.groupBy { it.third.topic }
+    val talk = all.count { it.proposals.isEmpty() }
+    Column(
+        modifier.clip(RoundedCornerShape(22.dp)).background(MaterialTheme.colorScheme.surface).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(stringResource(Res.string.summary_title), style = MaterialTheme.typography.titleMedium)
+        if (found.isEmpty()) Text(stringResource(Res.string.summary_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        (Topic.entries.map { it as Topic? } + listOf(null)).forEach { topic ->
+            val mine = byTopic[topic] ?: return@forEach
+            val s = topic?.style() ?: AccentStyle
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(topic?.icon() ?: HearthIcons.Heart, null, tint = s.ink, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(topic?.title(lang) ?: stringResource(Res.string.summary_other), style = MaterialTheme.typography.labelLarge, color = s.ink)
+                }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    mine.forEach { (t, n, p) -> ConclusionPill(p, today, lang, added = n in t.added, onClick = { onOpen(t, n) }) }
+                }
+            }
+        }
+        if (talk > 0) Text(pluralStringResource(Res.plurals.summary_talk, talk, talk), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
     }
 }
 
@@ -406,7 +466,7 @@ private fun TopicTile(topic: Topic, glance: String, selected: Boolean, lit: Bool
 @Composable
 fun AgreeSheet(lines: List<String>, unsorted: Boolean, onSort: () -> Unit, onAgree: () -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(0.88f).navigationBarsPadding().padding(horizontal = 24.dp)) {
+        Column(Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().fillMaxHeight(0.88f).navigationBarsPadding().padding(horizontal = 24.dp)) {
             Text(stringResource(Res.string.agree_title), style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(Res.string.agree_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.size(14.dp))

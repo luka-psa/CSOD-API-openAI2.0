@@ -49,6 +49,8 @@ import app.hearth.core.model.dayLabel
 import app.hearth.core.model.dayLoad
 import app.hearth.core.model.dontForget
 import app.hearth.core.model.dueRoutines
+import app.hearth.core.model.isRoutine
+import app.hearth.core.model.tickedOn
 import app.hearth.core.model.isWeekend
 import app.hearth.core.model.plannedOn
 import app.hearth.core.model.plannedToday
@@ -138,7 +140,8 @@ fun TodayScreen(
     val routineSteps = steps.filter { it.isRoutineStep }.groupBy { it.parentId!! }
     val urgent = dontForget(backlog, today)
     val planned = plannedToday(backlog, today)
-    val due = dueRoutines(backlog, today)
+    // Ticked off today, they stay (ticked, at the end): done work shows, and a tick by mistake is one tap to take back.
+    val due = dueRoutines(backlog, today) + backlog.filter { it.isRoutine() && it.intervalDays != null && it.tickedOn(today) }
     // Routines with a moment, in the order the day goes; chores without one belong to the household.
     val rhythm = due.filter { it.topic == Topic.RHYTHM }.sortedBy { it.anchor?.ordinal ?: Int.MAX_VALUE }
     val chores = due.filter { it.topic == Topic.HOME }

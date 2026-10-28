@@ -73,6 +73,12 @@ data class BoardItem(
     val closedAt: Long? = null,
     /** Friction or idea: what it needs, once chosen; it stays open until that's done. */
     val direction: FrictionDirection? = null,
+    /** House rule, made obvious: the moment of the day it belongs to ("rond het eten"). */
+    val anchor: Anchor? = null,
+    /** House rule, made attractive: something nice with it. */
+    val pairing: String? = null,
+    /** House rule, made easy: the small version to start with. */
+    val smallStep: String? = null,
 ) {
     val isOpen: Boolean get() = status == BoardStatus.OPEN
     /** Frictions and ideas are both working points for the weekoverleg. */

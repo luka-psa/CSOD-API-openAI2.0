@@ -151,6 +151,16 @@ interface BacklogDao {
     @Query("UPDATE backlog_item SET lastDone = :day, doneAt = :now, plan = 'UNPLANNED', plannedDate = NULL, finishBy = 0, updatedAt = :now WHERE id IN (:ids)")
     suspend fun logRoutine(ids: List<String>, day: String, now: Long)
 
+    /** Taking back today's tick: its log goes, and it was last done on the day before that ([day] may be null). */
+    @Query("UPDATE backlog_item SET lastDone = :day, doneAt = NULL, updatedAt = :now WHERE id = :id")
+    suspend fun setLastDone(id: String, day: String?, now: Long)
+
+    @Query("DELETE FROM routine_log WHERE itemId IN (:ids) AND day = :day")
+    suspend fun deleteLogs(ids: List<String>, day: String)
+
+    @Query("SELECT MAX(day) FROM routine_log WHERE itemId = :id")
+    suspend fun lastLogDay(id: String): String?
+
     @Query("UPDATE backlog_item SET intervalDays = :days, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setInterval(ids: List<String>, days: Int?, now: Long)
 
@@ -286,6 +296,16 @@ class BacklogRepository(
             dao.logRoutine(ids, day, now)
             // Kept so Hearth can see which habits run easily and which ask for attention.
             ids.forEach { dao.insertLog(RoutineLogEntity(newId(), it, day, now, now)) }
+        }
+    }
+
+    /** Takes back a tick on [day] (ticked by mistake): it counts as done on the time before, or never. */
+    suspend fun unlogRoutine(ids: List<String>, day: String) {
+        if (ids.isEmpty()) return
+        val now = clock()
+        db.withWriteTransaction {
+            dao.deleteLogs(ids, day)
+            ids.forEach { dao.setLastDone(it, dao.lastLogDay(it), now) }
         }
     }
 

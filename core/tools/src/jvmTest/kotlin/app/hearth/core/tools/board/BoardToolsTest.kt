@@ -145,11 +145,53 @@ class BoardToolsTest {
         assertEquals("“Elke maand een avondje uit” · volgende stap: Oppas vragen. Staat bij volgende.", step.summary)
         assertEquals(listOf("Oppas vragen"), backlog.openItems().filter { it.plan == Plan.NEXT }.map { it.text })
 
-        assertEquals("Doel bereikt: “10 km lopen”. Proficiat!", tools.registry.run(tools.achieveGoal, BoardRefArgs(texts = listOf("10 km")), nl).summary)
+        assertEquals("Doel bereikt: “10 km lopen”. Proficiat!", tools.registry.run(tools.achieveGoal, AchieveGoalArgs(texts = listOf("10 km")), nl).summary)
         assertEquals(
             "Doelen:\n- Elke maand een avondje uit · volgende stap: Oppas vragen",
             tools.registry.run(tools.listBoard, ListBoardArgs(BoardKind.GOAL), nl).summary,
         )
+    }
+
+    @Test
+    fun `a goal reached by mistake opens again, and keeps its place in the week`() = runTest {
+        tools.registry.run(tools.addGoal, AddGoalArgs("Meer bewegen"), nl)
+        tools.registry.run(tools.setGoalStep, SetGoalStepArgs(goal = "bewegen", step = "Wandelen", how = GoalPlanKind.HABIT, anchor = Anchor.EVENING), nl)
+        val linked = board.allItems().single().linkedId
+        tools.registry.run(tools.achieveGoal, AchieveGoalArgs(texts = listOf("bewegen")), nl)
+        assertEquals(BoardStatus.ACHIEVED, board.allItems().single().status)
+        assertEquals(linked, board.allItems().single().linkedId)
+        val goal = board.allItems().single()
+        assertEquals("Terug open: “Meer bewegen”", tools.registry.run(tools.achieveGoal, AchieveGoalArgs(itemIds = listOf(goal.id), reached = false), nl).summary)
+        assertTrue(board.allItems().single().isOpen)
+    }
+
+    @Test
+    fun `a rule, friction or goal can be said in other words`() = runTest {
+        tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Schoenen in de gang"), nl)
+        assertEquals("Aangepast: “Schoenen in het rek”", tools.registry.run(tools.editBoardItem, EditBoardItemArgs(text = "schoenen", newText = "schoenen in het rek"), nl).summary)
+        assertEquals(listOf("Schoenen in het rek"), board.allItems().map { it.text })
+    }
+
+    @Test
+    fun `a house rule gets help along the four laws, and the coach suggests one thing`() = runTest {
+        tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Tafel samen afruimen"), nl)
+        assertEquals(
+            "“Tafel samen afruimen”: rond het eten, begin klein: alleen je eigen bord",
+            tools.registry.run(tools.setRuleHelp, SetRuleHelpArgs(text = "tafel", anchor = Anchor.DINNER, smallStep = "Alleen je eigen bord"), nl).summary,
+        )
+        // Not given: unchanged; empty: removed.
+        tools.registry.run(tools.setRuleHelp, SetRuleHelpArgs(text = "tafel", pairing = "met muziek"), nl)
+        val rule = board.allItems().single()
+        assertEquals(Triple(Anchor.DINNER, "met muziek", "alleen je eigen bord"), Triple(rule.anchor, rule.pairing, rule.smallStep))
+        tools.registry.run(tools.setRuleHelp, SetRuleHelpArgs(itemId = rule.id, smallStep = "", noMoment = true), nl)
+        assertEquals(null, board.allItems().single().smallStep)
+        assertEquals(null, board.allItems().single().anchor)
+
+        // Too much last meeting, and someone says there's no time: start small.
+        tools.registry.run(tools.checkHouseRule, app.hearth.core.tools.week.CheckHouseRuleArgs(rule = "tafel", score = 1), nl)
+        tools.registry.run(tools.logFriction, LogFrictionArgs("Geen tijd om de tafel af te ruimen"), nl)
+        val review = tools.registry.run(tools.reviewRule, ReviewRuleArgs(), nl)
+        assertEquals("“Tafel samen afruimen”: Te zwaar: maak het kleiner, niet harder. Wat is de kleine versie om mee te beginnen?", review.summary)
     }
 
     @Test

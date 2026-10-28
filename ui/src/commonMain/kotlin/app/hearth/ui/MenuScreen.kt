@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -419,7 +420,7 @@ private fun RecipeSheet(
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.fillMaxWidth().widthIn(max = 900.dp).verticalScroll(rememberScrollState()).padding(horizontal = 28.dp).padding(bottom = 28.dp).navigationBarsPadding()) {
+        Column(Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().widthIn(max = 900.dp).verticalScroll(rememberScrollState()).padding(horizontal = 28.dp).padding(bottom = 28.dp).navigationBarsPadding()) {
             if (recipe.hasPhoto) {
                 RecipeThumb(recipe, recipe.name, photoVersion, loadPhoto, Modifier.fillMaxWidth().heightIn(max = 320.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(24.dp)))
                 Spacer(Modifier.size(16.dp))

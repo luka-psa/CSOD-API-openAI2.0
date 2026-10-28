@@ -159,6 +159,9 @@ interface MeetingDao {
     @Query("SELECT * FROM huddle ORDER BY heldOn DESC, createdAt DESC LIMIT :limit")
     fun observeHuddles(limit: Int): Flow<List<HuddleEntity>>
 
+    @Query("UPDATE huddle SET summary = :summary, updatedAt = :now WHERE id = :id")
+    suspend fun setSummary(id: String, summary: String, now: Long)
+
     @Query("SELECT * FROM huddle ORDER BY heldOn DESC, createdAt DESC LIMIT :limit")
     suspend fun huddles(limit: Int): List<HuddleEntity>
 
@@ -183,6 +186,9 @@ class MeetingRepository(
 
     suspend fun currentWins(): List<Win> = dao.currentReflections().filter { it.kind == ReflectionEntity.WIN }.map { it.toWin() }
     suspend fun currentTranscript(): List<TranscriptLine> = dao.currentTranscript().map { it.toModel() }
+    /** A meeting's summary, corrected afterwards (a mistake nobody had time to check at Klaar). */
+    suspend fun setSummary(id: String, summary: String) = dao.setSummary(id, summary, clock())
+
     suspend fun recentHuddles(limit: Int = 12): List<Huddle> = dao.huddles(limit).map { it.toModel() }
 
     suspend fun addWin(text: String, memberId: String?, topic: Topic? = null): Win {
@@ -216,6 +222,9 @@ class MeetingRepository(
 
     /** How each house rule goes now, by rule id: its last score. */
     suspend fun ruleScores(): Map<String, Int> = dao.allRuleChecks().associate { it.text to it.toRuleCheck().score }
+
+    /** One house rule's score per meeting, oldest first. */
+    suspend fun ruleHistory(ruleId: String): List<Int> = dao.allRuleChecks().filter { it.text == ruleId }.map { it.toRuleCheck().score }
 
     suspend fun habitHistory(itemId: String): List<Int> = dao.habitChecksOf(itemId).map { ReflectionEntity.scoreOf(it.value) }
     suspend fun currentWeek(): WeekRating? = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek()

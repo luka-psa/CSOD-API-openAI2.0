@@ -144,6 +144,9 @@ class HearthTools(
     val markFriction = app.hearth.core.tools.board.MarkFrictionTool(board)
     val setGoalStep = SetGoalStepTool(board, backlog, addRoutine)
     val achieveGoal = AchieveGoalTool(board)
+    val editBoardItem = app.hearth.core.tools.board.EditBoardItemTool(board)
+    val setRuleHelp = app.hearth.core.tools.board.SetRuleHelpTool(board)
+    val reviewRule = app.hearth.core.tools.board.ReviewRuleTool(board, meeting)
     val removeBoardItem = RemoveBoardItemTool(board)
 
     val planMeal = PlanMealTool(week, addShoppingItem)
@@ -162,6 +165,7 @@ class HearthTools(
     val fixTranscriptLine = FixTranscriptLineTool(meeting)
     val readConversation = ReadConversationTool(meeting)
     val listHuddles = ListHuddlesTool(meeting)
+    val editHuddleSummary = app.hearth.core.tools.week.EditHuddleSummaryTool(meeting)
     val saveRecipe = SaveRecipeTool(week)
     val importRecipe = app.hearth.core.tools.week.ImportRecipeTool(week, pages)
     val listRecipes = ListRecipesTool(week)
@@ -194,9 +198,9 @@ class HearthTools(
             setRoutineInterval, setRoutineSchedule, markUrgent, waitForReply, moveBacklogItem, addProjectStep, rateHabit, setSmallStep, setAnchor, addRoutine, moveStep,
             setHabitPairing, reviewHabit,
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, markFriction, setGoalStep,
-            achieveGoal, removeBoardItem,
+            achieveGoal, editBoardItem, setRuleHelp, reviewRule, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
-            addWin, removeWin, rateWeek, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, readConversation, clearTranscript, listHuddles, addIdea,
+            addWin, removeWin, rateWeek, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, readConversation, clearTranscript, listHuddles, editHuddleSummary, addIdea,
             saveRecipe, importRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples, setLanguage, setSmartListening, setInterpreter,
         ) + listOfNotNull(backupNow, restoreBackup, syncNow, startSync, shareSync, joinSync, stopSync),

@@ -31,7 +31,7 @@ actual fun rememberTranscriber(
             available = transcriptionSupported(),
             start = {
                 active(true)
-                startTranscribing(lang, words.joinToString(SEPARATOR), { guesses -> Spoken.pick(guesses.split(SEPARATOR), words)?.let(line) }, { partial(it) }) { active(false) }
+                startTranscribing(lang, words.joinToString(SEPARATOR), { guesses -> Spoken.pick(guesses.split(SEPARATOR), words, dutch = lang.startsWith("nl"))?.let(line) }, { partial(it) }) { active(false) }
             },
             stop = { stopTranscribing() },
         )

@@ -72,6 +72,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
@@ -247,7 +248,7 @@ fun ListenPill(lines: Int, partial: String, onBack: () -> Unit, onStop: () -> Un
 fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> Unit)?, onDismiss: () -> Unit) {
     var clearing by remember { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(0.85f).navigationBarsPadding().padding(horizontal = 28.dp)) {
+        Column(Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().fillMaxHeight(0.85f).navigationBarsPadding().padding(horizontal = 28.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
                 if (onClear != null && lines.isNotEmpty()) TextButton(onClick = { clearing = true }) { Text(stringResource(Res.string.transcript_clear)) }
@@ -289,7 +290,7 @@ fun VoorstelSheet(
 ) {
     val count = rows.count { it.checked }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(0.9f).navigationBarsPadding().padding(horizontal = 24.dp)) {
+        Column(Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().fillMaxHeight(0.9f).navigationBarsPadding().padding(horizontal = 24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(Res.string.voorstel_title), style = MaterialTheme.typography.headlineSmall)
@@ -483,91 +484,12 @@ fun Place.icon() = when (this) {
 class TopicLookBack(val done: Int = 0, val suggestions: List<String> = emptyList())
 
 /**
- * Wat ging goed, walked through together: every topic as a small tile in the order of every screen (Doen & eten, then
- * Ritme & afspraken), with what got done there. Tap one to name what went well there: Hearth offers what it saw (done
- * work, a routine that runs, a friction settled) as one-tap wins, or say it in your own words. The wins below carry
- * their topic's icon and colour; a win in general still fits at the end. X asks first.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun WinsSection(
-    wins: List<Win>,
-    members: List<Member>,
-    perTopic: Map<Topic, TopicLookBack>,
-    lang: Lang,
-    onAdd: (String, Topic?) -> Unit,
-    onRemove: (Win) -> Unit,
-) {
-    var removing by remember { mutableStateOf<Win?>(null) }
-    var opened by remember { mutableStateOf<Topic?>(null) }
-    val byId = members.associateBy { it.id }
-    GroupTitle(stringResource(Res.string.wins_title))
-    Text(stringResource(Res.string.wins_walk_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 6.dp))
-
-    TopicGroup.entries.forEach { group ->
-        Text(group.title(lang), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, top = 4.dp, bottom = 4.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 10.dp, bottom = 6.dp)) {
-            group.topics.forEach { topic ->
-                WinTile(topic, perTopic[topic] ?: TopicLookBack(), wins.count { it.topic == topic }, lang) { opened = topic }
-            }
-        }
-    }
-
-    // What was named, in the order of the topics; the general ones first.
-    wins.sortedBy { it.topic?.ordinal ?: -1 }.forEach { win ->
-        val s = win.topic?.style() ?: AccentStyle
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 10.dp)) {
-            Icon(win.topic?.icon() ?: HearthIcons.Heart, win.topic?.title(lang), tint = s.ink, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(win.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            win.memberId?.let(byId::get)?.let { MemberDot(it) }
-            DeleteButton({ removing = win })
-        }
-    }
-    AddRow(stringResource(Res.string.wins_hint), { onAdd(it, null) }, compact = true)
-
-    opened?.let { topic ->
-        WinSheet(topic, perTopic[topic] ?: TopicLookBack(), wins.filter { it.topic == topic }, lang, onAdd = { onAdd(it, topic) }, onRemove = { removing = it }) { opened = null }
-    }
-    removing?.let { w -> ConfirmDialog(stringResource(Res.string.win_remove), w.text, onYes = { onRemove(w) }) { removing = null } }
-}
-
-/** A topic in Wat ging goed: its icon and name, then "3 gedaan · 1 genoteerd"; tinted once something is named. */
-@Composable
-private fun WinTile(topic: Topic, look: TopicLookBack, named: Int, lang: Lang, onClick: () -> Unit) {
-    val s = topic.style()
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.widthIn(min = 150.dp).clip(RoundedCornerShape(18.dp))
-            .background(if (named > 0) s.tint else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
-    ) {
-        Box(Modifier.size(30.dp).clip(CircleShape).background(if (named > 0) MaterialTheme.colorScheme.surface else s.tint), contentAlignment = Alignment.Center) {
-            Icon(if (named > 0) HearthIcons.Check else topic.icon(), null, tint = s.ink, modifier = Modifier.size(16.dp))
-        }
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text(topic.title(lang), style = MaterialTheme.typography.labelLarge, maxLines = 1)
-            Text(
-                listOfNotNull(
-                    look.done.takeIf { it > 0 }?.let { stringResource(Res.string.wins_done_count, it) },
-                    named.takeIf { it > 0 }?.let { stringResource(Res.string.wins_named_count, it) },
-                ).joinToString("  ·  ").ifEmpty { stringResource(Res.string.wins_tap) },
-                style = MaterialTheme.typography.labelSmall,
-                color = if (named > 0) s.ink else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-/**
  * "Wat ging goed bij Huishouden?": what is already named there (X asks first), Hearth's suggestions as one-tap wins,
  * and a line to say it in your own words. Stays open to name several; typed text is never lost by a swipe.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun WinSheet(topic: Topic, look: TopicLookBack, named: List<Win>, lang: Lang, onAdd: (String) -> Unit, onRemove: (Win) -> Unit, onDismiss: () -> Unit) {
+internal fun WinSheet(topic: Topic, look: TopicLookBack, named: List<Win>, lang: Lang, onAdd: (String) -> Unit, onRemove: (Win) -> Unit, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf("") }
     val s = topic.style()
     FormSheet(dirty = text.isNotBlank(), onDismiss = onDismiss) {
@@ -615,167 +537,36 @@ private fun WinSheet(topic: Topic, look: TopicLookBack, named: List<Win>, lang: 
 /** How the week went, 0 to 5: Hearth's guess has a ring; "Geen akkoord" is an answer too. Can be switched off. */
 class WeekWeather(val on: Boolean, val rating: WeekRating?, val suggested: Int, val onRate: (Int?, Int) -> Unit, val onSwitch: (Boolean) -> Unit)
 
-/**
- * Terugblik: "Hoe liep het?" The week, every routine (in the order of the day) and every house rule on one scale from
- * 0 (komt er niet van) to 5 (loopt vanzelf), decided together, never who. Each line shows how it went before, as small
- * bars, so the family sees it move. Below 4, or when it was talked about: one thing to try, right there. A house rule
- * that is too much (0–1) two meetings in a row comes back as a friction.
- */
+/** "De week": Hearth's guess as a ring on 0 to 5, agreed together; "Geen akkoord" is an answer too. Can be switched off. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ReviewSection(
-    routines: List<BacklogItem>,
-    rules: List<BoardItem>,
-    checks: List<RuleCheck>,
-    lang: Lang,
-    onRateRoutine: (BacklogItem, Int) -> Unit,
-    onRateRule: (BoardItem, Int) -> Unit,
-    onSmallStep: (BacklogItem, String) -> Unit,
-    week: WeekWeather? = null,
-    coach: HabitCoaching? = null,
-    /** Each house rule's score per meeting, oldest first, by rule id. */
-    ruleHistory: Map<String, List<Int>> = emptyMap(),
-) {
-    var asking by remember { mutableStateOf<BacklogItem?>(null) }
-    var pairing by remember { mutableStateOf<BacklogItem?>(null) }
-    GroupTitle(stringResource(Res.string.review_title))
-    Text(stringResource(Res.string.review_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, bottom = 4.dp))
-
-    // The word for a score, in its weather's colour, next to the scale.
-    @Composable
-    fun Said(score: Int?, modifier: Modifier) = score?.let {
-        Text(scoreWord(it, lang), style = MaterialTheme.typography.labelMedium, color = easeColors(easeOf(it)).first, modifier = modifier)
+fun WeekWeatherRow(week: WeekWeather, lang: Lang) {
+    if (!week.on) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp)) {
+            Text(stringResource(Res.string.week_off), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            TextButton(onClick = { week.onSwitch(true) }) { Text(stringResource(Res.string.week_switch_on)) }
+        }
+        return
     }
-
-    if (week != null) {
-        if (week.on) {
-            val rating = week.rating
-            val score = rating?.score
-            Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 10.dp)) {
-                Text(stringResource(Res.string.week_title), style = MaterialTheme.typography.titleSmall)
-                Text(stringResource(Res.string.week_hint), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                FlowRow(verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                    ScoreScale(score, { week.onRate(it, week.suggested) }, guess = week.suggested)
-                    val status = when {
-                        rating == null -> stringResource(Res.string.week_guess, weekWord(week.suggested, lang))
-                        score == null -> stringResource(Res.string.week_neutral)
-                        else -> stringResource(Res.string.week_agreed, weekWord(score, lang))
-                    }
-                    Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterVertically).padding(horizontal = 6.dp))
-                    if (rating == null) TextButton(onClick = { week.onRate(week.suggested, week.suggested) }) { Text(stringResource(Res.string.week_ok)) }
-                    if (rating == null || score != null) TextButton(onClick = { week.onRate(null, week.suggested) }) { Text(stringResource(Res.string.week_no_agreement)) }
-                }
+    val rating = week.rating
+    val score = rating?.score
+    Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 6.dp)) {
+        Text(stringResource(Res.string.week_title), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(Res.string.week_hint), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+            ScoreScale(score, { week.onRate(it, week.suggested) }, guess = week.suggested)
+            val status = when {
+                rating == null -> stringResource(Res.string.week_guess, weekWord(week.suggested, lang))
+                score == null -> stringResource(Res.string.week_neutral)
+                else -> stringResource(Res.string.week_agreed, weekWord(score, lang))
             }
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp)) {
-                Text(stringResource(Res.string.week_off), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                TextButton(onClick = { week.onSwitch(true) }) { Text(stringResource(Res.string.week_switch_on)) }
-            }
+            Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterVertically).padding(horizontal = 6.dp))
+            if (rating == null) TextButton(onClick = { week.onRate(week.suggested, week.suggested) }) { Text(stringResource(Res.string.week_ok)) }
+            if (rating == null || score != null) TextButton(onClick = { week.onRate(null, week.suggested) }) { Text(stringResource(Res.string.week_no_agreement)) }
+            TextButton(onClick = { week.onSwitch(false) }) { Text(stringResource(Res.string.week_switch_off), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
-
-    if (routines.isEmpty() && rules.isEmpty()) {
-        Text(stringResource(Res.string.review_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, top = 4.dp))
-    }
-
-    @Composable
-    fun Heading(topic: Topic) = Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp, top = 10.dp, bottom = 2.dp)) {
-        Icon(topic.icon(), null, tint = topic.style().ink, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(topic.title(lang), style = MaterialTheme.typography.labelLarge, color = topic.style().ink)
-    }
-
-    // One line to rate: its name with its badge (this meeting's score, or last time's), the scale with last time as a
-    // ring, and the earlier meetings as small bars beside it.
-    @Composable
-    fun Rated(name: String, detail: String?, highlighted: Boolean, last: Int?, now: Int?, before: List<Int>, onRate: (Int) -> Unit, below: @Composable () -> Unit = {}) =
-        Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 4.dp, bottom = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f, fill = false))
-                (now ?: last)?.let { Spacer(Modifier.width(8.dp)); ScoreBadge(it) }
-            }
-            detail?.let {
-                Text(it, style = MaterialTheme.typography.labelMedium, color = if (highlighted) Topic.RHYTHM.style().ink else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 4.dp)) {
-                ScoreScale(now, onRate, guess = last)
-                Said(now, Modifier.align(Alignment.CenterVertically))
-                if (before.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.align(Alignment.CenterVertically).padding(start = 4.dp)) {
-                        Text(stringResource(Res.string.coach_before), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        ScoreTrail(before.takeLast(6), height = 18.dp)
-                    }
-                }
-            }
-            below()
-        }
-
-    if (routines.isNotEmpty()) {
-        Heading(Topic.RHYTHM)
-        routines.forEach { r ->
-            val review = coach?.reviews?.get(r.id)
-            val now = coach?.checks?.get(r.id)
-            val history = review?.ratings.orEmpty()
-            Rated(
-                r.text,
-                listOfNotNull(
-                    r.anchor?.title(lang),
-                    r.pairing?.let { stringResource(Res.string.pairing_line, it) },
-                    r.smallStep?.let { stringResource(Res.string.small_step_line, it) },
-                ).joinToString("  ·  ").ifEmpty { stringResource(Res.string.anchor_none) },
-                highlighted = r.smallStep != null || r.pairing != null,
-                last = (if (now != null) history.dropLast(1) else history).lastOrNull() ?: r.scoreNow.takeIf { now == null },
-                now = if (coach == null) r.scoreNow else now,
-                before = if (now != null) history.dropLast(1) else history,
-                onRate = { onRateRoutine(r, it) },
-            ) {
-                if (coach == null) {
-                    if (r.scoreNow?.let { it < 4 } == true) TextButton(onClick = { asking = r }) { Text(stringResource(Res.string.small_step_add)) }
-                    return@Rated
-                }
-                review?.frictions?.lastOrNull()?.let {
-                    Text(stringResource(Res.string.coach_said, "“$it”"), style = MaterialTheme.typography.bodySmall, color = Topic.FRICTION.style().ink, modifier = Modifier.padding(top = 2.dp))
-                }
-                // One thing to try, when it's too much, takes effort, was talked about, or is ready to grow.
-                review?.tips?.firstOrNull()?.takeIf { review.needsChange }?.let { tip ->
-                    CoachTip(tip, lang, onClick = {
-                        when {
-                            tip.action.oneTap -> coach.onTip(r, tip)
-                            tip.action == TipAction.SMALL_STEP -> asking = r
-                            tip.action == TipAction.PAIR -> pairing = r
-                            else -> coach.onOpen(r)
-                        }
-                    }, modifier = Modifier.padding(top = 6.dp, end = 4.dp))
-                }
-            }
-        }
-    }
-    if (rules.isNotEmpty()) {
-        Heading(Topic.RULES)
-        rules.forEach { rule ->
-            val now = checks.firstOrNull { it.ruleId == rule.id }?.score
-            val history = ruleHistory[rule.id].orEmpty().let { if (now != null) it.dropLast(1) else it }
-            Rated(rule.text, null, false, history.lastOrNull(), now, history, onRate = { onRateRule(rule, it) })
-        }
-    }
-    if (week?.on == true) {
-        TextButton(onClick = { week.onSwitch(false) }) { Text(stringResource(Res.string.week_switch_off), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-    }
-    asking?.let { h ->
-        TextDialog(stringResource(Res.string.small_step_title), stringResource(Res.string.small_step_hint), onDone = { t, _ -> onSmallStep(h, t) }) { asking = null }
-    }
-    pairing?.let { h -> PairingDialog(h.pairing, { coach?.onPairing?.invoke(h, it) }) { pairing = null } }
 }
-
-/** The habit coach in the Terugblik: this meeting's score per habit, the coach per habit, and what its tips do. */
-class HabitCoaching(
-    val checks: Map<String, Int>,
-    val reviews: Map<String, HabitReview>,
-    val onTip: (BacklogItem, HabitTip) -> Unit,
-    val onPairing: (BacklogItem, String) -> Unit,
-    /** Tips that point at the routine's moment, days or steps open its sheet. */
-    val onOpen: (BacklogItem) -> Unit,
-)
 
 /** Chores that slip and tasks that keep being postponed: smaller, easier or less often. */
 @OptIn(ExperimentalLayoutApi::class)

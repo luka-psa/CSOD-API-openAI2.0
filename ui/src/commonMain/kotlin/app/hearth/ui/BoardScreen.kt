@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -43,6 +44,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.hearth.core.model.BoardItem
+import app.hearth.core.model.dayLabel
+import app.hearth.core.model.title
+import app.hearth.ui.resources.board_tap_hint
+import app.hearth.ui.resources.pairing_line
+import app.hearth.ui.resources.small_step_line
 import kotlinx.datetime.LocalDate
 import app.hearth.core.model.isRoutine
 import app.hearth.core.model.Ease
@@ -115,16 +121,35 @@ class BoardCallbacks(
     val rateRule: (BoardItem, Int) -> Unit,
     val achieveGoal: (BoardItem) -> Unit,
     val delete: (BoardItem) -> Unit,
+    val rename: (BoardItem, String) -> Unit = { _, _ -> },
+    val ruleHelp: (BoardItem, RuleHelp) -> Unit = { _, _ -> },
+    val reopenGoal: (BoardItem) -> Unit = {},
+    /** Says something in Wat ging goed, under its topic. */
+    val addWin: (String, Topic) -> Unit = { _, _ -> },
 )
 
 /** Who lives here, then three columns: Huisregels · Frictie & ideeën · Doelen. [routines] are the ones a friction can change. */
 @Composable
-fun BoardScreen(items: List<BoardItem>, members: List<Member>, backlog: List<BacklogItem>, ruleScores: Map<String, Int>, today: LocalDate, wide: Boolean, cb: BoardCallbacks) {
+fun BoardScreen(
+    items: List<BoardItem>,
+    members: List<Member>,
+    backlog: List<BacklogItem>,
+    ruleScores: Map<String, Int>,
+    today: LocalDate,
+    wide: Boolean,
+    cb: BoardCallbacks,
+    /** The coach per house rule, by rule id. */
+    ruleReviews: Map<String, app.hearth.core.model.HabitReview> = emptyMap(),
+) {
     val routines = backlog.filter { it.isRoutine() && !it.done }
     val byId = backlog.associateBy { it.id }
     var deleting by remember { mutableStateOf<BoardItem?>(null) }
     var removing by remember { mutableStateOf<Member?>(null) }
     var asking by remember { mutableStateOf<Ask?>(null) }
+    // The item whose sheet is open (by id, so it follows changes), and a goal just reached.
+    var opened by remember { mutableStateOf<String?>(null) }
+    var reached by remember { mutableStateOf<BoardItem?>(null) }
+    val achieve = { goal: BoardItem -> cb.achieveGoal(goal); reached = goal }
 
     val rules = items.filter { it.kind == BoardKind.RULE && it.isOpen }
     val frictions = items.filter { it.isWorkingPoint }
@@ -137,9 +162,10 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, backlog: List<Bac
         MembersRow(members, onAdd = { asking = Ask.Member }, onRemove = { removing = it })
         Spacer(Modifier.size(18.dp))
 
-        val rulesCard = @Composable { m: Modifier -> RulesCard(rules, ruleScores, m, cb, onOpen = { deleting = it }) }
-        val frictionsCard = @Composable { m: Modifier -> FrictionsCard(frictions, members, routines, m, cb, onOpen = { deleting = it }) }
-        val goalsCard = @Composable { m: Modifier -> GoalsCard(goals, members, byId, today, m, cb, onAsk = { asking = it }, onOpen = { deleting = it }) }
+        Text(stringResource(Res.string.board_tap_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 6.dp, bottom = 10.dp))
+        val rulesCard = @Composable { m: Modifier -> RulesCard(rules, ruleScores, m, cb, onOpen = { opened = it.id }) }
+        val frictionsCard = @Composable { m: Modifier -> FrictionsCard(frictions, members, routines, m, cb, onDelete = { deleting = it }, onOpen = { opened = it.id }) }
+        val goalsCard = @Composable { m: Modifier -> GoalsCard(goals, members, byId, today, m, cb, onAsk = { asking = it }, onDelete = { deleting = it }, onOpen = { opened = it.id }, onAchieve = achieve) }
         if (wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 rulesCard(Modifier.weight(1f))
@@ -161,6 +187,28 @@ fun BoardScreen(items: List<BoardItem>, members: List<Member>, backlog: List<Bac
             is Ask.Step -> GoalPlanDialog(ask.goal, today, LocalLang.current, onSave = { cb.setGoalStep(ask.goal, it) }) { asking = null }
         }
     }
+    opened?.let { id -> items.firstOrNull { it.id == id } }?.let { item ->
+        BoardItemSheet(
+            item = item,
+            review = ruleReviews[item.id],
+            linked = item.linkedId?.let(byId::get),
+            member = item.memberId?.let { m -> members.firstOrNull { it.id == m } },
+            today = today,
+            lang = LocalLang.current,
+            actions = BoardItemActions(
+                rename = { cb.rename(item, it) },
+                rate = { cb.rateRule(item, it) },
+                help = { cb.ruleHelp(item, it) },
+                celebrate = { cb.addWin(item.text, item.topic()) },
+                achieve = { achieve(item) },
+                reopen = { cb.reopenGoal(item) },
+                plan = { asking = Ask.Step(item) },
+                delete = { cb.delete(item) },
+            ),
+            onDismiss = { opened = null },
+        )
+    }
+    reached?.let { goal -> GoalCelebration(goal, onWin = { cb.addWin(goal.text, Topic.GOALS) }) { reached = null } }
     deleting?.let { item ->
         ConfirmDialog(stringResource(Res.string.delete_confirm, item.text), stringResource(Res.string.delete_confirm_body), onYes = { cb.delete(item) }) { deleting = null }
     }
@@ -217,7 +265,7 @@ private fun RulesCard(rules: List<BoardItem>, scores: Map<String, Int>, modifier
         rules.forEachIndexed { i, rule ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 4.dp, top = 2.dp, bottom = 2.dp),
+                modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable { onOpen(rule) }.heightIn(min = 56.dp).padding(start = 4.dp, top = 2.dp, bottom = 2.dp),
             ) {
                 Box(Modifier.size(30.dp).background(s.tint, CircleShape), contentAlignment = Alignment.Center) {
                     Text("${i + 1}", style = MaterialTheme.typography.labelLarge, color = s.ink)
@@ -226,9 +274,12 @@ private fun RulesCard(rules: List<BoardItem>, scores: Map<String, Int>, modifier
                 // How it goes, like the routines: rated together in the Terugblik, or right here.
                 Column(Modifier.weight(1f).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(rule.text, style = MaterialTheme.typography.bodyLarge)
+                    // Tap the badge to change the score right here; the row opens everything else.
                     ScoreChooser(scores[rule.id]) { cb.rateRule(rule, it) }
+                    listOfNotNull(rule.anchor?.title(LocalLang.current), rule.smallStep?.let { stringResource(Res.string.small_step_line, it) }, rule.pairing?.let { stringResource(Res.string.pairing_line, it) })
+                        .takeIf { it.isNotEmpty() }?.let { Text(it.joinToString("  ·  "), style = MaterialTheme.typography.labelMedium, color = s.ink) }
                 }
-                DeleteButton({ onOpen(rule) })
+                Icon(HearthIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -237,7 +288,7 @@ private fun RulesCard(rules: List<BoardItem>, scores: Map<String, Int>, modifier
 // ---------- frictions ----------
 
 @Composable
-private fun FrictionsCard(frictions: List<BoardItem>, members: List<Member>, routines: List<BacklogItem>, modifier: Modifier, cb: BoardCallbacks, onOpen: (BoardItem) -> Unit) {
+private fun FrictionsCard(frictions: List<BoardItem>, members: List<Member>, routines: List<BacklogItem>, modifier: Modifier, cb: BoardCallbacks, onDelete: (BoardItem) -> Unit, onOpen: (BoardItem) -> Unit) {
     val open = frictions.filter { it.isOpen }.sortedBy { it.direction != null }
     val resolved = frictions.filterNot { it.isOpen }.sortedByDescending { it.closedAt ?: 0 }
     val byId = members.associateBy { it.id }
@@ -248,7 +299,7 @@ private fun FrictionsCard(frictions: List<BoardItem>, members: List<Member>, rou
         if (open.isEmpty()) EmptyHint(stringResource(Res.string.frictions_empty))
         else Text(stringResource(Res.string.frictions_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
         open.forEach { f ->
-            FrictionRow(f, f.memberId?.let(byId::get), routines, lang, FrictionActions(cb.markFriction, cb.resolveFriction), caption = ago(f.createdAt), onDelete = { onOpen(f) })
+            FrictionRow(f, f.memberId?.let(byId::get), routines, lang, FrictionActions(cb.markFriction, cb.resolveFriction), caption = ago(f.createdAt), onDelete = { onDelete(f) }, onOpen = { onOpen(f) })
         }
     if (resolved.isNotEmpty()) {
             GroupTitle(stringResource(Res.string.resolved_title))
@@ -283,7 +334,18 @@ private data class Owner(val scope: GoalScope, val member: Member?)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GoalsCard(goals: List<BoardItem>, members: List<Member>, backlog: Map<String, BacklogItem>, today: LocalDate, modifier: Modifier, cb: BoardCallbacks, onAsk: (Ask) -> Unit, onOpen: (BoardItem) -> Unit) {
+private fun GoalsCard(
+    goals: List<BoardItem>,
+    members: List<Member>,
+    backlog: Map<String, BacklogItem>,
+    today: LocalDate,
+    modifier: Modifier,
+    cb: BoardCallbacks,
+    onAsk: (Ask) -> Unit,
+    onDelete: (BoardItem) -> Unit,
+    onOpen: (BoardItem) -> Unit,
+    onAchieve: (BoardItem) -> Unit,
+) {
     var owner by remember { mutableStateOf(Owner(GoalScope.FAMILY, null)) }
     val open = goals.filter { it.isOpen }
     val achieved = goals.filter { it.status == BoardStatus.ACHIEVED }.sortedByDescending { it.closedAt ?: 0 }
@@ -308,16 +370,32 @@ private fun GoalsCard(goals: List<BoardItem>, members: List<Member>, backlog: Ma
         groups.filter { it.second.isNotEmpty() }.forEach { (title, list) ->
             GroupTitle(title)
             list.forEach { goal ->
-                GoalRow(goal, goal.linkedId?.let(backlog::get), today, LocalLang.current, onAchieve = { cb.achieveGoal(goal) }, onPlan = { onAsk(Ask.Step(goal)) }, onDelete = { onOpen(goal) })
+                GoalRow(goal, goal.linkedId?.let(backlog::get), today, LocalLang.current, onAchieve = { onAchieve(goal) }, onPlan = { onAsk(Ask.Step(goal)) }, onDelete = { onDelete(goal) }, onOpen = { onOpen(goal) })
             }
         }
+        // Bereikt: every goal reached, as a shelf of stars, so done work stays in sight. Tap one to see it again.
         if (achieved.isNotEmpty()) {
             GroupTitle(stringResource(Res.string.goal_achieved_title))
-            achieved.take(5).forEach { goal ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp)) {
-                    Icon(Topic.GOALS.icon(), null, tint = Topic.GOALS.style().ink, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text(goal.text, style = MaterialTheme.typography.bodyMedium, textDecoration = TextDecoration.None, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val g = Topic.GOALS.style()
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 6.dp, top = 2.dp)) {
+                achieved.forEach { goal ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(g.tint).clickable { onOpen(goal) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                    ) {
+                        Icon(HearthIcons.Star, null, tint = g.ink, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(goal.text, style = MaterialTheme.typography.labelLarge)
+                            goal.closedAt?.let {
+                                Text(
+                                    dayLabel(app.hearth.core.model.dayOf(it), today, LocalLang.current).replaceFirstChar { c -> c.uppercase() },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = g.ink,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -389,7 +467,9 @@ fun FormSheet(dirty: Boolean, onDismiss: () -> Unit, content: @Composable androi
             } else true
         },
     )
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = MaterialTheme.colorScheme.surface, content = content)
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = MaterialTheme.colorScheme.surface) {
+        androidx.compose.foundation.layout.Column(Modifier.nestedScroll(SheetScrollStop), content = content)
+    }
     if (asking) DiscardDialog(onKeep = { asking = false }, onDiscard = { asking = false; onDismiss() })
 }
 

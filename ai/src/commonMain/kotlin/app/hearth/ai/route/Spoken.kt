@@ -34,17 +34,29 @@ object Spoken {
 
     /**
      * The recognizer's guesses for one stretch, best first: the one that names the most of the household's own words
-     * (people, rooms, stock, routines) wins; on a tie the recognizer's first guess stays.
+     * (people, rooms, stock, routines) wins; on a tie the recognizer's first guess stays. When the meeting speaks Dutch
+     * ([dutch]), a guess full of English words ("Nothing good ever", "Did You") loses to a Dutch one: browsers sometimes
+     * drift into English halfway a stretch.
      */
-    fun pick(alternatives: List<String>, vocabulary: Collection<String>): String? {
+    fun pick(alternatives: List<String>, vocabulary: Collection<String>, dutch: Boolean = false): String? {
         val options = alternatives.map { it.trim() }.filter { it.isNotEmpty() }
-        if (options.size <= 1 || vocabulary.isEmpty()) return options.firstOrNull()
+        if (options.size <= 1) return options.firstOrNull()
         val words = vocabulary.map { it.lowercase().trim() }.filter { it.length >= 2 }.toSet()
         fun score(text: String): Int {
             val t = " ${text.lowercase().replace(Regex("[^\\p{L}\\p{N}'’ ]"), " ").replace(Regex("\\s+"), " ")} "
-            return words.count { " $it " in t }
+            return 2 * words.count { " $it " in t } - (if (dutch) englishWords(text) else 0)
         }
         val best = options.maxBy { score(it) }
         return if (score(best) > score(options.first())) best else options.first()
     }
+
+    /** How many words of [text] are English and never Dutch ("the", "you", "nothing"); 0 for a Dutch sentence. */
+    fun englishWords(text: String): Int = text.lowercase().split(Regex("[^\\p{L}'’]+")).count { it in ENGLISH_ONLY }
+
+    private val ENGLISH_ONLY = setOf(
+        "the", "you", "your", "did", "does", "nothing", "good", "ever", "self", "it", "animal", "and", "what", "with", "this",
+        "that", "they", "have", "has", "just", "really", "very", "yeah", "yes", "my", "she", "his", "her", "from", "about",
+        "would", "could", "should", "going", "got", "like", "know", "think", "because", "there", "where", "why", "how",
+        "which", "something", "anything", "everything", "thing", "things", "people", "some", "any", "can't", "don't", "it's",
+    )
 }

@@ -16,6 +16,7 @@ import app.hearth.ai.ChatReply
 import app.hearth.ai.ChatTurn
 import app.hearth.ai.PendingAction
 import app.hearth.core.model.BacklogItem
+import app.hearth.core.model.tickedOn
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Shop
 import app.hearth.core.model.ShoppingItem
@@ -73,6 +74,12 @@ import app.hearth.core.model.HabitTip
 import app.hearth.core.model.TipAction
 import app.hearth.core.model.celebrateWords
 import app.hearth.core.model.frictionsAbout
+import app.hearth.core.model.isAbout
+import app.hearth.core.tools.week.EditHuddleArgs
+import app.hearth.core.model.ruleReview
+import app.hearth.core.tools.board.SetRuleHelpArgs
+import app.hearth.core.tools.board.EditBoardItemArgs
+import app.hearth.core.tools.board.AchieveGoalArgs
 import app.hearth.core.model.habitReview
 import app.hearth.core.model.easeNow
 import app.hearth.core.tools.backlog.RateHabitArgs
@@ -490,8 +497,10 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         )
     }
 
+    /** A tick: done (a routine: done today), or, when it already is, taken back. */
     fun complete(item: BacklogItem) = tool {
-        app.tools.registry.run(app.tools.completeBacklogItem, BacklogRefArgs(itemIds = listOf(item.id)), it)
+        if (item.done || item.tickedOn(today())) app.tools.registry.run(app.tools.reopenBacklogItem, BacklogRefArgs(itemIds = listOf(item.id)), it)
+        else app.tools.registry.run(app.tools.completeBacklogItem, BacklogRefArgs(itemIds = listOf(item.id)), it)
     }
 
     /** Only after the person confirmed on screen. */
@@ -643,9 +652,17 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** The habit coach for every habit (the four laws), by habit id: the same as review_habit gives an AI. */
     val habitReviews: StateFlow<Map<String, HabitReview>> = combine(backlog, steps, board, app.meeting.habitHistory, combine(lang, today) { l, d -> l to d }) { items, allSteps, boardItems, history, (l, day) ->
         val counts = allSteps.groupingBy { it.parentId }.eachCount()
-        items.filter { it.isHabit && !it.done }.associate { h ->
+        // Habits and household chores alike: every routine can be made easier along the four laws.
+        items.filter { (it.isHabit || it.isRoutine()) && !it.done }.associate { h ->
             val goal = boardItems.firstOrNull { it.kind == BoardKind.GOAL && it.isOpen && it.linkedId == h.id }?.text
             h.id to habitReview(h, history[h.id].orEmpty(), frictionsAbout(h, boardItems, day), counts[h.id] ?: 0, goal, l)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** The coach for every open house rule (the four laws), by rule id: the same as review_house_rule gives an AI. */
+    val ruleReviews: StateFlow<Map<String, HabitReview>> = combine(board, app.meeting.ruleHistory, lang) { boardItems, history, l ->
+        boardItems.filter { it.kind == BoardKind.RULE && it.isOpen }.associate { r ->
+            r.id to ruleReview(r, history[r.id].orEmpty(), boardItems.filter { it.isAbout(r.id, r.text) }, l)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
@@ -670,7 +687,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val weekOn: StateFlow<Boolean> = app.settings.value(SetWeekMetersTool.METERS_SETTING).map { it != "false" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
     val transcript: StateFlow<List<TranscriptLine>> = app.meeting.transcript.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val huddles: StateFlow<List<Huddle>> = app.meeting.huddles().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val huddles: StateFlow<List<Huddle>> = app.meeting.huddles(52).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** The last meeting's transcript: readable until the next meeting ends. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -682,6 +699,11 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun addWin(text: String, topic: Topic? = null) {
         if (text.isBlank()) return
         tool { app.tools.registry.run(app.tools.addWin, AddWinArgs(text, topic = topic), it) }
+    }
+
+    /** A past meeting's summary, put right afterwards. */
+    fun editHuddle(huddle: Huddle, summary: String) = tool {
+        app.tools.registry.run(app.tools.editHuddleSummary, EditHuddleArgs(huddleId = huddle.id, summary = summary), it)
     }
 
     /** Only after the person confirmed on screen. */
@@ -734,16 +756,19 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
      * What Luister mee heard and hasn't been put in place yet, as thoughts (pauses don't cut them), newest first,
      * each with what Hearth concludes from it.
      */
-    val heardThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead, interpreted) { lines, people, changed, _, found ->
+    /** Every thought of this meeting, newest first; the stage shows the last three, the summary beside it all of them. */
+    val meetingThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead, interpreted) { lines, people, changed, _, found ->
         val open = lines.filter { !it.sorted }
         app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt }, sense())
-            .takeLast(3).reversed().map { t ->
+            .reversed().map { t ->
                 val said = open.slice(t.lines)
                 // The interpreter read the whole conversation: what it found on these lines replaces the rules' guess.
                 val proposals = if (found == null) t.proposals else said.flatMap { found[it.id].orEmpty() }
                 thought(said, proposals, changed).copy(stage = t.stage)
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val heardThoughts: StateFlow<List<HeardThought>> = meetingThoughts.map { it.take(3) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Understanding conversations: on, ready, and how far its download is. */
     val interpreting: StateFlow<Interpreting.State> = app.interpreting.state
@@ -982,7 +1007,27 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     fun achieveGoal(goal: BoardItem) = tool {
-        app.tools.registry.run(app.tools.achieveGoal, BoardRefArgs(itemIds = listOf(goal.id)), it)
+        app.tools.registry.run(app.tools.achieveGoal, AchieveGoalArgs(itemIds = listOf(goal.id)), it)
+    }
+
+    /** A goal ticked by mistake: open again. */
+    fun reopenGoal(goal: BoardItem) = tool {
+        app.tools.registry.run(app.tools.achieveGoal, AchieveGoalArgs(itemIds = listOf(goal.id), reached = false), it)
+    }
+
+    /** Other words for a house rule, friction, idea or goal. */
+    fun renameBoardItem(item: BoardItem, text: String) {
+        if (text.isBlank() || text == item.text) return
+        tool { app.tools.registry.run(app.tools.editBoardItem, EditBoardItemArgs(itemId = item.id, newText = text), it) }
+    }
+
+    /** A house rule helped along the four laws: its moment, something nice, a small version. */
+    fun setRuleHelp(rule: BoardItem, help: RuleHelp) = tool {
+        app.tools.registry.run(
+            app.tools.setRuleHelp,
+            SetRuleHelpArgs(itemId = rule.id, anchor = help.anchor, noMoment = help.noMoment, pairing = help.pairing, smallStep = help.smallStep),
+            it,
+        )
     }
 
     /** Only after the person confirmed on screen. */

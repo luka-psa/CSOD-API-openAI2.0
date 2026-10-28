@@ -87,8 +87,11 @@ data class GoalPlan(
  * goes), the free time with its day, or the next small step. Tap that line to change it.
  */
 @Composable
-internal fun GoalRow(goal: BoardItem, linked: BacklogItem?, today: LocalDate, lang: Lang, onAchieve: () -> Unit, onPlan: () -> Unit, onDelete: (() -> Unit)? = null) {
-    Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+internal fun GoalRow(goal: BoardItem, linked: BacklogItem?, today: LocalDate, lang: Lang, onAchieve: () -> Unit, onPlan: () -> Unit, onDelete: (() -> Unit)? = null, onOpen: (() -> Unit)? = null) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier).padding(vertical = 4.dp),
+    ) {
         RoundCheck(false, onAchieve)
         Spacer(Modifier.width(6.dp))
         Column(Modifier.weight(1f).padding(top = 10.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

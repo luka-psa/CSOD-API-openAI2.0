@@ -356,6 +356,8 @@ object MeetingWords {
         if (w.isEmpty()) return if (words(full).any { it in NO }) Move.DOUBT else Move.AGREE
         if (isAck(t)) return if (w.any { it in NO }) Move.DOUBT else Move.AGREE
         if (w.size <= 8 && AGREE.containsMatchIn(t)) return Move.AGREE
+        // The meeting talking about itself ("we gaan naar de weekplanning kijken") is agenda talk, like a question.
+        if (META.containsMatchIn(t) && META_VERB.containsMatchIn(t)) return Move.QUESTION
         if (TENTATIVE.containsMatchIn(t)) return Move.PROPOSAL
         if (RULE.containsMatchIn(t)) return Move.DECISION
         if (DOUBT.containsMatchIn(t)) return Move.DOUBT
@@ -438,7 +440,7 @@ object MeetingWords {
 
     private val SENTENCE_END = Regex("(?<=[.!?])\\s+")
     private val CONNECTORS = Regex(
-        "\\s+(?:en dan|daarna|oh ja|o ja|en ook|ook nog|trouwens|daarnaast|and then|by the way|besides)\\s+",
+        "\\s+(?:en dan|daarna|oh ja|o ja|en ook|ook nog|trouwens|daarnaast|iets anders|nog iets|and then|by the way|besides|another thing)\\s+",
         RegexOption.IGNORE_CASE,
     )
     private val SUBORDINATE = Regex("[,\\s]+(?=(?:dus|want|omdat|zodat|maar|so|because|but)\\s)", RegexOption.IGNORE_CASE)
@@ -509,7 +511,9 @@ object MeetingWords {
     /** An option: offered, not decided. */
     private val TENTATIVE = Regex(
         "^(?:of\\s+)?(?:misschien|zouden we|zou je|zou jij|kunnen we|kan jij|kun jij|kan je|kun je|zullen we|wat als|wat denk je van|wat vind je van|stel dat|" +
-            "maybe|what if|how about|could we|could you|can you|shall we|should we)(?![\\p{L}])|(?<![\\p{L}])(?:of misschien|of anders)(?![\\p{L}])",
+            "maybe|what if|how about|could we|could you|can you|shall we|should we)(?![\\p{L}])|(?<![\\p{L}])(?:of misschien|of anders)(?![\\p{L}])|" +
+            // "… naar de weekplanning misschien": a doubt at the end takes the plan back to an option.
+            "(?<![\\p{L}])(?:misschien|denk ik|of zo|of niet|maybe|i guess|or not)\\s*[.?!]*$",
         RegexOption.IGNORE_CASE,
     )
     /** The words before the option itself. */
@@ -524,8 +528,18 @@ object MeetingWords {
         RegexOption.IGNORE_CASE,
     )
     private val QUESTION = Regex(
-        "^(?:hoe|wanneer|wie|waar|welke|hoeveel|waarom|wat (?:staat|doen|is er|hebben|moeten|gaan|eten|vind jij|denk jij|zeg jij)|heb je|hebben we|moeten we nog|" +
+        // A question word straight before its subject is a clause, not a question: "waar ik vond dat …".
+        "^(?:(?:hoe|wanneer|wie|waar|hoeveel|waarom)(?!\\s+(?:ik|we|wij|jij|je|ze|zij|hij|het|de|dat)(?![\\p{L}]))|welke|wat (?:staat|doen|is er|hebben|moeten|gaan|eten|vind jij|denk jij|zeg jij)|heb je|hebben we|moeten we nog|" +
             "how|when|who|where|which|why|what (?:is|do|are|did))(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    /** About the meeting itself: "vandaag gaan we kijken naar de weekplanning". Talk, never a plan. */
+    private val META = Regex(
+        "(?<![\\p{L}])(?:weekplanning|week planning|weekoverleg|week overleg|het overleg|dit overleg|de agenda|vergadering|meeting|the planning|this week's plan)(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    private val META_VERB = Regex(
+        "(?<![\\p{L}])(?:kijken|bekijken|bespreken|overlopen|doornemen|beginnen|starten|look|go through|start|discuss)(?![\\p{L}])",
         RegexOption.IGNORE_CASE,
     )
     /** About the week that was: past tense ("de was" is the laundry). */
@@ -560,7 +574,7 @@ object MeetingWords {
     private val THEN = Regex("(?<![\\p{L}])(?:dan|then)(?![\\p{L}])", RegexOption.IGNORE_CASE)
     private val WIN = anyOf(
         listOf(
-            "ging goed", "gingen goed", "liep goed", "fijn dat", "goed dat", "was fijn", "was leuk", "deugd", "blij dat", "trots", "goed gedaan", "is gelukt", "zijn gelukt", "lukte", "top dat", "leuk dat",
+            "ging goed", "gingen goed", "liep goed", "goed ging", "goed gingen", "goed liep", "goed gelukt", "fijn dat", "goed dat", "was fijn", "was leuk", "deugd", "blij dat", "trots", "goed gedaan", "is gelukt", "zijn gelukt", "lukte", "top dat", "leuk dat",
             "went well", "glad that", "proud", "well done", "worked well", "great that", "nice that", "happy that",
         ),
     )
@@ -573,7 +587,7 @@ object MeetingWords {
     private val FRICTION = anyOf(
         listOf(
             "erger me", "ergert", "stoort", "niet leuk", "niet zo leuk", "niet fijn", "jammer dat", "vervelend", "frustrerend", "frustreert", "frustratie", "gefrustreerd", "irritant", "ergerlijk", "lastig dat", "altijd weer",
-            "nooit", "ambetant", "beu", "op mijn zenuwen", "keel uit", "zot van", "kwaad", "frustrating", "frustrated", "annoying", "annoys", "annoyed",
+            "nooit", "ambetant", "moeilijk ging", "ging moeilijk", "minder goed", "blijft altijd", "blijft liggen", "blijven liggen", "beu", "op mijn zenuwen", "keel uit", "zot van", "kwaad", "frustrating", "frustrated", "annoying", "annoys", "annoyed",
             "bugs me", "drives me", "always", "never",
         ),
     )

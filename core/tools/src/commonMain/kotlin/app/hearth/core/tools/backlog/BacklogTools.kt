@@ -329,15 +329,26 @@ class CompleteBacklogItemTool(private val repo: BacklogRepository) : Tool<Backlo
 
 class ReopenBacklogItemTool(private val repo: BacklogRepository) : Tool<BacklogRefArgs, BacklogItemsResult> {
     override val name = NAME
-    override val description = "Undo 'done': put backlog items back as open."
+    override val description = "Undo 'done': put backlog items back as open. A routine (or one of its steps) ticked off " +
+        "today is unticked: it counts as done on the time before."
     override val argsSerializer = BacklogRefArgs.serializer()
     override val resultSerializer = BacklogItemsResult.serializer()
 
     override suspend fun run(args: BacklogRefArgs, ctx: ToolContext): BacklogItemsResult {
-        val items = repo.itemsByIds(args.itemIds).filter { it.done }
-        if (items.isEmpty()) throw ToolException(ctx.t("Niets om terug te zetten.", "Nothing to put back."))
-        repo.setDone(items.map { it.id }, done = false)
-        return BacklogItemsResult(items.map { it.copy(done = false) }, ctx.t("Terug open: ${quoted(items)}", "Open again: ${quoted(items)}"))
+        val today = ctx.today.toString()
+        val found = repo.find(args.itemIds, args.texts)
+        val closed = found.filter { it.done }
+        // A routine ticked today: its tick goes. Unticking a step undoes its routine's "done today"; unticking the
+        // routine undoes its steps' ticks of today, so the two never disagree.
+        val ticked = found.filter { !it.done && (it.isRoutine() || it.isRoutineStep) && it.lastDone == today }
+        if (closed.isEmpty() && ticked.isEmpty()) throw ToolException(ctx.t("Niets om terug te zetten.", "Nothing to put back."))
+        repo.setDone(closed.map { it.id }, done = false)
+        val parents = ticked.mapNotNull { it.parentId }.distinct()
+        val steps = repo.stepsOf(ticked.filter { it.isRoutine() }.map { it.id }).filter { it.lastDone == today }
+        val parentsToday = repo.itemsByIds(parents).filter { it.lastDone == today }
+        repo.unlogRoutine((ticked + steps + parentsToday).map { it.id }.distinct(), today)
+        val items = closed.map { it.copy(done = false) } + ticked.map { it.copy(lastDone = null) }
+        return BacklogItemsResult(items, ctx.t("Terug open: ${quoted(items)}", "Open again: ${quoted(items)}"))
     }
 
     companion object {

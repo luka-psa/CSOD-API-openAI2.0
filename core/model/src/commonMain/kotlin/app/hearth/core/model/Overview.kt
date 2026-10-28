@@ -28,6 +28,9 @@ val BacklogItem.isRoutineStep: Boolean get() = isStep && section.kind == TaskKin
 
 fun BacklogItem.doneOn(day: LocalDate): Boolean = lastDoneDate == day
 
+/** A routine or one of its steps ticked off on [day]: it shows ticked, and a second tap takes the tick back. */
+fun BacklogItem.tickedOn(day: LocalDate): Boolean = !done && (isRoutine() || isRoutineStep) && doneOn(day)
+
 fun BacklogItem.daysSinceDone(today: LocalDate): Int? =
     lastDoneDate?.let { (today.toEpochDays() - it.toEpochDays()).toInt() }
 

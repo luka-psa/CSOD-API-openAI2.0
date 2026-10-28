@@ -139,7 +139,7 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   shows its tip in the Terugblik. A routine can have *steps* (`parentId`,
   `add_routine`): a sequence ("avondroutine: boodschappen, Mia ophalen, koken, pyjama")
   or a checklist ("paklijst opvang: luiers, flesjes"); steps are ticked per day and come
-  back tomorrow; all ticked = the routine is done today. Steps show small and in order (a bar, the next step,
+  back tomorrow; all ticked = the routine is done today; a second tap takes a tick back (`reopen_backlog_item`). Steps show small and in order (a bar, the next step,
   "daarna: …", *Alle stappen* numbered); their order (`position`, `move_step`) is set with arrows in the
   routine's sheet. With a moment it is daily; without
   one it is a *checklist* (*Lijstjes*: no rhythm, not on Vandaag, used when needed)),
@@ -159,7 +159,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   *Doel* (GOAL, scope gezin / samen / persoonlijk; gets *a place in the week* (`set_goal_step` how): a *ritme*
   (a habit at a moment, e.g. elke dag yoga, in Ritmes & routines), *vrije tijd* on a day (a hobby, in Vrije tijd),
   or one small *next step*; the goal shows that link in its colour). Huisregels are rated like routines,
-  0 to 5 ("Hoe loopt het?" on the Werkbord or in the Terugblik); the last score shows as its badge. *Idee* (IDEA: a way to
+  0 to 5 ("Hoe loopt het?" on the Werkbord or in the Terugblik); the last score shows as its badge, and they get the
+  same four laws as habits (`ruleReview`, `set_house_rule_help`: a moment, iets leuks erbij, a small version).
+  Every Werkbord item opens its *sheet* with a tap (other words: `edit_board_item`); a house rule's and a routine's
+  sheet read in three parts (`SheetTabs`): *Nu* (what it is, change it), *Hoe loopt het* (rate, trend) and
+  *Verbeteren* (the four laws as four cards, `LawCards`, one suggestion each). A goal reached is celebrated
+  (`GoalCelebration`) and stays on the *Bereikt* shelf (`achieve_goal reached = false` takes it back). *Idee* (IDEA: a way to
   make it easier; decided like a friction).
   *Member*: a person with a colour.
 - **Voorraad:** *Storage spot* (a room or topic) with *Stock items*; tap = OUT
@@ -186,10 +191,12 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
 - **Weekoverleg:** one page by *Topic* (*Admin & afspraken* (admin and appointments), *Grote taken*, *Huishouden*
   (chores without a moment), *Vrije tijd*, *Weekmenu*, *Boodschappen*, three by two; on the shelf beside them, two by
   two, *Ritmes & routines* (laid out per moment of the day), *Huisregels*, *Frictie & ideeën*, *Doelen* (next small
-  step)): each a calm tile with a *glance*, all the same size, tap to open its list. Terugblik (*Wat ging goed* = wins, walked through per topic: each topic a tile with what got done there, a tap names
-  what went well there (Hearth's suggestions in one tap, or own words; `add_win` `topic`); *Hoe liep het?*: *de week* (`rate_week`, suggested by Hearth,
-  agreed together, *Geen akkoord* is an answer too; can be switched off), every routine (in the order of the day) and
-  every house rule on one scale from 0 to 5 (`ScoreScale`; last time a ring, the meetings before as bars), never who; a smaller first step right there; a rule
+  step)): each a calm tile with a *glance*, all the same size, tap to open its list. Terugblik (`Terugblik.kt`: what got done and last time in one line each; *Alle overleggen* shows every *Huddle*'s
+  summary, editable afterwards (`edit_huddle_summary`); *de week* (`rate_week`, suggested by Hearth, agreed together,
+  *Geen akkoord* is an answer too; can be switched off); then *Wat bespreken we?*, a short list built together, never
+  everything at once: say what went well (a *win*, `add_win` `topic`), or tap a topic and pick an existing routine or
+  house rule to rate on one scale from 0 to 5 (`ScoreScale`; last time a ring, the meetings before as bars; the coach's
+  one tip right there) or a done thing as a win; Hearth only suggests the few that ask for attention; never who; a rule
   that is too much (0–1) two meetings in a row comes back as a friction),
   Deze week (7 days, plans with their colour, the meal small underneath),
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows

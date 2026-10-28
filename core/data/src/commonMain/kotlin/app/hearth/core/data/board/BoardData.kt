@@ -10,6 +10,7 @@ import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.withWriteTransaction
 import app.hearth.core.data.HearthDatabase
+import app.hearth.core.model.Anchor
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.BoardStatus
@@ -52,8 +53,11 @@ data class BoardEntity(
     val updatedAt: Long,
     val closedAt: Long?,
     @ColumnInfo(defaultValue = "NULL") val direction: FrictionDirection? = null,
+    @ColumnInfo(defaultValue = "NULL") val anchor: Anchor? = null,
+    @ColumnInfo(defaultValue = "NULL") val pairing: String? = null,
+    @ColumnInfo(defaultValue = "NULL") val smallStep: String? = null,
 ) {
-    fun toModel() = BoardItem(id, kind, text, status, memberId, scope, nextStep, linkedId, createdAt, closedAt, direction)
+    fun toModel() = BoardItem(id, kind, text, status, memberId, scope, nextStep, linkedId, createdAt, closedAt, direction, anchor, pairing, smallStep)
 }
 
 @Dao
@@ -91,6 +95,12 @@ interface BoardDao {
 
     @Query("UPDATE board_item SET nextStep = :nextStep, linkedId = :linkedId, updatedAt = :now WHERE id = :id")
     suspend fun setNextStep(id: String, nextStep: String?, linkedId: String?, now: Long)
+
+    @Query("UPDATE board_item SET text = :text, normalizedText = :normalizedText, updatedAt = :now WHERE id = :id")
+    suspend fun rename(id: String, text: String, normalizedText: String, now: Long)
+
+    @Query("UPDATE board_item SET anchor = :anchor, pairing = :pairing, smallStep = :smallStep, updatedAt = :now WHERE id = :id")
+    suspend fun setHelp(id: String, anchor: Anchor?, pairing: String?, smallStep: String?, now: Long)
 
     @Query("UPDATE board_item SET direction = :direction, updatedAt = :now WHERE id IN (:ids)")
     suspend fun setDirection(ids: List<String>, direction: FrictionDirection?, now: Long)
@@ -156,6 +166,12 @@ class BoardRepository(
     }
 
     suspend fun setNextStep(id: String, nextStep: String?, linkedId: String?) = board.setNextStep(id, nextStep, linkedId, clock())
+
+    /** Other words for the same rule, friction or goal. */
+    suspend fun rename(id: String, text: String) = board.rename(id, text.trim(), normalizeName(text), clock())
+
+    /** How a house rule is helped along: its moment, something nice with it, the small version to start with. */
+    suspend fun setHelp(id: String, anchor: Anchor?, pairing: String?, smallStep: String?) = board.setHelp(id, anchor, pairing, smallStep, clock())
 
     /** What a friction needs (null: still to talk about). */
     suspend fun setDirection(ids: List<String>, direction: FrictionDirection?) {

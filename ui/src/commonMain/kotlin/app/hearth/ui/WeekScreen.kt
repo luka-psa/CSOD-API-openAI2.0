@@ -94,7 +94,6 @@ import app.hearth.core.model.Win
 import app.hearth.ai.route.Place
 import app.hearth.ui.resources.earlier_meetings
 import app.hearth.ui.resources.feeling_heavy_hint
-import app.hearth.ui.resources.last_time
 import app.hearth.ui.resources.transcript_last
 import app.hearth.ui.resources.transcript_title
 import app.hearth.ui.resources.week_summary
@@ -144,7 +143,6 @@ import app.hearth.ui.resources.shopping_summary_empty
 import app.hearth.ui.resources.step_board_hint
 import app.hearth.ui.resources.step_board_empty
 import app.hearth.ui.resources.step_look_back
-import app.hearth.ui.resources.step_look_back_calm
 import app.hearth.ui.resources.step_look_back_count
 import org.jetbrains.compose.resources.pluralStringResource
 import app.hearth.ui.resources.step_look_back_since
@@ -156,7 +154,6 @@ import app.hearth.ui.resources.week_done_recap
 import app.hearth.ui.resources.week_finish
 import app.hearth.ui.resources.week_last_held
 import app.hearth.ui.resources.week_subtitle
-import app.hearth.ui.resources.board_won
 import app.hearth.ui.resources.goals_meeting_hint
 import app.hearth.ui.resources.goals_add_hint
 import app.hearth.ui.resources.goals_empty
@@ -216,6 +213,10 @@ class WeekCallbacks(
     val pairing: (BacklogItem, String) -> Unit = { _, _ -> },
     /** Opens an item's sheet (a routine's moment, days and steps). */
     val openItem: (BacklogItem) -> Unit = {},
+    /** A house rule helped along the four laws. */
+    val ruleHelp: (BoardItem, RuleHelp) -> Unit = { _, _ -> },
+    /** A past meeting's summary, put right afterwards. */
+    val editHuddle: (Huddle, String) -> Unit = { _, _ -> },
 )
 
 /** The Weekoverleg's own notes: the look back, Luister mee and the summaries. */
@@ -241,6 +242,10 @@ class MeetingState(
     val habitReviews: Map<String, HabitReview> = emptyMap(),
     /** Each house rule's score per meeting, oldest first, by rule id. */
     val ruleHistory: Map<String, List<Int>> = emptyMap(),
+    /** The coach per house rule (the four laws), by rule id. */
+    val ruleReviews: Map<String, HabitReview> = emptyMap(),
+    /** Every thought of this meeting, newest first: what the summary beside Luister mee groups by topic. */
+    val allHeard: List<HeardThought> = emptyList(),
 )
 
 /** How long Hearth waits after the last words before it concludes a thought. */
@@ -318,6 +323,8 @@ fun WeekScreen(
                 listening = listen.listening,
                 partial = listen.partial,
                 heard = meeting.heard,
+                all = meeting.allHeard,
+                wide = wide,
                 settled = settled,
                 hasLines = meeting.transcript.isNotEmpty(),
                 lit = lit,
@@ -345,23 +352,37 @@ fun WeekScreen(
 
             val lookBack = @Composable { m: Modifier ->
                 HearthCard(stringResource(Res.string.step_look_back), HearthIcons.Heart, m) {
-                    LastTime(lastHuddle, meeting.lastTranscript, onShow = { showing = false })
-                    LookBack(agenda, lastHuddle, today, lang)
-                    Spacer(Modifier.size(14.dp))
-                    WinsSection(meeting.wins, meeting.members, lookBackPerTopic(agenda, backlog, board, meals, lastHuddle, meeting, today, lang), lang, cb.addWin, cb.removeWin)
-                    Spacer(Modifier.size(6.dp))
-                    // How the routines and house rules went, together, on one scale.
-                    ReviewSection(
-                        routines = backlog.filter { it.isHabit && !it.done }.sortedBy { it.anchor?.ordinal ?: Int.MAX_VALUE },
-                        rules = board.filter { it.kind == BoardKind.RULE && it.isOpen },
-                        checks = meeting.ruleChecks,
-                        lang = lang,
-                        onRateRoutine = cb.rateHabit,
-                        onRateRule = cb.checkRule,
-                        onSmallStep = cb.smallStep,
-                        coach = HabitCoaching(meeting.habitChecks, meeting.habitReviews, cb.habitTip, cb.pairing, cb.openItem),
-                        week = WeekWeather(meeting.weekOn, meeting.week, agenda?.suggestedWeek ?: 4, cb.rateWeek, cb.setWeekOn),
-                        ruleHistory = meeting.ruleHistory,
+                    val doneCount = agenda?.done?.distinctBy { it.id }?.size ?: 0
+                    val since = lastHuddle?.date?.let { stringResource(Res.string.step_look_back_since, weekdayName(it.dayOfWeek, lang)) } ?: stringResource(Res.string.step_look_back_week)
+                    Terugblik(
+                        TerugblikState(
+                            doneCount = doneCount,
+                            since = pluralStringResource(Res.plurals.step_look_back_count, doneCount, since),
+                            huddles = meeting.huddles,
+                            hasLastTranscript = meeting.lastTranscript.isNotEmpty(),
+                            wins = meeting.wins,
+                            members = meeting.members,
+                            perTopic = lookBackPerTopic(agenda, backlog, board, meals, lastHuddle, meeting, today, lang),
+                            routineChecks = meeting.habitChecks,
+                            routineReviews = meeting.habitReviews,
+                            ruleChecks = meeting.ruleChecks.associate { it.ruleId to it.score },
+                            ruleReviews = meeting.ruleReviews,
+                            week = WeekWeather(meeting.weekOn, meeting.week, agenda?.suggestedWeek ?: 4, cb.rateWeek, cb.setWeekOn),
+                        ),
+                        backlog, board, today, lang,
+                        TerugblikCallbacks(
+                            addWin = cb.addWin,
+                            removeWin = cb.removeWin,
+                            rateRoutine = cb.rateHabit,
+                            rateRule = cb.checkRule,
+                            routineTip = cb.habitTip,
+                            smallStep = cb.smallStep,
+                            pairing = cb.pairing,
+                            ruleHelp = cb.ruleHelp,
+                            openItem = cb.openItem,
+                            editHuddle = cb.editHuddle,
+                            showLastTranscript = { showing = false },
+                        ),
                     )
                 }
             }
@@ -637,21 +658,6 @@ private fun Ahead(backlog: List<BacklogItem>, today: LocalDate, lang: Lang) {
     }
 }
 
-/** "Vorige keer": the last meeting's summary, and its conversation while it's still kept. */
-@Composable
-private fun LastTime(last: Huddle?, transcript: List<TranscriptLine>, onShow: () -> Unit) {
-    val summary = last?.summary?.takeIf { it.isNotBlank() } ?: return
-    val s = Section.NOTE.style()
-    Column(Modifier.fillMaxWidth().background(s.tint, MaterialTheme.shapes.medium).padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(Res.string.last_time), style = MaterialTheme.typography.labelLarge, color = s.ink, modifier = Modifier.weight(1f))
-            if (transcript.isNotEmpty()) TextButton(onClick = onShow) { Text(stringResource(Res.string.transcript_last)) }
-        }
-        SummaryText(summary)
-    }
-    Spacer(Modifier.size(18.dp))
-}
-
 // ---------- 1. look back ----------
 
 /**
@@ -684,47 +690,6 @@ private fun lookBackPerTopic(
             Topic.FRICTION -> settled.filter { it.isWorkingPoint }.let { TopicLookBack(it.size, it.map { f -> f.text }) }
             Topic.GOALS -> settled.filter { it.kind == BoardKind.GOAL }.let { TopicLookBack(it.size, it.map { g -> g.text }) }
             else -> TopicLookBack(mine.size, mine.distinct())
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun LookBack(agenda: WeekAgenda?, last: Huddle?, today: LocalDate, lang: Lang) {
-    if (agenda == null) return
-    val done = agenda.done
-    val since = last?.date?.let { stringResource(Res.string.step_look_back_since, weekdayName(it.dayOfWeek, lang)) } ?: stringResource(Res.string.step_look_back_week)
-    if (done.isEmpty() && agenda.boardWins.isEmpty()) {
-        Hint(stringResource(Res.string.step_look_back_calm))
-        return
-    }
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text("${done.size}", style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.secondary)
-        Spacer(Modifier.width(12.dp))
-        Text(pluralStringResource(Res.plurals.step_look_back_count, done.size, since), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 10.dp))
-    }
-    Spacer(Modifier.size(14.dp))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        done.distinctBy { it.id }.take(30).forEach { item ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Icon(HearthIcons.Check, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(item.text, style = MaterialTheme.typography.labelLarge)
-            }
-        }
-    }
-    if (agenda.boardWins.isNotEmpty()) {
-        Spacer(Modifier.size(18.dp))
-        GroupTitle(stringResource(Res.string.board_won))
-        agenda.boardWins.forEach { win ->
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) {
-                Icon(if (win.kind == BoardKind.GOAL) Topic.GOALS.icon() else Topic.FRICTION.icon(), null, tint = (if (win.kind == BoardKind.GOAL) Topic.GOALS else Topic.FRICTION).style().ink, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(win.text, style = MaterialTheme.typography.bodyMedium)
-            }
         }
     }
 }
