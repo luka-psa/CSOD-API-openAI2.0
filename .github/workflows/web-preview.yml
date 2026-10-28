@@ -48,12 +48,12 @@ jobs:
 
       # Hearth's interpreter (Gesprekken begrijpen) is served from this same site, next to hearth.apk: the model sits on
       # the interpreter-model branch (split in parts under GitHub's 100 MB limit) and the app fetches it from
-      # <site>/interpreter in the background. The site is Vercel's address for the hearth-web branch; the repository
-      # variable HEARTH_SITE_URL overrides it (e.g. a custom domain). The app downloads without logging in, so the
-      # Vercel project must not have Vercel Authentication on (Settings, Deployment Protection).
+      # <site>/interpreter in the background. The site is the Vercel project's production address (hearth-web is its
+      # production branch, so it stays public under Standard Protection; the app downloads without logging in). The
+      # repository variable HEARTH_SITE_URL overrides it (e.g. a custom domain).
       - name: Fetch the interpreter model
         env:
-          SITE_URL: ${{ vars.HEARTH_SITE_URL || 'https://csodopenapi-git-hearth-web-luka-psa1.vercel.app' }}
+          SITE_URL: ${{ vars.HEARTH_SITE_URL || 'https://csodopenapi.vercel.app' }}
         run: |
           if git fetch -q --depth=1 origin interpreter-model; then
             mkdir -p interpreter-model && git --work-tree=interpreter-model checkout FETCH_HEAD -- interpreter

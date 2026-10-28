@@ -323,6 +323,6 @@ flowchart LR
 - Web preview: pushing to `hearth-household-assistant` runs the *Web preview* workflow, which deploys static files to
   Vercel. The relay deploys from the same branch when `relay/` changes (*Deploy relay*).
 - Build-time addresses (no secrets): `hearth.relayUrl` (the relay), `hearth.interpreterUrl` (where the interpreter
-  model is hosted; empty hides that option). CI sets the latter to `<site>/interpreter`: the Vercel address of the
-  `hearth-web` branch, or the repository variable `HEARTH_SITE_URL`. The site must be public (no Vercel Authentication),
-  since the tablet downloads the model without logging in.
+  model is hosted; empty hides that option). CI sets the latter to `<site>/interpreter`: the Vercel production address
+  (`hearth-web` is the production branch, public under Standard Protection), or the repository variable
+  `HEARTH_SITE_URL`. The tablet downloads the model without logging in.
