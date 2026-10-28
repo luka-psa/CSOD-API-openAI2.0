@@ -216,7 +216,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleScores, habitChecks, habitReviews, ruleHistory),
+                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -260,6 +260,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 habitTip = { i, t -> viewModel.applyTip(i, t) },
                                 pairing = { i, t -> viewModel.setPairing(i, t) },
                                 openItem = { planning = it },
+                                ruleHelp = viewModel::setRuleHelp,
+                                editHuddle = viewModel::editHuddle,
                             ),
                         )
                         Destination.CONNECT -> ConnectScreen(

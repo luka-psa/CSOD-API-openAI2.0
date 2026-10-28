@@ -352,7 +352,7 @@
     <string name="week_no_agreement">No agreement</string>
     <string name="week_off">Scoring the week is off.</string>
     <string name="week_switch_on">Switch on</string>
-    <string name="week_switch_off">Stop scoring the week</string>
+    <string name="week_switch_off">Stop asking</string>
     <string name="habit_less_often">Less often</string>
     <string name="habit_easier">Make it easier</string>
     <string name="ease_easy">runs easily</string>
@@ -556,4 +556,13 @@
     <string name="goal_place">A place in the week</string>
     <string name="item_rename_hint">In other words</string>
     <string name="board_tap_hint">Tap one to change it, rate it or make it easier.</string>
+    <string name="review_list_title">What do we talk about?</string>
+    <string name="review_list_hint">Say what went well, or tap a topic to pick a routine or house rule and rate it.</string>
+    <string name="review_add_hint">What went well?</string>
+    <string name="review_suggest">Hearth suggests</string>
+    <string name="pick_title">%1$s: which one?</string>
+    <string name="pick_empty">Nothing here yet.</string>
+    <string name="history_open">All meetings</string>
+    <string name="history_empty">No weekly meeting held yet.</string>
+    <string name="last_time_line">Last time: %1$s</string>
 </resources>

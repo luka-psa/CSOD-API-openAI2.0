@@ -435,6 +435,39 @@ class ListHuddlesTool(private val meeting: MeetingRepository) : Tool<ListHuddles
     }
 }
 
+// ---------- edit_huddle_summary ----------
+
+@Serializable
+data class EditHuddleArgs(
+    @Describe("Id of the meeting (from list_huddles); leave empty for the last one.")
+    val huddleId: String? = null,
+    @Describe("The corrected summary, one line per part (\"Wat ging goed: …\"); its first line is the meeting's title.")
+    val summary: String,
+)
+
+/** A meeting's summary stays for good, so a mistake in it can be put right afterwards. */
+class EditHuddleSummaryTool(private val meeting: MeetingRepository) : Tool<EditHuddleArgs, HuddlesResult> {
+    override val name = NAME
+    override val description = "Correct the summary of a past weekly meeting (a mistake nobody had time to check at Klaar)."
+    override val argsSerializer = EditHuddleArgs.serializer()
+    override val resultSerializer = HuddlesResult.serializer()
+
+    override suspend fun run(args: EditHuddleArgs, ctx: ToolContext): HuddlesResult {
+        val all = meeting.recentHuddles(52)
+        val huddle = (if (args.huddleId != null) all.firstOrNull { it.id == args.huddleId } else all.firstOrNull())
+            ?: throw ToolException(ctx.t("Dat weekoverleg vind ik niet.", "I can't find that weekly meeting."))
+        val summary = args.summary.lines().map { it.trimEnd() }.dropWhile { it.isBlank() }.dropLastWhile { it.isBlank() }.joinToString("\n")
+        if (summary.isBlank()) throw ToolException(ctx.t("Wat moet er staan?", "What should it say?"))
+        meeting.setSummary(huddle.id, summary)
+        val title = summary.lines().first()
+        return HuddlesResult(listOf(huddle.copy(summary = summary)), ctx.t("Verslag aangepast: $title", "Summary corrected: $title"))
+    }
+
+    companion object {
+        const val NAME = "edit_huddle_summary"
+    }
+}
+
 // ---------- finish_weekoverleg ----------
 
 @Serializable

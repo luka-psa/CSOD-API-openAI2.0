@@ -345,7 +345,7 @@
     <string name="week_no_agreement">Geen akkoord</string>
     <string name="week_off">De week een score geven staat uit.</string>
     <string name="week_switch_on">Aanzetten</string>
-    <string name="week_switch_off">De week geen score meer geven</string>
+    <string name="week_switch_off">Niet meer vragen</string>
     <string name="habit_less_often">Minder vaak</string>
     <string name="habit_easier">Makkelijker maken</string>
     <string name="ease_easy">loopt vanzelf</string>
@@ -549,4 +549,13 @@
     <string name="goal_place">Een plek in de week</string>
     <string name="item_rename_hint">In andere woorden</string>
     <string name="board_tap_hint">Tik erop om te wijzigen, te beoordelen of makkelijker te maken.</string>
+    <string name="review_list_title">Wat bespreken we?</string>
+    <string name="review_list_hint">Zeg wat goed ging, of tik op een onderwerp om een ritme of huisregel te kiezen en te beoordelen.</string>
+    <string name="review_add_hint">Wat ging goed?</string>
+    <string name="review_suggest">Hearth stelt voor</string>
+    <string name="pick_title">%1$s: welke?</string>
+    <string name="pick_empty">Hier staat nog niets.</string>
+    <string name="history_open">Alle overleggen</string>
+    <string name="history_empty">Nog geen weekoverleg gehouden.</string>
+    <string name="last_time_line">Vorige keer: %1$s</string>
 </resources>

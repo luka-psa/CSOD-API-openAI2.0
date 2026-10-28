@@ -75,6 +75,7 @@ import app.hearth.core.model.TipAction
 import app.hearth.core.model.celebrateWords
 import app.hearth.core.model.frictionsAbout
 import app.hearth.core.model.isAbout
+import app.hearth.core.tools.week.EditHuddleArgs
 import app.hearth.core.model.ruleReview
 import app.hearth.core.tools.board.SetRuleHelpArgs
 import app.hearth.core.tools.board.EditBoardItemArgs
@@ -686,7 +687,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val weekOn: StateFlow<Boolean> = app.settings.value(SetWeekMetersTool.METERS_SETTING).map { it != "false" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
     val transcript: StateFlow<List<TranscriptLine>> = app.meeting.transcript.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val huddles: StateFlow<List<Huddle>> = app.meeting.huddles().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val huddles: StateFlow<List<Huddle>> = app.meeting.huddles(52).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** The last meeting's transcript: readable until the next meeting ends. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -698,6 +699,11 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun addWin(text: String, topic: Topic? = null) {
         if (text.isBlank()) return
         tool { app.tools.registry.run(app.tools.addWin, AddWinArgs(text, topic = topic), it) }
+    }
+
+    /** A past meeting's summary, put right afterwards. */
+    fun editHuddle(huddle: Huddle, summary: String) = tool {
+        app.tools.registry.run(app.tools.editHuddleSummary, EditHuddleArgs(huddleId = huddle.id, summary = summary), it)
     }
 
     /** Only after the person confirmed on screen. */

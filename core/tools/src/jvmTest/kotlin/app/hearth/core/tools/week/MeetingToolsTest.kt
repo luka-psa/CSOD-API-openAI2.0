@@ -90,6 +90,18 @@ class MeetingToolsTest {
     }
 
     @Test
+    fun `a past meeting's summary can be put right afterwards`() = runTest {
+        tools.registry.run(tools.addWin, AddWinArgs("Ramen gelapt"), nl)
+        val held = tools.registry.run(tools.finishWeekoverleg, app.hearth.core.tools.week.FinishArgs(), nl).huddle!!
+        val fixed = held.summary.replace("Ramen gelapt", "Ramen en deuren gelapt") + "\n\n"
+        assertEquals(
+            "Verslag aangepast: " + held.summary.lines().first(),
+            tools.registry.run(tools.editHuddleSummary, app.hearth.core.tools.week.EditHuddleArgs(huddleId = held.id, summary = fixed), nl).summary,
+        )
+        assertEquals(fixed.trimEnd(), meeting.recentHuddles(1).single().summary)
+    }
+
+    @Test
     fun `an agreement that doesn't work twice becomes a working point, never naming anyone`() = runTest {
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Schoenen in de kast"), nl)
         tools.registry.run(tools.addHouseRule, AddHouseRuleArgs("Wie kookt, wast niet af"), nl)
