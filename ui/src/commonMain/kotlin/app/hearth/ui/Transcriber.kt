@@ -10,7 +10,14 @@ class Transcriber(val available: Boolean, val start: () -> Unit, val stop: () ->
  * speech, a quiet pause, an error (Android's error number, or the browser's error as [name]) or given up. [service] is
  * the recognition service in use (Android).
  */
-data class ListenStatus(val event: Event, val code: Int? = null, val service: String? = null, val name: String? = null) {
+data class ListenStatus(
+    val event: Event,
+    val code: Int? = null,
+    val service: String? = null,
+    val name: String? = null,
+    /** The loudest the microphone was so far (Android's dB scale, about -2 silent to 10 loud); null: not known. */
+    val level: Float? = null,
+) {
     enum class Event { STARTING, READY, SPEECH, QUIET, ERROR, GAVE_UP, STOPPED }
 }
 

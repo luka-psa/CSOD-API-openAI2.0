@@ -78,6 +78,7 @@ import app.hearth.ui.resources.listen_err_client
 import app.hearth.ui.resources.listen_err_code
 import app.hearth.ui.resources.listen_err_language
 import app.hearth.ui.resources.listen_err_mic
+import app.hearth.ui.resources.listen_level
 import app.hearth.ui.resources.listen_err_no_answer
 import app.hearth.ui.resources.listen_err_silent
 import app.hearth.ui.resources.listen_err_network
@@ -304,7 +305,9 @@ private fun ListenStatus.text(): String? {
         ListenStatus.Event.STARTING -> stringResource(Res.string.listen_status_starting)
         ListenStatus.Event.READY -> stringResource(Res.string.listen_status_ready)
         ListenStatus.Event.SPEECH -> stringResource(Res.string.listen_status_speech)
-        ListenStatus.Event.QUIET -> stringResource(Res.string.listen_status_quiet)
+        // "Stil, luistert verder (fout 7, geluid 4)": which empty answer, and whether the microphone hears anything.
+        ListenStatus.Event.QUIET -> stringResource(Res.string.listen_status_quiet) +
+            listOfNotNull(code?.let { stringResource(Res.string.listen_err_code, it.toString()) }, level?.let { stringResource(Res.string.listen_level, it.toInt()) }).joinToString(" ", prefix = " ").trimEnd()
         ListenStatus.Event.ERROR -> stringResource(Res.string.listen_status_error, detail)
         ListenStatus.Event.GAVE_UP -> stringResource(Res.string.listen_status_gave_up, detail)
         ListenStatus.Event.STOPPED -> null
