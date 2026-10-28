@@ -138,11 +138,14 @@ private val LAW_WORDS = listOf(
 )
 
 /** A friction or idea about [habit]: linked to it when it was written, or naming it while it is still open. */
-fun BoardItem.isAbout(habit: BacklogItem): Boolean {
-    if (!isWorkingPoint) return false
-    if (linkedId == habit.id) return true
+fun BoardItem.isAbout(habit: BacklogItem): Boolean = isAbout(habit.id, habit.text)
+
+/** A friction or idea about the routine or house rule with [id] and [name]. */
+fun BoardItem.isAbout(id: String, name: String): Boolean {
+    if (!isWorkingPoint || id == this.id) return false
+    if (linkedId == id) return true
     if (!isOpen) return false
-    val names = keyWords(habit.text)
+    val names = keyWords(name)
     return keyWords(text).any { w -> names.any { sameWord(it, w) } }
 }
 
@@ -185,7 +188,6 @@ fun habitReview(habit: BacklogItem, ratings: List<Int>, frictions: List<BoardIte
         last == null -> HabitStage.NEW
         else -> HabitStage.STEADY
     }
-    val weekly = habit.schedule == null && (habit.intervalDays ?: 1) >= 7
     val sunny = weather.count { it == Ease.EASY }
     val laws = listOf(
         LawState(HabitLaw.OBVIOUS, habit.schedule?.label(lang)?.replaceFirstChar { it.uppercase() } ?: habit.anchor?.title(lang)),
@@ -202,25 +204,7 @@ fun habitReview(habit: BacklogItem, ratings: List<Int>, frictions: List<BoardIte
         HabitLaw.SATISFYING -> false
     }
 
-    fun tip(law: HabitLaw): HabitTip = when (law) {
-        HabitLaw.OBVIOUS -> when {
-            missing(law) -> HabitTip(law, TipAction.MOMENT, t("Hang het aan een moment, na iets wat je toch al doet.", "Hang it on a moment, after something you already do."))
-            weekly -> HabitTip(law, TipAction.DAYS, t("Geef het een vaste dag, dan hoeft niemand eraan te denken.", "Give it a fixed day, so nobody has to remember."))
-            else -> HabitTip(law, TipAction.MOMENT, t("Misschien past een ander moment beter, waar je het vanzelf ziet.", "Maybe another moment fits better, where you see it anyway."))
-        }
-        HabitLaw.ATTRACTIVE -> HabitTip(
-            law, TipAction.PAIR,
-            habit.pairing?.let { t("Iets anders leuks erbij? Nu: $it.", "Something else nice with it? Now: $it.") }
-                ?: t("Koppel er iets leuks aan: muziek, samen, of iets lekkers erna.", "Pair it with something nice: music, together, or a treat after."),
-        )
-        HabitLaw.EASY -> when {
-            habit.smallStep == null -> HabitTip(law, TipAction.SMALL_STEP, t("Begin met de versie van twee minuten.", "Start with the two-minute version."))
-            steps > 3 -> HabitTip(law, TipAction.FEWER_STEPS, t("Minder stappen: welke mag eruit?", "Fewer steps: which one can go?"))
-            habit.schedule == null && (habit.intervalDays ?: 1) < 30 -> HabitTip(law, TipAction.LESS_OFTEN, t("Minder vaak, tot het vanzelf gaat.", "Less often, until it runs by itself."))
-            else -> HabitTip(law, TipAction.SMALL_STEP, t("Maak de kleine stap nog kleiner.", "Make the small step even smaller."))
-        }
-        HabitLaw.SATISFYING -> HabitTip(law, TipAction.CELEBRATE, t("Zeg het als het lukt: bij Wat ging goed.", "Say it when it works: in What went well."))
-    }
+    fun tip(law: HabitLaw): HabitTip = habitTip(habit, steps, law, lang)
 
     val tips = when (stage) {
         HabitStage.NEW -> listOfNotNull(tip(HabitLaw.OBVIOUS).takeIf { missing(HabitLaw.OBVIOUS) }, tip(HabitLaw.EASY).takeIf { missing(HabitLaw.EASY) })
@@ -246,3 +230,98 @@ fun habitReview(habit: BacklogItem, ratings: List<Int>, frictions: List<BoardIte
 /** What Wat ging goed says when a habit is celebrated. */
 fun celebrateWords(habit: BacklogItem, lang: Lang): String =
     if (lang == Lang.NL) "${habit.text}: gelukt deze week" else "${habit.text}: we did it this week"
+
+/**
+ * The four laws for a house rule, the same way as for a habit: a rule sticks when everyone sees it (a moment of the
+ * day), when it is pleasant (something nice with it), when it is easy (a small version to start with) and when it is
+ * said that it works. [ratings] is its score (0–5) per meeting, oldest first; [frictions] the ones about it.
+ */
+fun ruleReview(rule: BoardItem, ratings: List<Int>, frictions: List<BoardItem>, lang: Lang): HabitReview {
+    fun t(dutch: String, english: String) = if (lang == Lang.NL) dutch else english
+    val weather = ratings.map(::easeOf)
+    val said = frictions.sortedBy { it.closedAt ?: it.createdAt }
+    val focus = said.reversed().firstNotNullOfOrNull { lawOf(it.text) }
+    val last = weather.lastOrNull()
+    val stage = when {
+        last == Ease.HARD -> HabitStage.SHRINK
+        last == Ease.EFFORT || said.any { it.isOpen } -> HabitStage.ADJUST
+        last == null -> HabitStage.NEW
+        else -> HabitStage.STEADY
+    }
+    val sunny = weather.count { it == Ease.EASY }
+    val laws = listOf(
+        LawState(HabitLaw.OBVIOUS, rule.anchor?.title(lang)),
+        LawState(HabitLaw.ATTRACTIVE, rule.pairing),
+        LawState(HabitLaw.EASY, rule.smallStep?.let { t("Begin klein: $it", "Start small: $it") }),
+        LawState(HabitLaw.SATISFYING, sunny.takeIf { it > 0 }?.let { t("$it× liep het vanzelf", "Ran easily $it×") }),
+    )
+    val tips = ruleTips(rule, lang)
+    fun missing(law: HabitLaw) = when (law) {
+        HabitLaw.OBVIOUS -> rule.anchor == null
+        HabitLaw.ATTRACTIVE -> rule.pairing == null
+        HabitLaw.EASY -> rule.smallStep == null
+        HabitLaw.SATISFYING -> false
+    }
+    val chosen = when (stage) {
+        HabitStage.NEW, HabitStage.STEADY, HabitStage.GROW -> emptyList()
+        HabitStage.SHRINK -> listOfNotNull(tips[HabitLaw.EASY], focus?.takeIf { it != HabitLaw.EASY }?.let(tips::get))
+        HabitStage.ADJUST -> {
+            val first = focus ?: HabitLaw.entries.firstOrNull(::missing) ?: HabitLaw.EASY
+            listOfNotNull(tips[first], HabitLaw.entries.firstOrNull { it != first && missing(it) }?.let(tips::get))
+        }
+    }.distinctBy { it.action }.take(2)
+    return HabitReview(rule.id, stage, ratings, said.map { it.text }, focus, laws, chosen)
+}
+
+/** One suggestion per law for a house rule, whatever its stage: what the Verbeteren part of its sheet offers. */
+fun ruleTips(rule: BoardItem, lang: Lang): Map<HabitLaw, HabitTip> {
+    fun t(dutch: String, english: String) = if (lang == Lang.NL) dutch else english
+    return mapOf(
+        HabitLaw.OBVIOUS to HabitTip(
+            HabitLaw.OBVIOUS, TipAction.MOMENT,
+            if (rule.anchor == null) t("Hang de afspraak aan een moment, dan ziet iedereen wanneer ze telt.", "Hang the agreement on a moment, so everyone sees when it counts.")
+            else t("Past een ander moment beter?", "Does another moment fit better?"),
+        ),
+        HabitLaw.ATTRACTIVE to HabitTip(
+            HabitLaw.ATTRACTIVE, TipAction.PAIR,
+            rule.pairing?.let { t("Iets anders leuks erbij? Nu: $it.", "Something else nice with it? Now: $it.") }
+                ?: t("Maak het leuker: samen, met muziek, of iets lekkers erna.", "Make it nicer: together, with music, or a treat after."),
+        ),
+        HabitLaw.EASY to HabitTip(
+            HabitLaw.EASY, TipAction.SMALL_STEP,
+            if (rule.smallStep == null) t("Wat is de kleine versie om mee te beginnen?", "What's the small version to start with?")
+            else t("Maak de kleine versie nog kleiner.", "Make the small version even smaller."),
+        ),
+        HabitLaw.SATISFYING to HabitTip(HabitLaw.SATISFYING, TipAction.CELEBRATE, t("Zeg het als het lukt: bij Wat ging goed.", "Say it when it works: in What went well.")),
+    )
+}
+
+/**
+ * One suggestion per law for a routine, whatever its stage: what the Verbeteren part of its sheet offers. The same
+ * words as the coach's tips, so the sheet and the Terugblik agree.
+ */
+fun lawTips(habit: BacklogItem, steps: Int, lang: Lang): Map<HabitLaw, HabitTip> = HabitLaw.entries.associateWith { habitTip(habit, steps, it, lang) }
+
+private fun habitTip(habit: BacklogItem, steps: Int, law: HabitLaw, lang: Lang): HabitTip {
+    fun t(dutch: String, english: String) = if (lang == Lang.NL) dutch else english
+    val weekly = habit.schedule == null && (habit.intervalDays ?: 1) >= 7
+    return when (law) {
+        HabitLaw.OBVIOUS -> when {
+            (habit.anchor == null && habit.schedule == null) -> HabitTip(law, TipAction.MOMENT, t("Hang het aan een moment, na iets wat je toch al doet.", "Hang it on a moment, after something you already do."))
+            weekly -> HabitTip(law, TipAction.DAYS, t("Geef het een vaste dag, dan hoeft niemand eraan te denken.", "Give it a fixed day, so nobody has to remember."))
+            else -> HabitTip(law, TipAction.MOMENT, t("Misschien past een ander moment beter, waar je het vanzelf ziet.", "Maybe another moment fits better, where you see it anyway."))
+        }
+        HabitLaw.ATTRACTIVE -> HabitTip(
+            law, TipAction.PAIR,
+            habit.pairing?.let { t("Iets anders leuks erbij? Nu: $it.", "Something else nice with it? Now: $it.") }
+                ?: t("Koppel er iets leuks aan: muziek, samen, of iets lekkers erna.", "Pair it with something nice: music, together, or a treat after."),
+        )
+        HabitLaw.EASY -> when {
+            habit.smallStep == null -> HabitTip(law, TipAction.SMALL_STEP, t("Begin met de versie van twee minuten.", "Start with the two-minute version."))
+            steps > 3 -> HabitTip(law, TipAction.FEWER_STEPS, t("Minder stappen: welke mag eruit?", "Fewer steps: which one can go?"))
+            habit.schedule == null && (habit.intervalDays ?: 1) < 30 -> HabitTip(law, TipAction.LESS_OFTEN, t("Minder vaak, tot het vanzelf gaat.", "Less often, until it runs by itself."))
+            else -> HabitTip(law, TipAction.SMALL_STEP, t("Maak de kleine stap nog kleiner.", "Make the small step even smaller."))
+        }
+        HabitLaw.SATISFYING -> HabitTip(law, TipAction.CELEBRATE, t("Zeg het als het lukt: bij Wat ging goed.", "Say it when it works: in What went well."))
+    }
+}

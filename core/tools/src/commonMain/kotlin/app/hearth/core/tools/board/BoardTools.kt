@@ -2,6 +2,11 @@ package app.hearth.core.tools.board
 
 import app.hearth.core.data.backlog.BacklogRepository
 import app.hearth.core.data.board.BoardRepository
+import app.hearth.core.data.week.MeetingRepository
+import app.hearth.core.model.HabitReview
+import app.hearth.core.model.isAbout
+import app.hearth.core.model.line
+import app.hearth.core.model.ruleReview
 import app.hearth.core.model.BoardItem
 import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Anchor
@@ -529,20 +534,155 @@ class SetGoalStepTool(
     }
 }
 
-class AchieveGoalTool(private val repo: BoardRepository) : Tool<BoardRefArgs, BoardItemsResult> {
+@Serializable
+data class AchieveGoalArgs(
+    @Describe("Ids of goals.")
+    val itemIds: List<String> = emptyList(),
+    @Describe("Texts of goals, when ids are not known.")
+    val texts: List<String> = emptyList(),
+    @Describe("False: it was ticked by mistake, the goal is open again.")
+    val reached: Boolean = true,
+)
+
+class AchieveGoalTool(private val repo: BoardRepository) : Tool<AchieveGoalArgs, BoardItemsResult> {
     override val name = NAME
-    override val description = "Mark a goal as reached. It stays on the board as a win."
-    override val argsSerializer = BoardRefArgs.serializer()
+    override val description = "Mark a goal as reached: it moves to the Werkbord's Bereikt shelf, a win to be proud of. " +
+        "With reached = false a goal ticked by mistake is open again."
+    override val argsSerializer = AchieveGoalArgs.serializer()
     override val resultSerializer = BoardItemsResult.serializer()
 
-    override suspend fun run(args: BoardRefArgs, ctx: ToolContext): BoardItemsResult {
-        val goals = repo.find(args.itemIds, args.texts, BoardKind.GOAL).filter { it.isOpen }.ifEmpty { notFound(ctx) }
-        goals.forEach { repo.close(it.id, BoardStatus.ACHIEVED) }
+    override suspend fun run(args: AchieveGoalArgs, ctx: ToolContext): BoardItemsResult {
+        val all = repo.find(args.itemIds, args.texts, BoardKind.GOAL)
+        if (!args.reached) {
+            val reached = all.filter { it.status == BoardStatus.ACHIEVED }.ifEmpty { notFound(ctx) }
+            reached.forEach { repo.close(it.id, BoardStatus.OPEN, it.linkedId) }
+            return BoardItemsResult(reached.map { it.copy(status = BoardStatus.OPEN, closedAt = null) }, ctx.t("Terug open: ${quoted(reached)}", "Open again: ${quoted(reached)}"))
+        }
+        val goals = all.filter { it.isOpen }.ifEmpty { notFound(ctx) }
+        goals.forEach { repo.close(it.id, BoardStatus.ACHIEVED, it.linkedId) }
         return BoardItemsResult(goals.map { it.copy(status = BoardStatus.ACHIEVED) }, ctx.t("Doel bereikt: ${quoted(goals)}. Proficiat!", "Goal reached: ${quoted(goals)}. Well done!"))
     }
 
     companion object {
         const val NAME = "achieve_goal"
+    }
+}
+
+// ---------- edit_board_item ----------
+
+@Serializable
+data class EditBoardItemArgs(
+    @Describe("Id of the house rule, friction, idea or goal.")
+    val itemId: String? = null,
+    @Describe("Its current text, when the id is not known.")
+    val text: String? = null,
+    @Describe("The new words.")
+    val newText: String,
+)
+
+class EditBoardItemTool(private val repo: BoardRepository) : Tool<EditBoardItemArgs, BoardItemsResult> {
+    override val name = NAME
+    override val description = "Say a house rule, friction, idea or goal in other words (a typo, or how we agreed it now)."
+    override val argsSerializer = EditBoardItemArgs.serializer()
+    override val resultSerializer = BoardItemsResult.serializer()
+
+    override suspend fun run(args: EditBoardItemArgs, ctx: ToolContext): BoardItemsResult {
+        val item = repo.find(listOfNotNull(args.itemId), listOfNotNull(args.text?.takeIf { it.isNotBlank() })).firstOrNull() ?: notFound(ctx)
+        val words = stripBoardPrefix(args.newText).ifEmpty { throw ToolException(ctx.t("Welke woorden?", "Which words?")) }
+        repo.rename(item.id, words)
+        return BoardItemsResult(listOf(item.copy(text = words)), ctx.t("Aangepast: “$words”", "Changed: “$words”"))
+    }
+
+    companion object {
+        const val NAME = "edit_board_item"
+    }
+}
+
+// ---------- set_house_rule_help ----------
+
+@Serializable
+data class SetRuleHelpArgs(
+    @Describe("Id of the house rule.")
+    val itemId: String? = null,
+    @Describe("Text of the house rule, when the id is not known.")
+    val text: String? = null,
+    @Describe("Make it obvious: the moment of the day it counts (MORNING, AFTERNOON, DINNER, EVENING, BEDTIME). Not given: unchanged.")
+    val anchor: Anchor? = null,
+    @Describe("True: no moment any more.")
+    val noMoment: Boolean = false,
+    @Describe("Make it attractive: something nice with it ('samen', 'met muziek'). Empty removes it; not given: unchanged.")
+    val pairing: String? = null,
+    @Describe("Make it easy: the small version to start with ('alleen je eigen bord'). Empty removes it; not given: unchanged.")
+    val smallStep: String? = null,
+)
+
+/** The four laws for a house rule: a moment (obvious), something nice (attractive), a small version (easy). */
+class SetRuleHelpTool(private val repo: BoardRepository) : Tool<SetRuleHelpArgs, BoardItemsResult> {
+    override val name = NAME
+    override val description = "Help a house rule stick, along the four laws of Atomic Habits: hang it on a moment of the day, " +
+        "pair it with something nice, or give it a small version to start with. Satisfying is said in Wat ging goed (add_win)."
+    override val argsSerializer = SetRuleHelpArgs.serializer()
+    override val resultSerializer = BoardItemsResult.serializer()
+
+    override suspend fun run(args: SetRuleHelpArgs, ctx: ToolContext): BoardItemsResult {
+        val rule = repo.find(listOfNotNull(args.itemId), listOfNotNull(args.text?.takeIf { it.isNotBlank() }), BoardKind.RULE).firstOrNull() ?: notFound(ctx)
+        fun words(new: String?, old: String?) = if (new == null) old else new.trim().replaceFirstChar { it.lowercase() }.ifEmpty { null }
+        val anchor = if (args.noMoment) null else args.anchor ?: rule.anchor
+        val updated = rule.copy(anchor = anchor, pairing = words(args.pairing, rule.pairing), smallStep = words(args.smallStep, rule.smallStep))
+        repo.setHelp(rule.id, updated.anchor, updated.pairing, updated.smallStep)
+        val parts = listOfNotNull(
+            updated.anchor?.title(ctx.lang)?.lowercase(),
+            updated.pairing?.let { ctx.t("iets leuks erbij: $it", "something nice: $it") },
+            updated.smallStep?.let { ctx.t("begin klein: $it", "start small: $it") },
+        )
+        val summary = if (parts.isEmpty()) ctx.t("“${rule.text}” zonder hulpjes.", "“${rule.text}” without helpers.")
+        else "“${rule.text}”: " + parts.joinToString(", ")
+        return BoardItemsResult(listOf(updated), summary)
+    }
+
+    companion object {
+        const val NAME = "set_house_rule_help"
+    }
+}
+
+// ---------- review_house_rule ----------
+
+@Serializable
+data class ReviewRuleArgs(
+    @Describe("Id of one house rule; leave empty (with text) for all of them.")
+    val itemId: String? = null,
+    @Describe("Text of one house rule, when the id is not known.")
+    val text: String? = null,
+)
+
+@Serializable
+data class ReviewRuleResult(val items: List<BoardItem>, val reviews: List<HabitReview>, override val summary: String) : ToolResult
+
+/** The habit coach for house rules: how each goes and, when it needs one, the one thing to try along the four laws. */
+class ReviewRuleTool(private val repo: BoardRepository, private val meeting: MeetingRepository) : Tool<ReviewRuleArgs, ReviewRuleResult> {
+    override val name = NAME
+    override val description = "How the house rules go (score per meeting, what was said about them) and, along the four laws " +
+        "of Atomic Habits, one thing to try for those that ask for it. Use it to suggest improvements to the family."
+    override val argsSerializer = ReviewRuleArgs.serializer()
+    override val resultSerializer = ReviewRuleResult.serializer()
+
+    override suspend fun run(args: ReviewRuleArgs, ctx: ToolContext): ReviewRuleResult {
+        val board = repo.allItems()
+        val asked = args.itemId != null || !args.text.isNullOrBlank()
+        val rules = if (asked) repo.find(listOfNotNull(args.itemId), listOfNotNull(args.text), BoardKind.RULE).ifEmpty { notFound(ctx) }
+        else board.filter { it.kind == BoardKind.RULE && it.isOpen }
+        val reviews = rules.map { r -> ruleReview(r, meeting.ruleHistory(r.id), board.filter { it.isAbout(r.id, r.text) }, ctx.lang) }
+        val lines = rules.zip(reviews).mapNotNull { (r, review) ->
+            val tip = review.tips.firstOrNull()?.text
+            if (!asked && tip == null) null
+            else "“${r.text}”: " + review.stage.line(ctx.lang) + (tip?.let { " $it" } ?: "")
+        }
+        val summary = lines.joinToString("\n").ifEmpty { ctx.t("De huisregels lopen. Niets aan veranderen.", "The house rules run. Nothing to change.") }
+        return ReviewRuleResult(rules, reviews, summary)
+    }
+
+    companion object {
+        const val NAME = "review_house_rule"
     }
 }
 

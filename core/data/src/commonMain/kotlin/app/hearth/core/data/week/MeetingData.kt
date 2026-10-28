@@ -217,6 +217,9 @@ class MeetingRepository(
     /** How each house rule goes now, by rule id: its last score. */
     suspend fun ruleScores(): Map<String, Int> = dao.allRuleChecks().associate { it.text to it.toRuleCheck().score }
 
+    /** One house rule's score per meeting, oldest first. */
+    suspend fun ruleHistory(ruleId: String): List<Int> = dao.allRuleChecks().filter { it.text == ruleId }.map { it.toRuleCheck().score }
+
     suspend fun habitHistory(itemId: String): List<Int> = dao.habitChecksOf(itemId).map { ReflectionEntity.scoreOf(it.value) }
     suspend fun currentWeek(): WeekRating? = dao.currentReflections().firstOrNull { it.kind == ReflectionEntity.WEEK }?.toWeek()
     suspend fun currentRuleChecks(): List<RuleCheck> = dao.currentReflections().filter { it.kind == ReflectionEntity.RULE_CHECK }.map { it.toRuleCheck() }
