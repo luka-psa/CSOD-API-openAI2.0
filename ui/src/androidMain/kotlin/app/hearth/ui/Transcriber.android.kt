@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import app.hearth.ai.route.Spoken
 
@@ -44,9 +45,18 @@ actual fun rememberTranscriber(
     onStatus: (ListenStatus) -> Unit,
 ): Transcriber {
     val context = LocalContext.current
+    val view = LocalView.current
     val line by rememberUpdatedState(onLine)
     val partial by rememberUpdatedState(onPartial)
-    val active by rememberUpdatedState(onActive)
+    val reportActive by rememberUpdatedState(onActive)
+
+    // While Luister mee listens the screen stays on and bright, charging or not: nobody touches the tablet during a
+    // meeting, and a screen that sleeps stops the listening.
+    fun active(on: Boolean) {
+        view.keepScreenOn = on
+        ListeningNow.on = on
+        reportActive(on)
+    }
     val status by rememberUpdatedState(onStatus)
     val lang by rememberUpdatedState(language)
     val words by rememberUpdatedState(vocabulary)
@@ -294,6 +304,8 @@ actual fun rememberTranscriber(
 
     DisposableEffect(Unit) {
         onDispose {
+            view.keepScreenOn = false
+            ListeningNow.on = false
             if (state.on) quiet(false)
             state.on = false
             handler.removeCallbacksAndMessages(null)
@@ -357,4 +369,10 @@ actual fun rememberTranscriber(
             },
         )
     }
+}
+
+/** Whether Luister mee is listening right now: the kiosk doesn't dim the screen meanwhile. */
+object ListeningNow {
+    @Volatile
+    var on: Boolean = false
 }
