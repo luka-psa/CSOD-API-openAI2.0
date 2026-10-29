@@ -111,7 +111,8 @@ meeting and wins, then every *topic* in a few words with its details, Hearth's s
 transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary, wins grouped by topic; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `rate_week` (how the week went, `score` 0–5, agreed together for the household; empty = no
-agreement), `set_week_meters` (asking it on/off, tablet), `set_smart_listening` (the sentence model for Luister mee on this device, on/off, tablet), `set_interpreter` (the interpreter that reads the whole weekoverleg, on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
+agreement), `set_week_meters` (asking it on/off, tablet), `set_smart_listening` (the sentence model for Luister mee on this device, on/off, tablet), `set_interpreter` (the interpreter that reads the whole weekoverleg, on/off, tablet), `set_transcriber` (Beter
+uitschrijven: Luister mee records and Whisper writes it down on this device, on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
 `rate_habit` (`score` 0–5; one score per meeting is kept for the habit coach; all three still take the older `ease`
 EASY / EFFORT / HARD, read as 5 / 3 / 1), `review_habit` (read-only: the four laws of Atomic Habits for a habit, or for
 every habit that asks for something: its score per meeting, the frictions about it, how each law is in place and what to try,
@@ -382,7 +383,7 @@ the one with the household's own words, names, stock and recipes, which they als
 supports it: phrase hints in the browser, biasing strings on Android 13+). What Hearth reads is cleaned first
 (`Spoken`: "euh", "allee", "gewoon" out; "da", "ge", "nie", "'k" as plain Dutch); the transcript keeps what was said.
 *Gesprek* shows what was heard (tap a line to fix it; the words that changed are remembered, `WordFixes`, and every next
-conversation is read with them; they are also the recognizer's first hints; *Woorden die Hearth geleerd heeft* lists
+conversation is read with them; they are also the recognizer's first hints and Whisper's prompt; *Woorden die Hearth geleerd heeft* lists
 them, X forgets one after a yes); *Zet op zijn plek* opens the Voorstel: each conclusion,
 grouped by topic, with what was said around it (tap the words to fix them and Hearth reads them again) and its
 guessed place (Taken, Afspraak, Vrije tijd,
@@ -392,7 +393,8 @@ place moves it, *Toevoegen* runs the same tools. A thought that was just talk co
 the end). All of this runs on the tablet (`MeetingWords.thoughts` + the capture-bar rules, `Orchestrator.listen`, the
 interpreter, `MeetingProcessor`); the family's own AI is an optional extra that can read the conversation through
 `read_conversation`, never needed. On Android a recognizer that goes quiet without an error (no sound level for 20 s
-while listening) is started afresh, and the status line says so.
+while listening) is started afresh, and the status line says so. With *Beter uitschrijven* (v0.28) there is no
+recognizer to restart: the tablet records the meeting itself and Whisper writes it down, a few seconds behind the talk.
 The dashboard shows *Wat ging goed* until the meeting takes it along; "dat ging goed: …" in the capture bar adds one.
 The dashboard shows "Vanavond: <dish>" and, Friday to Sunday when no meeting was held for 6 days, a calm
 "Tijd voor het weekoverleg?" card with Start.
@@ -522,6 +524,17 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
    besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,
    the rule it ends in does; looking back at ourselves is never written down.
+   v0.28: *Beter uitschrijven* (Instellingen, `set_transcriber`, device-only, on by itself on a tablet; `ai/whisper`):
+   Luister mee records the meeting itself (`AudioRecord`, 16 kHz) instead of restarting the platform recognizer after
+   every pause, so nothing is lost between stretches; `SpeechCutter` cuts the recording at pauses (a stretch is read once
+   it is 6 s long and someone pauses, at a 2 s pause however short, at 28 s at its quietest moment; silence never reaches
+   the model) and Whisper small (int8, ≈ 250 MB from Hugging Face at a fixed revision, checked by SHA-256, ONNX Runtime on
+   the tablet; our own log-mel features and byte-level BPE, the same numbers and ids as the reference) writes each
+   stretch a few seconds behind the talk, with the household's own words as its prompt, a line per stretch kept at the
+   moment it was said (`add_transcript_line` `at`). What Whisper invents on silence is dropped; a phrase that loops is
+   kept once. The model is opened only while a meeting is written; the audio is never stored. Zet op zijn plek waits
+   until the last stretches are written. Measured on Dutch speech (FLEURS): the same words as the reference, about
+   0.35× real time on a four-core test computer (a tablet is slower).
    v0.27: Luister mee in two moments. Live it only writes along and reads what each line is about (`MeetingIntake`:
    names, the household's own things and topic words coloured; *Waar het over gaat* by topic beside it). After the
    meeting *Zet op zijn plek* reads the whole conversation at once (`MeetingProcessor`: the household's own words, topic

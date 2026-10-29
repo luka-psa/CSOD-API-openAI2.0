@@ -159,6 +159,7 @@ import app.hearth.ui.resources.voorstel_empty
 import app.hearth.ui.resources.voorstel_hint
 import app.hearth.ui.resources.voorstel_title
 import app.hearth.ui.resources.voorstel_reading
+import app.hearth.ui.resources.voorstel_writing
 import app.hearth.ui.resources.voorstel_reading_part
 import app.hearth.ui.resources.voorstel_update
 import app.hearth.ui.resources.voorstel_there
@@ -335,6 +336,8 @@ private fun clock(millis: Long): String =
 fun VoorstelSheet(
     rows: List<VoorstelRow>,
     progress: Pair<Int, Int>?,
+    /** Stretches Whisper still has to write; the reading waits for them. */
+    writingLeft: Int,
     today: LocalDate,
     lang: Lang,
     onMove: (Int, Place) -> Unit,
@@ -360,7 +363,10 @@ fun VoorstelSheet(
             if (progress != null) {
                 // Reading the whole conversation takes a moment on the tablet: say how far it is.
                 Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(Res.string.voorstel_reading), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (writingLeft > 0) pluralStringResource(Res.plurals.voorstel_writing, writingLeft, writingLeft) else stringResource(Res.string.voorstel_reading),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                     LinearProgressIndicator(progress = { if (progress.second == 0) 0f else progress.first.toFloat() / progress.second }, modifier = Modifier.fillMaxWidth())
                     if (progress.second > 1) Text(stringResource(Res.string.voorstel_reading_part, minOf(progress.first + 1, progress.second), progress.second), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

@@ -127,7 +127,9 @@ Done: ticked, counted as done today.
 progress and next step. Pushed back often? It turns amber, then orange: make the first step smaller.
 
 **J8. "Het weekoverleg."** Once a week, about 15 minutes, together. Vandaag suggests it near the weekend.
-Luister mee on top: talk as you talk, pauses and all. While you talk Hearth only writes along: the last lines, with
+Luister mee on top: talk as you talk, pauses and all. On the tablet, with *Beter uitschrijven* (on by itself; a model
+downloaded once), Hearth records the meeting itself and Whisper writes it down a few seconds behind the talk, nothing
+lost between pauses, the recording never kept. While you talk Hearth only writes along: the last lines, with
 names, the things the household already has (the evening routine, the shopping list, a house rule) and the words of a
 topic ("vaatwasser", "gerechten", "squash") in that topic's colour, and beside it *Waar het over gaat*: the topics so far,
 how often, and what was named. The tile of the topic just heard glows. Nothing is concluded while people are still

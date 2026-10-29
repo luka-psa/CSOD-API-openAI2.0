@@ -57,4 +57,14 @@ class LanguageToolsTest {
         tools.registry.run(tools.setInterpreter, InterpreterArgs(false), ctx)
         assertEquals("false", settings.currentValue(AppSettings.INTERPRETER))
     }
+
+    @Test
+    fun `better transcription is a setting of this device, never shared`() = runTest {
+        assertEquals("Beter uitschrijven staat aan. Het model komt één keer binnen.", tools.registry.run(tools.setTranscriber, TranscriberArgs(true), ctx).summary)
+        assertEquals("true", settings.currentValue(AppSettings.TRANSCRIBER))
+        kotlin.test.assertTrue(AppSettings.TRANSCRIBER in SettingsRepository.DEVICE_ONLY)
+        assertFalse(tools.registry.specs.first { it.name == SetTranscriberTool.NAME }.exposeOverMcp)
+        tools.registry.run(tools.setTranscriber, TranscriberArgs(false), ctx)
+        assertEquals("false", settings.currentValue(AppSettings.TRANSCRIBER))
+    }
 }

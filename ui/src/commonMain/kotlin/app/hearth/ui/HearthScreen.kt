@@ -161,6 +161,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val today by viewModel.today.collectAsStateWithLifecycle()
     val smartListening by viewModel.listening.collectAsStateWithLifecycle()
     val interpreterState by viewModel.interpreting.collectAsStateWithLifecycle()
+    val writingState by viewModel.writingState.collectAsStateWithLifecycle()
+    val writingLeft by viewModel.writingLeft.collectAsStateWithLifecycle()
 
     var destination by destinationState
     var planning by remember { mutableStateOf<BacklogItem?>(null) }
@@ -178,8 +180,10 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
         onPartial = { partial = it },
         onActive = { listening = it; if (!it) partial = "" },
         onStatus = { listenStatus = it },
+        writing = viewModel.writing.takeIf { viewModel.writingAvailable },
+        onWritten = viewModel::written,
     )
-    val listen = ListenControl(transcriber.available, listening, partial, listenStatus, transcriber.fix) { if (listening) transcriber.stop() else transcriber.start() }
+    val listen = ListenControl(transcriber.available, listening, partial, listenStatus, transcriber.fix, writingLeft) { if (listening) transcriber.stop() else transcriber.start() }
 
     val counts = mapOf(
         Destination.TASKS to dontForget(backlog, today).size,
@@ -285,6 +289,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 retrySmartListening = viewModel::retrySmartListening,
                                 setInterpreter = viewModel::setInterpreter,
                                 retryInterpreter = viewModel::retryInterpreter,
+                                setTranscriber = viewModel::setTranscriber,
+                                retryTranscriber = viewModel::retryTranscriber,
                             ),
                             google, viewModel.googleAvailable, googleBusy, backupList,
                             GoogleCallbacks(
@@ -310,6 +316,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             listeningAvailable = viewModel.listeningAvailable,
                             interpreter = interpreterState,
                             interpreterAvailable = viewModel.interpretingAvailable,
+                            transcriber = writingState,
+                            transcriberAvailable = viewModel.writingAvailable,
                         )
                         Destination.BOARD -> BoardScreen(
                             board, members, backlog, ruleScores, today, wide,

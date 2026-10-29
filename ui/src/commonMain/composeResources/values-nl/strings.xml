@@ -519,9 +519,21 @@
     <string name="smart_failed">Dat lukte niet: %1$s</string>
     <string name="smart_retry">Opnieuw proberen</string>
     <string name="interpreter_card">Gesprekken begrijpen</string>
-    <string name="interpreter_body">Een groter taalmodel leest het hele weekoverleg: wat terugkomt, wat jullie toch anders beslissen, en wat er uiteindelijk afgesproken is. Het draait op dit toestel zelf, dus wat jullie zeggen gaat nergens heen. Aanzetten laadt het één keer binnen (ongeveer 270 MB); uitzetten haalt het weer weg. Het leest na elke zin opnieuw, dus het voorstel kan nog even bijschuiven.</string>
+    <string name="interpreter_body">Een groter taalmodel leest het hele weekoverleg na afloop, onderwerp per onderwerp: wat terugkomt, wat jullie toch anders beslissen, en wat er uiteindelijk afgesproken is. Het draait op dit toestel zelf, dus wat jullie zeggen gaat nergens heen. Aanzetten laadt het één keer binnen (ongeveer 270 MB); uitzetten haalt het weer weg.</string>
     <string name="interpreter_loading">Het model wordt geladen, even geduld…</string>
     <string name="interpreter_ready">Klaar: Luister mee leest het hele gesprek.</string>
+    <string name="transcriber_card">Beter uitschrijven</string>
+    <string name="transcriber_body">Luister mee neemt het overleg zelf op en Whisper schrijft het op dit toestel uit, een paar seconden na wat gezegd wordt. Niets valt weg tussen twee pauzes, en Vlaams en namen komen beter door. De opname blijft op dit toestel en wordt nergens bewaard: elk stukje wordt uitgeschreven en meteen weer losgelaten. Aanzetten laadt het model één keer binnen (ongeveer 250 MB); uitzetten haalt het weer weg.</string>
+    <string name="transcriber_ready">Klaar: Luister mee schrijft het overleg zelf uit.</string>
+    <string name="listen_whisper">Whisper schrijft mee op dit toestel</string>
+    <plurals name="listen_pending">
+        <item quantity="one">nog %1$d stukje uit te schrijven</item>
+        <item quantity="other">nog %1$d stukjes uit te schrijven</item>
+    </plurals>
+    <plurals name="voorstel_writing">
+        <item quantity="one">Hearth schrijft nog %1$d stukje uit…</item>
+        <item quantity="other">Hearth schrijft nog %1$d stukjes uit…</item>
+    </plurals>
     <string name="tab_now">Nu</string>
     <string name="tab_how">Hoe loopt het</string>
     <string name="tab_better">Verbeteren</string>

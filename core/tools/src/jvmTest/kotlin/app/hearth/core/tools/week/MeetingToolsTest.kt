@@ -261,6 +261,16 @@ class MeetingToolsTest {
     }
 
     @Test
+    fun `a line written down later keeps the moment it was said, never a moment ahead`() = runTest {
+        val said = tick - 12_000
+        val late = tools.registry.run(tools.addTranscriptLine, TranscriptLineArgs("de vaatwasser moet leeg voor we koken", at = said), nl).line
+        assertEquals(said, late.createdAt)
+        val ahead = tools.registry.run(tools.addTranscriptLine, TranscriptLineArgs("en dan de was", at = tick + 60_000), nl).line
+        assertTrue(ahead.createdAt <= tick)
+        assertEquals(listOf(late.id, ahead.id), meeting.currentTranscript().map { it.id })
+    }
+
+    @Test
     fun `words the recognizer gets wrong are remembered, and forgotten after a yes`() = runTest {
         val learned = tools.registry.run(tools.learnWords, LearnWordsArgs("Jaules", "Jules"), nl)
         assertEquals("Onthouden: “Jaules” is “Jules”.", learned.summary)

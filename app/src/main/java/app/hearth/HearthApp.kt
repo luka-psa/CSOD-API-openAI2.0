@@ -14,6 +14,6 @@ class HearthApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(openHearthDatabase(this), googleAuth, senseRuntime = AndroidSenseRuntime(this), interpreterRuntime = AndroidInterpreterRuntime(this))
+        container = AppContainer(openHearthDatabase(this), googleAuth, senseRuntime = AndroidSenseRuntime(this), interpreterRuntime = AndroidInterpreterRuntime(this), whisperRuntime = AndroidWhisperRuntime(this))
     }
 }

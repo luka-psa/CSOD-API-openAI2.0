@@ -1,6 +1,9 @@
 package app.hearth.di
 
 import app.hearth.ai.interpret.Interpreting
+import app.hearth.ai.whisper.WhisperRuntime
+import app.hearth.ai.whisper.Writing
+import app.hearth.ai.whisper.NoWhisperRuntime
 import app.hearth.ai.interpret.InterpreterRuntime
 import app.hearth.ai.interpret.NoInterpreterRuntime
 import app.hearth.ai.sense.NoSenseRuntime
@@ -74,6 +77,8 @@ class AppContainer(
     senseRuntime: SenseRuntime = NoSenseRuntime,
     /** Where this device keeps and runs the interpreter that reads a whole weekoverleg (none: not on this device). */
     private val interpreterRuntime: InterpreterRuntime = NoInterpreterRuntime,
+    /** Where this device keeps and runs Whisper, which writes the meeting down from its own recording (none: not here). */
+    private val whisperRuntime: WhisperRuntime = NoWhisperRuntime,
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -105,6 +110,8 @@ class AppContainer(
     val listening = SmartListening(senseRuntime)
     /** The interpreter: reads the conversation as a whole and names what was decided, once switched on. */
     val interpreting = Interpreting(interpreterRuntime)
+    /** Beter uitschrijven: Luister mee records and Whisper writes it down on this device, once switched on. */
+    val writing = Writing(whisperRuntime, appScope)
 
     /** The family's ChatGPT or Claude reaches the same tools here, through the relay. */
     val mcp = McpServer(tools.registry) { context(ToolSource.MCP) }
@@ -159,6 +166,15 @@ class AppContainer(
                 when {
                     on == "true" || (on == null && interpreterRuntime.onByDefault && interpreterRuntime.available) -> interpreting.start()
                     interpreting.state.value != Interpreting.State.Off -> interpreting.stop()
+                }
+            }
+        }
+        appScope.launch {
+            // On by itself on a tablet, like the interpreter: unset means the device's default.
+            settings.value(AppSettings.TRANSCRIBER).collectLatest { on ->
+                when {
+                    on == "true" || (on == null && whisperRuntime.onByDefault && whisperRuntime.available) -> writing.start()
+                    writing.state.value != Writing.State.Off -> writing.stop()
                 }
             }
         }

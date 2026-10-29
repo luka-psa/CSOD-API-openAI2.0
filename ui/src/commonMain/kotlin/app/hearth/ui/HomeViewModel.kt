@@ -110,6 +110,8 @@ import app.hearth.ai.meeting.MeetingIntake
 import app.hearth.ai.meeting.MeetingProcessor
 import app.hearth.ai.meeting.Processed
 import kotlinx.coroutines.Job
+import app.hearth.ai.whisper.Writing
+import app.hearth.core.tools.system.TranscriberArgs
 import app.hearth.core.tools.week.RemoveWinArgs
 import app.hearth.core.tools.week.TranscriptLineArgs
 import app.hearth.core.data.settings.SettingsRepository
@@ -795,6 +797,19 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     fun setInterpreter(on: Boolean) = tool { say(app.tools.registry.run(app.tools.setInterpreter, InterpreterArgs(on), it).summary) }
 
+    /** Beter uitschrijven: on, ready, and how far its download is. */
+    val writingState: StateFlow<Writing.State> = app.writing.state
+    val writingAvailable: Boolean get() = app.writing.available
+    /** Stretches recorded and not written down yet. */
+    val writingLeft: StateFlow<Int> = app.writing.pending
+    val writing: Writing get() = app.writing
+
+    fun setTranscriber(on: Boolean) = tool { say(app.tools.registry.run(app.tools.setTranscriber, TranscriberArgs(on), it).summary) }
+
+    fun retryTranscriber() {
+        viewModelScope.launch { app.writing.start() }
+    }
+
     fun retryInterpreter() {
         viewModelScope.launch { app.interpreting.start() }
     }
@@ -912,6 +927,12 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         _agree.value = null
     }
 
+    /** Whisper wrote down a stretch of the meeting, said at [at] (epoch ms). */
+    fun written(line: String, at: Long) {
+        if (line.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addTranscriptLine, TranscriptLineArgs(line, at), it) }
+    }
+
     /** Luister mee heard a stretch of talk. */
     fun heard(line: String) {
         if (line.isBlank()) return
@@ -934,12 +955,21 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
      * conclusion lands in the Voorstel: new things ticked, changes to what exists ticked, what is there already not.
      */
     fun openVoorstel() {
-        val lines = transcript.value.filter { !it.sorted }
+        var lines = transcript.value.filter { !it.sorted }
         voorstelLines = lines.map { it.id }
         _voorstel.value = emptyList()
         processJob?.cancel()
         processJob = viewModelScope.launch {
             val c = ctx(ToolSource.UI)
+            // What Whisper still has to write belongs in it too: wait for it (the sheet says how much is left).
+            if (app.writing.pending.value > 0) {
+                _processing.value = 0 to 1
+                app.writing.drained()
+                // The last lines are on their way to the database.
+                kotlinx.coroutines.delay(800)
+                lines = transcript.value.filter { !it.sorted }
+                voorstelLines = lines.map { it.id }
+            }
             val done = process(lines)
             // A thought that was just talk shows once, as Gewoon gepraat: it can still be put somewhere.
             _voorstel.value = done.found.map { f -> VoorstelRow(f.proposal, checked = f.proposal.calls.isNotEmpty(), lines = f.lines) } +

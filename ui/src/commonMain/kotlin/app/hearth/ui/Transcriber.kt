@@ -1,6 +1,7 @@
 package app.hearth.ui
 
 import androidx.compose.runtime.Composable
+import app.hearth.ai.whisper.Writing
 
 /** Luister mee: keeps listening through pauses until [stop]. [available] is false where speech isn't. */
 class Transcriber(
@@ -23,6 +24,8 @@ data class ListenStatus(
     val name: String? = null,
     /** The loudest the microphone was so far (Android's dB scale, about -2 silent to 10 loud); null: not known. */
     val level: Float? = null,
+    /** Beter uitschrijven: stretches recorded and not written down yet (null: the platform's recognizer listens). */
+    val pending: Int? = null,
 ) {
     enum class Event { STARTING, READY, SPEECH, QUIET, ERROR, GAVE_UP, STOPPED }
 }
@@ -31,7 +34,9 @@ data class ListenStatus(
  * Listens for a whole conversation. Each stretch of talk ends up in [onLine] once the recognizer is sure
  * of it; [onPartial] shows the words being heard right now; [onActive] says when listening starts or ends; [onStatus] what the recognizer reports.
  * [language] is a BCP-47 tag ("nl-BE", "en-GB"). [vocabulary] is the household's own words (names, stock, recipes):
- * where the recognizer can, it leans towards them, and of its guesses the one that names them wins.
+ * where the recognizer can, it leans towards them, and of its guesses the one that names them wins. With [writing]
+ * ready (Beter uitschrijven, where the platform can record), the device records the meeting itself and Whisper writes it
+ * down a few seconds behind the talk; each written stretch goes to [onWritten] with the moment it was said.
  */
 @Composable
 expect fun rememberTranscriber(
@@ -41,4 +46,6 @@ expect fun rememberTranscriber(
     onPartial: (String) -> Unit,
     onActive: (Boolean) -> Unit,
     onStatus: (ListenStatus) -> Unit,
+    writing: Writing?,
+    onWritten: (String, Long) -> Unit,
 ): Transcriber

@@ -263,9 +263,11 @@ class MeetingRepository(
         dao.putReflection(ReflectionEntity(old?.id ?: newId(), ReflectionEntity.HABIT_CHECK, itemId, ReflectionEntity.codeOf(score), null, null, old?.createdAt ?: now, now))
     }
 
-    suspend fun addLine(text: String): TranscriptLine {
+    /** A line heard now, or written down later and kept at the moment it was said ([at], never in the future). */
+    suspend fun addLine(text: String, at: Long? = null): TranscriptLine {
         val now = clock()
-        val entity = TranscriptLineEntity(newId(), text.trim(), null, now, now)
+        val said = at?.coerceIn(now - SIX_HOURS, now) ?: now
+        val entity = TranscriptLineEntity(newId(), text.trim(), null, said, now)
         dao.insertLine(entity)
         return entity.toModel()
     }
@@ -296,3 +298,6 @@ class MeetingRepository(
         huddle.toModel()
     }
 }
+
+/** How far back a line written down later may be placed (a meeting is never longer). */
+private const val SIX_HOURS = 6 * 60 * 60_000L

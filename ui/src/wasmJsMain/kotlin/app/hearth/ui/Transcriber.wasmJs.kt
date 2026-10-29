@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import app.hearth.ai.route.Spoken
+import app.hearth.ai.whisper.Writing
 
 /**
  * The browser's Web Speech API in continuous mode; it restarts by itself when the browser ends a session. It asks
@@ -21,6 +22,9 @@ actual fun rememberTranscriber(
     onPartial: (String) -> Unit,
     onActive: (Boolean) -> Unit,
     onStatus: (ListenStatus) -> Unit,
+    // The browser has no Whisper yet: the Web Speech API writes along.
+    writing: Writing?,
+    onWritten: (String, Long) -> Unit,
 ): Transcriber {
     val status by rememberUpdatedState(onStatus)
     val line by rememberUpdatedState(onLine)

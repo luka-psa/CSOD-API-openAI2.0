@@ -86,6 +86,12 @@ device). Keep all three in sync when any of those change.
   The household's own words (`WordFix`, `WordFixes` in `core/model/Listening.kt`, setting `listen.words`) are learned
   from fixed lines and retyped names; the conversation export (`hearth-conversation/2`) is material to retrain it on
   real talk. Hearth needs no cloud model for any of this; MCP is an optional extra.
+  *Beter uitschrijven* (`set_transcriber`, device-only, on by itself on a tablet; `ai/whisper`): Luister mee records the
+  meeting itself and Whisper small (int8 ONNX, ≈ 250 MB from Hugging Face at a fixed revision, SHA-256 checked) writes it
+  down on the device: `SpeechCutter` (stretches at pauses, never silence), `LogMel` + `WhisperTokenizer` (the reference's
+  numbers and ids), `Whisper` (greedy, the household's words as prompt, no-speech and loop guards), `Writing` (state,
+  queue, the model opened only while a meeting is written, the audio never stored). Platforms give a `WhisperRuntime`
+  (Android: `AndroidWhisperRuntime`; the browser has none and keeps Web Speech).
 - **Kiosk mode.** Full-screen immersive, screen stays on while charging, starts
   on boot, optional lock-task when provisioned as device owner.
 - **MCP server.** Tools are exposed over MCP (streamable HTTP), off by default,

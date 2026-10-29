@@ -526,9 +526,21 @@
     <string name="smart_failed">That didn’t work: %1$s</string>
     <string name="smart_retry">Try again</string>
     <string name="interpreter_card">Understanding conversations</string>
-    <string name="interpreter_body">A bigger language model reads the whole weekly meeting: what comes back, what you decide differently after all, and what you finally agree. It runs on this device itself, so what you say goes nowhere. Switching it on downloads it once (about 270 MB); switching it off removes it again. It reads again after each sentence, so a suggestion may still shift a little.</string>
+    <string name="interpreter_body">A bigger language model reads the whole weekly meeting afterwards, topic by topic: what comes back, what you decide differently after all, and what you finally agree. It runs on this device itself, so what you say goes nowhere. Switching it on downloads it once (about 270 MB); switching it off removes it again.</string>
     <string name="interpreter_loading">Loading the model, one moment…</string>
     <string name="interpreter_ready">Ready: Luister mee reads the whole conversation.</string>
+    <string name="transcriber_card">Better transcription</string>
+    <string name="transcriber_body">Luister mee records the meeting itself and Whisper writes it down on this device, a few seconds behind what is said. Nothing gets lost between two pauses, and Flemish and names come through better. The recording stays on this device and is never kept: each stretch is written down and let go. Switching it on downloads the model once (about 250 MB); switching it off removes it again.</string>
+    <string name="transcriber_ready">Ready: Luister mee writes the meeting down itself.</string>
+    <string name="listen_whisper">Whisper writes along on this device</string>
+    <plurals name="listen_pending">
+        <item quantity="one">%1$d stretch still to write</item>
+        <item quantity="other">%1$d stretches still to write</item>
+    </plurals>
+    <plurals name="voorstel_writing">
+        <item quantity="one">Hearth is still writing %1$d stretch…</item>
+        <item quantity="other">Hearth is still writing %1$d stretches…</item>
+    </plurals>
     <string name="tab_now">Now</string>
     <string name="tab_how">How it goes</string>
     <string name="tab_better">Improve</string>

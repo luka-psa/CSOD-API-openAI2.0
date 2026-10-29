@@ -262,7 +262,10 @@ internal fun easeWord(ease: Ease, ctx: ToolContext) = when (ease) {
 // ---------- Luister mee ----------
 
 @Serializable
-data class TranscriptLineArgs(@Describe("What was heard between two pauses.") val text: String)
+data class TranscriptLineArgs(
+    @Describe("What was heard between two pauses.") val text: String,
+    @Describe("When it was said (epoch ms), when it is written down later; empty: now.") val at: Long? = null,
+)
 
 @Serializable
 data class TranscriptLineResult(val line: TranscriptLine, override val summary: String) : ToolResult
@@ -276,7 +279,7 @@ class AddTranscriptLineTool(private val meeting: MeetingRepository) : Tool<Trans
 
     override suspend fun run(args: TranscriptLineArgs, ctx: ToolContext): TranscriptLineResult {
         val text = args.text.trim().ifEmpty { throw ToolException(ctx.t("Niets gehoord.", "Nothing heard.")) }
-        return TranscriptLineResult(meeting.addLine(text), ctx.t("Bewaard.", "Kept."))
+        return TranscriptLineResult(meeting.addLine(text, args.at), ctx.t("Bewaard.", "Kept."))
     }
 
     companion object {

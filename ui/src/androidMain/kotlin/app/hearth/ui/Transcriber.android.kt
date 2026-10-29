@@ -5,7 +5,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.annotation.SuppressLint
+import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -25,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import app.hearth.ai.route.Spoken
+import app.hearth.ai.whisper.Writing
 
 /** Google's own recognition service: asked for by name when the tablet's default one keeps failing. */
 private val GOOGLE_SERVICE = ComponentName("com.google.android.googlequicksearchbox", "com.google.android.voicesearch.serviceapi.GoogleRecognitionService")
@@ -43,8 +48,12 @@ actual fun rememberTranscriber(
     onPartial: (String) -> Unit,
     onActive: (Boolean) -> Unit,
     onStatus: (ListenStatus) -> Unit,
+    writing: Writing?,
+    onWritten: (String, Long) -> Unit,
 ): Transcriber {
     val context = LocalContext.current
+    val writer by rememberUpdatedState(writing)
+    val written by rememberUpdatedState(onWritten)
     val view = LocalView.current
     val line by rememberUpdatedState(onLine)
     val partial by rememberUpdatedState(onPartial)
@@ -62,6 +71,8 @@ actual fun rememberTranscriber(
     val words by rememberUpdatedState(vocabulary)
     val available = remember { SpeechRecognizer.isRecognitionAvailable(context) }
     val handler = remember { Handler(Looper.getMainLooper()) }
+    // Lines Whisper wrote reach the screen through their own queue, so stopping never drops one on its way.
+    val deliver = remember { Handler(Looper.getMainLooper()) }
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager }
     val state = remember {
         object {
@@ -119,6 +130,73 @@ actual fun rememberTranscriber(
 
     fun googleInstalled(): Boolean =
         runCatching { context.packageManager.getPackageInfo(GOOGLE_SERVICE.packageName, 0); true }.getOrDefault(false)
+
+    // Beter uitschrijven: the tablet's own recording, fed to Whisper a stretch at a time.
+    val recorder = remember {
+        object {
+            @Volatile var on = false
+            var record: AudioRecord? = null
+            var thread: Thread? = null
+            var session: Writing.Session? = null
+            var ticker: Runnable? = null
+        }
+    }
+
+    /**
+     * Records the meeting itself (no recognizer that stops at every pause, so nothing is lost between stretches) and
+     * hands it to Whisper, which writes it down a few seconds behind the talk. False when the microphone can't be had;
+     * then the recognizer listens as before.
+     */
+    @SuppressLint("MissingPermission")
+    fun beginRecording(w: Writing): Boolean {
+        val min = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        if (min <= 0) return false
+        // Voice recognition: the microphone as it is, without the phone-call processing that smears quiet voices.
+        val record = runCatching {
+            AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(min, RATE * 2))
+        }.getOrNull() ?: return false
+        if (record.state != AudioRecord.STATE_INITIALIZED || runCatching { record.startRecording() }.isFailure ||
+            record.recordingState != AudioRecord.RECORDSTATE_RECORDING
+        ) {
+            record.release()
+            return false
+        }
+        val session = w.session(lang.substringBefore('-'), { words }) { text, at -> deliver.post { written(text, at) } }
+        recorder.record = record
+        recorder.session = session
+        recorder.on = true
+        recorder.thread = Thread({
+            val buffer = ShortArray(RATE / 10)
+            while (recorder.on) {
+                val n = record.read(buffer, 0, buffer.size)
+                if (n < 0) break
+                if (n > 0) session.hear(FloatArray(n) { buffer[it] / 32768f })
+            }
+        }, "hearth-recorder").apply { start() }
+        // The status line says what really happens: speech or quiet, and how much Whisper still has to write.
+        recorder.ticker = object : Runnable {
+            override fun run() {
+                if (!recorder.on) return
+                status(ListenStatus(if (session.speaking) ListenStatus.Event.SPEECH else ListenStatus.Event.QUIET, null, null, "whisper", pending = w.pending.value))
+                handler.postDelayed(this, 700)
+            }
+        }.also { handler.post(it) }
+        active(true)
+        return true
+    }
+
+    /** The recording stops; Whisper writes what is still waiting, in the background. */
+    fun endRecording() {
+        recorder.on = false
+        recorder.ticker?.let(handler::removeCallbacks)
+        recorder.ticker = null
+        runCatching { recorder.thread?.join(500) }
+        recorder.thread = null
+        recorder.record?.let { r -> runCatching { r.stop() }; r.release() }
+        recorder.record = null
+        recorder.session?.end()
+        recorder.session = null
+    }
 
     lateinit var listener: RecognitionListener
     // Set below: what to do when the service never answers (declared here, the watchdog in listen() needs it).
@@ -334,6 +412,7 @@ actual fun rememberTranscriber(
 
     DisposableEffect(Unit) {
         onDispose {
+            if (recorder.on) endRecording()
             view.keepScreenOn = false
             ListeningNow.on = false
             if (state.on) quiet(false)
@@ -345,6 +424,13 @@ actual fun rememberTranscriber(
     }
 
     fun begin() {
+        // Beter uitschrijven ready: the tablet records itself and Whisper writes along.
+        writer?.takeIf { it.ready }?.let { w ->
+            if (recorder.on || beginRecording(w)) {
+                status(ListenStatus(ListenStatus.Event.READY, null, null, "whisper", pending = w.pending.value))
+                return
+            }
+        }
         // The tablet's default speech app may not listen, Google's may: use that. Neither may: say so, with a button.
         if (!mayListen(servicePackage()) && !state.google && googleInstalled() && mayListen(GOOGLE_SERVICE.packageName)) {
             state.recognizer?.destroy()
@@ -383,6 +469,7 @@ actual fun rememberTranscriber(
                 else askMic.launch(Manifest.permission.RECORD_AUDIO)
             },
             stop = {
+                if (recorder.on) endRecording()
                 if (state.on) quiet(false)
                 state.on = false
                 handler.removeCallbacksAndMessages(null)
@@ -402,6 +489,9 @@ actual fun rememberTranscriber(
         )
     }
 }
+
+/** Whisper hears 16 kHz mono. */
+private const val RATE = 16_000
 
 /** No sign of the recognizer for this long while listening: it is stuck, start a fresh one. */
 private const val STALL_MS = 20_000L

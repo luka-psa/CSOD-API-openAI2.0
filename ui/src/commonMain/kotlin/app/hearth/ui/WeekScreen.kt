@@ -257,7 +257,16 @@ class MeetingState(
 )
 
 /** Luister mee lives above the screens, so it keeps listening while the family looks at a list. */
-class ListenControl(val available: Boolean, val listening: Boolean, val partial: String, val status: ListenStatus? = null, val fix: () -> Unit = {}, val toggle: () -> Unit)
+class ListenControl(
+    val available: Boolean,
+    val listening: Boolean,
+    val partial: String,
+    val status: ListenStatus? = null,
+    val fix: () -> Unit = {},
+    /** Beter uitschrijven: stretches recorded and not written down yet. */
+    val writingLeft: Int = 0,
+    val toggle: () -> Unit,
+)
 
 /**
  * The weekly meeting, about 15 minutes together. Luister mee sits on top and sorts what is said into the
@@ -324,6 +333,7 @@ fun WeekScreen(
                 listening = listen.listening,
                 partial = listen.partial,
                 heard = meeting.heard,
+                writingLeft = listen.writingLeft,
                 wide = wide,
                 lit = lit,
                 lang = lang,
@@ -413,7 +423,7 @@ fun WeekScreen(
         null -> {}
     }
     meeting.voorstel?.let { rows ->
-        VoorstelSheet(rows, meeting.processing, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.editVoorstel, cb.asNewVoorstel, cb.addVoorstel, cb.closeVoorstel)
+        VoorstelSheet(rows, meeting.processing, listen.writingLeft, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.editVoorstel, cb.asNewVoorstel, cb.addVoorstel, cb.closeVoorstel)
     }
     meeting.agree?.let { lines ->
         AgreeSheet(

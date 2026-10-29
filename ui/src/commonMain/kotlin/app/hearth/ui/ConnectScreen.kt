@@ -1,6 +1,10 @@
 package app.hearth.ui
 
 import app.hearth.ai.interpret.Interpreting
+import app.hearth.ai.whisper.Writing
+import app.hearth.ui.resources.transcriber_card
+import app.hearth.ui.resources.transcriber_body
+import app.hearth.ui.resources.transcriber_ready
 import app.hearth.ai.sense.SmartListening
 import app.hearth.ui.resources.smart_title
 import app.hearth.ui.resources.smart_card
@@ -119,6 +123,8 @@ class ConnectCallbacks(
     /** Understanding conversations on or off on this device. */
     val setInterpreter: (Boolean) -> Unit = {},
     val retryInterpreter: () -> Unit = {},
+    val setTranscriber: (Boolean) -> Unit = {},
+    val retryTranscriber: () -> Unit = {},
 )
 
 /**
@@ -145,6 +151,8 @@ fun ConnectScreen(
     listeningAvailable: Boolean = false,
     interpreter: Interpreting.State = Interpreting.State.Off,
     interpreterAvailable: Boolean = false,
+    transcriber: Writing.State = Writing.State.Off,
+    transcriberAvailable: Boolean = false,
 ) {
     var unlinking by remember { mutableStateOf<LinkedApp?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
@@ -162,7 +170,8 @@ fun ConnectScreen(
                     ChoiceChip("English", current == Lang.EN, { cb.setLanguage(Lang.EN) })
                 }
             }
-            if (listeningAvailable || interpreterAvailable) SectionTitle(stringResource(Res.string.smart_title))
+            if (listeningAvailable || interpreterAvailable || transcriberAvailable) SectionTitle(stringResource(Res.string.smart_title))
+            if (transcriberAvailable) TranscriberCard(transcriber, cb)
             if (listeningAvailable) SmartListeningCard(listening, cb)
             if (interpreterAvailable) InterpreterCard(interpreter, cb)
             // The household on more devices: right after the language, it's what a new device needs first.
@@ -394,6 +403,41 @@ private fun SmartListeningCard(state: SmartListening.State, cb: ConnectCallbacks
                 Spacer(Modifier.size(12.dp))
                 Text(stringResource(Res.string.smart_failed, state.reason), style = MaterialTheme.typography.bodyMedium)
                 TextButton(onClick = cb.retrySmartListening) { Text(stringResource(Res.string.smart_retry)) }
+            }
+        }
+    }
+}
+
+/**
+ * Beter uitschrijven: the tablet records the meeting itself and Whisper writes it down here, without gaps. On by itself
+ * on a tablet; it downloads once and says when it's ready. Off removes it again.
+ */
+@Composable
+private fun TranscriberCard(state: Writing.State, cb: ConnectCallbacks) {
+    HearthCard(stringResource(Res.string.transcriber_card), HearthIcons.Mic, Modifier.fillMaxWidth(), action = {
+        Switch(checked = state != Writing.State.Off, onCheckedChange = { cb.setTranscriber(it) })
+    }) {
+        Text(stringResource(Res.string.transcriber_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        when (state) {
+            Writing.State.Off -> {}
+            is Writing.State.Downloading -> {
+                Spacer(Modifier.size(12.dp))
+                Text(stringResource(Res.string.smart_downloading, (state.progress * 100).toInt()), style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.size(6.dp))
+                androidx.compose.material3.LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth(), drawStopIndicator = {})
+            }
+            Writing.State.Ready -> {
+                Spacer(Modifier.size(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(HearthIcons.Check, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(Res.string.transcriber_ready), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                }
+            }
+            is Writing.State.Failed -> {
+                Spacer(Modifier.size(12.dp))
+                Text(stringResource(Res.string.smart_failed, state.reason), style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = cb.retryTranscriber) { Text(stringResource(Res.string.smart_retry)) }
             }
         }
     }

@@ -85,6 +85,9 @@ import app.hearth.ui.resources.listen_status_ready
 import app.hearth.ui.resources.listen_status_speech
 import app.hearth.ui.resources.listen_status_starting
 import app.hearth.ui.resources.summary_title
+import app.hearth.ui.resources.listen_whisper
+import app.hearth.ui.resources.listen_pending
+import app.hearth.ui.resources.voorstel_writing
 import app.hearth.ui.resources.summary_hint
 import app.hearth.ui.resources.summary_lines
 import app.hearth.ai.meeting.seen
@@ -133,6 +136,8 @@ fun ListenStage(
     onFix: () -> Unit,
     /** What was heard and isn't in place yet, oldest first. */
     heard: List<HeardLineView>,
+    /** Beter uitschrijven: stretches recorded and not written down yet (also after listening stopped). */
+    writingLeft: Int,
     wide: Boolean,
     lit: Set<Topic>,
     lang: Lang,
@@ -174,11 +179,21 @@ fun ListenStage(
             Spacer(Modifier.size(8.dp))
             val trouble = s.event == ListenStatus.Event.GAVE_UP || s.event == ListenStatus.Event.ERROR
             Text(
-                listOfNotNull(s.text(), s.service?.let { stringResource(Res.string.listen_service, it) }).joinToString("  ·  "),
+                listOfNotNull(
+                    s.text(),
+                    s.service?.let { stringResource(Res.string.listen_service, it) },
+                    stringResource(Res.string.listen_whisper).takeIf { s.name == "whisper" },
+                    s.pending?.takeIf { it > 0 }?.let { pluralStringResource(Res.plurals.listen_pending, it, it) },
+                ).joinToString("  ·  "),
                 style = MaterialTheme.typography.labelMedium,
                 color = if (trouble) Topic.PROJECTS.style().ink else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (s.name == "service-mic") FilledTonalButton(onClick = onFix, modifier = Modifier.padding(top = 6.dp)) { Text(stringResource(Res.string.listen_fix)) }
+        }
+        // Listening stopped, Whisper still writing: say so, the last lines are on their way.
+        if (!listening && writingLeft > 0) {
+            Spacer(Modifier.size(8.dp))
+            Text(pluralStringResource(Res.plurals.voorstel_writing, writingLeft, writingLeft), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (listening || heard.isNotEmpty()) {
             Spacer(Modifier.size(14.dp))
