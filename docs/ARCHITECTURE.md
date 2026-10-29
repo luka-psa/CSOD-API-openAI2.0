@@ -60,7 +60,7 @@ Key points for review:
 | Weekoverleg | The weekly family meeting screen (review, plan, listen along) | `huddle`, `reflection`, `transcript_line` |
 | Ritmes & routines | Recurring routines and habits | `backlog_item` (routine sections) + `routine_log` |
 | Instellingen / Koppelingen | Settings / connections (AI, Google, sync) | `setting` |
-| Luister mee | Live transcription of the meeting that suggests actions | `transcript_line` |
+| Luister mee | Live transcription of the meeting (topics only); read as a whole afterwards into suggestions | `transcript_line`, `setting` (`listen.words`) |
 
 ## 4. Software layers
 
@@ -283,16 +283,27 @@ joins with a one-time 8-letter code (PBKDF2-derived key, 10 minutes, single use)
 flowchart LR
     MIC["Microphone"] --> SR["Speech recognition<br/>Android: system recognizer, offline preferred<br/>Browser: Web Speech API"]
     SR --> TL[("transcript_line")]
-    TL --> RULES["Rules (ai/route/MeetingWords)<br/>always on"]
-    TL --> SENSE["Sentence model e5-small<br/>optional, on device"]
-    TL --> INT["Interpreter FunctionGemma 270M<br/>optional, tablet only"]
-    RULES --> SUG["Suggestions on screen"]
-    SENSE --> RULES
-    INT --> SUG
-    SUG -->|"person taps 'Zet erin'"| TOOLS["Tools"] --> DB[("SQLite")]
+    WORDS[("setting listen.words<br/>the household's own words")] --> INTAKE
+    TL --> INTAKE["Live intake (ai/meeting/MeetingIntake)<br/>names, known items, topics"]
+    INTAKE --> STAGE["Stage: coloured lines,<br/>Waar het over gaat"]
+    TL -->|"after the meeting: Zet op zijn plek"| PROC["Full reading (ai/meeting/MeetingProcessor)<br/>by topic, grounded, deduplicated"]
+    WORDS --> PROC
+    PROC --> RULES["Rules (ai/route/MeetingWords)<br/>always on"]
+    SENSE["Sentence model e5-small<br/>optional, on device"] --> RULES
+    PROC --> INT["Interpreter FunctionGemma 270M<br/>optional, tablet only"]
+    RULES --> MATCH["Matcher: held against<br/>what exists (update / there already)"]
+    INT --> MATCH
+    DB2[("backlog, board,<br/>shopping, meals")] --> MATCH
+    MATCH --> SUG["Voorstel on screen"]
+    SUG -->|"person taps 'Toevoegen'"| TOOLS["Tools"] --> DB[("SQLite")]
+    TL -->|"person fixes a line"| WORDS
 ```
 
 - Nothing is written from listening alone: suggestions appear on screen and a person confirms them.
+- While the meeting goes on only the light intake runs (word lists, no model), so the tablet's CPU stays with the
+  speech recognizer; the models run once, after the meeting, when someone taps *Zet op zijn plek*.
+- Words the family puts right are kept as a household setting (`listen.words`): they travel with sync and backup like
+  other household data and are handed to the recognizer as hints.
 - The transcript is deleted when the next meeting ends; the meeting summary is kept.
 - Speech recognition is the platform's own: Android's recognizer is asked to prefer offline (with no offline language
   pack, Android may use Google's online service); Chrome's Web Speech API sends audio to Google. This is the one place

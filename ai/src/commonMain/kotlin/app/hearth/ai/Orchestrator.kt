@@ -57,6 +57,8 @@ import app.hearth.core.tools.board.AddIdeaArgs
 import app.hearth.core.tools.board.AddIdeaTool
 import app.hearth.core.tools.week.AddWinArgs
 import app.hearth.core.tools.week.AddWinTool
+import app.hearth.core.tools.week.LearnWordsArgs
+import app.hearth.core.tools.week.LearnWordsTool
 import kotlinx.datetime.LocalDate
 import app.hearth.core.tools.board.AddGoalArgs
 import app.hearth.core.tools.board.AddGoalTool
@@ -119,6 +121,11 @@ class Orchestrator(
         WIN_PREFIX.matchEntire(text.trim())?.let { m ->
             val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
             return runCalls(listOf(ToolCall.of(AddWinTool.NAME, AddWinArgs.serializer(), AddWinArgs(m.groupValues[1]))), local)
+        }
+        // "onthoud: Jaules is Jules": a word Luister mee keeps mishearing, remembered for every next conversation.
+        LEARN_WORD.matchEntire(text.trim())?.let { m ->
+            val local = ctx.copy(lang = KeywordRouter.language(text, ctx.lang))
+            return runCalls(listOf(ToolCall.of(LearnWordsTool.NAME, LearnWordsArgs.serializer(), LearnWordsArgs(m.groupValues[1].trim(), m.groupValues[2].trim()))), local)
         }
         // "avondroutine: boodschappen, Mia ophalen, koken, pyjama": a routine with its steps, in order.
         RoutineWords.extract(text)?.let { hint ->
@@ -362,7 +369,15 @@ class Orchestrator(
         val next: Boolean = false,
         /** The topic it lands in (null: a win, or just talk). */
         val topic: Topic? = null,
+        /** What the household already has that this is about: then [calls] change that item (or do nothing). */
+        val match: Existing? = null,
     )
+
+    /**
+     * Something the household already has that a conclusion is about. [update]: [Proposal.calls] change it (a new day, a
+     * moment); otherwise it is there already and nothing needs adding. [asNew] adds it as a new item after all.
+     */
+    data class Existing(val id: String, val text: String, val update: Boolean, val asNew: List<ToolCall>)
 
     /** A thought of the conversation and what Hearth concludes from it (nothing, when it was just talk). */
     data class Talk(val heard: String, val lines: IntRange, val proposals: List<Proposal>, val stage: Stage = Stage.TALK)
@@ -562,6 +577,10 @@ class Orchestrator(
         val ROUTE_SCHEMA = RouteDecision.serializer().descriptor.toJsonSchema()
         val LINK = Regex("https?://\\S+")
         val RECIPE_WORD = Regex("(?i)\\b(?:recept|recipe)\\b[:\\s]*")
+        val LEARN_WORD = Regex(
+            "^(?:onthoud|onthou|leer|remember|learn)(?:\\s+(?:dat|that))?\\s*:?\\s*[“\"']?(.+?)[”\"']?\\s+(?:is eigenlijk|betekent|wil zeggen|is|means)\\s+[“\"']?(.+?)[”\"']?[.!]?$",
+            RegexOption.IGNORE_CASE,
+        )
         val WIN_PREFIX = Regex("^(?:dat ging goed|wat ging goed|ging goed|went well|that went well)\\s*[:,\\-]\\s*(.+)$", RegexOption.IGNORE_CASE)
         val SYNC_WORDS = Regex("^(?:nu |nog eens )?(?:synchroniseer|synchroniseren|synchroniseer nu|sync|sync now|synchronise|synchronize|synchronise now|synchronize now)[.!]?$", RegexOption.IGNORE_CASE)
         val SHOPPING_TALK = Regex(

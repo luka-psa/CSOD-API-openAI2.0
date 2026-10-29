@@ -141,8 +141,9 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
     val huddles by viewModel.huddles.collectAsStateWithLifecycle()
     val voorstel by viewModel.voorstel.collectAsStateWithLifecycle()
-    val heardThoughts by viewModel.heardThoughts.collectAsStateWithLifecycle()
-    val meetingThoughts by viewModel.meetingThoughts.collectAsStateWithLifecycle()
+    val heardLines by viewModel.heardLines.collectAsStateWithLifecycle()
+    val processing by viewModel.processing.collectAsStateWithLifecycle()
+    val learnedWords by viewModel.learnedWords.collectAsStateWithLifecycle()
     val vocabulary by viewModel.vocabulary.collectAsStateWithLifecycle()
     val sync by viewModel.sync.collectAsStateWithLifecycle()
     val joinCode by viewModel.joinCode.collectAsStateWithLifecycle()
@@ -220,7 +221,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews, meetingThoughts),
+                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardLines, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews, processing, learnedWords),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -259,8 +260,10 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 moveVoorstel = { i, p -> viewModel.moveVoorstel(i, p) },
                                 toggleVoorstel = { viewModel.toggleVoorstel(it) },
                                 addVoorstel = viewModel::addVoorstel,
-                                changeSuggestion = { t, i, c, now -> viewModel.changeSuggestion(t, i, c, now) },
                                 editVoorstel = { i, c -> viewModel.editVoorstel(i, c) },
+                                asNewVoorstel = { viewModel.asNewVoorstel(it) },
+                                fixLine = viewModel::fixLine,
+                                forgetWord = viewModel::forgetWord,
                                 habitTip = { i, t -> viewModel.applyTip(i, t) },
                                 pairing = { i, t -> viewModel.setPairing(i, t) },
                                 openItem = { planning = it },

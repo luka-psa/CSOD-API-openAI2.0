@@ -427,6 +427,14 @@ class OrchestratorTest {
     private suspend fun Orchestrator.registryRun(p: Orchestrator.Proposal) = p.calls.forEach { tools.registry.execute(it, nl) }
 
     @Test
+    fun `a word Luister mee keeps mishearing is remembered from the chat`() = runTest {
+        assertEquals("Onthouden: “Jaules” is “Jules”.", offline.handle("onthoud: Jaules is Jules", nl).text)
+        assertEquals("Remembered: “vaat was” means “vaatwasser”.", offline.handle("remember that \"vaat was\" means \"vaatwasser\"", nl.copy(lang = Lang.EN)).text)
+        val words = app.hearth.core.model.WordFixes.parse(app.hearth.core.data.settings.SettingsRepository(db).currentValue(app.hearth.core.model.WordFixes.SETTING))
+        assertEquals(listOf("Jaules" to "Jules", "vaat was" to "vaatwasser"), words.map { it.heard to it.meant })
+    }
+
+    @Test
     fun `what the interpreter read becomes a suggestion through the same tools`() = runTest {
         // 22 October 2026 is a Thursday: "zaterdag" is the 24th.
         fun read(name: String, vararg args: Pair<String, String>, heard: String = "") =
@@ -445,26 +453,20 @@ class OrchestratorTest {
     }
 
     @Test
-    fun `a conversation exports with what the rules and the interpreter made of it`() {
+    fun `a conversation exports with what Hearth read and concluded`() = runTest {
         val heard = listOf("donderdag moet de auto naar de garage", "Vandaag gaan we de weekplanning bekijken")
         val lines = heard.mapIndexed { i, t -> ConversationExport.Line("l$i", t, 1_000L * i, sorted = false) }
-        val talks = offline.listen(heard, nl)
-        val json = ConversationExport.json(
-            lines, talks,
-            interpreterActions = listOf(0 to app.hearth.ai.interpret.Action("add_appointment", mapOf("title" to "auto naar de garage"))),
-            interpreterProposals = emptyMap(),
-            sense = null,
-            family = emptyMap(),
-            context = mapOf("lang" to "NL"),
-            exportedAt = "2026-10-28T17:00:00Z",
+        val processed = app.hearth.ai.meeting.MeetingProcessor(offline).process(
+            lines.map { app.hearth.ai.meeting.HeardLine(it.id, it.text, it.at) }, app.hearth.ai.meeting.Household(), nl,
         )
+        val json = ConversationExport.json(lines, processed, voorstel = null, sense = null, context = mapOf("lang" to "NL"), exportedAt = "2026-10-28T17:00:00Z")
         val doc = kotlinx.serialization.json.Json.parseToJsonElement(json).jsonObject
         assertEquals(ConversationExport.FORMAT, doc["format"]!!.jsonPrimitive.content)
-        val first = doc["lines"]!!.jsonArray[0].jsonObject
-        assertEquals("add_appointment", first["interpreterActions"]!!.jsonArray[0].jsonObject["name"]!!.jsonPrimitive.content)
         val thoughts = doc["thoughts"]!!.jsonArray.map { it.jsonObject }
         assertEquals(listOf("PLANNING", "TALK"), thoughts.map { it["stage"]!!.jsonPrimitive.content })
         assertEquals("EVENT", thoughts[0]["rules"]!!.jsonArray[0].jsonObject["place"]!!.jsonPrimitive.content)
-        assertTrue(thoughts[1]["rules"]!!.jsonArray.isEmpty())
+        val found = doc["found"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(listOf("EVENT" to "rules"), found.map { it["place"]!!.jsonPrimitive.content to it["by"]!!.jsonPrimitive.content })
+        assertEquals(null, doc["voorstel"])
     }
 }

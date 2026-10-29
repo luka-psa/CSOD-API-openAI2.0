@@ -83,6 +83,9 @@ actual fun rememberTranscriber(
             // The speech app that may not use the microphone (its own permission, apart from Hearth's).
             var blocked: String? = null
             var silenceCheck: Runnable? = null
+            // When the recognizer last said anything at all (a sound level comes several times a second while it listens).
+            var lastSign = 0L
+            var stallCheck: Runnable? = null
         }
     }
 
@@ -164,6 +167,27 @@ actual fun rememberTranscriber(
         if (state.on) handler.postDelayed({ if (state.on) listen() }, delayMs)
     }
 
+    /**
+     * A recognizer can go quiet in the middle of a meeting without an error: no sound level, no words, while the stage
+     * still looks like it listens. Every few seconds Hearth checks; quiet too long and it starts a fresh recognizer, and
+     * says so on the status line.
+     */
+    fun watchStalls() {
+        state.stallCheck?.let(handler::removeCallbacks)
+        state.stallCheck = Runnable {
+            if (!state.on) return@Runnable
+            if (android.os.SystemClock.elapsedRealtime() - state.lastSign > STALL_MS) {
+                status(ListenStatus(ListenStatus.Event.ERROR, null, service(), "stalled"))
+                runCatching { state.recognizer?.cancel() }
+                state.recognizer?.destroy()
+                state.recognizer = null
+                state.lastSign = android.os.SystemClock.elapsedRealtime()
+                listen()
+            }
+            state.stallCheck?.let { handler.postDelayed(it, STALL_CHECK_MS) }
+        }.also { handler.postDelayed(it, STALL_CHECK_MS) }
+    }
+
     /** Start over with Google's service (a fresh recognizer, online first). */
     fun toGoogle() {
         if (!mayListen(GOOGLE_SERVICE.packageName)) {
@@ -219,6 +243,7 @@ actual fun rememberTranscriber(
 
     listener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
+            state.lastSign = android.os.SystemClock.elapsedRealtime()
             state.answered = true
             status(ListenStatus(ListenStatus.Event.READY, null, service()))
             // Ready, but the microphone stays silent (another app holds it, or the microphone switch in quick
@@ -231,11 +256,13 @@ actual fun rememberTranscriber(
             }
         }
         override fun onBeginningOfSpeech() {
+            state.lastSign = android.os.SystemClock.elapsedRealtime()
             state.answered = true
             state.spoke = true
             status(ListenStatus(ListenStatus.Event.SPEECH, null, service()))
         }
         override fun onPartialResults(results: Bundle?) {
+            state.lastSign = android.os.SystemClock.elapsedRealtime()
             state.answered = true
             state.spoke = true
             state.failures = 0
@@ -243,6 +270,7 @@ actual fun rememberTranscriber(
             results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }?.let(partial)
         }
         override fun onResults(results: Bundle?) {
+            state.lastSign = android.os.SystemClock.elapsedRealtime()
             state.answered = true
             state.failures = 0
             if (results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty().any { it.isNotBlank() }) state.empty = 0
@@ -251,6 +279,7 @@ actual fun rememberTranscriber(
             again(100)
         }
         override fun onError(error: Int) {
+            state.lastSign = android.os.SystemClock.elapsedRealtime()
             state.answered = true
             partial("")
             // A pause with nothing said is normal: listen again. Anything else counts.
@@ -296,6 +325,7 @@ actual fun rememberTranscriber(
         }
         override fun onEndOfSpeech() {}
         override fun onRmsChanged(rmsdB: Float) {
+            state.lastSign = android.os.SystemClock.elapsedRealtime()
             if (rmsdB > state.loudest) state.loudest = rmsdB
         }
         override fun onBufferReceived(buffer: ByteArray?) {}
@@ -337,7 +367,9 @@ actual fun rememberTranscriber(
         state.on = true
         active(true)
         status(ListenStatus(ListenStatus.Event.STARTING, null, service()))
+        state.lastSign = android.os.SystemClock.elapsedRealtime()
         listen()
+        watchStalls()
     }
 
     val askMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -370,6 +402,10 @@ actual fun rememberTranscriber(
         )
     }
 }
+
+/** No sign of the recognizer for this long while listening: it is stuck, start a fresh one. */
+private const val STALL_MS = 20_000L
+private const val STALL_CHECK_MS = 5_000L
 
 /** Whether Luister mee is listening right now: the kiosk doesn't dim the screen meanwhile. */
 object ListeningNow {

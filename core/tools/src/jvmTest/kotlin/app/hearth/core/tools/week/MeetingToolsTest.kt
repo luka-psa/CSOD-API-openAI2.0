@@ -20,6 +20,8 @@ import app.hearth.core.model.weekSuggestion
 import app.hearth.core.model.WeekRating
 import app.hearth.core.model.plusDays
 import app.hearth.core.model.Lang
+import app.hearth.core.model.WordFix
+import app.hearth.core.model.WordFixes
 import app.hearth.core.model.Section
 import app.hearth.core.tools.HearthTools
 import app.hearth.core.tools.ToolCall
@@ -54,7 +56,8 @@ class MeetingToolsTest {
     private val board = BoardRepository(db, clock)
     private val meeting = MeetingRepository(db, clock)
     private val week = WeekRepository(db)
-    private val tools = HearthTools(ShoppingRepository(db), backlog, board, StockRepository(db), week, SettingsRepository(db), meeting)
+    private val settings = SettingsRepository(db)
+    private val tools = HearthTools(ShoppingRepository(db), backlog, board, StockRepository(db), week, settings, meeting)
     private val nl = ToolContext(ToolSource.UI, Lang.NL, today = LocalDate(2026, 10, 24))
 
     @AfterTest
@@ -237,8 +240,10 @@ class MeetingToolsTest {
         val line = tools.registry.run(tools.addTranscriptLine, TranscriptLineArgs("dus die moet oprecht worden"), nl).line
         tools.registry.run(tools.addTranscriptLine, TranscriptLineArgs("deze week moet ik afspreken met Anthony"), nl)
         val fixed = tools.registry.run(tools.fixTranscriptLine, FixLineArgs(line.id, " dus die moet opgehaald worden "), nl)
-        assertEquals("Verbeterd: “dus die moet opgehaald worden”", fixed.summary)
+        assertEquals("Verbeterd: “dus die moet opgehaald worden” Onthouden: “oprecht” is “opgehaald”.", fixed.summary)
         assertEquals("dus die moet opgehaald worden", meeting.currentTranscript().first().text)
+        // The fixed word is the household's now: the next conversation is read with it.
+        assertEquals(listOf(WordFix("oprecht", "opgehaald")), WordFixes.parse(settings.currentValue(WordFixes.SETTING)))
 
         val read = tools.registry.run(tools.readConversation, ReadConversationArgs(), nl)
         assertEquals(listOf("dus die moet opgehaald worden", "deze week moet ik afspreken met Anthony"), read.lines.map { it.text })
@@ -253,6 +258,26 @@ class MeetingToolsTest {
         tools.registry.run(tools.finishWeekoverleg, FinishArgs(), nl)
         val gone = runCatching { tools.registry.run(tools.fixTranscriptLine, FixLineArgs(line.id, "iets anders"), nl) }.exceptionOrNull()
         assertIs<ToolException>(gone)
+    }
+
+    @Test
+    fun `words the recognizer gets wrong are remembered, and forgotten after a yes`() = runTest {
+        val learned = tools.registry.run(tools.learnWords, LearnWordsArgs("Jaules", "Jules"), nl)
+        assertEquals("Onthouden: “Jaules” is “Jules”.", learned.summary)
+        tools.registry.run(tools.learnWords, LearnWordsArgs("vaat was", "vaatwasser"), nl)
+        // Learning a word again replaces its meaning.
+        tools.registry.run(tools.learnWords, LearnWordsArgs("jaules", "Jules Peeters"), nl)
+        val words = WordFixes.parse(settings.currentValue(WordFixes.SETTING))
+        assertEquals(listOf(WordFix("vaat was", "vaatwasser"), WordFix("jaules", "Jules Peeters")), words)
+        assertEquals("Dan zet Jules Peeters de vaatwasser aan", WordFixes.apply("dan zet Jaules de vaat was aan", words).replaceFirstChar { it.uppercase() })
+        assertFailsWith<ToolException> { tools.registry.run(tools.learnWords, LearnWordsArgs("melk", "Melk"), nl) }
+
+        // Forgetting is a delete: it asks first.
+        val asked = tools.registry.execute(ToolCall.of(ForgetWordTool.NAME, ForgetWordArgs.serializer(), ForgetWordArgs("vaat was")), nl)
+        assertIs<ToolOutcome.NeedsConfirmation>(asked)
+        tools.registry.run(tools.forgetWord, ForgetWordArgs("vaat was"), nl, confirmed = true)
+        assertEquals(listOf(WordFix("jaules", "Jules Peeters")), WordFixes.parse(settings.currentValue(WordFixes.SETTING)))
+        assertTrue("learn_words" in tools.registry.specs.filter { it.exposeOverMcp }.map { it.name })
     }
 
     @Test

@@ -162,7 +162,9 @@ class HearthTools(
     val addTranscriptLine = AddTranscriptLineTool(meeting)
     val clearTranscript = ClearTranscriptTool(meeting)
     val markTranscriptSorted = MarkTranscriptSortedTool(meeting)
-    val fixTranscriptLine = FixTranscriptLineTool(meeting)
+    val fixTranscriptLine = FixTranscriptLineTool(meeting, settings)
+    val learnWords = app.hearth.core.tools.week.LearnWordsTool(settings)
+    val forgetWord = app.hearth.core.tools.week.ForgetWordTool(settings)
     val readConversation = ReadConversationTool(meeting)
     val listHuddles = ListHuddlesTool(meeting)
     val editHuddleSummary = app.hearth.core.tools.week.EditHuddleSummaryTool(meeting)
@@ -200,7 +202,7 @@ class HearthTools(
             addMember, removeMember, addHouseRule, logFriction, addGoal, listBoard, resolveFriction, markFriction, setGoalStep,
             achieveGoal, editBoardItem, setRuleHelp, reviewRule, removeBoardItem,
             planMeal, listMealPlan, removeMeal, weekoverlegAgenda, finishWeekoverleg,
-            addWin, removeWin, rateWeek, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, readConversation, clearTranscript, listHuddles, editHuddleSummary, addIdea,
+            addWin, removeWin, rateWeek, setWeekMeters, checkHouseRule, addTranscriptLine, markTranscriptSorted, fixTranscriptLine, learnWords, forgetWord, readConversation, clearTranscript, listHuddles, editHuddleSummary, addIdea,
             saveRecipe, importRecipe, listRecipes, removeRecipe, setRecipePhoto,
             saveConnection, setGoogleSync, listBackups, syncCalendar, loadExamples, setLanguage, setSmartListening, setInterpreter,
         ) + listOfNotNull(backupNow, restoreBackup, syncNow, startSync, shareSync, joinSync, stopSync),

@@ -56,16 +56,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.hearth.ai.Orchestrator
-import app.hearth.ai.route.Place
-import app.hearth.ai.route.Stage
-import app.hearth.ui.resources.stage_talk
-import app.hearth.ui.resources.stage_look_back
-import app.hearth.ui.resources.stage_planning
-import app.hearth.ui.resources.stage_concern
-import app.hearth.ui.resources.stage_brainstorm
-import app.hearth.core.model.dayLabel
-import kotlinx.datetime.LocalDate
 import app.hearth.core.model.Lang
 import app.hearth.core.model.Section
 import app.hearth.core.model.Topic
@@ -83,6 +73,7 @@ import app.hearth.ui.resources.listen_err_service_mic
 import app.hearth.ui.resources.listen_fix
 import app.hearth.ui.resources.listen_level
 import app.hearth.ui.resources.listen_err_no_answer
+import app.hearth.ui.resources.listen_err_stalled
 import app.hearth.ui.resources.listen_err_silent
 import app.hearth.ui.resources.listen_err_network
 import app.hearth.ui.resources.listen_err_permission
@@ -93,10 +84,13 @@ import app.hearth.ui.resources.listen_status_quiet
 import app.hearth.ui.resources.listen_status_ready
 import app.hearth.ui.resources.listen_status_speech
 import app.hearth.ui.resources.listen_status_starting
-import app.hearth.ui.resources.summary_empty
-import app.hearth.ui.resources.summary_other
-import app.hearth.ui.resources.summary_talk
 import app.hearth.ui.resources.summary_title
+import app.hearth.ui.resources.summary_hint
+import app.hearth.ui.resources.summary_lines
+import app.hearth.ai.meeting.seen
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import org.jetbrains.compose.resources.pluralStringResource
 import app.hearth.ui.resources.agree_empty
 import app.hearth.ui.resources.agree_hint
@@ -105,10 +99,6 @@ import app.hearth.ui.resources.agree_title
 import app.hearth.ui.resources.agree_unsorted
 import app.hearth.ui.resources.agree_yes
 import app.hearth.ui.resources.conversation_show
-import app.hearth.ui.resources.heard_this_week
-import app.hearth.ui.resources.suggestion_added
-import app.hearth.ui.resources.listen_still
-import app.hearth.ui.resources.place_none
 import app.hearth.ui.resources.listen_hint
 import app.hearth.ui.resources.listen_live
 import app.hearth.ui.resources.listen_on
@@ -127,10 +117,10 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 /**
- * Luister mee, front and centre: a big mic that breathes while it listens, the words as they come in, and the
- * last thoughts with what Hearth concludes from each. Pauses don't cut a thought; Hearth waits until it has
- * settled. A tap on a suggestion opens it: its name, place and day, filled in from what was said. The tiles below
- * light up in the same colour.
+ * Luister mee, front and centre: a big mic that breathes while it listens, the words as they come in, and the last
+ * lines as Hearth reads them while the meeting goes on: names, the household's own things and the words that belong to
+ * a topic in that topic's colour. Beside it (below it on a phone) what the meeting is about so far, by topic. No
+ * conclusions yet: after the meeting Hearth reads the whole conversation at once (Zet op zijn plek).
  */
 @Composable
 fun ListenStage(
@@ -141,23 +131,16 @@ fun ListenStage(
     status: ListenStatus?,
     /** Opens the settings the status line asks for. */
     onFix: () -> Unit,
-    heard: List<HeardThought>,
-    /** Every thought of the meeting, for the summary by topic. */
-    all: List<HeardThought>,
+    /** What was heard and isn't in place yet, oldest first. */
+    heard: List<HeardLineView>,
     wide: Boolean,
-    settled: Boolean,
-    hasLines: Boolean,
     lit: Set<Topic>,
-    today: LocalDate,
     lang: Lang,
     onToggle: () -> Unit,
     onShow: () -> Unit,
     onSort: () -> Unit,
-    /** A suggestion was changed (or added right away, with true). */
-    onSuggestion: (HeardThought, Int, SuggestionChange, Boolean) -> Unit,
 ) {
     val ink = AccentStyle
-    var opened by remember { mutableStateOf<Pair<HeardThought, Int>?>(null) }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
             .background(if (listening) ink.tint else MaterialTheme.colorScheme.surface)
@@ -201,94 +184,113 @@ fun ListenStage(
             Spacer(Modifier.size(14.dp))
             TopicRail(lit)
         }
-        // What is said now, and beside it (below it on a phone) what the meeting is about so far, by topic.
+        // The last lines as said, the newest last, then the words being heard right now.
         val talk = @Composable { m: Modifier ->
-            Column(m) {
+            Column(m, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (heard.isNotEmpty()) Spacer(Modifier.size(8.dp))
+                val recent = heard.takeLast(RECENT_LINES)
+                recent.forEachIndexed { i, line -> HeardText(line, newest = i == recent.lastIndex) }
                 if (listening && partial.isNotBlank()) {
-                    Spacer(Modifier.size(14.dp))
                     Text(
                         "“$partial”",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleMedium,
                         fontStyle = FontStyle.Italic,
                         color = ink.ink,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                if (heard.isNotEmpty()) {
-                    Spacer(Modifier.size(12.dp))
-                    heard.forEachIndexed { i, thought ->
-                        ThoughtRow(thought, newest = i == 0, waiting = i == 0 && !settled, today = today, lang = lang, onOpen = { n -> opened = thought to n })
-                    }
-                }
             }
         }
-        val summary = @Composable { m: Modifier -> MeetingSummary(all, today, lang, m, onOpen = { t, n -> opened = t to n }) }
-        if (all.isNotEmpty() && wide) {
+        val summary = @Composable { m: Modifier -> MeetingSeen(heard, lang, m) }
+        if (heard.isNotEmpty() && wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 4.dp)) {
                 talk(Modifier.weight(1.5f))
                 summary(Modifier.weight(1f).padding(top = 12.dp))
             }
         } else {
             talk(Modifier.fillMaxWidth())
-            if (all.isNotEmpty()) summary(Modifier.fillMaxWidth().padding(top = 12.dp))
+            if (heard.isNotEmpty()) summary(Modifier.fillMaxWidth().padding(top = 12.dp))
         }
-        if (heard.isNotEmpty() || hasLines || listening) {
+        if (heard.isNotEmpty() || listening) {
             Spacer(Modifier.size(8.dp))
             @OptIn(ExperimentalLayoutApi::class)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (heard.isNotEmpty()) Button(onClick = onSort) { Text(stringResource(Res.string.sort_conversation)) }
-                if (hasLines) TextButton(onClick = onShow) { Text(stringResource(Res.string.conversation_show)) }
+                if (heard.isNotEmpty()) TextButton(onClick = onShow) { Text(stringResource(Res.string.conversation_show)) }
                 if (listening && available) TextButton(onClick = onToggle) { Text(stringResource(Res.string.listen_stop)) }
             }
         }
     }
-    opened?.let { (t, n) ->
-        t.proposals.getOrNull(n)?.let { p ->
-            SuggestionSheet(
-                p, today, lang,
-                onSave = { onSuggestion(t, n, it, false) },
-                onAddNow = if (n in t.added) null else { c -> onSuggestion(t, n, c, true) },
-            ) { opened = null }
+}
+
+/** How many of the last lines the stage shows; Gesprek has them all. */
+private const val RECENT_LINES = 5
+
+/**
+ * One line as said (with the household's own words put right), what Hearth recognises in it coloured: a topic's words
+ * in its colour, the household's own things (a routine, a house rule, a dish) also on its tint, names in bold.
+ */
+@Composable
+internal fun HeardText(line: HeardLineView, newest: Boolean, modifier: Modifier = Modifier) {
+    val read = line.intake
+    val text = buildAnnotatedString {
+        append(read.text)
+        read.marks.forEach { m ->
+            val style = when {
+                m.person -> SpanStyle(fontWeight = FontWeight.SemiBold)
+                m.known != null -> m.topic!!.style().let { SpanStyle(color = it.ink, background = it.tint, fontWeight = FontWeight.SemiBold) }
+                else -> SpanStyle(color = m.topic!!.style().ink, fontWeight = FontWeight.SemiBold)
+            }
+            addStyle(style, m.start, m.end)
         }
     }
+    Text(
+        text,
+        style = if (newest) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
+        color = if (newest) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = if (newest) 4 else 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
 }
 
 /**
- * "Waar het over ging": the meeting so far by topic, in the order of every screen. Each topic that came up shows what
- * was concluded there (tap to change it, as on the stage); what went well has its own group. Talk without a conclusion
- * is counted, never listed.
+ * "Waar het over gaat": the topics that came up so far, in the order of every screen, each with how often and the
+ * household's things that were named (a chip in its colour) or the words that told it. A first intake, no conclusions.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MeetingSummary(all: List<HeardThought>, today: LocalDate, lang: Lang, modifier: Modifier, onOpen: (HeardThought, Int) -> Unit) {
-    // Oldest first, so the list reads the way the meeting went.
-    val found = all.reversed().flatMap { t -> t.proposals.mapIndexed { n, p -> Triple(t, n, p) } }
-        // Said twice in the meeting: shown once.
-        .distinctBy { (_, _, p) -> p.place to p.text.lowercase().trim() }
-    val byTopic = found.groupBy { it.third.topic }
-    val talk = all.count { it.proposals.isEmpty() }
+private fun MeetingSeen(heard: List<HeardLineView>, lang: Lang, modifier: Modifier) {
+    val topics = seen(heard.map { it.intake })
     Column(
         modifier.clip(RoundedCornerShape(22.dp)).background(MaterialTheme.colorScheme.surface).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(stringResource(Res.string.summary_title), style = MaterialTheme.typography.titleMedium)
-        if (found.isEmpty()) Text(stringResource(Res.string.summary_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        (Topic.entries.map { it as Topic? } + listOf(null)).forEach { topic ->
-            val mine = byTopic[topic] ?: return@forEach
-            val s = topic?.style() ?: AccentStyle
+        if (topics.isEmpty()) Text(stringResource(Res.string.summary_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        topics.forEach { t ->
+            val s = t.topic.style()
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(topic?.icon() ?: HearthIcons.Heart, null, tint = s.ink, modifier = Modifier.size(16.dp))
+                    Icon(t.topic.icon(), null, tint = s.ink, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(topic?.title(lang) ?: stringResource(Res.string.summary_other), style = MaterialTheme.typography.labelLarge, color = s.ink)
+                    Text(t.topic.title(lang), style = MaterialTheme.typography.labelLarge, color = s.ink, modifier = Modifier.weight(1f))
+                    Text(pluralStringResource(Res.plurals.summary_lines, t.lines, t.lines), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
                 }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    mine.forEach { (t, n, p) -> ConclusionPill(p, today, lang, added = n in t.added, onClick = { onOpen(t, n) }) }
+                if (t.known.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        t.known.forEach { k ->
+                            Text(
+                                k.text, style = MaterialTheme.typography.labelLarge, color = s.ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).background(s.tint).padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
                 }
+                if (t.words.isNotEmpty()) Text(t.words.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        if (talk > 0) Text(pluralStringResource(Res.plurals.summary_talk, talk, talk), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
     }
 }
 
@@ -300,6 +302,7 @@ private fun ListenStatus.text(): String? {
         name == "silent" -> stringResource(Res.string.listen_err_silent)
         name == "service-mic" -> stringResource(Res.string.listen_err_service_mic)
         name == "no-answer" -> stringResource(Res.string.listen_err_no_answer)
+        name == "stalled" -> stringResource(Res.string.listen_err_stalled)
         code == 3 || name == "audio-capture" -> stringResource(Res.string.listen_err_mic)
         code == 5 -> stringResource(Res.string.listen_err_client)
         code == 8 -> stringResource(Res.string.listen_err_busy)
@@ -377,68 +380,6 @@ private fun SoundBars(ink: Color) {
             }
         },
     )
-}
-
-/**
- * One thought as it was said, and under it what Hearth concludes: "Naar de opvang · donderdag" in the colour of
- * its topic. While the newest one may still go on, Hearth only says it is listening.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ThoughtRow(thought: HeardThought, newest: Boolean, waiting: Boolean, today: LocalDate, lang: Lang, onOpen: (Int) -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(18.dp))
-            .background(if (newest) MaterialTheme.colorScheme.surface else Color.Transparent)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) {
-        Text(
-            thought.text,
-            style = if (newest) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
-            color = if (newest) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = if (newest) 4 else 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(Modifier.size(6.dp))
-        when {
-            waiting -> Text(stringResource(Res.string.listen_still), style = MaterialTheme.typography.labelMedium, color = AccentStyle.ink, fontStyle = FontStyle.Italic)
-            // Nothing to put in: say what Hearth heard ("Bijpraten", "Aan het brainstormen, nog geen besluit").
-            thought.proposals.isEmpty() -> Text(stringResource(thought.stage.label()), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline, fontStyle = if (thought.stage == Stage.BRAINSTORM) FontStyle.Italic else FontStyle.Normal)
-            else -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                // A tap opens the suggestion to change its name, place or day.
-                thought.proposals.forEachIndexed { n, p -> ConclusionPill(p, today, lang, added = n in thought.added, onClick = { onOpen(n) }) }
-            }
-        }
-    }
-}
-
-/** What a thought was, when it concludes nothing. */
-private fun Stage.label() = when (this) {
-    Stage.TALK -> Res.string.stage_talk
-    Stage.LOOK_BACK -> Res.string.stage_look_back
-    Stage.PLANNING -> Res.string.stage_planning
-    Stage.CONCERN -> Res.string.stage_concern
-    Stage.BRAINSTORM -> Res.string.stage_brainstorm
-    Stage.DECISION -> Res.string.place_none
-}
-
-/** "Afspreken met Anthony · deze week", with the icon and colour of where it goes. */
-@Composable
-internal fun ConclusionPill(p: Orchestrator.Proposal, today: LocalDate, lang: Lang, added: Boolean = false, onClick: (() -> Unit)? = null) {
-    val s = p.topic?.style() ?: if (p.place == Place.WIN) AccentStyle else UnsortedStyle
-    val day = p.date?.let { dayLabel(it, today, lang) } ?: if (p.next) stringResource(Res.string.heard_this_week) else null
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(s.tint)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-    ) {
-        // Added already: a tick instead of its icon.
-        Icon(if (added) HearthIcons.Check else p.topic?.icon() ?: p.place.icon(), if (added) stringResource(Res.string.suggestion_added) else p.topic?.title(lang), tint = s.ink, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
-        // The day always shows whole; a long text wraps (on a phone) before it gives way.
-        Text(p.text.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleSmall, color = s.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        if (day != null) Text("  ·  $day", style = MaterialTheme.typography.labelMedium, color = s.ink, maxLines = 1, softWrap = false)
-    }
 }
 
 /**

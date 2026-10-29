@@ -142,6 +142,9 @@ interface MeetingDao {
     @Query("UPDATE transcript_line SET sorted = 1, updatedAt = :now WHERE id IN (:ids)")
     suspend fun markSorted(ids: List<String>, now: Long)
 
+    @Query("SELECT * FROM transcript_line WHERE id = :id")
+    suspend fun line(id: String): TranscriptLineEntity?
+
     /** Words the recognizer got wrong, fixed by the family (only in the meeting that's still open). */
     @Query("UPDATE transcript_line SET text = :text, updatedAt = :now WHERE id = :id AND huddleId IS NULL")
     suspend fun fixLine(id: String, text: String, now: Long): Int
@@ -268,6 +271,9 @@ class MeetingRepository(
     }
 
     suspend fun clearTranscript() = dao.clearCurrentTranscript()
+
+    /** One line as it stands now (null: gone). */
+    suspend fun line(id: String): TranscriptLine? = dao.line(id)?.toModel()
 
     /** False when the line is gone or belongs to a meeting that already ended. */
     suspend fun fixLine(id: String, text: String): Boolean = dao.fixLine(id, text.trim(), clock()) > 0

@@ -303,11 +303,11 @@
     <string name="transcript_title">This meeting’s conversation</string>
     <string name="transcript_last">Last meeting’s conversation</string>
     <string name="transcript_empty">Nothing heard yet.</string>
-    <string name="transcript_kept">Stays readable until the next meeting; the summary stays for good.</string>
+    <string name="transcript_kept">Tap a line to fix what Hearth misheard; it remembers those words. Stays readable until the next meeting; the summary always stays.</string>
     <string name="transcript_clear">Clear conversation</string>
     <string name="transcript_clear_body">What Luister mee heard in this meeting goes. Things already put in place stay.</string>
     <string name="voorstel_title">Put in place</string>
-    <string name="voorstel_hint">Tap a suggestion to change its name, place or day, or untick it. Nothing is added until you tap Add.</string>
+    <string name="voorstel_hint">Hearth read the whole conversation and held it against what is there already. Tap a suggestion to change its name, place or day, or untick it. Nothing is added until you tap Add.</string>
     <string name="voorstel_add">Add (%1$d)</string>
     <string name="voorstel_empty">Nothing new to put in place.</string>
     <string name="place_planning">Tasks</string>
@@ -395,9 +395,8 @@
     <string name="examples_card">See how it works</string>
     <string name="examples_body">One or two examples in every section: tasks, habits, the shopping list, the week menu and the Werkbord. Change or remove them whenever you like.</string>
     <string name="examples_load">Load examples</string>
-    <string name="listen_live">Just talk, pauses are fine. What belongs together stays together. Tap a suggestion to change it.</string>
-    <string name="listen_stage_hint">Tap and just talk, pauses and all. Hearth keeps together what belongs together and picks out what needs doing; you check it together afterwards.</string>
-    <string name="listen_still">Still listening…</string>
+    <string name="listen_live">Just talk, pauses are fine. Hearth writes along and colours what it recognises; after the meeting it reads it all at once.</string>
+    <string name="listen_stage_hint">Tap and just talk, pauses and all. Hearth writes along and sees what it is about. After the meeting it reads the whole conversation, holds it against what is there already and puts it in place; you check it together.</string>
     <string name="heard_this_week">this week</string>
     <string name="agree_title">Agreed together?</string>
     <string name="agree_hint">This goes into today’s summary. Does it feel right for everyone?</string>
@@ -518,11 +517,6 @@
     <string name="wins_topic_empty">Hearth saw nothing special here. Say it in your own words.</string>
     <string name="wins_own_words">In your own words…</string>
     <string name="wins_done">Done</string>
-    <string name="stage_talk">Catching up</string>
-    <string name="stage_look_back">Looking back, nothing to add</string>
-    <string name="stage_planning">About the planning</string>
-    <string name="stage_concern">Something that rubs</string>
-    <string name="stage_brainstorm">Brainstorming, nothing decided yet</string>
     <string name="smart_title">Smarter listening</string>
     <string name="smart_card">A language model on this device</string>
     <string name="smart_body">Luister mee then reads the weekly meeting with a small language model, next to the fixed rules, so it also recognises sentences the way you say them. The model runs on this device itself: what you say goes nowhere. Switching it on downloads it once (about 130 MB); switching it off removes it again.</string>
@@ -565,14 +559,22 @@
     <string name="history_open">All meetings</string>
     <string name="history_empty">No weekly meeting held yet.</string>
     <string name="last_time_line">Last time: %1$s</string>
-    <string name="summary_title">What it was about</string>
-    <string name="summary_empty">Once something is decided, it shows here by topic.</string>
-    <string name="summary_other">What went well and the rest</string>
-    <plurals name="summary_talk">
-        <item quantity="one">One thought without a decision</item>
-        <item quantity="other">%1$d thoughts without a decision</item>
-    </plurals>
+    <string name="summary_title">What it’s about</string>
     <string name="transcript_export">Export</string>
+    <string name="summary_hint">Topics light up as they come up.</string>
+    <plurals name="summary_lines">
+        <item quantity="one">%1$d line</item>
+        <item quantity="other">%1$d lines</item>
+    </plurals>
+    <string name="voorstel_reading">Hearth is reading the whole conversation…</string>
+    <string name="voorstel_reading_part">Part %1$d of %2$d</string>
+    <string name="voorstel_update">Updates: %1$s</string>
+    <string name="voorstel_there">Already there: %1$s</string>
+    <string name="voorstel_as_new">Add as new</string>
+    <string name="transcript_fix_title">What was said?</string>
+    <string name="words_title">Words Hearth has learned</string>
+    <string name="words_forget_title">Forget this word?</string>
+    <string name="words_forget_body">Hearth reads “%1$s” as heard again.</string>
     <string name="listen_status_starting">Starting speech recognition…</string>
     <string name="listen_status_ready">Ready, go ahead</string>
     <string name="listen_status_speech">Hearing you</string>
@@ -589,6 +591,7 @@
     <string name="listen_err_language">this language is not available on this device</string>
     <string name="listen_err_silent">the microphone hears nothing. Is the microphone switch in quick settings on, or is another app using it?</string>
     <string name="listen_err_no_answer">the speech service does not answer; trying a plainer way</string>
+    <string name="listen_err_stalled">the speech service went quiet; Hearth is listening again</string>
     <string name="listen_level">sound %1$d</string>
     <string name="listen_err_service_mic">the app that recognizes speech may not use the microphone. Open its settings and allow Permissions › Microphone.</string>
     <string name="listen_fix">Open its settings</string>
