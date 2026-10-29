@@ -66,6 +66,12 @@ private fun startTranscribing(lang: String, vocabulary: String, onGuesses: (Stri
         const Recognition = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
         const state = { on: true, phrases: true };
         globalThis.__hearthTranscriber = state;
+        // The screen stays on while it listens (a meeting goes on without touching it); the lock comes back when the
+        // page is shown again, and goes when listening stops.
+        const awake = () => { if (state.on && navigator.wakeLock && document.visibilityState === 'visible') navigator.wakeLock.request('screen').then((l) => { state.lock = l; }).catch(() => {}); };
+        state.wake = () => awake();
+        document.addEventListener('visibilitychange', state.wake);
+        awake();
         const words = vocabulary ? vocabulary.split('\u001F') : [];
         // Chrome on Android repeats the stretch so far in each result; there only its latest guess is shown live.
         const android = /Android/i.test(navigator.userAgent);
@@ -104,6 +110,8 @@ private fun startTranscribing(lang: String, vocabulary: String, onGuesses: (Stri
                 onPartial('');
                 if (state.on) { try { run(); return; } catch (_) {} }
                 globalThis.__hearthTranscriber = null;
+                if (state.lock) { state.lock.release().catch(() => {}); state.lock = null; }
+                document.removeEventListener('visibilitychange', state.wake);
                 onEnd();
             };
             state.r = r;
@@ -114,5 +122,5 @@ private fun startTranscribing(lang: String, vocabulary: String, onGuesses: (Stri
 )
 
 private fun stopTranscribing(): Unit = js(
-    "{ const s = globalThis.__hearthTranscriber; if (s) { s.on = false; if (s.r) s.r.stop(); } }",
+    "{ const s = globalThis.__hearthTranscriber; if (s) { s.on = false; if (s.lock) { s.lock.release().catch(() => {}); s.lock = null; } if (s.r) s.r.stop(); } }",
 )
