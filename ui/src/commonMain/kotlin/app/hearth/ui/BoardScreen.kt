@@ -404,20 +404,23 @@ private fun GoalsCard(
 
 // ---------- dialogs ----------
 
-/** A one-field dialog; [toggle] adds a yes/no option under the field. A tap outside never loses typed text. */
+/**
+ * A one-field dialog, empty or with [initial] text to change; [toggle] adds a yes/no option under the field. A tap
+ * outside never loses typed text.
+ */
 @Composable
-fun TextDialog(title: String, hint: String, toggle: String? = null, onDone: (String, Boolean) -> Unit, onDismiss: () -> Unit) {
-    var text by remember { mutableStateOf("") }
+fun TextDialog(title: String, hint: String, toggle: String? = null, initial: String = "", onDone: (String, Boolean) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(initial) }
     var checked by remember { mutableStateOf(true) }
     var asking by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     AlertDialog(
-        onDismissRequest = { if (text.isNotBlank()) asking = true else onDismiss() },
+        onDismissRequest = { if (text.isNotBlank() && text != initial) asking = true else onDismiss() },
         title = { Text(title) },
         text = {
             Column {
-                OutlinedTextField(value = text, onValueChange = { text = it }, placeholder = { Text(hint, maxLines = 1, overflow = TextOverflow.Ellipsis) }, singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(focus))
+                OutlinedTextField(value = text, onValueChange = { text = it }, placeholder = { Text(hint, maxLines = 1, overflow = TextOverflow.Ellipsis) }, singleLine = initial.isEmpty(), modifier = Modifier.fillMaxWidth().focusRequester(focus))
                 if (toggle != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp).clickable { checked = !checked }) {
                         Checkbox(checked, { checked = it })

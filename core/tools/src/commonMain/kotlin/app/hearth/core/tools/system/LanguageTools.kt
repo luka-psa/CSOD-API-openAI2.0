@@ -16,6 +16,7 @@ object AppSettings {
     /** "true" when this device reads the weekoverleg with the sentence model. */
     const val SMART_LISTENING = SettingsRepository.SMART_LISTENING
     const val INTERPRETER = SettingsRepository.INTERPRETER
+    const val TRANSCRIBER = SettingsRepository.TRANSCRIBER
 }
 
 @Serializable
@@ -98,5 +99,35 @@ class SetInterpreterTool(private val settings: SettingsRepository) : Tool<Interp
 
     companion object {
         const val NAME = "set_interpreter"
+    }
+}
+
+@Serializable
+data class TranscriberArgs(@Describe("True: Luister mee records the meeting and Whisper writes it down on this device (downloads it once, about 250 MB).") val enabled: Boolean)
+
+@Serializable
+data class TranscriberResult(val enabled: Boolean, override val summary: String) : ToolResult
+
+/**
+ * Beter uitschrijven: Luister mee records the weekoverleg itself and Whisper writes it down on this device, a few
+ * seconds behind the talk, without gaps. Switching it on downloads the model once; switching it off removes it again
+ * (Luister mee then uses the device's own speech recognition).
+ */
+class SetTranscriberTool(private val settings: SettingsRepository) : Tool<TranscriberArgs, TranscriberResult> {
+    override val name = NAME
+    override val description = "Switch better transcription (Whisper, on this device) for Luister mee on or off (tablet only)."
+    override val exposeOverMcp = false
+    override val argsSerializer = TranscriberArgs.serializer()
+    override val resultSerializer = TranscriberResult.serializer()
+
+    override suspend fun run(args: TranscriberArgs, ctx: ToolContext): TranscriberResult {
+        settings.put(AppSettings.TRANSCRIBER, args.enabled.toString())
+        val summary = if (args.enabled) ctx.t("Beter uitschrijven staat aan. Het model komt één keer binnen.", "Better transcription is on. The model downloads once.")
+        else ctx.t("Beter uitschrijven staat uit.", "Better transcription is off.")
+        return TranscriberResult(args.enabled, summary)
+    }
+
+    companion object {
+        const val NAME = "set_transcriber"
     }
 }

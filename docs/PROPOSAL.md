@@ -111,7 +111,8 @@ meeting and wins, then every *topic* in a few words with its details, Hearth's s
 transcript, so the family's AI can sort it), `finish_weekoverleg` (writes the summary, wins grouped by topic; `preview` only writes it,
 for the family to agree on before Klaar), `add_win`,
 `remove_win` ⚠ (tablet), `rate_week` (how the week went, `score` 0–5, agreed together for the household; empty = no
-agreement), `set_week_meters` (asking it on/off, tablet), `set_smart_listening` (the sentence model for Luister mee on this device, on/off, tablet), `set_interpreter` (the interpreter that reads the whole weekoverleg, on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
+agreement), `set_week_meters` (asking it on/off, tablet), `set_smart_listening` (the sentence model for Luister mee on this device, on/off, tablet), `set_interpreter` (the interpreter that reads the whole weekoverleg, on/off, tablet), `set_transcriber` (Beter
+uitschrijven: Luister mee records and Whisper writes it down on this device, on/off, tablet), `check_house_rule` (`score` 0–5 like the routines, never who),
 `rate_habit` (`score` 0–5; one score per meeting is kept for the habit coach; all three still take the older `ease`
 EASY / EFFORT / HARD, read as 5 / 3 / 1), `review_habit` (read-only: the four laws of Atomic Habits for a habit, or for
 every habit that asks for something: its score per meeting, the frictions about it, how each law is in place and what to try,
@@ -126,7 +127,9 @@ DINNER, EVENING, BEDTIME; `add_to_backlog` takes it too),
 `list_huddles`
 (summaries), `edit_huddle_summary` (a past meeting's summary put right afterwards), `add_transcript_line` (tablet), `read_conversation` (the meeting's lines with ids and times, for the
 family's AI: it reads for meaning, adds with the regular tools, then calls `mark_transcript_sorted`),
-`fix_transcript_line` (misheard words, for the family's AI; on the tablet a conclusion is changed in its sheet), `clear_transcript` ⚠ (tablet),
+`fix_transcript_line` (misheard words, on the tablet a tap on the line in *Gesprek*; the words that changed are remembered
+as the household's own), `learn_words` (a word Luister mee keeps mishearing and what the family means, "onthoud: Jaules is
+Jules"; setting `listen.words`, travels with sync and backup), `forget_word` ⚠ (tablet), `clear_transcript` ⚠ (tablet),
 `add_idea` (Werkbord; decided with `resolve_friction` like a friction). · Recipes:
 `save_recipe` (name, ingredients, how we made it; rename keeps the photo), `list_recipes`, `remove_recipe` ⚠,
 `set_recipe_photo` (tablet only). Stock: `move_stock_item`, `remove_storage_spot` ⚠.
@@ -315,14 +318,23 @@ bloem, melk en eieren". Phone: tabs Deze week / Recepten.
 
 **Weekoverleg** (v0.10): one page built around the household's *topics* (`Topic` in `core/model/Week.kt`):
 *Vrije tijd*, *Doelen*, *Admin & afspraken*, *Grote taken*, *Huishouden*, *Ritmes & routines*, *Boodschappen*, *Weekmenu*, *Frictie & ideeën*, *Huisregels* (two rows of five on the tablet). On top
-the **Luister mee** stage: a big mic with breathing rings and moving bars while it listens, the words as they come
-in, the topics as a row of dots (the one the last thought went to glows), and the last *thoughts*, each with
-its *conclusions* as pills in their topic's colour ("Naar de opvang · donderdag"). A pause never cuts a thought
+the **Luister mee** stage (v0.27: two moments). *While the meeting goes on* it only writes along: a big mic with
+breathing rings and moving bars, the words as they come in, the last lines as said with what Hearth recognises coloured
+(`MeetingIntake` in `ai/meeting`: names in bold, the household's own things, a routine, a house rule, a dish, on their
+topic's tint, words that belong to a topic, "vaatwasser", "gerechten", "squash", in its colour), the topics as a row of
+dots (the one just heard glows) and beside it *Waar het over gaat*: the topics so far with how often and what of the
+household was named. No conclusions while people talk. *After the meeting* (*Zet op zijn plek*) Hearth reads the whole
+conversation at once (`MeetingProcessor`): the household's own words put right, the topic of every thought (a topic that
+comes back later is read together with what was said about it first), the interpreter per topic when it is on (else the
+rules), conclusions that rest on made-up words or too few words, or that don't fit what the talk was about, dropped, and
+every conclusion held against what exists (`Matcher`): a task gets the new day, a routine its moment or days ("Werkt
+bij: Vaatwasser uitladen"), what is there already says so ("Staat er al: Schoenen in de kast", not ticked) instead of
+being added twice; *Toch nieuw* adds it as new after all. The same conclusion said twice counts once, the last time (a
+change of plan replaces what came before). The sheet shows how far the reading is. A pause never cuts a thought
 (v0.18): stretches join by how they sound ("dus …", "die …", "voor de rest …", a half sentence, a fragment without
-subject or verb, a day said after a pause); "oh ja", a new subject or two minutes of silence start the next one. Hearth
-waits about four seconds after the last words ("Hearth luistert nog…") before it shows what it concludes, and a tap
-on a conclusion opens it: its name, place (taak, afspraak, ritme, vrije tijd, …) and day, filled in from the talk,
-with *Bewaar* (for the Voorstel) and *Zet erin* (added right away). Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
+subject or verb, a day said after a pause); "oh ja", a new subject or two minutes of silence start the next one. A tap
+on a conclusion opens it: its name, place (taak, afspraak, ritme, vrije tijd, …) and day, filled in from the talk; a
+name typed again teaches the words spelled almost the same ("Jaules" → "Jules"). Below it every topic is a calm tile with a few words (`Topic.glance`: "3 open · 1 wacht op
 antwoord", "3 van 7 avonden"); the tile Luister mee just heard about glows too. Tapping a tile opens its list under
 the grid (free time and admin with an add field, projects with their next step and "dit weekend", chores aan de
 beurt and the habit rating, the shopping list, the meals of the week, the house-rule check and frictions, the goals with their next small step). In Dutch *afspraken* always means appointments; house rules are *huisregels*.
@@ -370,14 +382,19 @@ Android restarts its recognizer after each pause and prefers on-device recogniti
 the one with the household's own words, names, stock and recipes, which they also get as hints where the platform
 supports it: phrase hints in the browser, biasing strings on Android 13+). What Hearth reads is cleaned first
 (`Spoken`: "euh", "allee", "gewoon" out; "da", "ge", "nie", "'k" as plain Dutch); the transcript keeps what was said.
-*Gesprek* shows what was heard (tap a line to fix it); *Zet op zijn plek* opens the Voorstel: each conclusion,
+*Gesprek* shows what was heard (tap a line to fix it; the words that changed are remembered, `WordFixes`, and every next
+conversation is read with them; they are also the recognizer's first hints and Whisper's prompt; *Woorden die Hearth geleerd heeft* lists
+them, X forgets one after a yes); *Zet op zijn plek* opens the Voorstel: each conclusion,
 grouped by topic, with what was said around it (tap the words to fix them and Hearth reads them again) and its
 guessed place (Taken, Afspraak, Vrije tijd,
 Boodschappen, Weekmenu, Huisregel, Frictie, Idee, Doel, Ging goed, Gewoon gepraat; *Agenda* takes dates further
 ahead too: "verlof van 3 tot 7 november", "oma is jarig op 12/12", "volgende maand op vakantie"), all ticked, a tap on the
-place moves it, *Toevoegen* runs the same tools. A thought that was just talk comes once, as *Gewoon gepraat*.
-Sorting is local (`MeetingWords.thoughts` + the capture-bar rules, `Orchestrator.listen` / `propose`); the family's own
-AI understands dialect and half sentences far better and reads the conversation through `read_conversation`.
+place moves it, *Toevoegen* runs the same tools. A thought that was just talk comes once, as *Gewoon gepraat* (folded at
+the end). All of this runs on the tablet (`MeetingWords.thoughts` + the capture-bar rules, `Orchestrator.listen`, the
+interpreter, `MeetingProcessor`); the family's own AI is an optional extra that can read the conversation through
+`read_conversation`, never needed. On Android a recognizer that goes quiet without an error (no sound level for 20 s
+while listening) is started afresh, and the status line says so. With *Beter uitschrijven* (v0.28) there is no
+recognizer to restart: the tablet records the meeting itself and Whisper writes it down, a few seconds behind the talk.
 The dashboard shows *Wat ging goed* until the meeting takes it along; "dat ging goed: …" in the capture bar adds one.
 The dashboard shows "Vanavond: <dish>" and, Friday to Sunday when no meeting was held for 6 days, a calm
 "Tijd voor het weekoverleg?" card with Start.
@@ -507,6 +524,28 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
    besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,
    the rule it ends in does; looking back at ourselves is never written down.
+   v0.28: *Beter uitschrijven* (Instellingen, `set_transcriber`, device-only, on by itself on a tablet; `ai/whisper`):
+   Luister mee records the meeting itself (`AudioRecord`, 16 kHz) instead of restarting the platform recognizer after
+   every pause, so nothing is lost between stretches; `SpeechCutter` cuts the recording at pauses (a stretch is read once
+   it is 6 s long and someone pauses, at a 2 s pause however short, at 28 s at its quietest moment; silence never reaches
+   the model) and Whisper small (int8, ≈ 250 MB from Hugging Face at a fixed revision, checked by SHA-256, ONNX Runtime on
+   the tablet; our own log-mel features and byte-level BPE, the same numbers and ids as the reference) writes each
+   stretch a few seconds behind the talk, with the household's own words as its prompt, a line per stretch kept at the
+   moment it was said (`add_transcript_line` `at`). What Whisper invents on silence is dropped; a phrase that loops is
+   kept once. The model is opened only while a meeting is written; the audio is never stored. Zet op zijn plek waits
+   until the last stretches are written. Measured on Dutch speech (FLEURS): the same words as the reference, about
+   0.35× real time on a four-core test computer (a tablet is slower).
+   v0.27: Luister mee in two moments. Live it only writes along and reads what each line is about (`MeetingIntake`:
+   names, the household's own things and topic words coloured; *Waar het over gaat* by topic beside it). After the
+   meeting *Zet op zijn plek* reads the whole conversation at once (`MeetingProcessor`: the household's own words, topic
+   by topic so a topic that comes back is read together, the interpreter per topic or the rules, made-up and off-topic
+   conclusions dropped, each held against what exists by `Matcher`: *Werkt bij* / *Staat er al* / *Toch nieuw*, the last
+   word on a plan counts). The stage and the Voorstel now show the same reading (before, the Voorstel read with the rules
+   again). The household's own words (`WordFixes`, `learn_words`, `forget_word` ⚠, setting `listen.words`) are learned
+   from lines fixed in *Gesprek* and names typed again in the Voorstel, and are the recognizer's first hints. The
+   conversation export is `hearth-conversation/2` (each line as read, its topics, the topics as they went, what was
+   concluded, the Voorstel as the family left it): material to teach the interpreter real talk. Android restarts a
+   recognizer that went quiet without an error.
    v0.26: *Waar het over ging* beside Luister mee (below it on a phone): every conclusion of the meeting so far, grouped
    by topic; talk about the meeting itself ("we gaan naar de weekplanning kijken") and plans ending in "misschien"
    stay talk; a Dutch meeting prefers the recognizer's Dutch guess over an English one; sheets no longer close when

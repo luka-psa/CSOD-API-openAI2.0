@@ -67,8 +67,6 @@ class Interpreting(private val runtime: InterpreterRuntime) {
 
     private val lock = Mutex()
     private var interpreter: Interpreter? = null
-    private var reader: MeetingReader? = null
-    private var date = ""
 
     suspend fun start() = lock.withLock {
         if (!runtime.available || interpreter != null) return@withLock
@@ -89,26 +87,16 @@ class Interpreting(private val runtime: InterpreterRuntime) {
 
     suspend fun stop() = lock.withLock {
         interpreter = null
-        reader = null
         runCatching { runtime.remove() }
         _state.value = State.Off
     }
 
     /**
-     * The meeting so far ([lines], oldest first, on [today] as "maandag 2 november") read as it stands; a new meeting (its
-     * first line changed) starts afresh. Null when the interpreter isn't ready.
+     * One reading of [lines] (one topic of the meeting, oldest first) as a whole, on [today] as "maandag 2 november"; the
+     * full pass after the meeting reads topic by topic. Null when the interpreter isn't ready.
      */
-    suspend fun read(lines: List<String>, today: String): List<MeetingReader.Found>? {
+    suspend fun read(lines: List<String>, today: String): List<Action>? {
         val i = interpreter ?: return null
-        val r = lock.withLock {
-            if (reader == null || date != today || lines.firstOrNull() != first) {
-                date = today; first = lines.firstOrNull()
-                reader = MeetingReader({ i.read(today, it) })
-            }
-            reader!!
-        }
-        return r.update(lines)
+        return lock.withLock { i.read(today, lines) }
     }
-
-    private var first: String? = null
 }

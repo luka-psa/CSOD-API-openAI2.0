@@ -141,8 +141,9 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val lastTranscript by viewModel.lastTranscript.collectAsStateWithLifecycle()
     val huddles by viewModel.huddles.collectAsStateWithLifecycle()
     val voorstel by viewModel.voorstel.collectAsStateWithLifecycle()
-    val heardThoughts by viewModel.heardThoughts.collectAsStateWithLifecycle()
-    val meetingThoughts by viewModel.meetingThoughts.collectAsStateWithLifecycle()
+    val heardLines by viewModel.heardLines.collectAsStateWithLifecycle()
+    val processing by viewModel.processing.collectAsStateWithLifecycle()
+    val learnedWords by viewModel.learnedWords.collectAsStateWithLifecycle()
     val vocabulary by viewModel.vocabulary.collectAsStateWithLifecycle()
     val sync by viewModel.sync.collectAsStateWithLifecycle()
     val joinCode by viewModel.joinCode.collectAsStateWithLifecycle()
@@ -160,6 +161,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val today by viewModel.today.collectAsStateWithLifecycle()
     val smartListening by viewModel.listening.collectAsStateWithLifecycle()
     val interpreterState by viewModel.interpreting.collectAsStateWithLifecycle()
+    val writingState by viewModel.writingState.collectAsStateWithLifecycle()
+    val writingLeft by viewModel.writingLeft.collectAsStateWithLifecycle()
 
     var destination by destinationState
     var planning by remember { mutableStateOf<BacklogItem?>(null) }
@@ -177,8 +180,10 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
         onPartial = { partial = it },
         onActive = { listening = it; if (!it) partial = "" },
         onStatus = { listenStatus = it },
+        writing = viewModel.writing.takeIf { viewModel.writingAvailable },
+        onWritten = viewModel::written,
     )
-    val listen = ListenControl(transcriber.available, listening, partial, listenStatus, transcriber.fix) { if (listening) transcriber.stop() else transcriber.start() }
+    val listen = ListenControl(transcriber.available, listening, partial, listenStatus, transcriber.fix, writingLeft) { if (listening) transcriber.stop() else transcriber.start() }
 
     val counts = mapOf(
         Destination.TASKS to dontForget(backlog, today).size,
@@ -220,7 +225,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardThoughts, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews, meetingThoughts),
+                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardLines, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews, processing, learnedWords),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -259,8 +264,10 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 moveVoorstel = { i, p -> viewModel.moveVoorstel(i, p) },
                                 toggleVoorstel = { viewModel.toggleVoorstel(it) },
                                 addVoorstel = viewModel::addVoorstel,
-                                changeSuggestion = { t, i, c, now -> viewModel.changeSuggestion(t, i, c, now) },
                                 editVoorstel = { i, c -> viewModel.editVoorstel(i, c) },
+                                asNewVoorstel = { viewModel.asNewVoorstel(it) },
+                                fixLine = viewModel::fixLine,
+                                forgetWord = viewModel::forgetWord,
                                 habitTip = { i, t -> viewModel.applyTip(i, t) },
                                 pairing = { i, t -> viewModel.setPairing(i, t) },
                                 openItem = { planning = it },
@@ -282,6 +289,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                                 retrySmartListening = viewModel::retrySmartListening,
                                 setInterpreter = viewModel::setInterpreter,
                                 retryInterpreter = viewModel::retryInterpreter,
+                                setTranscriber = viewModel::setTranscriber,
+                                retryTranscriber = viewModel::retryTranscriber,
                             ),
                             google, viewModel.googleAvailable, googleBusy, backupList,
                             GoogleCallbacks(
@@ -307,6 +316,8 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                             listeningAvailable = viewModel.listeningAvailable,
                             interpreter = interpreterState,
                             interpreterAvailable = viewModel.interpretingAvailable,
+                            transcriber = writingState,
+                            transcriberAvailable = viewModel.writingAvailable,
                         )
                         Destination.BOARD -> BoardScreen(
                             board, members, backlog, ruleScores, today, wide,

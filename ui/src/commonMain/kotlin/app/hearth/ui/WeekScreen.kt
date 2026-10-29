@@ -66,7 +66,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +83,7 @@ import app.hearth.core.model.BoardKind
 import app.hearth.core.model.Huddle
 import app.hearth.core.model.Member
 import app.hearth.core.model.TranscriptLine
+import app.hearth.core.model.WordFix
 import app.hearth.core.model.Ease
 import app.hearth.core.model.isHabit
 import app.hearth.core.model.HabitReview
@@ -204,9 +204,13 @@ class WeekCallbacks(
     val moveVoorstel: (Int, Place) -> Unit,
     val toggleVoorstel: (Int) -> Unit,
     val addVoorstel: () -> Unit,
-    /** A suggestion of Luister mee changed in its sheet; with true, added right away. */
-    val changeSuggestion: (HeardThought, Int, SuggestionChange, Boolean) -> Unit = { _, _, _, _ -> },
     val editVoorstel: (Int, SuggestionChange) -> Unit = { _, _ -> },
+    /** Toch nieuw: a suggestion Hearth held against something that exists, added as new after all. */
+    val asNewVoorstel: (Int) -> Unit = {},
+    /** A line Luister mee misheard, put right in Gesprek (the words are remembered). */
+    val fixLine: (TranscriptLine, String) -> Unit = { _, _ -> },
+    /** A remembered word that turned out wrong (asked first). */
+    val forgetWord: (String) -> Unit = {},
     /** A coach tip that needs no words. */
     val habitTip: (BacklogItem, HabitTip) -> Unit = { _, _ -> },
     /** Something nice with a habit. */
@@ -232,8 +236,8 @@ class MeetingState(
     val lastTranscript: List<TranscriptLine>,
     val huddles: List<Huddle>,
     val voorstel: List<VoorstelRow>?,
-    /** What Luister mee heard lately as thoughts, newest first, with what Hearth concludes. */
-    val heard: List<HeardThought> = emptyList(),
+    /** What Luister mee heard and isn't in place yet, oldest first, each line as Hearth reads it live. */
+    val heard: List<HeardLineView> = emptyList(),
     /** The summary to agree on before Klaar, while it's open. */
     val agree: List<String>? = null,
     /** How each house rule goes, by rule id (this week's score or the last one). */
@@ -246,15 +250,23 @@ class MeetingState(
     val ruleHistory: Map<String, List<Int>> = emptyMap(),
     /** The coach per house rule (the four laws), by rule id. */
     val ruleReviews: Map<String, HabitReview> = emptyMap(),
-    /** Every thought of this meeting, newest first: what the summary beside Luister mee groups by topic. */
-    val allHeard: List<HeardThought> = emptyList(),
+    /** The full reading after the meeting, while it runs: readings done of all. */
+    val processing: Pair<Int, Int>? = null,
+    /** The household's own words Luister mee learned. */
+    val learnedWords: List<WordFix> = emptyList(),
 )
 
-/** How long Hearth waits after the last words before it concludes a thought. */
-private const val SETTLE_MS = 4_000L
-
 /** Luister mee lives above the screens, so it keeps listening while the family looks at a list. */
-class ListenControl(val available: Boolean, val listening: Boolean, val partial: String, val status: ListenStatus? = null, val fix: () -> Unit = {}, val toggle: () -> Unit)
+class ListenControl(
+    val available: Boolean,
+    val listening: Boolean,
+    val partial: String,
+    val status: ListenStatus? = null,
+    val fix: () -> Unit = {},
+    /** Beter uitschrijven: stretches recorded and not written down yet. */
+    val writingLeft: Int = 0,
+    val toggle: () -> Unit,
+)
 
 /**
  * The weekly meeting, about 15 minutes together. Luister mee sits on top and sorts what is said into the
@@ -312,14 +324,8 @@ fun WeekScreen(
                 return@Column
             }
             val gap = if (wide) 20.dp else 16.dp
-            // A thought is only concluded once it has settled: people pause mid-thought, and the next words may go on with it.
-            var settled by remember { mutableStateOf(true) }
-            LaunchedEffect(meeting.heard.firstOrNull()?.text, listen.partial, listen.listening) {
-                settled = false
-                if (listen.listening) delay(SETTLE_MS)
-                settled = true
-            }
-            val lit = meeting.heard.drop(if (settled) 0 else 1).firstOrNull()?.proposals?.mapNotNull { it.topic }?.toSet() ?: emptySet()
+            // The topic of the last words heard glows, on the stage and on its tile.
+            val lit = meeting.heard.takeLast(2).lastOrNull { it.intake.topic != null }?.intake?.topic?.let { setOf(it) } ?: emptySet()
             ListenStage(
                 available = listen.available,
                 status = listen.status,
@@ -327,17 +333,13 @@ fun WeekScreen(
                 listening = listen.listening,
                 partial = listen.partial,
                 heard = meeting.heard,
-                all = meeting.allHeard,
+                writingLeft = listen.writingLeft,
                 wide = wide,
-                settled = settled,
-                hasLines = meeting.transcript.isNotEmpty(),
                 lit = lit,
-                today = today,
                 lang = lang,
                 onToggle = listen.toggle,
                 onShow = { showing = true },
                 onSort = cb.openVoorstel,
-                onSuggestion = cb.changeSuggestion,
             )
             Spacer(Modifier.size(gap))
 
@@ -413,12 +415,15 @@ fun WeekScreen(
         }
     }
     when (showing) {
-        true -> TranscriptSheet(stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript, onDismiss = { showing = null }, onExport = { cb.exportConversation(meeting.transcript) })
+        true -> TranscriptSheet(
+            stringResource(Res.string.transcript_title), meeting.transcript, onClear = cb.clearTranscript, onDismiss = { showing = null },
+            onExport = { cb.exportConversation(meeting.transcript) }, onFix = cb.fixLine, words = meeting.learnedWords, onForget = cb.forgetWord,
+        )
         false -> TranscriptSheet(stringResource(Res.string.transcript_last), meeting.lastTranscript, onClear = null, onDismiss = { showing = null }, onExport = { cb.exportConversation(meeting.lastTranscript) })
         null -> {}
     }
     meeting.voorstel?.let { rows ->
-        VoorstelSheet(rows, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.editVoorstel, cb.addVoorstel, cb.closeVoorstel)
+        VoorstelSheet(rows, meeting.processing, listen.writingLeft, today, lang, cb.moveVoorstel, cb.toggleVoorstel, cb.editVoorstel, cb.asNewVoorstel, cb.addVoorstel, cb.closeVoorstel)
     }
     meeting.agree?.let { lines ->
         AgreeSheet(

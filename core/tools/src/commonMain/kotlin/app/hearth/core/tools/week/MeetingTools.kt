@@ -33,6 +33,8 @@ import app.hearth.core.model.Topic
 import app.hearth.core.model.topic
 import app.hearth.core.model.dayLabel
 import app.hearth.core.model.plusDays
+import app.hearth.core.model.WordFix
+import app.hearth.core.model.WordFixes
 import app.hearth.core.tools.Describe
 import app.hearth.core.tools.Tool
 import app.hearth.core.tools.ToolContext
@@ -260,7 +262,10 @@ internal fun easeWord(ease: Ease, ctx: ToolContext) = when (ease) {
 // ---------- Luister mee ----------
 
 @Serializable
-data class TranscriptLineArgs(@Describe("What was heard between two pauses.") val text: String)
+data class TranscriptLineArgs(
+    @Describe("What was heard between two pauses.") val text: String,
+    @Describe("When it was said (epoch ms), when it is written down later; empty: now.") val at: Long? = null,
+)
 
 @Serializable
 data class TranscriptLineResult(val line: TranscriptLine, override val summary: String) : ToolResult
@@ -274,7 +279,7 @@ class AddTranscriptLineTool(private val meeting: MeetingRepository) : Tool<Trans
 
     override suspend fun run(args: TranscriptLineArgs, ctx: ToolContext): TranscriptLineResult {
         val text = args.text.trim().ifEmpty { throw ToolException(ctx.t("Niets gehoord.", "Nothing heard.")) }
-        return TranscriptLineResult(meeting.addLine(text), ctx.t("Bewaard.", "Kept."))
+        return TranscriptLineResult(meeting.addLine(text, args.at), ctx.t("Bewaard.", "Kept."))
     }
 
     companion object {
@@ -312,27 +317,110 @@ data class FixLineArgs(
 )
 
 @Serializable
-data class FixLineResult(val lineId: String, val text: String, override val summary: String) : ToolResult
+data class FixLineResult(
+    val lineId: String,
+    val text: String,
+    override val summary: String,
+    /** The words Hearth learned from the fix ("Jaules" is "Jules"), for every next conversation. */
+    val learned: List<WordFix> = emptyList(),
+) : ToolResult
 
-/** The recognizer mishears now and then ("oprecht" for "opgehaald"); the family, or their AI, fixes the words. */
-class FixTranscriptLineTool(private val meeting: MeetingRepository) : Tool<FixLineArgs, FixLineResult> {
+/**
+ * The recognizer mishears now and then ("oprecht" for "opgehaald"); the family, or their AI, fixes the words. The words
+ * that changed in place are remembered as the household's own ([WordFixes]), so Hearth reads them right next time.
+ */
+class FixTranscriptLineTool(private val meeting: MeetingRepository, private val settings: SettingsRepository? = null) : Tool<FixLineArgs, FixLineResult> {
     override val name = NAME
     override val description = "Fix the words of one line Luister mee heard in this weekoverleg, when the recognizer misheard " +
-        "(a name, a Flemish word). Only lines of the meeting that is still open."
+        "(a name, a Flemish word). Only lines of the meeting that is still open. The fixed words are remembered for next time."
     override val argsSerializer = FixLineArgs.serializer()
     override val resultSerializer = FixLineResult.serializer()
 
     override suspend fun run(args: FixLineArgs, ctx: ToolContext): FixLineResult {
         val text = args.text.trim().ifEmpty { throw ToolException(ctx.t("Wat werd er gezegd?", "What was said?")) }
+        val before = meeting.line(args.lineId)?.text
         if (!meeting.fixLine(args.lineId, text)) {
             throw ToolException(ctx.t("Die zin vind ik niet meer in dit weekoverleg.", "I can't find that line in this meeting anymore."))
         }
-        return FixLineResult(args.lineId, text, ctx.t("Verbeterd: “$text”", "Fixed: “$text”"))
+        val learned = if (settings != null && before != null) WordFixes.learn(before, text) else emptyList()
+        if (learned.isNotEmpty()) remember(settings!!, learned)
+        val words = learned.joinToString(", ") { "“${it.heard}” is “${it.meant}”" }
+        return FixLineResult(
+            args.lineId, text,
+            ctx.t("Verbeterd: “$text”", "Fixed: “$text”") + if (learned.isEmpty()) "" else ctx.t(" Onthouden: $words.", " Remembered: $words."),
+            learned,
+        )
     }
 
     companion object {
         const val NAME = "fix_transcript_line"
     }
+}
+
+// ---------- learn_words / forget_word ----------
+
+@Serializable
+data class LearnWordsArgs(
+    @Describe("What Luister mee keeps hearing (one word or a few), e.g. 'Jaules' or 'vaat was'.") val heard: String,
+    @Describe("What the family means, e.g. 'Jules' or 'vaatwasser'.") val meant: String,
+)
+
+@Serializable
+data class WordsResult(val words: List<WordFix>, override val summary: String) : ToolResult
+
+/** Remembers a word the recognizer gets wrong in this household; every next conversation is read with it. */
+class LearnWordsTool(private val settings: SettingsRepository) : Tool<LearnWordsArgs, WordsResult> {
+    override val name = NAME
+    override val description = "Remember a word Luister mee keeps mishearing in this household (a name, a Flemish word) and what " +
+        "the family means. Every next conversation is read with it, and the recognizer gets the meant word as a hint."
+    override val argsSerializer = LearnWordsArgs.serializer()
+    override val resultSerializer = WordsResult.serializer()
+
+    override suspend fun run(args: LearnWordsArgs, ctx: ToolContext): WordsResult {
+        val fix = WordFix(args.heard.trim(), args.meant.trim())
+        if (fix.heard.isEmpty() || fix.meant.isEmpty() || fix.heard.equals(fix.meant, ignoreCase = true)) {
+            throw ToolException(ctx.t("Welk woord hoort Hearth verkeerd, en wat bedoelen jullie?", "Which word does Hearth mishear, and what do you mean?"))
+        }
+        val words = remember(settings, listOf(fix))
+        return WordsResult(words, ctx.t("Onthouden: “${fix.heard}” is “${fix.meant}”.", "Remembered: “${fix.heard}” means “${fix.meant}”."))
+    }
+
+    companion object {
+        const val NAME = "learn_words"
+    }
+}
+
+@Serializable
+data class ForgetWordArgs(@Describe("The heard word to forget, as remembered.") val heard: String)
+
+/** A remembered word that turned out wrong: Hearth reads it as heard again. */
+class ForgetWordTool(private val settings: SettingsRepository) : Tool<ForgetWordArgs, WordsResult> {
+    override val name = NAME
+    override val description = "Forget a word Luister mee remembered for this household (tablet only)."
+    override val destructive = true
+    override val exposeOverMcp = false
+    override val argsSerializer = ForgetWordArgs.serializer()
+    override val resultSerializer = WordsResult.serializer()
+
+    override fun confirmQuestion(args: ForgetWordArgs, ctx: ToolContext) =
+        ctx.t("“${args.heard}” vergeten?", "Forget “${args.heard}”?")
+
+    override suspend fun run(args: ForgetWordArgs, ctx: ToolContext): WordsResult {
+        val words = WordFixes.forget(WordFixes.parse(settings.currentValue(WordFixes.SETTING)), args.heard)
+        settings.put(WordFixes.SETTING, WordFixes.encode(words))
+        return WordsResult(words, ctx.t("“${args.heard}” vergeten.", "Forgot “${args.heard}”."))
+    }
+
+    companion object {
+        const val NAME = "forget_word"
+    }
+}
+
+/** [learned] added to the household's words; returns them all. */
+internal suspend fun remember(settings: SettingsRepository, learned: List<WordFix>): List<WordFix> {
+    val words = WordFixes.merge(WordFixes.parse(settings.currentValue(WordFixes.SETTING)), learned)
+    settings.put(WordFixes.SETTING, WordFixes.encode(words))
+    return words
 }
 
 @Serializable

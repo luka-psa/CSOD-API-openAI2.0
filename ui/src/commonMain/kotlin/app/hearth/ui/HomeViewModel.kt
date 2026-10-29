@@ -59,7 +59,6 @@ import app.hearth.mcp.LinkedApp
 import app.hearth.core.tools.system.BackupFile
 import app.hearth.ai.Orchestrator
 import app.hearth.ai.route.Place
-import app.hearth.ai.route.Stage
 import app.hearth.ai.route.KeywordRouter
 import app.hearth.core.tools.week.FinishArgs
 import app.hearth.core.model.Topic
@@ -98,6 +97,21 @@ import app.hearth.core.tools.ToolOutcome
 import app.hearth.core.tools.week.AddWinArgs
 import app.hearth.core.tools.week.ClearTranscriptArgs
 import app.hearth.core.tools.week.MarkSortedArgs
+import app.hearth.core.tools.week.FixLineArgs
+import app.hearth.core.tools.week.ForgetWordArgs
+import app.hearth.core.tools.week.LearnWordsArgs
+import app.hearth.core.model.WordFix
+import app.hearth.core.model.WordFixes
+import app.hearth.ai.meeting.HeardLine
+import app.hearth.ai.meeting.Household
+import app.hearth.ai.meeting.LineIntake
+import app.hearth.ai.meeting.Matcher
+import app.hearth.ai.meeting.MeetingIntake
+import app.hearth.ai.meeting.MeetingProcessor
+import app.hearth.ai.meeting.Processed
+import kotlinx.coroutines.Job
+import app.hearth.ai.whisper.Writing
+import app.hearth.core.tools.system.TranscriberArgs
 import app.hearth.core.tools.week.RemoveWinArgs
 import app.hearth.core.tools.week.TranscriptLineArgs
 import app.hearth.core.data.settings.SettingsRepository
@@ -745,44 +759,37 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         say(app.tools.registry.run(app.tools.addIdea, AddIdeaArgs(it.t("Makkelijker maken: ${item.text}", "Make it easier: ${item.text}")), it).summary)
     }
 
-    /** Suggestions the family changed (or added already), until the conversation is put in place. */
-    private val edits = MutableStateFlow<Map<String, SuggestionEdit>>(emptyMap())
+    /** The household's own words for Luister mee ("Jaules" is "Jules"), learned from what the family puts right. */
+    val learnedWords: StateFlow<List<WordFix>> = app.settings.value(WordFixes.SETTING).map { WordFixes.parse(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** What the interpreter found, by the line it comes from (null: it isn't on, or hasn't read this meeting yet). */
-    private val interpreted = MutableStateFlow<Map<String, List<Orchestrator.Proposal>>?>(null)
-
-    /** The interpreter's raw actions on its last reading, with the line ids it read (for the conversation export). */
-    private var interpreterRaw: Pair<List<String>, List<app.hearth.ai.interpret.MeetingReader.Found>>? = null
-
-    /** Counts up each time the sentence model has read new sentences. */
-    private val senseRead = MutableStateFlow(0)
+    /** What Luister mee needs to know of the household: names, what exists, its own words. */
+    private val household: StateFlow<Household> = combine(
+        combine(members, backlog, steps) { m, b, st -> Triple(m, b, st) },
+        board,
+        combine(shopping, meals, dishes) { sh, me, d -> Triple(sh, me, d) },
+        learnedWords,
+    ) { (m, b, st), boardItems, (sh, me, d), words ->
+        Household(
+            people = m.map { it.name },
+            backlog = b + st.filter { !it.done },
+            board = boardItems,
+            shopping = sh.flatMap { it.items }.filter { !it.bought }.map { it.name },
+            meals = me,
+            dishes = d.map { it.dish },
+            words = words,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Household())
 
     /**
-     * What Luister mee heard and hasn't been put in place yet, as thoughts (pauses don't cut them), newest first,
-     * each with what Hearth concludes from it.
+     * What Luister mee heard in this meeting and hasn't been put in place yet, oldest first, each line as Hearth reads it
+     * while the meeting goes on: the household's words put right, names and what the household has marked, its topics.
+     * No conclusions yet: those come from the full reading after the meeting ([openVoorstel]).
      */
-    /** Every thought of this meeting, newest first; the stage shows the last three, the summary beside it all of them. */
-    val meetingThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead, interpreted) { lines, people, changed, _, found ->
-        val open = lines.filter { !it.sorted }
-        val read = app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt }, sense())
-            .map { t ->
-                // The interpreter read the whole conversation: what it found on these lines replaces the rules' guess.
-                val proposals = if (found == null) t.proposals else open.slice(t.lines).flatMap { found[it.id].orEmpty() }
-                // The same conclusion twice (heard twice, or read again) shows once.
-                t.copy(proposals = proposals.distinctBy { it.place to it.text.lowercase().trim() })
-            }
-        // Catching up is one calm transcript: talk without a conclusion joins the talk before it.
-        val joined = read.fold(mutableListOf<Orchestrator.Talk>()) { out, t ->
-            val prev = out.lastOrNull()
-            if (prev != null && prev.proposals.isEmpty() && t.proposals.isEmpty()) {
-                out[out.lastIndex] = prev.copy(heard = prev.heard + " " + t.heard, lines = prev.lines.first..t.lines.last, stage = t.stage)
-            } else out += t
-            out
-        }
-        joined.reversed().map { t -> thought(open.slice(t.lines), t.proposals, changed).copy(stage = t.stage) }
+    val heardLines: StateFlow<List<HeardLineView>> = combine(transcript, household) { lines, h ->
+        val intake = MeetingIntake(h)
+        lines.filter { !it.sorted }.map { HeardLineView(it, intake.read(it.text)) }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val heardThoughts: StateFlow<List<HeardThought>> = meetingThoughts.map { it.take(3) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Understanding conversations: on, ready, and how far its download is. */
     val interpreting: StateFlow<Interpreting.State> = app.interpreting.state
@@ -790,25 +797,21 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     fun setInterpreter(on: Boolean) = tool { say(app.tools.registry.run(app.tools.setInterpreter, InterpreterArgs(on), it).summary) }
 
-    fun retryInterpreter() {
-        viewModelScope.launch { app.interpreting.start() }
+    /** Beter uitschrijven: on, ready, and how far its download is. */
+    val writingState: StateFlow<Writing.State> = app.writing.state
+    val writingAvailable: Boolean get() = app.writing.available
+    /** Stretches recorded and not written down yet. */
+    val writingLeft: StateFlow<Int> = app.writing.pending
+    val writing: Writing get() = app.writing
+
+    fun setTranscriber(on: Boolean) = tool { say(app.tools.registry.run(app.tools.setTranscriber, TranscriberArgs(on), it).summary) }
+
+    fun retryTranscriber() {
+        viewModelScope.launch { app.writing.start() }
     }
 
-    /**
-     * Each change in the conversation is read again by the interpreter, in the background (a newer line cancels a
-     * reading in progress). A changed plan replaces what it said before; what was settled earlier stays.
-     */
-    private val interpreterReading = viewModelScope.launch {
-        combine(transcript, app.interpreting.state) { lines, state -> lines to state }.collectLatest { (lines, state) ->
-            if (state != Interpreting.State.Ready) { interpreted.value = null; return@collectLatest }
-            val open = lines.filter { !it.sorted }
-            if (open.isEmpty()) { interpreted.value = null; return@collectLatest }
-            val c = ctx(ToolSource.UI)
-            val found = withContext(Dispatchers.Default) { app.interpreting.read(open.map { it.text }, spokenDate(today())) } ?: return@collectLatest
-            interpreterRaw = open.map { it.id } to found
-            interpreted.value = found.mapNotNull { f -> open.getOrNull(f.line)?.let { line -> app.orchestrator.proposalOf(f.action, line.text, c)?.let { line.id to it } } }
-                .groupBy({ it.first }, { it.second })
-        }
+    fun retryInterpreter() {
+        viewModelScope.launch { app.interpreting.start() }
     }
 
     /** Smarter listening: on, ready, and how far its download is. */
@@ -825,55 +828,64 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** The model's readings, once smarter listening is ready (null: the rules alone). */
     private fun sense(): ((String) -> Reading?)? = if (app.listening.state.value == SmartListening.State.Ready) app.listening::read else null
 
+    /** The full reading after the meeting: how far it is, readings done of all (null: not reading). */
+    private val _processing = MutableStateFlow<Pair<Int, Int>?>(null)
+    val processing: StateFlow<Pair<Int, Int>?> = _processing.asStateFlow()
+    private val processor = MeetingProcessor(app.orchestrator)
+    private var processJob: Job? = null
+    /** The last full reading and the lines it read, for the conversation export. */
+    private var lastProcessed: Pair<List<String>, Processed>? = null
+
     /**
-     * New sentences go to the model in the background; the stage answers right away with what it has (the rules) and
-     * reads again once the model is done. A first pass only asks which clauses there are.
+     * Reads [lines] as a whole, the way the Voorstel does: the household's own words, topic by topic, the interpreter when
+     * it is ready (else the rules), held against what exists. Runs in the background and says how far it is.
      */
-    private val reading = viewModelScope.launch {
-        combine(transcript, app.listening.state) { lines, state -> lines to state }.collectLatest { (lines, state) ->
-            if (state != SmartListening.State.Ready) return@collectLatest
-            val open = lines.filter { !it.sorted }
-            val asked = mutableSetOf<String>()
-            app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), members.value.map { it.name }, open.map { it.createdAt }) { asked += it; null }
-            if (withContext(Dispatchers.Default) { app.listening.prepare(asked) }) senseRead.update { it + 1 }
+    private suspend fun process(lines: List<TranscriptLine>): Processed {
+        val c = ctx(ToolSource.UI)
+        val h = household.value
+        val heard = lines.map { HeardLine(it.id, it.text, it.createdAt) }
+        val ready = app.interpreting.state.value == Interpreting.State.Ready
+        val interpret: (suspend (List<String>) -> List<app.hearth.ai.interpret.Action>)? =
+            if (ready) { texts -> app.interpreting.read(texts, spokenDate(c.today)).orEmpty() } else null
+        _processing.value = 0 to 1
+        try {
+            return withContext(Dispatchers.Default) {
+                // The sentence model reads every clause first, so the rules can lean on it.
+                if (app.listening.state.value == SmartListening.State.Ready) {
+                    val asked = mutableSetOf<String>()
+                    app.orchestrator.listen(heard.map { WordFixes.apply(it.text, h.words) }, c, h.people, heard.map { it.at }) { asked += it; null }
+                    app.listening.prepare(asked)
+                }
+                processor.process(heard, h, c, sense(), interpret) { done, total -> _processing.value = done to total }
+            }.also { lastProcessed = lines.map { it.id } to it }
+        } finally {
+            _processing.value = null
         }
     }
 
-    /** A thought with what the family changed on its suggestions (by its first line and the suggestion's place in it). */
-    private fun thought(lines: List<TranscriptLine>, proposals: List<Orchestrator.Proposal>, changed: Map<String, SuggestionEdit>): HeardThought {
-        val key = lines.firstOrNull()?.id.orEmpty()
-        val edited = proposals.mapIndexed { i, p -> changed["$key#$i"] ?: SuggestionEdit(p) }
-        return HeardThought(lines, edited.map { it.proposal }, key, edited.indices.filter { edited[it].added }.toSet())
-    }
-
     /**
-     * The conversation of [lines] with everything Hearth made of it, as JSON, to check how Luister mee understood a
-     * real meeting: the lines, the thoughts with their stage and the rules' conclusions, the sentence model's reading,
-     * the interpreter's raw actions and suggestions, and what the family changed. [save] gets a file name and the JSON.
+     * The conversation of [lines] with everything Hearth made of it, as JSON, to see how well it understood a real
+     * meeting: every line as heard and as read (the household's words, its topics), the rules' thoughts, the topics as
+     * they went, the interpreter's raw actions, and the Voorstel as the family left it. [save] gets a file name and the JSON.
      */
     fun exportConversation(lines: List<TranscriptLine>, save: (String, String) -> Unit) {
         if (lines.isEmpty()) return
         viewModelScope.launch {
             val c = ctx(ToolSource.UI)
-            val people = members.value.map { it.name }
+            val ids = lines.map { it.id }
+            val done = lastProcessed?.takeIf { it.first == ids }?.second ?: process(lines)
+            val rows = _voorstel.value?.takeIf { voorstelLines == ids }
             val json = withContext(Dispatchers.Default) {
-                val talks = app.orchestrator.listen(lines.map { it.text }, c, people, lines.map { it.createdAt }, sense())
-                // The interpreter only read this meeting's open lines: map its line numbers onto these lines.
-                val raw = interpreterRaw?.let { (ids, found) ->
-                    found.mapNotNull { f -> ids.getOrNull(f.line)?.let { id -> lines.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.let { it to f.action } } }
-                }
-                val family = edits.value.entries.groupBy({ it.key.substringBefore('#') }, { ConversationExport.Shown(it.value.proposal, it.value.added) })
                 ConversationExport.json(
                     lines.map { ConversationExport.Line(it.id, it.text, it.createdAt, it.sorted) },
-                    talks,
-                    raw,
-                    interpreted.value,
+                    done,
+                    rows?.map { ConversationExport.Row(it.proposal, it.lines, it.checked, it.changed, it.added) },
                     sense(),
-                    family,
                     mapOf(
                         "lang" to c.lang.name,
                         "today" to c.today.toString(),
-                        "people" to people.joinToString(", "),
+                        "people" to members.value.joinToString(", ") { it.name },
+                        "learnedWords" to learnedWords.value.size.toString(),
                         "smartListening" to app.listening.state.value.toString(),
                         "interpreter" to app.interpreting.state.value.toString(),
                     ),
@@ -885,24 +897,21 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
-    /** The family changed a suggestion in its sheet; with [now] it is added right away. */
-    fun changeSuggestion(thought: HeardThought, index: Int, change: SuggestionChange, now: Boolean) {
-        val base = thought.proposals.getOrNull(index) ?: return
-        val edited = app.orchestrator.edited(base, change.text, change.place, change.date, change.next, ctx(ToolSource.UI))
-        if (!now) {
-            edits.update { it + ("${thought.key}#$index" to SuggestionEdit(edited)) }
-            return
-        }
-        tool {
-            val done = edited.calls.mapNotNull { call -> (app.tools.registry.execute(call, it) as? ToolOutcome.Done)?.summary }
-            if (done.isNotEmpty()) edits.update { e -> e + ("${thought.key}#$index" to SuggestionEdit(edited, added = true)) }
-            say(done.joinToString(" ").ifEmpty { it.t("Dat lukte niet; het voorstel blijft staan.", "That didn't work; the suggestion stays.") })
-        }
+    /** A line Luister mee misheard, put right in Gesprek; the words that changed are remembered for next time. */
+    fun fixLine(line: TranscriptLine, text: String) {
+        if (text.isBlank() || text.trim() == line.text) return
+        tool { say(app.tools.registry.run(app.tools.fixTranscriptLine, FixLineArgs(line.id, text), it).summary) }
+    }
+
+    /** Only after the person confirmed on screen. */
+    fun forgetWord(heard: String) = tool {
+        app.tools.registry.run(app.tools.forgetWord, ForgetWordArgs(heard), it, confirmed = true)
     }
 
     /** The household's own words (people, stock, recipes), so the recognizer hears "Mia" and not "mia's". */
-    val vocabulary: StateFlow<List<String>> = combine(members, stockItems, recipes) { m, s, r ->
-        (m.map { it.name } + s.map { it.name } + r.map { it.name }).map { it.trim() }.filter { it.length >= 2 }.distinct().take(80)
+    val vocabulary: StateFlow<List<String>> = combine(members, stockItems, recipes, learnedWords) { m, s, r, w ->
+        // The words the family put right first: those are the ones the recognizer gets wrong.
+        (WordFixes.vocabulary(w).reversed() + m.map { it.name } + s.map { it.name } + r.map { it.name }).map { it.trim() }.filter { it.length >= 2 }.distinct().take(80)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
 
@@ -916,6 +925,12 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     fun closeAgree() {
         _agree.value = null
+    }
+
+    /** Whisper wrote down a stretch of the meeting, said at [at] (epoch ms). */
+    fun written(line: String, at: Long) {
+        if (line.isBlank()) return
+        tool { app.tools.registry.run(app.tools.addTranscriptLine, TranscriptLineArgs(line, at), it) }
     }
 
     /** Luister mee heard a stretch of talk. */
@@ -935,39 +950,66 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     val voorstel: StateFlow<List<VoorstelRow>?> = _voorstel.asStateFlow()
     private var voorstelLines: List<String> = emptyList()
 
+    /**
+     * Zet op zijn plek: the whole conversation is read now (it takes a moment; the sheet shows how far), and every
+     * conclusion lands in the Voorstel: new things ticked, changes to what exists ticked, what is there already not.
+     */
     fun openVoorstel() {
-        val lines = transcript.value.filter { !it.sorted }
+        var lines = transcript.value.filter { !it.sorted }
         voorstelLines = lines.map { it.id }
-        val c = ctx(ToolSource.UI)
-        // The same thoughts as on the stage, with what the family changed; a thought that was just talk shows once.
-        _voorstel.value = app.orchestrator.listen(lines.map { it.text }, c, members.value.map { it.name }, lines.map { it.createdAt }, sense()).flatMap { t ->
-            val heard = thought(lines.slice(t.lines), t.proposals, edits.value)
-            heard.proposals.mapIndexed { i, p -> VoorstelRow(p, checked = i !in heard.added && p.place != Place.NONE && p.calls.isNotEmpty(), added = i in heard.added) }
-                .ifEmpty { listOf(VoorstelRow(app.orchestrator.proposal(Spoken.clean(t.heard), Place.NONE, c).copy(heard = t.heard), checked = false)) }
+        _voorstel.value = emptyList()
+        processJob?.cancel()
+        processJob = viewModelScope.launch {
+            val c = ctx(ToolSource.UI)
+            // What Whisper still has to write belongs in it too: wait for it (the sheet says how much is left).
+            if (app.writing.pending.value > 0) {
+                _processing.value = 0 to 1
+                app.writing.drained()
+                // The last lines are on their way to the database.
+                kotlinx.coroutines.delay(800)
+                lines = transcript.value.filter { !it.sorted }
+                voorstelLines = lines.map { it.id }
+            }
+            val done = process(lines)
+            // A thought that was just talk shows once, as Gewoon gepraat: it can still be put somewhere.
+            _voorstel.value = done.found.map { f -> VoorstelRow(f.proposal, checked = f.proposal.calls.isNotEmpty(), lines = f.lines) } +
+                done.quiet.map { t -> VoorstelRow(app.orchestrator.proposal(Spoken.clean(t.heard), Place.NONE, c).copy(heard = t.heard), checked = false, lines = t.lines.toList()) }
         }
     }
 
     fun closeVoorstel() {
+        processJob?.cancel()
         _voorstel.value = null
+    }
+
+    /** A suggestion after the family changed it: held against what exists again, unless they chose to add it as new. */
+    private fun again(p: Orchestrator.Proposal, row: VoorstelRow): VoorstelRow {
+        val matched = if (row.asNew) p else Matcher.match(p, household.value)
+        return VoorstelRow(matched, checked = matched.place != Place.NONE && matched.calls.isNotEmpty(), changed = true, asNew = row.asNew, lines = row.lines)
     }
 
     /** The family tapped another place for a sentence. */
     fun moveVoorstel(index: Int, place: Place) = _voorstel.update { rows ->
         rows?.mapIndexed { i, row ->
-            if (i != index) row else app.orchestrator.proposal(row.proposal.sentence, place, ctx(ToolSource.UI)).copy(heard = row.proposal.heard).let { p ->
-                VoorstelRow(p, checked = p.place != Place.NONE && p.calls.isNotEmpty())
-            }
+            if (i != index) row else again(app.orchestrator.proposal(row.proposal.sentence, place, ctx(ToolSource.UI)).copy(heard = row.proposal.heard), row)
         }
     }
 
-    /** A suggestion changed in its sheet: its name, place and day as the family set them. */
-    fun editVoorstel(index: Int, change: SuggestionChange) = _voorstel.update { rows ->
+    /** A suggestion changed in its sheet: its name, place and day as the family set them. Names typed again teach words. */
+    fun editVoorstel(index: Int, change: SuggestionChange) {
+        val row = _voorstel.value?.getOrNull(index)?.takeIf { !it.added } ?: return
+        _voorstel.update { rows ->
+            rows?.mapIndexed { i, r -> if (i != index) r else again(app.orchestrator.edited(r.proposal, change.text, change.place, change.date, change.next, ctx(ToolSource.UI)), r) }
+        }
+        val learned = WordFixes.learnSpelling(row.proposal.heard, change.text)
+        if (learned.isNotEmpty()) tool { c -> learned.forEach { app.tools.registry.run(app.tools.learnWords, LearnWordsArgs(it.heard, it.meant), c) } }
+    }
+
+    /** Toch nieuw: it is not about what Hearth found; add it as a new item after all. */
+    fun asNewVoorstel(index: Int) = _voorstel.update { rows ->
         rows?.mapIndexed { i, row ->
-            if (i != index || row.added) row else {
-                app.orchestrator.edited(row.proposal, change.text, change.place, change.date, change.next, ctx(ToolSource.UI)).let { p ->
-                    VoorstelRow(p, checked = p.place != Place.NONE && p.calls.isNotEmpty())
-                }
-            }
+            val match = row.proposal.match
+            if (i != index || match == null) row else VoorstelRow(row.proposal.copy(calls = match.asNew, match = null), checked = match.asNew.isNotEmpty(), changed = true, asNew = true, lines = row.lines)
         }
     }
 
@@ -985,7 +1027,6 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
                 row.proposal.calls.forEach { call -> if (app.tools.registry.execute(call, it) is ToolOutcome.Done) added++ }
             }
             app.tools.registry.run(app.tools.markTranscriptSorted, MarkSortedArgs(voorstelLines), it)
-            edits.value = emptyMap()
             _messages.update { list ->
                 list + ChatMessage(
                     fromUser = false,
@@ -1163,26 +1204,21 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     }
 }
 
-/**
- * A thought Luister mee heard (the lines it spans) and what Hearth concludes from it; nothing when it was just talk.
- * [key] names it while it is open; [added] are the suggestions already put in place from their sheet.
- */
-data class HeardThought(
-    val lines: List<TranscriptLine>,
-    val proposals: List<Orchestrator.Proposal>,
-    val key: String = "",
-    val added: Set<Int> = emptySet(),
-    /** Where the conversation is: catching up, looking back, planning, something that rubs, a brainstorm, a decision. */
-    val stage: Stage = Stage.TALK,
-) {
-    val text: String get() = lines.joinToString(" ") { it.text.trim() }
-}
-
-/** A suggestion as the family changed it, and whether it was added already. */
-data class SuggestionEdit(val proposal: Orchestrator.Proposal, val added: Boolean = false)
+/** One line Luister mee heard, and how Hearth reads it while the meeting goes on. */
+data class HeardLineView(val line: TranscriptLine, val intake: LineIntake)
 
 /** One suggestion of the Voorstel and whether it gets added ([added]: it is in place already). */
-data class VoorstelRow(val proposal: Orchestrator.Proposal, val checked: Boolean, val added: Boolean = false)
+data class VoorstelRow(
+    val proposal: Orchestrator.Proposal,
+    val checked: Boolean,
+    val added: Boolean = false,
+    /** The family changed it (its name, place or day). */
+    val changed: Boolean = false,
+    /** Toch nieuw: added as a new item, not held against what exists. */
+    val asNew: Boolean = false,
+    /** The lines of the conversation it rests on (indexes), for the export. */
+    val lines: List<Int> = emptyList(),
+)
 
 /** What's switched on with Google, and when it last ran (epoch ms). */
 /** The household's sync as the Instellingen card shows it. */

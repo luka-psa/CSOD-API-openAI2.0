@@ -98,13 +98,16 @@ class SettingsRepository(
         private const val TABLET_KEY = "mcp.tabletKey"
 
         /** Settings that belong to this device and never travel in a backup. */
-        val DEVICE_ONLY = setOf(ENABLED, RELAY_URL, HOUSEHOLD, TABLET_KEY, "mcp.connectorSecret", SYNC_KEYS, SYNC_LAST, SMART_LISTENING, INTERPRETER)
+        val DEVICE_ONLY = setOf(ENABLED, RELAY_URL, HOUSEHOLD, TABLET_KEY, "mcp.connectorSecret", SYNC_KEYS, SYNC_LAST, SMART_LISTENING, INTERPRETER, TRANSCRIBER)
 
         /** Smarter listening on this device (each device downloads its own sentence model). */
         const val SMART_LISTENING = "listen.smart"
 
         /** Understanding conversations on this device (its own downloaded interpreter). */
         const val INTERPRETER = "listen.interpreter"
+
+        /** Beter uitschrijven on this device: Luister mee records and Whisper writes it down here. */
+        const val TRANSCRIBER = "listen.transcriber"
 
         /** This device's way into the household's sync (space, token, key), and when it last synced. */
         const val SYNC_KEYS = "sync.keys"

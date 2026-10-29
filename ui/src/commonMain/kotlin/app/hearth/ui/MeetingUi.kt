@@ -75,6 +75,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import app.hearth.ai.route.Place
@@ -157,6 +158,18 @@ import app.hearth.ui.resources.voorstel_add
 import app.hearth.ui.resources.voorstel_empty
 import app.hearth.ui.resources.voorstel_hint
 import app.hearth.ui.resources.voorstel_title
+import app.hearth.ui.resources.voorstel_reading
+import app.hearth.ui.resources.voorstel_writing
+import app.hearth.ui.resources.voorstel_reading_part
+import app.hearth.ui.resources.voorstel_update
+import app.hearth.ui.resources.voorstel_there
+import app.hearth.ui.resources.voorstel_as_new
+import app.hearth.ui.resources.transcript_fix_title
+import app.hearth.ui.resources.words_title
+import app.hearth.ui.resources.words_forget_title
+import app.hearth.ui.resources.words_forget_body
+import app.hearth.core.model.WordFix
+import androidx.compose.material3.LinearProgressIndicator
 import app.hearth.ui.resources.win_remove
 import app.hearth.ui.resources.wins_hint
 import app.hearth.ui.resources.wins_title
@@ -243,11 +256,25 @@ fun ListenPill(lines: Int, partial: String, onBack: () -> Unit, onStop: () -> Un
     }
 }
 
-/** What Luister mee heard, line by line, as it was said. What Hearth made of it is changed on the suggestions. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * What Luister mee heard, line by line, as it was said. A tap on a line of this meeting fixes what was misheard, and
+ * Hearth remembers those words ([words], each forgotten with an X that asks first).
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> Unit)?, onDismiss: () -> Unit, onExport: (() -> Unit)? = null) {
+fun TranscriptSheet(
+    title: String,
+    lines: List<TranscriptLine>,
+    onClear: (() -> Unit)?,
+    onDismiss: () -> Unit,
+    onExport: (() -> Unit)? = null,
+    onFix: ((TranscriptLine, String) -> Unit)? = null,
+    words: List<WordFix> = emptyList(),
+    onForget: ((String) -> Unit)? = null,
+) {
     var clearing by remember { mutableStateOf(false) }
+    var fixing by remember { mutableStateOf<TranscriptLine?>(null) }
+    var forgetting by remember { mutableStateOf<WordFix?>(null) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.background) {
         Column(Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().fillMaxHeight(0.85f).navigationBarsPadding().padding(horizontal = 28.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -259,11 +286,27 @@ fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> 
             Text(stringResource(Res.string.transcript_kept), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.size(12.dp))
             if (lines.isEmpty()) EmptyHint(stringResource(Res.string.transcript_empty))
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                 itemsIndexed(lines) { _, line ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                    val fixable = onFix != null && line.huddleId == null
+                    Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).then(if (fixable) Modifier.clickable { fixing = line } else Modifier).padding(vertical = 2.dp)) {
                         Text(clock(line.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(52.dp).padding(top = 3.dp))
                         Text(line.text, style = MaterialTheme.typography.bodyLarge, color = if (line.sorted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    }
+                }
+                if (words.isNotEmpty() && onForget != null) {
+                    item {
+                        Column(Modifier.padding(top = 16.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(stringResource(Res.string.words_title), style = MaterialTheme.typography.titleSmall)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                words.forEach { w ->
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surface).padding(start = 12.dp)) {
+                                        Text("“${w.heard}” → ${w.meant}", style = MaterialTheme.typography.labelLarge)
+                                        DeleteButton({ forgetting = w })
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -272,26 +315,40 @@ fun TranscriptSheet(title: String, lines: List<TranscriptLine>, onClear: (() -> 
     if (clearing && onClear != null) {
         ConfirmDialog(stringResource(Res.string.transcript_clear), stringResource(Res.string.transcript_clear_body), onYes = onClear) { clearing = false }
     }
+    fixing?.let { line ->
+        TextDialog(stringResource(Res.string.transcript_fix_title), line.text, initial = line.text, onDone = { t, _ -> onFix?.invoke(line, t) }) { fixing = null }
+    }
+    forgetting?.let { w ->
+        ConfirmDialog(stringResource(Res.string.words_forget_title), stringResource(Res.string.words_forget_body, w.heard), onYes = { onForget?.invoke(w.heard) }) { forgetting = null }
+    }
 }
 
 @OptIn(kotlin.time.ExperimentalTime::class)
 private fun clock(millis: Long): String =
     formatClock(kotlin.time.Instant.fromEpochMilliseconds(millis).toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()))
 
-/** The conversation sorted into places: everything ticked, one tap adds it all. */
+/**
+ * The conversation sorted into places, after Hearth read it as a whole ([progress] while it reads): new things and
+ * changes to what exists ticked, what is there already not; one tap adds it all. Just talk is folded at the end.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoorstelSheet(
     rows: List<VoorstelRow>,
+    progress: Pair<Int, Int>?,
+    /** Stretches Whisper still has to write; the reading waits for them. */
+    writingLeft: Int,
     today: LocalDate,
     lang: Lang,
     onMove: (Int, Place) -> Unit,
     onToggle: (Int) -> Unit,
     onEdit: (Int, SuggestionChange) -> Unit,
+    onAsNew: (Int) -> Unit,
     onAdd: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val count = rows.count { it.checked }
+    var talkOpen by remember { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.background) {
         Column(Modifier.nestedScroll(SheetScrollStop).fillMaxWidth().fillMaxHeight(0.9f).navigationBarsPadding().padding(horizontal = 24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -300,26 +357,44 @@ fun VoorstelSheet(
                     Text(stringResource(Res.string.voorstel_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.width(12.dp))
-                Button(onClick = onAdd, enabled = count > 0) { Text(stringResource(Res.string.voorstel_add, count)) }
+                Button(onClick = onAdd, enabled = count > 0 && progress == null) { Text(stringResource(Res.string.voorstel_add, count)) }
             }
             Spacer(Modifier.size(12.dp))
-            if (rows.isEmpty()) EmptyHint(stringResource(Res.string.voorstel_empty))
+            if (progress != null) {
+                // Reading the whole conversation takes a moment on the tablet: say how far it is.
+                Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        if (writingLeft > 0) pluralStringResource(Res.plurals.voorstel_writing, writingLeft, writingLeft) else stringResource(Res.string.voorstel_reading),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    LinearProgressIndicator(progress = { if (progress.second == 0) 0f else progress.first.toFloat() / progress.second }, modifier = Modifier.fillMaxWidth())
+                    if (progress.second > 1) Text(stringResource(Res.string.voorstel_reading_part, minOf(progress.first + 1, progress.second), progress.second), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                return@Column
+            }
+            if (rows.none { it.proposal.place != Place.NONE }) EmptyHint(stringResource(Res.string.voorstel_empty))
             // Grouped by topic, the same name, icon and colour as on the stage and the tiles; wins, then just talk, last.
             fun group(r: VoorstelRow) = r.proposal.topic?.ordinal ?: (Topic.entries.size + if (r.proposal.place == Place.NONE) Place.entries.size else r.proposal.place.ordinal)
             val order = rows.withIndex().sortedBy { (_, r) -> group(r) }
+            val talk = rows.count { it.proposal.place == Place.NONE }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 itemsIndexed(order) { n, (index, row) ->
                     val place = row.proposal.place
                     val topic = row.proposal.topic
+                    val quiet = place == Place.NONE
                     if (n == 0 || group(order[n - 1].value) != group(row)) {
                         val ink = topic?.style()?.ink ?: place.section().style().ink
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp, bottom = 2.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 2.dp).then(if (quiet) Modifier.clip(MaterialTheme.shapes.small).clickable { talkOpen = !talkOpen } else Modifier),
+                        ) {
                             Icon(topic?.icon() ?: place.icon(), null, tint = ink, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text(topic?.title(lang) ?: stringResource(place.label()), style = MaterialTheme.typography.titleSmall, color = ink)
+                            Text((topic?.title(lang) ?: stringResource(place.label())) + if (quiet) " ($talk)" else "", style = MaterialTheme.typography.titleSmall, color = ink)
+                            if (quiet) Icon(HearthIcons.ChevronRight, null, tint = ink, modifier = Modifier.padding(start = 4.dp).size(18.dp).rotate(if (talkOpen) 90f else 0f))
                         }
                     }
-                    VoorstelLine(row, today, lang, onMove = { onMove(index, it) }, onToggle = { onToggle(index) }, onEdit = { onEdit(index, it) })
+                    if (!quiet || talkOpen) VoorstelLine(row, today, lang, onMove = { onMove(index, it) }, onToggle = { onToggle(index) }, onEdit = { onEdit(index, it) }, onAsNew = { onAsNew(index) })
                 }
             }
         }
@@ -327,7 +402,7 @@ fun VoorstelSheet(
 }
 
 @Composable
-private fun VoorstelLine(row: VoorstelRow, today: LocalDate, lang: Lang, onMove: (Place) -> Unit, onToggle: () -> Unit, onEdit: (SuggestionChange) -> Unit) {
+private fun VoorstelLine(row: VoorstelRow, today: LocalDate, lang: Lang, onMove: (Place) -> Unit, onToggle: () -> Unit, onEdit: (SuggestionChange) -> Unit, onAsNew: () -> Unit) {
     var choosing by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     val p = row.proposal
@@ -349,12 +424,22 @@ private fun VoorstelLine(row: VoorstelRow, today: LocalDate, lang: Lang, onMove:
                 Spacer(Modifier.width(6.dp))
                 Icon(HearthIcons.Edit, stringResource(Res.string.suggestion_title), tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
             }
+            // About something the household has: what it changes, or that it is there already.
+            p.match?.let { m ->
+                Text(
+                    stringResource(if (m.update) Res.string.voorstel_update else Res.string.voorstel_there, m.text),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = p.topic?.style()?.ink ?: MaterialTheme.colorScheme.primary,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
             val day = p.date?.let { dayLabel(it, today, lang) } ?: if (p.next) stringResource(Res.string.heard_this_week) else null
             val heard = if (p.text.trim().lowercase() != p.heard.trim().lowercase()) "“${p.heard}”" else null
             listOfNotNull(day, heard).joinToString("  ·  ").takeIf { it.isNotEmpty() }?.let {
                 Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
+        if (p.match != null && !row.added) TextButton(onClick = onAsNew) { Text(stringResource(Res.string.voorstel_as_new)) }
         Box {
             ChoiceChip(stringResource(p.place.label()), false, { choosing = true }, icon = p.place.icon())
             DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {

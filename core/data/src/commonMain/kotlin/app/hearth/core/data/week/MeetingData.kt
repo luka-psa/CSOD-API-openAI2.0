@@ -142,6 +142,9 @@ interface MeetingDao {
     @Query("UPDATE transcript_line SET sorted = 1, updatedAt = :now WHERE id IN (:ids)")
     suspend fun markSorted(ids: List<String>, now: Long)
 
+    @Query("SELECT * FROM transcript_line WHERE id = :id")
+    suspend fun line(id: String): TranscriptLineEntity?
+
     /** Words the recognizer got wrong, fixed by the family (only in the meeting that's still open). */
     @Query("UPDATE transcript_line SET text = :text, updatedAt = :now WHERE id = :id AND huddleId IS NULL")
     suspend fun fixLine(id: String, text: String, now: Long): Int
@@ -260,14 +263,19 @@ class MeetingRepository(
         dao.putReflection(ReflectionEntity(old?.id ?: newId(), ReflectionEntity.HABIT_CHECK, itemId, ReflectionEntity.codeOf(score), null, null, old?.createdAt ?: now, now))
     }
 
-    suspend fun addLine(text: String): TranscriptLine {
+    /** A line heard now, or written down later and kept at the moment it was said ([at], never in the future). */
+    suspend fun addLine(text: String, at: Long? = null): TranscriptLine {
         val now = clock()
-        val entity = TranscriptLineEntity(newId(), text.trim(), null, now, now)
+        val said = at?.coerceIn(now - SIX_HOURS, now) ?: now
+        val entity = TranscriptLineEntity(newId(), text.trim(), null, said, now)
         dao.insertLine(entity)
         return entity.toModel()
     }
 
     suspend fun clearTranscript() = dao.clearCurrentTranscript()
+
+    /** One line as it stands now (null: gone). */
+    suspend fun line(id: String): TranscriptLine? = dao.line(id)?.toModel()
 
     /** False when the line is gone or belongs to a meeting that already ended. */
     suspend fun fixLine(id: String, text: String): Boolean = dao.fixLine(id, text.trim(), clock()) > 0
@@ -290,3 +298,6 @@ class MeetingRepository(
         huddle.toModel()
     }
 }
+
+/** How far back a line written down later may be placed (a meeting is never longer). */
+private const val SIX_HOURS = 6 * 60 * 60_000L

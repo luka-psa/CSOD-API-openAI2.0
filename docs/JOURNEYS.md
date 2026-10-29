@@ -127,21 +127,24 @@ Done: ticked, counted as done today.
 progress and next step. Pushed back often? It turns amber, then orange: make the first step smaller.
 
 **J8. "Het weekoverleg."** Once a week, about 15 minutes, together. Vandaag suggests it near the weekend.
-Luister mee on top: talk as you talk, pauses and all. Hearth keeps a thought together ("Mia gaat donderdag naar de
-opvang … dus die moet gebracht worden … voor de rest ben ik vrij"), waits until it has settled, then shows what it
-concludes ("Naar de opvang · donderdag") and lights up that tile. It follows the conversation, not the keywords:
-catching up ("hoe was jouw week"), looking back at yourself ("ik heb de was niet opgevolgd"), questions and a
-brainstorm's options stay talk, and the thought says so (*Bijpraten*, *Aan het brainstormen, nog geen besluit*).
-What is decided becomes something: a plan ("donderdag moet de auto naar de garage"), a suggestion the other says yes
-to ("kan jij Mia dan ophalen?" "ja dat kan ik doen" → Mia donderdag ophalen), what rubs (once, in its own words)
-and the rule the brainstorm ends in ("dan spreken we af dat …"), which replaces the options on the way to it.
-With *Slimmer luisteren* on (Instellingen, downloads a small model once, runs on the device), it also understands
-sentences no rule knows ("ik ben het zat dat de badkamer nooit gepoetst wordt" is a friction). With *Gesprekken
-begrijpen* on (the tablet; a bigger model, downloaded once), Hearth reads the whole conversation: "zaterdag pizza"
-… "nee toch maar vrijdag" moves the meal, a topic that comes back ten minutes later is read with what was said first. Beside it, *Waar het over ging* keeps the meeting so far by topic, each with what was concluded there. Not quite right? Tap the conclusion: its name,
-place (taak, afspraak, ritme, …) and day open, filled in from what was said; *Bewaar* or *Zet erin*. *Zet op zijn
-plek* shows every conclusion by topic, ticked; the family's own ChatGPT or Claude can also read the conversation and
-put it in place. The ten tiles are the same topics as everywhere, in the same order: Doen & eten three by two on the
+Luister mee on top: talk as you talk, pauses and all. On the tablet, with *Beter uitschrijven* (on by itself; a model
+downloaded once), Hearth records the meeting itself and Whisper writes it down a few seconds behind the talk, nothing
+lost between pauses, the recording never kept. While you talk Hearth only writes along: the last lines, with
+names, the things the household already has (the evening routine, the shopping list, a house rule) and the words of a
+topic ("vaatwasser", "gerechten", "squash") in that topic's colour, and beside it *Waar het over gaat*: the topics so far,
+how often, and what was named. The tile of the topic just heard glows. Nothing is concluded while people are still
+thinking out loud. After the meeting, *Zet op zijn plek* reads the whole conversation at once, on the tablet (no account,
+no cloud): topic by topic, so the groceries talked about at the start and again at the end are read together; catching
+up, looking back at yourself, questions and a brainstorm's options stay talk; what is decided becomes something, and it
+is held against what you already have: "de vaatwasser na het eten" *werkt bij* the routine Vaatwasser uitladen instead of
+adding a second one, the house rule about shoes *staat er al*, the milk on the list is not added again (*Toch nieuw* if it
+is something else after all). With *Slimmer luisteren* on (Instellingen, downloads a small model once, runs on the
+device), it also understands sentences no rule knows ("ik ben het zat dat de badkamer nooit gepoetst wordt" is a
+friction); with *Gesprekken begrijpen* on (the tablet; a bigger model, downloaded once), a model reads each topic as a
+whole ("zaterdag pizza" … "nee toch maar vrijdag" moves the meal). Misheard? Tap the line in *Gesprek* and put it right:
+Hearth remembers those words for every next meeting ("Jaules" is Jules), and so does a name typed again in the Voorstel.
+Not quite right? Tap the conclusion: its name, place (taak, afspraak, ritme, …) and day, filled in from what was said.
+The family's own ChatGPT or Claude can read the conversation too, as an extra; Hearth never needs it. The ten tiles are the same topics as everywhere, in the same order: Doen & eten three by two on the
 left, Ritme & afspraken two by two on the shelf on the right, all the same size; tap one for its list. Terugblik: how much got done
 (one line) and last time (one line; *Alle overleggen* shows every summary, and a pencil puts a mistake right
 afterwards), the week on 0 to 5, then *Wat bespreken we?*: a short list built together. Say what went well in a

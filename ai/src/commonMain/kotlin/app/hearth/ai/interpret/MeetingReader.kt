@@ -52,7 +52,8 @@ class MeetingReader(
     }
 
     companion object {
-        private val STOP = """ja nee oké okee goed dan maar want omdat als ook nog wel niet eens even toch dus wat wie waar wanneer hoe welke
+        /** Small talk around the words that carry a topic. */
+        val STOP_WORDS = """ja nee oké okee goed dan maar want omdat als ook nog wel niet eens even toch dus wat wie waar wanneer hoe welke
             deze die dat dit het een de en of om op in aan van voor met naar bij uit tot over door ik jij je we wij ze zij hij jullie mij me ons onze
             mijn jouw heb hebt heeft hebben ben bent is zijn was waren moet moeten kan kunnen wil willen zal zullen ga gaat gaan doe doen doet komt
             komen mag mogen zou zouden laat laten maak maken denk denken vind vinden weet weten graag gewoon eigenlijk misschien allee echt heel veel
@@ -61,7 +62,7 @@ class MeetingReader(
 
         /** The words that carry a topic: four letters or more, not the small talk around them. */
         fun words(text: String): List<String> =
-            Regex("[\\p{L}'’-]+").findAll(text.lowercase()).map { it.value }.filter { it.length >= 4 && it !in STOP }.toList()
+            Regex("[\\p{L}'’-]+").findAll(text.lowercase()).map { it.value }.filter { it.length >= 4 && it !in STOP_WORDS }.toList()
 
         /** "poetsen" and "poetst", "trap" and "trappen" are the same word. */
         fun sameWord(a: String, b: String): Boolean {

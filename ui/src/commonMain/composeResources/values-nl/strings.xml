@@ -296,11 +296,11 @@
     <string name="transcript_title">Gesprek van dit weekoverleg</string>
     <string name="transcript_last">Gesprek van vorige keer</string>
     <string name="transcript_empty">Nog niets gehoord.</string>
-    <string name="transcript_kept">Blijft leesbaar tot het volgende weekoverleg; de samenvatting blijft altijd.</string>
+    <string name="transcript_kept">Tik op een zin om te verbeteren wat Hearth verkeerd hoorde; het onthoudt die woorden. Blijft leesbaar tot het volgende weekoverleg; de samenvatting blijft altijd.</string>
     <string name="transcript_clear">Gesprek wissen</string>
     <string name="transcript_clear_body">Wat Luister mee in dit weekoverleg hoorde, verdwijnt. Wat al op zijn plek staat, blijft.</string>
     <string name="voorstel_title">Op zijn plek</string>
-    <string name="voorstel_hint">Tik op een voorstel om de naam, plek of dag aan te passen, of haal het vinkje weg. Er komt pas iets bij als je op Toevoegen tikt.</string>
+    <string name="voorstel_hint">Hearth las het hele gesprek en legde het naast wat er al is. Tik op een voorstel om de naam, plek of dag aan te passen, of haal het vinkje weg. Er komt pas iets bij als je op Toevoegen tikt.</string>
     <string name="voorstel_add">Toevoegen (%1$d)</string>
     <string name="voorstel_empty">Niets nieuws om op zijn plek te zetten.</string>
     <string name="place_planning">Taken</string>
@@ -388,9 +388,8 @@
     <string name="examples_card">Kijk hoe het werkt</string>
     <string name="examples_body">Een of twee voorbeelden in elk onderdeel: taken, gewoontes, de boodschappenlijst, het weekmenu en het Werkbord. Pas ze aan of haal ze weg wanneer je wilt.</string>
     <string name="examples_load">Voorbeelden laden</string>
-    <string name="listen_live">Praat gewoon, pauzes mogen. Wat bij elkaar hoort, blijft samen. Tik op een voorstel om het aan te passen.</string>
-    <string name="listen_stage_hint">Tik en praat gewoon, met pauzes. Hearth houdt samen wat bij elkaar hoort en haalt eruit wat er moet gebeuren; jullie kijken het daarna samen na.</string>
-    <string name="listen_still">Hearth luistert nog…</string>
+    <string name="listen_live">Praat gewoon, pauzes mogen. Hearth schrijft mee en kleurt wat het herkent; na het overleg leest het alles in één keer.</string>
+    <string name="listen_stage_hint">Tik en praat gewoon, met pauzes. Hearth schrijft mee en ziet waar het over gaat. Na het overleg leest het het hele gesprek, legt het naast wat er al is en zet het op zijn plek; jullie kijken het samen na.</string>
     <string name="heard_this_week">deze week</string>
     <string name="agree_title">Samen akkoord?</string>
     <string name="agree_hint">Dit komt in de samenvatting van vandaag. Klopt het voor iedereen?</string>
@@ -511,11 +510,6 @@
     <string name="wins_topic_empty">Hearth zag hier niets bijzonders. Zeg het in jullie eigen woorden.</string>
     <string name="wins_own_words">In jullie eigen woorden…</string>
     <string name="wins_done">Klaar</string>
-    <string name="stage_talk">Bijpraten</string>
-    <string name="stage_look_back">Terugblik, niets om in te zetten</string>
-    <string name="stage_planning">Over de planning</string>
-    <string name="stage_concern">Iets dat schuurt</string>
-    <string name="stage_brainstorm">Aan het brainstormen, nog geen besluit</string>
     <string name="smart_title">Slimmer luisteren</string>
     <string name="smart_card">Een taalmodel op dit toestel</string>
     <string name="smart_body">Luister mee leest het weekoverleg dan met een klein taalmodel, naast de vaste regels. Zo herkent het ook zinnen zoals jullie ze zelf zeggen. Het model draait op dit toestel zelf: wat jullie zeggen gaat nergens heen. Aanzetten laadt het één keer binnen (ongeveer 130 MB); uitzetten haalt het weer weg.</string>
@@ -525,9 +519,21 @@
     <string name="smart_failed">Dat lukte niet: %1$s</string>
     <string name="smart_retry">Opnieuw proberen</string>
     <string name="interpreter_card">Gesprekken begrijpen</string>
-    <string name="interpreter_body">Een groter taalmodel leest het hele weekoverleg: wat terugkomt, wat jullie toch anders beslissen, en wat er uiteindelijk afgesproken is. Het draait op dit toestel zelf, dus wat jullie zeggen gaat nergens heen. Aanzetten laadt het één keer binnen (ongeveer 270 MB); uitzetten haalt het weer weg. Het leest na elke zin opnieuw, dus het voorstel kan nog even bijschuiven.</string>
+    <string name="interpreter_body">Een groter taalmodel leest het hele weekoverleg na afloop, onderwerp per onderwerp: wat terugkomt, wat jullie toch anders beslissen, en wat er uiteindelijk afgesproken is. Het draait op dit toestel zelf, dus wat jullie zeggen gaat nergens heen. Aanzetten laadt het één keer binnen (ongeveer 270 MB); uitzetten haalt het weer weg.</string>
     <string name="interpreter_loading">Het model wordt geladen, even geduld…</string>
     <string name="interpreter_ready">Klaar: Luister mee leest het hele gesprek.</string>
+    <string name="transcriber_card">Beter uitschrijven</string>
+    <string name="transcriber_body">Luister mee neemt het overleg zelf op en Whisper schrijft het op dit toestel uit, een paar seconden na wat gezegd wordt. Niets valt weg tussen twee pauzes, en Vlaams en namen komen beter door. De opname blijft op dit toestel en wordt nergens bewaard: elk stukje wordt uitgeschreven en meteen weer losgelaten. Aanzetten laadt het model één keer binnen (ongeveer 250 MB); uitzetten haalt het weer weg.</string>
+    <string name="transcriber_ready">Klaar: Luister mee schrijft het overleg zelf uit.</string>
+    <string name="listen_whisper">Whisper schrijft mee op dit toestel</string>
+    <plurals name="listen_pending">
+        <item quantity="one">nog %1$d stukje uit te schrijven</item>
+        <item quantity="other">nog %1$d stukjes uit te schrijven</item>
+    </plurals>
+    <plurals name="voorstel_writing">
+        <item quantity="one">Hearth schrijft nog %1$d stukje uit…</item>
+        <item quantity="other">Hearth schrijft nog %1$d stukjes uit…</item>
+    </plurals>
     <string name="tab_now">Nu</string>
     <string name="tab_how">Hoe loopt het</string>
     <string name="tab_better">Verbeteren</string>
@@ -558,14 +564,22 @@
     <string name="history_open">Alle overleggen</string>
     <string name="history_empty">Nog geen weekoverleg gehouden.</string>
     <string name="last_time_line">Vorige keer: %1$s</string>
-    <string name="summary_title">Waar het over ging</string>
-    <string name="summary_empty">Zodra er iets beslist wordt, staat het hier per onderwerp.</string>
-    <string name="summary_other">Wat ging goed en de rest</string>
-    <plurals name="summary_talk">
-        <item quantity="one">Eén gedachte zonder besluit</item>
-        <item quantity="other">%1$d gedachten zonder besluit</item>
-    </plurals>
+    <string name="summary_title">Waar het over gaat</string>
     <string name="transcript_export">Exporteren</string>
+    <string name="summary_hint">De onderwerpen lichten op zodra ze ter sprake komen.</string>
+    <plurals name="summary_lines">
+        <item quantity="one">%1$d zin</item>
+        <item quantity="other">%1$d zinnen</item>
+    </plurals>
+    <string name="voorstel_reading">Hearth leest het hele gesprek…</string>
+    <string name="voorstel_reading_part">Stuk %1$d van %2$d</string>
+    <string name="voorstel_update">Werkt bij: %1$s</string>
+    <string name="voorstel_there">Staat er al: %1$s</string>
+    <string name="voorstel_as_new">Toch nieuw</string>
+    <string name="transcript_fix_title">Wat werd er gezegd?</string>
+    <string name="words_title">Woorden die Hearth geleerd heeft</string>
+    <string name="words_forget_title">Woord vergeten?</string>
+    <string name="words_forget_body">Hearth leest “%1$s” dan weer zoals het gehoord werd.</string>
     <string name="listen_status_starting">Spraakherkenning start…</string>
     <string name="listen_status_ready">Klaar, praat maar</string>
     <string name="listen_status_speech">Hoort je</string>
@@ -582,6 +596,7 @@
     <string name="listen_err_language">deze taal is niet beschikbaar op dit toestel</string>
     <string name="listen_err_silent">de microfoon hoort niets. Staat de microfoon aan in de snelle instellingen, of gebruikt een andere app hem?</string>
     <string name="listen_err_no_answer">de spraakdienst antwoordt niet; Hearth probeert het eenvoudiger</string>
+    <string name="listen_err_stalled">de spraakdienst viel stil; Hearth luistert opnieuw</string>
     <string name="listen_level">geluid %1$d</string>
     <string name="listen_err_service_mic">de app die de spraak herkent mag de microfoon niet gebruiken. Open haar instellingen en zet Machtigingen › Microfoon op Toestaan.</string>
     <string name="listen_fix">Instellingen openen</string>

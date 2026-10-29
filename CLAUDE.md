@@ -77,9 +77,21 @@ device). Keep all three in sync when any of those change.
   *Gesprekken begrijpen* (`set_interpreter`, device-only, on by itself on a tablet, hidden while the build has no
   `hearth.interpreterUrl`; fetched in the background from the household's own download site, where CI copies it from
   the `interpreter-model` branch; repository variable `HEARTH_SITE_URL`) goes further: FunctionGemma 270M fine-tuned on weekoverleg talk (int4 ONNX, ≈ 270 MB,
-  downloaded once) reads the conversation as a whole (`ai/interpret`: `GemmaTokenizer`, `Interpreter`, `MeetingReader`
-  = last 12 lines + earlier lines that share words, re-read on each line so a change of plan replaces what came before;
-  `Interpreting` = state). Its actions become suggestions through `Orchestrator.proposalOf`.
+  downloaded once) reads the conversation after the meeting, topic by topic (`ai/interpret`: `GemmaTokenizer`,
+  `Interpreter`, `Interpreting` = state and one reading). Its actions become suggestions through `Orchestrator.proposalOf`.
+  The meeting is read in two moments (`ai/meeting`): live only `MeetingIntake` (names, the household's own things and
+  topic words, no model, so the CPU stays with the speech recognizer); after it `MeetingProcessor` reads the whole
+  conversation (the household's own words, by topic, interpreter or rules, made-up and off-topic conclusions dropped,
+  the last word on a plan counts) and `Matcher` holds each conclusion against what exists (update it, or "staat er al").
+  The household's own words (`WordFix`, `WordFixes` in `core/model/Listening.kt`, setting `listen.words`) are learned
+  from fixed lines and retyped names; the conversation export (`hearth-conversation/2`) is material to retrain it on
+  real talk. Hearth needs no cloud model for any of this; MCP is an optional extra.
+  *Beter uitschrijven* (`set_transcriber`, device-only, on by itself on a tablet; `ai/whisper`): Luister mee records the
+  meeting itself and Whisper small (int8 ONNX, ≈ 250 MB from Hugging Face at a fixed revision, SHA-256 checked) writes it
+  down on the device: `SpeechCutter` (stretches at pauses, never silence), `LogMel` + `WhisperTokenizer` (the reference's
+  numbers and ids), `Whisper` (greedy, the household's words as prompt, no-speech and loop guards), `Writing` (state,
+  queue, the model opened only while a meeting is written, the audio never stored). Platforms give a `WhisperRuntime`
+  (Android: `AndroidWhisperRuntime`; the browser has none and keeps Web Speech).
 - **Kiosk mode.** Full-screen immersive, screen stays on while charging, starts
   on boot, optional lock-task when provisioned as device owner.
 - **MCP server.** Tools are exposed over MCP (streamable HTTP), off by default,
@@ -200,14 +212,16 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   that is too much (0–1) two meetings in a row comes back as a friction),
   Deze week (7 days, plans with their colour, the meal small underneath),
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
-  *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows each *thought*
-  (stretches joined by how they sound, never cut at a pause) with its *conclusions* in their topic's colour, once it has
-  settled; only what is *decided* becomes something (`Move`, `Stage` in `ai/route/MeetingWords.kt`): a plan, an
+  *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows the last lines with
+  what Hearth recognises in its topic's colour and *Waar het over gaat* (the topics so far); no conclusions while people
+  talk. *Zet op zijn plek* then reads the whole conversation as *thoughts* (stretches joined by how they sound, never cut
+  at a pause) with their *conclusions*, held against what exists (*Werkt bij*, *Staat er al*, *Toch nieuw*); only what is *decided* becomes something (`Move`, `Stage` in `ai/route/MeetingWords.kt`): a plan, an
   agreement ("we spreken af dat …"), or an option the other says yes to ("kan jij Mia ophalen?" "ja"); catching up,
   looking back at ourselves, questions, doubts and a brainstorm's options stay talk (the thought shows its stage:
-  *Bijpraten*, *Aan het brainstormen, nog geen besluit* …); one idea said on its own goes to the Werkbord, and lights up that tile (the *transcript* lasts until the next meeting); a tap on a conclusion opens it to
-  change its name, *Place* (taak, afspraak, ritme, …) and day, filled in from what was said (*Zet erin* adds it right
-  away); *Zet op zijn plek* opens the *Voorstel* (each conclusion → a *Place*, checked with one tap). *Meal*: one per day; the *Dish* library remembers
+  *Bijpraten*, *Aan het brainstormen, nog geen besluit* …); one idea said on its own goes to the Werkbord (the
+  *transcript* lasts until the next meeting; a tap on a line in *Gesprek* fixes it and teaches the words); the *Voorstel*
+  shows each conclusion → a *Place*, checked with one tap; a tap on one opens it to change its name, *Place* (taak,
+  afspraak, ritme, …) and day, filled in from what was said. *Meal*: one per day; the *Dish* library remembers
   ingredients. Selectors in `core/model/Week.kt`.
 - **Instellingen** (Settings; the rail's bottom item): *Taal* first (Dutch (Flemish) by default,
   English on request; `set_language`, setting `app.lang`; switching changes both the strings and

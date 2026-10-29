@@ -27,7 +27,7 @@ flowchart LR
     R["Hearth relay<br/>Cloudflare Worker<br/>(one shared instance)"]
     AI["Family's own ChatGPT / Claude<br/>(their subscription)"]
     G["Google Drive appDataFolder<br/>+ 'Hearth' calendar"]
-    HF["Model files, downloaded once<br/>sentence model: Hugging Face<br/>interpreter: the family's own download site"]
+    HF["Model files, downloaded once<br/>sentence model and Whisper: Hugging Face<br/>interpreter: the family's own download site"]
     V["Vercel<br/>static web preview"]
 
     T -- "outbound WebSocket<br/>(MCP calls come back over it)" --> R
@@ -60,7 +60,7 @@ Key points for review:
 | Weekoverleg | The weekly family meeting screen (review, plan, listen along) | `huddle`, `reflection`, `transcript_line` |
 | Ritmes & routines | Recurring routines and habits | `backlog_item` (routine sections) + `routine_log` |
 | Instellingen / Koppelingen | Settings / connections (AI, Google, sync) | `setting` |
-| Luister mee | Live transcription of the meeting that suggests actions | `transcript_line` |
+| Luister mee | Live transcription of the meeting (topics only); read as a whole afterwards into suggestions | `transcript_line`, `setting` (`listen.words`) |
 
 ## 4. Software layers
 
@@ -282,24 +282,43 @@ joins with a one-time 8-letter code (PBKDF2-derived key, 10 minutes, single use)
 ```mermaid
 flowchart LR
     MIC["Microphone"] --> SR["Speech recognition<br/>Android: system recognizer, offline preferred<br/>Browser: Web Speech API"]
+    MIC -->|"Beter uitschrijven on (tablet)"| REC["Hearth's own recording, 16 kHz,<br/>in memory only"]
+    REC --> CUT["SpeechCutter: stretches at pauses"]
+    CUT --> WH["Whisper small int8<br/>on the device"]
+    WH --> TL
     SR --> TL[("transcript_line")]
-    TL --> RULES["Rules (ai/route/MeetingWords)<br/>always on"]
-    TL --> SENSE["Sentence model e5-small<br/>optional, on device"]
-    TL --> INT["Interpreter FunctionGemma 270M<br/>optional, tablet only"]
-    RULES --> SUG["Suggestions on screen"]
-    SENSE --> RULES
-    INT --> SUG
-    SUG -->|"person taps 'Zet erin'"| TOOLS["Tools"] --> DB[("SQLite")]
+    WORDS[("setting listen.words<br/>the household's own words")] --> INTAKE
+    TL --> INTAKE["Live intake (ai/meeting/MeetingIntake)<br/>names, known items, topics"]
+    INTAKE --> STAGE["Stage: coloured lines,<br/>Waar het over gaat"]
+    TL -->|"after the meeting: Zet op zijn plek"| PROC["Full reading (ai/meeting/MeetingProcessor)<br/>by topic, grounded, deduplicated"]
+    WORDS --> PROC
+    PROC --> RULES["Rules (ai/route/MeetingWords)<br/>always on"]
+    SENSE["Sentence model e5-small<br/>optional, on device"] --> RULES
+    PROC --> INT["Interpreter FunctionGemma 270M<br/>optional, tablet only"]
+    RULES --> MATCH["Matcher: held against<br/>what exists (update / there already)"]
+    INT --> MATCH
+    DB2[("backlog, board,<br/>shopping, meals")] --> MATCH
+    MATCH --> SUG["Voorstel on screen"]
+    SUG -->|"person taps 'Toevoegen'"| TOOLS["Tools"] --> DB[("SQLite")]
+    TL -->|"person fixes a line"| WORDS
 ```
 
 - Nothing is written from listening alone: suggestions appear on screen and a person confirms them.
+- While the meeting goes on only the light intake runs (word lists, no model), so the tablet's CPU stays with the
+  speech recognizer; the models run once, after the meeting, when someone taps *Zet op zijn plek*.
+- Words the family puts right are kept as a household setting (`listen.words`): they travel with sync and backup like
+  other household data and are handed to the recognizer as hints.
 - The transcript is deleted when the next meeting ends; the meeting summary is kept.
-- Speech recognition is the platform's own: Android's recognizer is asked to prefer offline (with no offline language
-  pack, Android may use Google's online service); Chrome's Web Speech API sends audio to Google. This is the one place
-  where spoken content can leave the device without a Hearth setting, and is worth noting in a privacy review.
-- The two models (≈ 130 MB and ≈ 270 MB) are downloaded once and run with ONNX Runtime on the device. No text is sent
-  anywhere to run them. Switching off deletes the files. The sentence model comes from Hugging Face when someone
-  switches it on. The interpreter comes from the household's own download site (next to `hearth.apk`; the build copies
+- With *Beter uitschrijven* on (the tablet; on by itself there, `set_transcriber`, device-only) Hearth records the meeting
+  itself (`AudioRecord`, 16 kHz mono) and Whisper writes it down on the tablet, a stretch at a time, cut at pauses. The
+  audio stays in memory and is let go once a stretch is written: it is never stored and never leaves the tablet.
+- Without it, speech recognition is the platform's own: Android's recognizer is asked to prefer offline (with no offline
+  language pack, Android may use Google's online service); Chrome's Web Speech API sends audio to Google. This is the one
+  place where spoken content can leave the device without a Hearth setting, and is worth noting in a privacy review.
+- The three models (≈ 130 MB, ≈ 250 MB and ≈ 270 MB) are downloaded once and run with ONNX Runtime on the device. No
+  text or audio is sent anywhere to run them. Switching off deletes the files. The sentence model comes from Hugging
+  Face when someone switches it on; Whisper (onnx-community/whisper-small, int8) comes from Hugging Face at a fixed
+  revision, each file checked by size and SHA-256. The interpreter comes from the household's own download site (next to `hearth.apk`; the build copies
   it there from the `interpreter-model` branch), in the background and on by default on a tablet: it reads
   `manifest.json`, joins the parts (each under 100 MB) and checks every file's SHA-256 before using it; a newer version
   on the site replaces it by itself.
