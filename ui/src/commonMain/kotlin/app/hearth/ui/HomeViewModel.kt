@@ -757,14 +757,18 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Counts up each time the sentence model has read new sentences. */
     private val senseRead = MutableStateFlow(0)
 
-    /**
-     * What Luister mee heard and hasn't been put in place yet, as thoughts (pauses don't cut them), newest first,
-     * each with what Hearth concludes from it.
-     */
     /** Every thought of this meeting, newest first; the stage shows the last three, the summary beside it all of them. */
     val meetingThoughts: StateFlow<List<HeardThought>> = combine(transcript, members, edits, senseRead, interpreted) { lines, people, changed, _, found ->
-        val open = lines.filter { !it.sorted }
-        val read = app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people.map { it.name }, open.map { it.createdAt }, sense())
+        thoughtsOf(lines.filter { !it.sorted }, people.map { it.name }, changed, found).reversed()
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * What Luister mee heard and hasn't been put in place yet ([open]), as thoughts (pauses don't cut them), oldest
+     * first, each with what Hearth concludes from it. The stage and the Voorstel both read it, so the Voorstel shows
+     * exactly what the stage showed: the interpreter's conclusions when it read the meeting, the rules' otherwise.
+     */
+    private fun thoughtsOf(open: List<TranscriptLine>, people: List<String>, changed: Map<String, SuggestionEdit>, found: Map<String, List<Orchestrator.Proposal>>?): List<HeardThought> {
+        val read = app.orchestrator.listen(open.map { it.text }, ctx(ToolSource.UI), people, open.map { it.createdAt }, sense())
             .map { t ->
                 // The interpreter read the whole conversation: what it found on these lines replaces the rules' guess.
                 val proposals = if (found == null) t.proposals else open.slice(t.lines).flatMap { found[it.id].orEmpty() }
@@ -779,8 +783,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
             } else out += t
             out
         }
-        joined.reversed().map { t -> thought(open.slice(t.lines), t.proposals, changed).copy(stage = t.stage) }
-    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        return joined.map { t -> thought(open.slice(t.lines), t.proposals, changed).copy(stage = t.stage) }
+    }
 
     val heardThoughts: StateFlow<List<HeardThought>> = meetingThoughts.map { it.take(3) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -940,10 +944,9 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         voorstelLines = lines.map { it.id }
         val c = ctx(ToolSource.UI)
         // The same thoughts as on the stage, with what the family changed; a thought that was just talk shows once.
-        _voorstel.value = app.orchestrator.listen(lines.map { it.text }, c, members.value.map { it.name }, lines.map { it.createdAt }, sense()).flatMap { t ->
-            val heard = thought(lines.slice(t.lines), t.proposals, edits.value)
+        _voorstel.value = thoughtsOf(lines, members.value.map { it.name }, edits.value, interpreted.value).flatMap { heard ->
             heard.proposals.mapIndexed { i, p -> VoorstelRow(p, checked = i !in heard.added && p.place != Place.NONE && p.calls.isNotEmpty(), added = i in heard.added) }
-                .ifEmpty { listOf(VoorstelRow(app.orchestrator.proposal(Spoken.clean(t.heard), Place.NONE, c).copy(heard = t.heard), checked = false)) }
+                .ifEmpty { listOf(VoorstelRow(app.orchestrator.proposal(Spoken.clean(heard.text), Place.NONE, c).copy(heard = heard.text), checked = false)) }
         }
     }
 
