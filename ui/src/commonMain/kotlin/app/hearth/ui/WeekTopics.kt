@@ -109,6 +109,9 @@ import app.hearth.ui.resources.listen_stage_hint
 import app.hearth.ui.resources.listen_start
 import app.hearth.ui.resources.listen_stop
 import app.hearth.ui.resources.sort_conversation
+import app.hearth.ui.resources.voorstel_ready
+import app.hearth.ui.resources.voorstel_reading
+import androidx.compose.material3.LinearProgressIndicator
 import app.hearth.ui.theme.SectionStyle
 import app.hearth.ui.theme.AccentStyle
 import app.hearth.ui.theme.UnsortedStyle
@@ -138,6 +141,10 @@ fun ListenStage(
     heard: List<HeardLineView>,
     /** Beter uitschrijven: stretches recorded and not written down yet (also after listening stopped). */
     writingLeft: Int,
+    /** The meeting being read as a whole: readings done of all (null: not reading). */
+    reading: Pair<Int, Int>?,
+    /** A Voorstel read and waiting: how many things it puts in place (null: none waiting). */
+    waiting: Int?,
     wide: Boolean,
     lit: Set<Topic>,
     lang: Lang,
@@ -190,10 +197,21 @@ fun ListenStage(
             )
             if (s.name == "service-mic") FilledTonalButton(onClick = onFix, modifier = Modifier.padding(top = 6.dp)) { Text(stringResource(Res.string.listen_fix)) }
         }
-        // Listening stopped, Whisper still writing: say so, the last lines are on their way.
-        if (!listening && writingLeft > 0) {
+        // Listening stopped: Whisper writes the last lines, then Hearth reads the whole meeting. Say how far, also with
+        // the Voorstel closed: it goes on by itself.
+        if (!listening && (writingLeft > 0 || reading != null)) {
             Spacer(Modifier.size(8.dp))
-            Text(pluralStringResource(Res.plurals.voorstel_writing, writingLeft, writingLeft), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (writingLeft > 0) pluralStringResource(Res.plurals.voorstel_writing, writingLeft, writingLeft) else stringResource(Res.string.voorstel_reading),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (reading != null && writingLeft == 0) {
+                LinearProgressIndicator(
+                    progress = { if (reading.second == 0) 0f else reading.first.toFloat() / reading.second },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                )
+            }
         }
         if (listening || heard.isNotEmpty()) {
             Spacer(Modifier.size(14.dp))
@@ -231,7 +249,11 @@ fun ListenStage(
             Spacer(Modifier.size(8.dp))
             @OptIn(ExperimentalLayoutApi::class)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (heard.isNotEmpty()) Button(onClick = onSort) { Text(stringResource(Res.string.sort_conversation)) }
+                if (heard.isNotEmpty()) {
+                    Button(onClick = onSort) {
+                        Text(if (waiting != null && !listening) stringResource(Res.string.voorstel_ready, waiting) else stringResource(Res.string.sort_conversation))
+                    }
+                }
                 if (heard.isNotEmpty()) TextButton(onClick = onShow) { Text(stringResource(Res.string.conversation_show)) }
                 if (listening && available) TextButton(onClick = onToggle) { Text(stringResource(Res.string.listen_stop)) }
             }

@@ -133,12 +133,13 @@ lost between pauses, the recording never kept. While you talk Hearth only writes
 names, the things the household already has (the evening routine, the shopping list, a house rule) and the words of a
 topic ("vaatwasser", "gerechten", "squash") in that topic's colour, and beside it *Waar het over gaat*: the topics so far,
 how often, and what was named. The tile of the topic just heard glows. Nothing is concluded while people are still
-thinking out loud. After the meeting, *Zet op zijn plek* reads the whole conversation at once, on the tablet (no account,
-no cloud): topic by topic, so the groceries talked about at the start and again at the end are read together; catching
+thinking out loud. When you stop Luister mee, Hearth reads the whole conversation at once, on the tablet (no account,
+no cloud), by itself: no tap needed, the screen stays on until it is done, and closing the Voorstel doesn't stop it (the
+stage shows how far, then *Bekijk het voorstel*). It reads topic by topic, so the groceries talked about at the start and again at the end are read together; catching
 up, looking back at yourself, questions and a brainstorm's options stay talk; what is decided becomes something, and it
 is held against what you already have: "de vaatwasser na het eten" *werkt bij* the routine Vaatwasser uitladen instead of
 adding a second one, the house rule about shoes *staat er al*, the milk on the list is not added again (*Toch nieuw* if it
-is something else after all). With *Slimmer luisteren* on (Instellingen, downloads a small model once, runs on the
+is something else after all). A suggestion needs talk that says so: "ik heb een paar belangrijke punten" or "waar is de wasmand?" stays talk. With *Slimmer luisteren* on (Instellingen, downloads a small model once, runs on the
 device), it also understands sentences no rule knows ("ik ben het zat dat de badkamer nooit gepoetst wordt" is a
 friction); with *Gesprekken begrijpen* on (the tablet; a bigger model, downloaded once), a model reads each topic as a
 whole ("zaterdag pizza" … "nee toch maar vrijdag" moves the meal). Misheard? Tap the line in *Gesprek* and put it right:

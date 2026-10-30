@@ -580,6 +580,8 @@
     </plurals>
     <string name="voorstel_reading">Hearth is reading the whole conversation…</string>
     <string name="voorstel_reading_part">Part %1$d of %2$d</string>
+    <string name="voorstel_ready">See what Hearth found (%1$d)</string>
+    <string name="voorstel_goes_on">The screen stays on until Hearth is done. You can close this: Hearth keeps reading.</string>
     <string name="voorstel_update">Updates: %1$s</string>
     <string name="voorstel_there">Already there: %1$s</string>
     <string name="voorstel_as_new">Add as new</string>

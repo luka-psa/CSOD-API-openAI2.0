@@ -161,6 +161,7 @@ import app.hearth.ui.resources.voorstel_title
 import app.hearth.ui.resources.voorstel_reading
 import app.hearth.ui.resources.voorstel_writing
 import app.hearth.ui.resources.voorstel_reading_part
+import app.hearth.ui.resources.voorstel_goes_on
 import app.hearth.ui.resources.voorstel_update
 import app.hearth.ui.resources.voorstel_there
 import app.hearth.ui.resources.voorstel_as_new
@@ -369,6 +370,7 @@ fun VoorstelSheet(
                     )
                     LinearProgressIndicator(progress = { if (progress.second == 0) 0f else progress.first.toFloat() / progress.second }, modifier = Modifier.fillMaxWidth())
                     if (progress.second > 1) Text(stringResource(Res.string.voorstel_reading_part, minOf(progress.first + 1, progress.second), progress.second), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(Res.string.voorstel_goes_on), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 return@Column
             }

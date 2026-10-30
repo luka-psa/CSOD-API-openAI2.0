@@ -16,7 +16,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * Makes the activity behave like a wall display: full screen, visible over the lock screen,
- * awake while charging (and while Luister mee listens), and dimmed after a quiet spell, never during Luister mee.
+ * awake while charging (and while a meeting is listened to, written down or read), and dimmed after a quiet spell, never
+ * meanwhile.
  * Any touch brings it back.
  */
 class KioskController(
@@ -25,10 +26,10 @@ class KioskController(
     private val idleMillis: Long = 2 * 60_000L,
 ) {
     private val handler = Handler(Looper.getMainLooper())
-    // Not while Luister mee listens: a meeting goes on without anyone touching the screen. Try again later.
+    // Not while a meeting is listened to, written down or read: it goes on without anyone touching the screen. Try again later.
     private val dimRunnable: Runnable = object : Runnable {
         override fun run() {
-            if (app.hearth.ui.ListeningNow.on) handler.postDelayed(this, idleMillis) else setDimmed(true)
+            if (app.hearth.ui.ScreenAwake.on) handler.postDelayed(this, idleMillis) else setDimmed(true)
         }
     }
     var dimmed = false

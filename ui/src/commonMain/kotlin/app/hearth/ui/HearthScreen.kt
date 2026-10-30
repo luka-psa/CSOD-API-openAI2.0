@@ -143,6 +143,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
     val voorstel by viewModel.voorstel.collectAsStateWithLifecycle()
     val heardLines by viewModel.heardLines.collectAsStateWithLifecycle()
     val processing by viewModel.processing.collectAsStateWithLifecycle()
+    val voorstelWaiting by viewModel.voorstelWaiting.collectAsStateWithLifecycle()
     val learnedWords by viewModel.learnedWords.collectAsStateWithLifecycle()
     val vocabulary by viewModel.vocabulary.collectAsStateWithLifecycle()
     val sync by viewModel.sync.collectAsStateWithLifecycle()
@@ -183,7 +184,27 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
         writing = viewModel.writing.takeIf { viewModel.writingAvailable },
         onWritten = viewModel::written,
     )
-    val listen = ListenControl(transcriber.available, listening, partial, listenStatus, transcriber.fix, writingLeft) { if (listening) transcriber.stop() else transcriber.start() }
+    // Stopping ends the meeting's talk: Hearth reads it right away, and goes on when the Voorstel is closed meanwhile.
+    val stopListening = { transcriber.stop(); viewModel.listeningStopped() }
+    val listen = ListenControl(transcriber.available, listening, partial, listenStatus, transcriber.fix, writingLeft, stop = transcriber.stop) {
+        if (listening) stopListening() else { viewModel.listeningStarted(); transcriber.start() }
+    }
+    // Listening, writing it down, reading it: the screen stays on and bright, nobody has to touch it. Done, it stays on
+    // a while longer, so what Hearth found is seen (the tablet's own timeout ran out long ago).
+    val meetingBusy = listening || writingLeft > 0 || processing != null
+    var wasBusy by remember { mutableStateOf(false) }
+    var afterglow by remember { mutableStateOf(false) }
+    LaunchedEffect(meetingBusy) {
+        if (meetingBusy) {
+            wasBusy = true
+            afterglow = false
+        } else if (wasBusy) {
+            afterglow = true
+            delay(AFTERGLOW_MS)
+            afterglow = false
+        }
+    }
+    KeepScreenOn(meetingBusy || afterglow)
 
     val counts = mapOf(
         Destination.TASKS to dontForget(backlog, today).size,
@@ -225,7 +246,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                         )
                         Destination.WEEK -> WeekScreen(
                             agenda, lastHuddle, backlog, steps, board, meals, dishes, shopping, today, lang, wide,
-                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardLines, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews, processing, learnedWords),
+                            MeetingState(wins, week, weekOn, ruleChecks, members, transcript, lastTranscript, huddles, voorstel, heardLines, agree, ruleScores, habitChecks, habitReviews, ruleHistory, ruleReviews, processing, learnedWords, voorstelWaiting),
                             listen,
                             WeekCallbacks(
                                 loadAgenda = viewModel::loadAgenda,
@@ -373,7 +394,7 @@ private fun HearthContent(viewModel: HomeViewModel, lang: Lang, dimmed: Boolean,
                 }
                 Spacer(Modifier.height(16.dp))
                 if (listening && destination != Destination.WEEK) {
-                    ListenPill(transcript.size, partial, onBack = { destination = Destination.WEEK }, onStop = { transcriber.stop() }, modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp).align(Alignment.CenterHorizontally))
+                    ListenPill(transcript.size, partial, onBack = { destination = Destination.WEEK }, onStop = stopListening, modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp).align(Alignment.CenterHorizontally))
                     Spacer(Modifier.height(10.dp))
                 }
                 mcpPending.firstOrNull()?.let { p ->
@@ -542,6 +563,9 @@ private fun Badge(count: Int?, modifier: Modifier) {
         modifier = modifier.background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50)).padding(horizontal = 6.dp),
     )
 }
+
+/** How long the screen stays on after a meeting was listened to, written down and read. */
+private const val AFTERGLOW_MS = 3 * 60_000L
 
 /** Shown while the tablet is dimmed: just the time, readable from across the room. */
 @Composable

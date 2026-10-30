@@ -105,7 +105,7 @@ class MeetingProcessorTest {
             lines(
                 "zaterdag bel ik de verzekering",
                 "de vaat was moet uitgeladen worden na het eten",
-                "de schoenen in de kast hè",
+                "de schoenen moeten in de kast hè",
                 "we hebben nog melk en eieren nodig",
             ),
             household, nl, interpret = script::read,
@@ -174,5 +174,51 @@ class MeetingProcessorTest {
         // Said on a Thursday, "donderdag" is next week's.
         assertEquals(LocalDate(2026, 10, 29), car.date)
         assertEquals(null, done.raw)
+    }
+
+    @Test
+    fun `what the interpreter makes of plain talk is dropped, what was really said stays`() = runTest {
+        val script = Script { window ->
+            buildList {
+                if (window.any { "punten" in it }) add(Action("add_idea", mapOf("text" to "Een belangrijke punten")))
+                if (window.any { "structuur" in it }) add(Action("log_friction", mapOf("text" to "Een structuur niet wilde")))
+                if (window.any { "wasmand" in it }) add(Action("add_task", mapOf("text" to "De wasmand zoeken")))
+                if (window.any { "boodschappenlijst" in it }) add(Action("add_idea", mapOf("text" to "De boodschappenlijst vervangen door een app")))
+                if (window.any { "vuilbak" in it }) add(Action("log_friction", mapOf("text" to "De vuilbak loopt altijd over")))
+            }
+        }
+        val done = processor.process(
+            lines(
+                "Ik heb een paar belangrijke punten. Ik wilde eigenlijk niet zo veel structuur.",
+                "Waar zou de wasmand zijn? Misschien kunnen we de boodschappenlijst vervangen door een app.",
+                "De vuilbak loopt altijd over, dat stoort me.",
+            ),
+            household, nl, interpret = script::read,
+        )
+        assertEquals(
+            listOf(Place.FRICTION to "De vuilbak loopt altijd over", Place.IDEA to "De boodschappenlijst vervangen door een app"),
+            done.found.map { it.proposal.place to it.proposal.text }.sortedBy { it.first.ordinal },
+        )
+        // The interpreter was given sentences, as it learned, and its suggestion rests on the one it came from.
+        assertTrue(script.windows.flatten().contains("Misschien kunnen we de boodschappenlijst vervangen door een app."))
+        assertEquals("Misschien kunnen we de boodschappenlijst vervangen door een app.", done.found.first { it.proposal.place == Place.IDEA }.proposal.heard)
+    }
+
+    @Test
+    fun `long stretches are read sentence by sentence, all of them, in windows the model can take`() = runTest {
+        val script = Script { emptyList() }
+        // Whisper writes up to half a minute as one line: six sentences each, and one long run-on sentence.
+        val sentences = (1..24).map { n -> "Dan hebben we het over nummer $n gehad en dat was het wel zo een beetje." }
+        val runOn = (1..80).joinToString(" ") { if (it % 10 == 0) "woord$it," else "woord$it" }
+        val talk = sentences.chunked(6).map { it.joinToString(" ") } + runOn
+        processor.process(lines(*talk.toTypedArray()), household, nl, interpret = script::read)
+
+        val read = script.windows.flatten()
+        sentences.forEach { s -> assertTrue(s in read, s) }
+        assertTrue(script.windows.all { w -> w.size <= 16 && w.sumOf { it.split(" ").size } <= 130 })
+        // The run-on sentence in pieces at its commas, every word of it read.
+        val pieces = read.filter { it.startsWith("woord") }.distinct()
+        assertTrue(pieces.size >= 3 && pieces.all { it.split(" ").size <= 35 })
+        assertEquals(runOn, pieces.joinToString(" "))
     }
 }

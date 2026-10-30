@@ -367,6 +367,33 @@ object MeetingWords {
         return Move.STATEMENT
     }
 
+    /**
+     * Whether [said] carries what a conclusion in [place] rests on: the words the rules themselves conclude from. An
+     * idea is offered ("misschien kunnen we", "wat als"), a friction rubs ("stoort", "altijd weer"), a rule is agreed or
+     * said as one ("we spreken af", "moeten", "nooit meer"), a goal is wanted, something to buy is needed, and a plan
+     * goes somewhere (a day, a moment, a "moeten") instead of being asked about or looked back on. A reader that writes
+     * its own words (the interpreter) is held to it, so talk ("ik heb een paar belangrijke punten") becomes nothing.
+     * A meal and what went well pass here: the meeting's reading asks food talk and a word for good of every reader.
+     */
+    fun backs(place: Place, said: String, today: LocalDate): Boolean = said.split(SENTENCE_END).filter { it.isNotBlank() }.flatMap(::clauses).any { part ->
+        val clause = Spoken.clean(part.raw)
+        val t = clause.lowercase()
+        val m = move(clause)
+        val talk = m == Move.QUESTION
+        when (place) {
+            Place.NONE -> false
+            Place.MEAL, Place.WIN -> true
+            Place.FRICTION -> !talk && FRICTION.containsMatchIn(t)
+            Place.IDEA -> m == Move.PROPOSAL || !talk && IDEA.containsMatchIn(t)
+            Place.HOUSE_RULE -> m == Move.DECISION || !talk && m != Move.LOOK_BACK && RULE_SAID.containsMatchIn(t)
+            Place.GOAL -> !talk && m != Move.LOOK_BACK && WANT.containsMatchIn(t)
+            Place.SHOPPING -> !talk && m != Move.LOOK_BACK && (SHOPPING.containsMatchIn(t) || NEEDED.containsMatchIn(t))
+            Place.PLANNING, Place.EVENT, Place.FREE_TIME, Place.RHYTHM -> m in PLAN_MOVES && forward(clause, today)
+        }
+    }
+
+    private val PLAN_MOVES = setOf(Move.STATEMENT, Move.DECISION, Move.PROPOSAL, Move.AGREE)
+
     /** "misschien kan jij Mia dan ophalen" → "Mia dan ophalen": the option itself, once agreed. */
     private fun option(sentence: String): String {
         var t = sentence.trim()
@@ -633,4 +660,23 @@ object MeetingWords {
         ),
     )
     private val SHOPPING = anyOf(listOf("kopen", "halen", "op de lijst", "boodschappen", "we need to buy", "buy", "pick up", "groceries"))
+    /** "we hebben melk nodig", "de koffie is op", "geen brood meer": something to buy. */
+    private val NEEDED = Regex(
+        "(?<![\\p{L}])(?:nodig|is op|zijn op|bijna op|op is|op zijn|tekort|geen (?:\\p{L}+\\s+){1,2}meer|need|out of|ran out|running low)(?![\\p{L}])",
+        RegexOption.IGNORE_CASE,
+    )
+    /** A rule said straight out: "de schoenen moeten in de kast", "geen gsm aan tafel", "nooit meer". */
+    private val RULE_SAID = anyOf(
+        listOf(
+            "moet", "moeten", "mag", "mogen", "niet meer", "nooit", "altijd", "elke keer", "telkens", "regel", "afspraak", "afspreken",
+            "must", "should", "always", "never", "not allowed", "no more", "rule",
+        ),
+    )
+    /** Something wanted: "ik wil meer sporten", "ons doel is …", "we zouden graag sparen". */
+    private val WANT = anyOf(
+        listOf(
+            "doel", "wil", "wilt", "willen", "graag", "zou graag", "meer", "minder", "proberen", "leren", "sparen", "dit jaar", "tegen de zomer",
+            "goal", "want", "wants", "would like", "more", "less", "try to", "learn", "save",
+        ),
+    )
 }

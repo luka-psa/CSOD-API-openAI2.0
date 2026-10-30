@@ -3,6 +3,7 @@ package app.hearth.ai.meeting
 import app.hearth.ai.Orchestrator
 import app.hearth.ai.interpret.Action
 import app.hearth.ai.interpret.MeetingReader
+import app.hearth.ai.route.MeetingWords
 import app.hearth.ai.route.Place
 import app.hearth.ai.sense.Reading
 import app.hearth.core.model.Topic
@@ -47,9 +48,12 @@ data class Processed(
  * 1. every line with the household's own words put right ([Household.words]);
  * 2. the topic of every thought ([MeetingIntake]), so a topic that comes back later is read together with what was said
  *    about it first, and talk without a topic stays with the thought before it;
- * 3. per topic, the interpreter reads its lines as a whole (in windows that fit the model) when it is on; otherwise the
- *    rules' conclusions count ([Orchestrator.listen]);
- * 4. conclusions that rest on words nobody said, or on too few words to mean something, are dropped;
+ * 3. per topic, the interpreter reads its lines as a whole when it is on: sentence by sentence, the way it learned, in
+ *    windows of as many words as the model takes, so none of a long stretch falls off; otherwise the rules' conclusions
+ *    count ([Orchestrator.listen]);
+ * 4. conclusions that rest on words nobody said, on too few words to mean something, or (the interpreter's) on talk
+ *    that doesn't say so ([MeetingWords.backs]: an idea offered, a friction that rubs, a plan going somewhere) are
+ *    dropped;
  * 5. each conclusion is held against what the household has ([Matcher]): a change to that item, or "there already";
  * 6. the same conclusion said twice counts once, the last time it was said (a change of plan replaces what came before).
  * Nothing is written: the result becomes the Voorstel the family checks.
@@ -76,13 +80,19 @@ class MeetingProcessor(private val orchestrator: Orchestrator) {
             talk.forEach { t -> t.proposals.forEach { p -> found += Finding(p, t.lines.toList(), byInterpreter = false) } }
             progress(1, 1)
         } else {
-            val windows = parts.flatMap { part -> windows(part.lines).map { part to it } }
+            val said = text.flatMapIndexed { i, t -> sentences(t).map { Said(i, it) } }
+            val windows = parts.flatMap { part -> part.lines.toSet().let { lines -> windows(said.filter { it.line in lines }) } }
             progress(0, windows.size)
-            windows.forEachIndexed { n, (_, window) ->
-                interpret(window.map { text[it] }).forEach { action ->
-                    val line = home(action, window, text)
-                    raw!! += line to action
-                    orchestrator.proposalOf(action, text[line], ctx)?.let { found += Finding(it, listOf(line), byInterpreter = true) }
+            windows.forEachIndexed { n, window ->
+                interpret(window.map { it.text }).forEach { action ->
+                    val words = action.args.values.flatMap(MeetingReader::words)
+                    val near = window.filter { s -> MeetingReader.words(s.text).any { w -> words.any { MeetingReader.sameWord(it, w) } } }
+                    // The sentence it came from: the one sharing most of its words (the latest on a tie).
+                    val home = near.asReversed().maxByOrNull { s -> MeetingReader.words(s.text).count { w -> words.any { MeetingReader.sameWord(it, w) } } } ?: window.last()
+                    raw!! += home.line to action
+                    val p = orchestrator.proposalOf(action, home.text, ctx) ?: return@forEach
+                    // The model writes its own words: only what the talk itself says counts.
+                    if (near.any { MeetingWords.backs(p.place, it.text, ctx.today) }) found += Finding(p, listOf(home.line), byInterpreter = true)
                 }
                 progress(n + 1, windows.size)
             }
@@ -111,23 +121,48 @@ class MeetingProcessor(private val orchestrator: Orchestrator) {
             .sortedBy { it.lines.first() }
     }
 
-    /** A topic's lines in windows the interpreter can read at once, overlapping a little so nothing falls between two. */
-    private fun windows(lines: List<Int>): List<List<Int>> {
-        if (lines.size <= WINDOW) return listOf(lines)
-        val out = mutableListOf<List<Int>>()
-        var start = 0
-        while (start < lines.size) {
-            out += lines.subList(start, minOf(lines.size, start + WINDOW))
-            if (start + WINDOW >= lines.size) break
-            start += WINDOW - OVERLAP
-        }
-        return out
+    /** A sentence of the conversation and the line it was said in. */
+    private class Said(val line: Int, val text: String) {
+        val words = count(text)
     }
 
-    /** The line an action came from: the one that shares most of its words (the latest on a tie). */
-    private fun home(a: Action, window: List<Int>, text: List<String>): Int {
-        val said = a.args.values.flatMap(MeetingReader::words).toSet()
-        return window.maxWith(compareBy<Int> { i -> MeetingReader.words(text[i]).count { w -> said.any { MeetingReader.sameWord(it, w) } } }.thenBy { it })
+    /**
+     * A line as the sentences it holds (Whisper writes up to half a minute of talk as one line; the interpreter learned
+     * on sentences). A long run-on sentence is cut at its commas, at most [LONG] words a piece.
+     */
+    private fun sentences(line: String): List<String> = line.split(SENTENCE_END).map { it.trim() }.filter { it.isNotEmpty() }.flatMap { s ->
+        if (count(s) <= LONG) return@flatMap listOf(s)
+        val out = mutableListOf<String>()
+        var now = ""
+        s.split(AFTER_COMMA).flatMap { p -> p.split(SPACE).chunked(LONG).map { it.joinToString(" ") } }.forEach { p ->
+            if (now.isNotEmpty() && count(now) + count(p) > LONG) {
+                out += now
+                now = p
+            } else now = if (now.isEmpty()) p else "$now $p"
+        }
+        if (now.isNotEmpty()) out += now
+        out
+    }
+
+    /**
+     * A topic's sentences in windows the interpreter reads at once: as many as fit [WINDOW_WORDS] (the model's window,
+     * so it never drops the first ones), overlapping a sentence or two so a question and its answer are read together.
+     */
+    private fun windows(said: List<Said>): List<List<Said>> {
+        val out = mutableListOf<List<Said>>()
+        var start = 0
+        while (start < said.size) {
+            var end = start
+            var words = 0
+            while (end < said.size && end - start < WINDOW && (end == start || words + said[end].words <= WINDOW_WORDS)) words += said[end++].words
+            out += said.subList(start, end)
+            if (end >= said.size) break
+            var back = end
+            var kept = 0
+            while (back - 1 > start && end - (back - 1) <= OVERLAP && kept + said[back - 1].words <= OVERLAP_WORDS) kept += said[--back].words
+            start = back
+        }
+        return out
     }
 
     /**
@@ -138,7 +173,8 @@ class MeetingProcessor(private val orchestrator: Orchestrator) {
      */
     private fun meaningful(p: Orchestrator.Proposal, said: String, topics: Set<Topic>, people: List<String>): Boolean {
         if (p.place == Place.NONE || p.calls.isEmpty()) return false
-        val words = Matcher.contentWords(p.text)
+        // "Een belangrijke punten": words that say nothing about what it is don't count.
+        val words = Matcher.contentWords(p.text).filter { it !in VAGUE }
         if (words.size < (if (p.place in SHORT_OK) 1 else 2) || words.size > (if (p.place in OWN_WORDS) 12 else 8)) return false
         val heard = Matcher.contentWords(said) + people.map { it.lowercase() }
         val made = words.count { w -> heard.none { Matcher.sameRoot(it, w) } }
@@ -169,9 +205,24 @@ class MeetingProcessor(private val orchestrator: Orchestrator) {
     }
 
     private companion object {
-        /** Lines per interpreter reading: a topic's stretch of talk, within the model's window. */
-        const val WINDOW = 10
+        /** Sentences per interpreter reading (as in training), and the words they may hold: within the model's window. */
+        const val WINDOW = 16
+        const val WINDOW_WORDS = 130
+        /** Sentences read again at the start of the next window, if they are short. */
         const val OVERLAP = 2
+        const val OVERLAP_WORDS = 30
+        /** The longest piece of a run-on sentence. */
+        const val LONG = 35
+        val SENTENCE_END = Regex("(?<=[.!?])\\s+")
+        val AFTER_COMMA = Regex("(?<=[,;])\\s+")
+        val SPACE = Regex("\\s+")
+        fun count(text: String) = text.split(SPACE).count { it.isNotEmpty() }
+        /** Words that don't say what something is about. */
+        val VAGUE = setOf(
+            "punt", "punten", "puntje", "puntjes", "ding", "dingen", "dingetje", "dingetjes", "zaak", "zaken", "iets", "kwestie", "onderwerp",
+            "onderwerpen", "belangrijk", "belangrijke", "soort", "manier", "beetje", "overleg", "gesprek", "agenda", "vergadering",
+            "thing", "things", "stuff", "point", "points", "important", "something", "topic", "kind",
+        )
         val SHORT_OK = setOf(Place.SHOPPING, Place.MEAL, Place.FREE_TIME, Place.EVENT)
         /** Said in the family's own words, so a little longer. */
         val OWN_WORDS = setOf(Place.FRICTION, Place.IDEA, Place.HOUSE_RULE)

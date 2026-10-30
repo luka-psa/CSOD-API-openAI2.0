@@ -838,29 +838,24 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
 
     /**
      * Reads [lines] as a whole, the way the Voorstel does: the household's own words, topic by topic, the interpreter when
-     * it is ready (else the rules), held against what exists. Runs in the background and says how far it is.
+     * it is ready (else the rules), held against what exists. Runs in the background and says how far it is ([progress]).
      */
-    private suspend fun process(lines: List<TranscriptLine>): Processed {
+    private suspend fun process(lines: List<TranscriptLine>, progress: (Int, Int) -> Unit = { _, _ -> }): Processed {
         val c = ctx(ToolSource.UI)
         val h = household.value
         val heard = lines.map { HeardLine(it.id, it.text, it.createdAt) }
         val ready = app.interpreting.state.value == Interpreting.State.Ready
         val interpret: (suspend (List<String>) -> List<app.hearth.ai.interpret.Action>)? =
             if (ready) { texts -> app.interpreting.read(texts, spokenDate(c.today)).orEmpty() } else null
-        _processing.value = 0 to 1
-        try {
-            return withContext(Dispatchers.Default) {
-                // The sentence model reads every clause first, so the rules can lean on it.
-                if (app.listening.state.value == SmartListening.State.Ready) {
-                    val asked = mutableSetOf<String>()
-                    app.orchestrator.listen(heard.map { WordFixes.apply(it.text, h.words) }, c, h.people, heard.map { it.at }) { asked += it; null }
-                    app.listening.prepare(asked)
-                }
-                processor.process(heard, h, c, sense(), interpret) { done, total -> _processing.value = done to total }
-            }.also { lastProcessed = lines.map { it.id } to it }
-        } finally {
-            _processing.value = null
-        }
+        return withContext(Dispatchers.Default) {
+            // The sentence model reads every clause first, so the rules can lean on it.
+            if (app.listening.state.value == SmartListening.State.Ready) {
+                val asked = mutableSetOf<String>()
+                app.orchestrator.listen(heard.map { WordFixes.apply(it.text, h.words) }, c, h.people, heard.map { it.at }) { asked += it; null }
+                app.listening.prepare(asked)
+            }
+            processor.process(heard, h, c, sense(), interpret, progress)
+        }.also { lastProcessed = lines.map { it.id } to it }
     }
 
     /**
@@ -873,6 +868,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         viewModelScope.launch {
             val c = ctx(ToolSource.UI)
             val ids = lines.map { it.id }
+            // A reading on its way is waited for, not done twice.
+            processJob?.takeIf { it.isActive }?.join()
             val done = lastProcessed?.takeIf { it.first == ids }?.second ?: process(lines)
             val rows = _voorstel.value?.takeIf { voorstelLines == ids }
             val json = withContext(Dispatchers.Default) {
@@ -945,41 +942,80 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     /** Only after the person confirmed on screen. */
     fun clearTranscript() = tool { app.tools.registry.run(app.tools.clearTranscript, ClearTranscriptArgs(), it, confirmed = true) }
 
+    /** The Voorstel as read: kept (also while its sheet is closed) until it is added or the meeting goes on. */
     private val _voorstel = MutableStateFlow<List<VoorstelRow>?>(null)
-    /** What Luister mee heard, sorted into places, waiting for one tap. Null when closed. */
-    val voorstel: StateFlow<List<VoorstelRow>?> = _voorstel.asStateFlow()
+    private val _voorstelOpen = MutableStateFlow(false)
+    /** What Luister mee heard, sorted into places, waiting for one tap. Null when its sheet is closed; empty while it reads. */
+    val voorstel: StateFlow<List<VoorstelRow>?> = combine(_voorstel, _voorstelOpen) { rows, open -> if (open) rows ?: emptyList() else null }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** A Voorstel read and waiting while its sheet is closed: how many things it puts in place (null: none waiting). */
+    val voorstelWaiting: StateFlow<Int?> = combine(_voorstel, _voorstelOpen) { rows, open -> if (open) null else rows?.count { it.checked } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private var voorstelLines: List<String> = emptyList()
+    /** Which reading is the current one: an older one that ends late leaves the screen alone. */
+    private var readings = 0
 
     /**
-     * Zet op zijn plek: the whole conversation is read now (it takes a moment; the sheet shows how far), and every
-     * conclusion lands in the Voorstel: new things ticked, changes to what exists ticked, what is there already not.
+     * Zet op zijn plek: shows the Voorstel. The conversation is read as a whole (it takes a while; the sheet and the stage
+     * show how far), unless it was read already or is being read: then the sheet shows that.
      */
     fun openVoorstel() {
-        var lines = transcript.value.filter { !it.sorted }
-        voorstelLines = lines.map { it.id }
-        _voorstel.value = emptyList()
+        _voorstelOpen.value = true
+        val unsorted = transcript.value.filter { !it.sorted }.map { it.id }
+        if (processJob?.isActive == true || (_voorstel.value != null && unsorted == voorstelLines)) return
+        read(afterStop = false)
+    }
+
+    /** Luister mee stopped: Hearth reads the meeting right away, no tap needed, and shows how far it is. */
+    fun listeningStopped() {
+        _voorstelOpen.value = true
+        read(afterStop = true)
+    }
+
+    /** Luister mee starts (again): the meeting goes on, so it is read as a whole when it stops; the tablet listens meanwhile. */
+    fun listeningStarted() {
+        readings++
         processJob?.cancel()
+        _processing.value = null
+        _voorstel.value = null
+        _voorstelOpen.value = false
+    }
+
+    /**
+     * Reads every line not in place yet, in the background: closing the Voorstel only hides it, the reading goes on and
+     * its result waits on the stage. Every conclusion lands in the Voorstel: new things ticked, changes to what exists
+     * ticked, what is there already not.
+     */
+    private fun read(afterStop: Boolean) {
+        val run = ++readings
+        processJob?.cancel()
+        _voorstel.value = null
+        _processing.value = 0 to 1
         processJob = viewModelScope.launch {
-            val c = ctx(ToolSource.UI)
-            // What Whisper still has to write belongs in it too: wait for it (the sheet says how much is left).
-            if (app.writing.pending.value > 0) {
-                _processing.value = 0 to 1
-                app.writing.drained()
-                // The last lines are on their way to the database.
-                kotlinx.coroutines.delay(800)
-                lines = transcript.value.filter { !it.sorted }
+            try {
+                // What Whisper still has to write belongs in it too (the stage says how much is left); the last lines are
+                // then on their way to the database, as is a recognizer's last stretch after it stopped.
+                if (afterStop || app.writing.pending.value > 0) {
+                    app.writing.drained()
+                    kotlinx.coroutines.delay(1_000)
+                }
+                val c = ctx(ToolSource.UI)
+                val lines = transcript.value.filter { !it.sorted }
                 voorstelLines = lines.map { it.id }
+                val done = process(lines) { d, t -> if (run == readings) _processing.value = d to t }
+                if (run != readings) return@launch
+                // A thought that was just talk shows once, as Gewoon gepraat: it can still be put somewhere.
+                _voorstel.value = done.found.map { f -> VoorstelRow(f.proposal, checked = f.proposal.calls.isNotEmpty(), lines = f.lines) } +
+                    done.quiet.map { t -> VoorstelRow(app.orchestrator.proposal(Spoken.clean(t.heard), Place.NONE, c).copy(heard = t.heard), checked = false, lines = t.lines.toList()) }
+            } finally {
+                if (run == readings) _processing.value = null
             }
-            val done = process(lines)
-            // A thought that was just talk shows once, as Gewoon gepraat: it can still be put somewhere.
-            _voorstel.value = done.found.map { f -> VoorstelRow(f.proposal, checked = f.proposal.calls.isNotEmpty(), lines = f.lines) } +
-                done.quiet.map { t -> VoorstelRow(app.orchestrator.proposal(Spoken.clean(t.heard), Place.NONE, c).copy(heard = t.heard), checked = false, lines = t.lines.toList()) }
         }
     }
 
+    /** Only hides the Voorstel: a reading goes on, and what it found waits on the stage. */
     fun closeVoorstel() {
-        processJob?.cancel()
-        _voorstel.value = null
+        _voorstelOpen.value = false
     }
 
     /** A suggestion after the family changed it: held against what exists again, unless they chose to add it as new. */
@@ -1021,6 +1057,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
     fun addVoorstel() {
         val rows = _voorstel.value ?: return
         _voorstel.value = null
+        _voorstelOpen.value = false
         tool {
             var added = 0
             rows.filter { r -> r.checked }.forEach { row ->

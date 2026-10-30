@@ -254,6 +254,8 @@ class MeetingState(
     val processing: Pair<Int, Int>? = null,
     /** The household's own words Luister mee learned. */
     val learnedWords: List<WordFix> = emptyList(),
+    /** A Voorstel read and waiting while its sheet is closed: how many things it puts in place. */
+    val waiting: Int? = null,
 )
 
 /** Luister mee lives above the screens, so it keeps listening while the family looks at a list. */
@@ -265,6 +267,9 @@ class ListenControl(
     val fix: () -> Unit = {},
     /** Beter uitschrijven: stretches recorded and not written down yet. */
     val writingLeft: Int = 0,
+    /** Stops listening without reading the meeting (Klaar ends it anyway). */
+    val stop: () -> Unit = {},
+    /** Starts listening, or stops it and reads the meeting. */
     val toggle: () -> Unit,
 )
 
@@ -334,6 +339,8 @@ fun WeekScreen(
                 partial = listen.partial,
                 heard = meeting.heard,
                 writingLeft = listen.writingLeft,
+                reading = meeting.processing,
+                waiting = meeting.waiting,
                 wide = wide,
                 lit = lit,
                 lang = lang,
@@ -430,7 +437,7 @@ fun WeekScreen(
             lines,
             unsorted = meeting.transcript.any { !it.sorted },
             onSort = { cb.closeAgree(); cb.openVoorstel() },
-            onAgree = { if (listen.listening) listen.toggle(); cb.finish(); finished = true },
+            onAgree = { if (listen.listening) listen.stop(); cb.finish(); finished = true },
             onDismiss = cb.closeAgree,
         )
     }

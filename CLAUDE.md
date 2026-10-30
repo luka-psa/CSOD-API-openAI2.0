@@ -80,9 +80,12 @@ device). Keep all three in sync when any of those change.
   downloaded once) reads the conversation after the meeting, topic by topic (`ai/interpret`: `GemmaTokenizer`,
   `Interpreter`, `Interpreting` = state and one reading). Its actions become suggestions through `Orchestrator.proposalOf`.
   The meeting is read in two moments (`ai/meeting`): live only `MeetingIntake` (names, the household's own things and
-  topic words, no model, so the CPU stays with the speech recognizer); after it `MeetingProcessor` reads the whole
-  conversation (the household's own words, by topic, interpreter or rules, made-up and off-topic conclusions dropped,
-  the last word on a plan counts) and `Matcher` holds each conclusion against what exists (update it, or "staat er al").
+  topic words, no model, so the CPU stays with the speech recognizer); when Luister mee stops `MeetingProcessor` reads
+  the whole conversation by itself, in the background (closing the Voorstel only hides it; the screen stays on while
+  Hearth listens, writes and reads, `KeepScreenOn`): the household's own words, by topic, interpreter (sentence by
+  sentence, windows of ≤ 16 sentences and 130 words) or rules, made-up, vague and off-topic conclusions dropped, the
+  interpreter's only kept when the talk says so (`MeetingWords.backs`), the last word on a plan counts; `Matcher` holds
+  each conclusion against what exists (update it, or "staat er al").
   The household's own words (`WordFix`, `WordFixes` in `core/model/Listening.kt`, setting `listen.words`) are learned
   from fixed lines and retyped names; the conversation export (`hearth-conversation/2`) is material to retrain it on
   real talk. Hearth needs no cloud model for any of this; MCP is an optional extra.
@@ -214,7 +217,7 @@ Full glossary and linking rules: `docs/PROPOSAL.md` §1–2. In short:
   *Vooruitblik* (dates after this week: verlof, trips). No Oudjes. *Klaar* first shows
   *Samen akkoord?* (the summary to agree on), then records a *Huddle* with its *summary* (kept). *Luister mee* transcribes the meeting on a big stage that shows the last lines with
   what Hearth recognises in its topic's colour and *Waar het over gaat* (the topics so far); no conclusions while people
-  talk. *Zet op zijn plek* then reads the whole conversation as *thoughts* (stretches joined by how they sound, never cut
+  talk. When it stops (or with *Zet op zijn plek*) Hearth reads the whole conversation as *thoughts* (stretches joined by how they sound, never cut
   at a pause) with their *conclusions*, held against what exists (*Werkt bij*, *Staat er al*, *Toch nieuw*); only what is *decided* becomes something (`Move`, `Stage` in `ai/route/MeetingWords.kt`): a plan, an
   agreement ("we spreken af dat …"), or an option the other says yes to ("kan jij Mia ophalen?" "ja"); catching up,
   looking back at ourselves, questions, doubts and a brainstorm's options stay talk (the thought shows its stage:

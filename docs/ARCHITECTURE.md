@@ -290,7 +290,7 @@ flowchart LR
     WORDS[("setting listen.words<br/>the household's own words")] --> INTAKE
     TL --> INTAKE["Live intake (ai/meeting/MeetingIntake)<br/>names, known items, topics"]
     INTAKE --> STAGE["Stage: coloured lines,<br/>Waar het over gaat"]
-    TL -->|"after the meeting: Zet op zijn plek"| PROC["Full reading (ai/meeting/MeetingProcessor)<br/>by topic, grounded, deduplicated"]
+    TL -->|"Luister mee stops (or Zet op zijn plek)"| PROC["Full reading (ai/meeting/MeetingProcessor)<br/>by topic, grounded, deduplicated"]
     WORDS --> PROC
     PROC --> RULES["Rules (ai/route/MeetingWords)<br/>always on"]
     SENSE["Sentence model e5-small<br/>optional, on device"] --> RULES
@@ -305,7 +305,9 @@ flowchart LR
 
 - Nothing is written from listening alone: suggestions appear on screen and a person confirms them.
 - While the meeting goes on only the light intake runs (word lists, no model), so the tablet's CPU stays with the
-  speech recognizer; the models run once, after the meeting, when someone taps *Zet op zijn plek*.
+  speech recognizer; the models run once, after the meeting, as soon as Luister mee stops (in the background: closing
+  the Voorstel doesn't stop them; the screen stays on until they are done). The interpreter gets the talk sentence by
+  sentence in windows that fit it, and its conclusions count only when the talk itself says so (`MeetingWords.backs`).
 - Words the family puts right are kept as a household setting (`listen.words`): they travel with sync and backup like
   other household data and are handed to the recognizer as hints.
 - The transcript is deleted when the next meeting ends; the meeting summary is kept.

@@ -241,4 +241,33 @@ class MeetingWordsTest {
         assertEquals(false, MeetingWords.choreTalk("wasmiddel kopen"))
         assertEquals(false, MeetingWords.choreTalk("melk halen"))
     }
+
+    @Test
+    fun aConclusionNeedsTalkThatSaysSo() {
+        val cases = listOf(
+            // Talk about the meeting, a question, a look back: nothing to put somewhere.
+            Triple(Place.IDEA, "Ik heb een paar belangrijke punten voor vandaag.", false),
+            Triple(Place.FRICTION, "Ik wilde eigenlijk niet zo veel structuur.", false),
+            Triple(Place.PLANNING, "Waar is de wasmand eigenlijk?", false),
+            Triple(Place.PLANNING, "Vorige week hebben we de wasmand gezocht.", false),
+            Triple(Place.GOAL, "We gaan de weekplanning bekijken.", false),
+            Triple(Place.SHOPPING, "De melk stond in de koelkast.", false),
+            Triple(Place.HOUSE_RULE, "De schoenen staan in de gang.", false),
+            Triple(Place.NONE, "We moeten de auto wassen.", false),
+            // Said so.
+            Triple(Place.IDEA, "Misschien kunnen we de boodschappenlijst vervangen door een app.", true),
+            Triple(Place.IDEA, "Het zou handiger zijn als we samen koken, wat als we dat proberen.", true),
+            Triple(Place.FRICTION, "De vuilbak loopt altijd over, dat stoort me.", true),
+            Triple(Place.PLANNING, "Zaterdag moeten we een nieuwe wasmand kopen.", true),
+            Triple(Place.PLANNING, "Kan jij donderdag de auto wassen?", true),
+            Triple(Place.EVENT, "Mia gaat woensdag naar de zwemles.", true),
+            Triple(Place.RHYTHM, "Elke avond de vaatwasser uitladen.", true),
+            Triple(Place.HOUSE_RULE, "We spreken af dat de schoenen in de kast gaan.", true),
+            Triple(Place.HOUSE_RULE, "Geen gsm aan tafel, nooit meer.", true),
+            Triple(Place.GOAL, "Ik wil meer sporten dit jaar.", true),
+            Triple(Place.SHOPPING, "We hebben nog melk en eieren nodig.", true),
+            Triple(Place.SHOPPING, "Er is geen koffie meer.", true),
+        )
+        cases.forEach { (place, said, backed) -> assertEquals(backed, MeetingWords.backs(place, said, monday), "$place: $said") }
+    }
 }

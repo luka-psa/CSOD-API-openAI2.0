@@ -26,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import app.hearth.ai.route.Spoken
 import app.hearth.ai.whisper.Writing
@@ -54,18 +53,13 @@ actual fun rememberTranscriber(
     val context = LocalContext.current
     val writer by rememberUpdatedState(writing)
     val written by rememberUpdatedState(onWritten)
-    val view = LocalView.current
     val line by rememberUpdatedState(onLine)
     val partial by rememberUpdatedState(onPartial)
     val reportActive by rememberUpdatedState(onActive)
 
-    // While Luister mee listens the screen stays on and bright, charging or not: nobody touches the tablet during a
-    // meeting, and a screen that sleeps stops the listening.
-    fun active(on: Boolean) {
-        view.keepScreenOn = on
-        ListeningNow.on = on
-        reportActive(on)
-    }
+    // While Luister mee listens the screen stays on and bright (KeepScreenOn, above the screens, also while the meeting
+    // is written down and read afterwards).
+    fun active(on: Boolean) = reportActive(on)
     val status by rememberUpdatedState(onStatus)
     val lang by rememberUpdatedState(language)
     val words by rememberUpdatedState(vocabulary)
@@ -413,8 +407,6 @@ actual fun rememberTranscriber(
     DisposableEffect(Unit) {
         onDispose {
             if (recorder.on) endRecording()
-            view.keepScreenOn = false
-            ListeningNow.on = false
             if (state.on) quiet(false)
             state.on = false
             handler.removeCallbacksAndMessages(null)
@@ -497,8 +489,3 @@ private const val RATE = 16_000
 private const val STALL_MS = 20_000L
 private const val STALL_CHECK_MS = 5_000L
 
-/** Whether Luister mee is listening right now: the kiosk doesn't dim the screen meanwhile. */
-object ListeningNow {
-    @Volatile
-    var on: Boolean = false
-}

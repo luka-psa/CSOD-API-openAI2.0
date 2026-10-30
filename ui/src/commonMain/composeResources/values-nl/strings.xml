@@ -573,6 +573,8 @@
     </plurals>
     <string name="voorstel_reading">Hearth leest het hele gesprek…</string>
     <string name="voorstel_reading_part">Stuk %1$d van %2$d</string>
+    <string name="voorstel_ready">Bekijk het voorstel (%1$d)</string>
+    <string name="voorstel_goes_on">Het scherm blijft aan tot Hearth klaar is. Je mag dit venster sluiten: Hearth leest gewoon verder.</string>
     <string name="voorstel_update">Werkt bij: %1$s</string>
     <string name="voorstel_there">Staat er al: %1$s</string>
     <string name="voorstel_as_new">Toch nieuw</string>

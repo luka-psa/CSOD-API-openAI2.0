@@ -323,10 +323,16 @@ breathing rings and moving bars, the words as they come in, the last lines as sa
 (`MeetingIntake` in `ai/meeting`: names in bold, the household's own things, a routine, a house rule, a dish, on their
 topic's tint, words that belong to a topic, "vaatwasser", "gerechten", "squash", in its colour), the topics as a row of
 dots (the one just heard glows) and beside it *Waar het over gaat*: the topics so far with how often and what of the
-household was named. No conclusions while people talk. *After the meeting* (*Zet op zijn plek*) Hearth reads the whole
-conversation at once (`MeetingProcessor`): the household's own words put right, the topic of every thought (a topic that
-comes back later is read together with what was said about it first), the interpreter per topic when it is on (else the
-rules), conclusions that rest on made-up words or too few words, or that don't fit what the talk was about, dropped, and
+household was named. No conclusions while people talk. *After the meeting* (as soon as Luister mee stops, or with
+*Zet op zijn plek*) Hearth reads the whole conversation at once (`MeetingProcessor`), in the background: closing the
+Voorstel only hides it, the stage shows how far the reading is and then *Bekijk het voorstel*, and the screen stays on
+and bright while Hearth listens, writes and reads (`KeepScreenOn`; the kiosk doesn't dim meanwhile, and a few minutes
+after). It reads: the household's own words put right, the topic of every thought (a topic that comes back later is
+read together with what was said about it first), the interpreter per topic when it is on (else the rules; it gets the
+talk sentence by sentence, in windows of at most 16 sentences and 130 words, so nothing of a long stretch falls off),
+conclusions that rest on made-up words, too few or vague words ("een belangrijke punten"), or that don't fit what the
+talk was about, dropped, the interpreter's only when the talk itself says so (`MeetingWords.backs`: an idea offered, a
+friction that rubs, a rule agreed, a plan going somewhere rather than asked about or looked back on), and
 every conclusion held against what exists (`Matcher`): a task gets the new day, a routine its moment or days ("Werkt
 bij: Vaatwasser uitladen"), what is there already says so ("Staat er al: Schoenen in de kast", not ticked) instead of
 being added twice; *Toch nieuw* adds it as new after all. The same conclusion said twice counts once, the last time (a
@@ -524,6 +530,12 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    statement) and each thought's stage (`Stage`: bijpraten, terugblik, planning, iets dat schuurt, brainstorm,
    besluit): only plans, agreements and options someone says yes to become suggestions; a brainstorm's options don't,
    the rule it ends in does; looking back at ourselves is never written down.
+   v0.29: the reading after the meeting starts by itself when Luister mee stops and goes on in the background (closing
+   the Voorstel only hides it; the stage shows how far, then *Bekijk het voorstel*); the screen stays on and bright while
+   Hearth listens, writes the meeting down and reads it, and a few minutes after (`KeepScreenOn`). The interpreter gets
+   the conversation sentence by sentence in windows that fit it: before, Whisper's half-minute lines made most of each
+   window fall off. Its conclusions count only when the talk says so (`MeetingWords.backs`); vague words ("punten",
+   "dingen") don't count as what something is about.
    v0.28: *Beter uitschrijven* (Instellingen, `set_transcriber`, device-only, on by itself on a tablet; `ai/whisper`):
    Luister mee records the meeting itself (`AudioRecord`, 16 kHz) instead of restarting the platform recognizer after
    every pause, so nothing is lost between stretches; `SpeechCutter` cuts the recording at pauses (a stretch is read once
@@ -532,8 +544,8 @@ The two-stage router/helper code (`ai/llm`, `ai/route`) stays in the repo, teste
    the tablet; our own log-mel features and byte-level BPE, the same numbers and ids as the reference) writes each
    stretch a few seconds behind the talk, with the household's own words as its prompt, a line per stretch kept at the
    moment it was said (`add_transcript_line` `at`). What Whisper invents on silence is dropped; a phrase that loops is
-   kept once. The model is opened only while a meeting is written; the audio is never stored. Zet op zijn plek waits
-   until the last stretches are written. Measured on Dutch speech (FLEURS): the same words as the reference, about
+   kept once. The model is opened only while a meeting is written; the audio is never stored. The reading after the
+   meeting waits until the last stretches are written. Measured on Dutch speech (FLEURS): the same words as the reference, about
    0.35× real time on a four-core test computer (a tablet is slower).
    v0.27: Luister mee in two moments. Live it only writes along and reads what each line is about (`MeetingIntake`:
    names, the household's own things and topic words coloured; *Waar het over gaat* by topic beside it). After the

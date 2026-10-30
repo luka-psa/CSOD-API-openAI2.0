@@ -13,8 +13,9 @@ FunctionGemma is a Gemma model: it is provided under and subject to the Gemma Te
   frictions, ideas, goals, wins, questions) said the way people talk: small talk around them, options before a
   decision, someone changing their mind ("nee toch maar vrijdag"), a topic that comes back, a plan that is dropped.
   `python gen.py 3600 train.jsonl` writes conversations; `python gen.py 1600 windows.jsonl windows [seed]` writes
-  longer stretches (1–4 scenes, up to 16 lines) like the ones the app hands over (since v0.27 `MeetingProcessor` reads
-  after the meeting, topic by topic, 10 lines at a time with 2 overlapping). Extend the phrase banks at
+  longer stretches (1–4 scenes, up to 16 lines) like the ones the app hands over (since v0.29 `MeetingProcessor` reads
+  after the meeting, topic by topic, each line as its sentences, at most 16 sentences and 130 words at a time, a short
+  sentence or two overlapping; before, Whisper's half-minute lines made most of a 10-line window fall off). Extend the phrase banks at
   the top to teach it new ways of saying things.
 - `gen2.py`: round 2 on top of `gen.py`: far bigger word lists (groceries, dishes, tasks, appointments) so the model
   copies what was said instead of a word it already knows, and the ways of talking round 1 missed (a meal moved because
